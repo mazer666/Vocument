@@ -769,6 +769,18 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -786,9 +798,13 @@ internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
     fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
 ): Short
@@ -822,9 +838,17 @@ fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_resolve_save_conflict(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_save_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_save_session_as(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_save_session_collision_free_copy(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_search_exact(
 ): Short
@@ -889,9 +913,13 @@ internal interface UniffiLib : Library {
     // FFI functions
     fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -925,9 +953,17 @@ fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: R
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_resolve_save_conflict(`sessionId`: RustBuffer.ByValue,`resolution`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(`sessionId`: RustBuffer.ByValue,`journalJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_save_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_save_session_as(`sessionId`: RustBuffer.ByValue,`targetToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_save_session_collision_free_copy(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_search_exact(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1074,10 +1110,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
@@ -1128,10 +1170,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_resolve_save_conflict() != 19961.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_save_session_as() != 10212.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_save_session_collision_free_copy() != 20495.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506.toShort()) {
@@ -1610,6 +1664,53 @@ public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
             FfiConverterTypeFfiFileAccessOrigin.write(value.`accessOrigin`, buf)
             FfiConverterTypeFfiFileIdentity.write(value.`fileIdentity`, buf)
             FfiConverterTypeFfiPdfDocumentSummary.write(value.`pdfSummary`, buf)
+    }
+}
+
+
+
+/**
+ * External change inspection result crossing UniFFI (`FILELOCK-002`).
+ */
+data class FfiExternalChangeCheckResult (
+    var `sessionId`: kotlin.String, 
+    var `sourceToken`: kotlin.String, 
+    var `hasExternalChanges`: kotlin.Boolean, 
+    var `comparisonSummary`: kotlin.String, 
+    var `observedIdentity`: FfiFileIdentity?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiExternalChangeCheckResult: FfiConverterRustBuffer<FfiExternalChangeCheckResult> {
+    override fun read(buf: ByteBuffer): FfiExternalChangeCheckResult {
+        return FfiExternalChangeCheckResult(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalTypeFfiFileIdentity.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiExternalChangeCheckResult) = (
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterString.allocationSize(value.`sourceToken`) +
+            FfiConverterBoolean.allocationSize(value.`hasExternalChanges`) +
+            FfiConverterString.allocationSize(value.`comparisonSummary`) +
+            FfiConverterOptionalTypeFfiFileIdentity.allocationSize(value.`observedIdentity`)
+    )
+
+    override fun write(value: FfiExternalChangeCheckResult, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterString.write(value.`sourceToken`, buf)
+            FfiConverterBoolean.write(value.`hasExternalChanges`, buf)
+            FfiConverterString.write(value.`comparisonSummary`, buf)
+            FfiConverterOptionalTypeFfiFileIdentity.write(value.`observedIdentity`, buf)
     }
 }
 
@@ -2097,6 +2198,104 @@ public object FfiConverterTypeFfiRenderedTile: FfiConverterRustBuffer<FfiRendere
             FfiConverterUInt.write(value.`heightPx`, buf)
             FfiConverterUInt.write(value.`strideBytes`, buf)
             FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+    }
+}
+
+
+
+/**
+ * Conflict contract crossing UniFFI when external change is detected on disk (`FILELOCK-003`).
+ */
+data class FfiSaveConflict (
+    var `sessionId`: kotlin.String, 
+    var `targetToken`: kotlin.String, 
+    var `baselineIdentity`: FfiFileIdentity, 
+    var `observedExternalIdentity`: FfiFileIdentity, 
+    var `comparisonSummary`: kotlin.String, 
+    var `suggestedSafeCopyPath`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSaveConflict: FfiConverterRustBuffer<FfiSaveConflict> {
+    override fun read(buf: ByteBuffer): FfiSaveConflict {
+        return FfiSaveConflict(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiFileIdentity.read(buf),
+            FfiConverterTypeFfiFileIdentity.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSaveConflict) = (
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterString.allocationSize(value.`targetToken`) +
+            FfiConverterTypeFfiFileIdentity.allocationSize(value.`baselineIdentity`) +
+            FfiConverterTypeFfiFileIdentity.allocationSize(value.`observedExternalIdentity`) +
+            FfiConverterString.allocationSize(value.`comparisonSummary`) +
+            FfiConverterString.allocationSize(value.`suggestedSafeCopyPath`)
+    )
+
+    override fun write(value: FfiSaveConflict, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterString.write(value.`targetToken`, buf)
+            FfiConverterTypeFfiFileIdentity.write(value.`baselineIdentity`, buf)
+            FfiConverterTypeFfiFileIdentity.write(value.`observedExternalIdentity`, buf)
+            FfiConverterString.write(value.`comparisonSummary`, buf)
+            FfiConverterString.write(value.`suggestedSafeCopyPath`, buf)
+    }
+}
+
+
+
+/**
+ * Snapshot describing a successfully completed safe save crossing UniFFI.
+ */
+data class FfiSaveSuccessSnapshot (
+    var `sessionId`: kotlin.String, 
+    var `targetToken`: kotlin.String, 
+    var `newFileIdentity`: FfiFileIdentity, 
+    var `savedRevision`: kotlin.ULong, 
+    var `bytesWritten`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSaveSuccessSnapshot: FfiConverterRustBuffer<FfiSaveSuccessSnapshot> {
+    override fun read(buf: ByteBuffer): FfiSaveSuccessSnapshot {
+        return FfiSaveSuccessSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiFileIdentity.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSaveSuccessSnapshot) = (
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterString.allocationSize(value.`targetToken`) +
+            FfiConverterTypeFfiFileIdentity.allocationSize(value.`newFileIdentity`) +
+            FfiConverterULong.allocationSize(value.`savedRevision`) +
+            FfiConverterULong.allocationSize(value.`bytesWritten`)
+    )
+
+    override fun write(value: FfiSaveSuccessSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterString.write(value.`targetToken`, buf)
+            FfiConverterTypeFfiFileIdentity.write(value.`newFileIdentity`, buf)
+            FfiConverterULong.write(value.`savedRevision`, buf)
+            FfiConverterULong.write(value.`bytesWritten`, buf)
     }
 }
 
@@ -2685,6 +2884,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    class SaveFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class InternalFailure(
         
         val `details`: kotlin.String
@@ -2728,7 +2935,10 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             7 -> DocumentCoreException.TransactionFailure(
                 FfiConverterString.read(buf),
                 )
-            8 -> DocumentCoreException.InternalFailure(
+            8 -> DocumentCoreException.SaveFailure(
+                FfiConverterString.read(buf),
+                )
+            9 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -2767,6 +2977,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.TransactionFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.SaveFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -2815,8 +3030,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.SaveFailure -> {
                 buf.putInt(8)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(9)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -2932,6 +3152,126 @@ public object FfiConverterTypeFfiPageLabelStyle: FfiConverterRustBuffer<FfiPageL
 
 
 
+/**
+ * Conflict resolution choices crossing UniFFI (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+ */
+
+enum class FfiSaveConflictResolution {
+    
+    /**
+     * Save local dirty state to a collision-free safe copy path, leaving external file untouched.
+     */
+    SAVE_LOCAL_AS_COLLISION_FREE_COPY,
+    /**
+     * Explicitly overwrites external file after user confirmation.
+     */
+    OVERWRITE_EXTERNAL_EXPLICITLY,
+    /**
+     * Discards local dirty edits and reloads external version from disk.
+     */
+    RELOAD_EXTERNAL_VERSION,
+    /**
+     * Cancels save and keeps local dirty edits in session.
+     */
+    CANCEL;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSaveConflictResolution: FfiConverterRustBuffer<FfiSaveConflictResolution> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiSaveConflictResolution.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiSaveConflictResolution) = 4UL
+
+    override fun write(value: FfiSaveConflictResolution, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Safe save outcome crossing UniFFI: either success or conflict (`ROADMAP.md` M0.5 Gate).
+ */
+sealed class FfiSaveOutcome {
+    
+    data class Success(
+        val `snapshot`: FfiSaveSuccessSnapshot) : FfiSaveOutcome() {
+        companion object
+    }
+    
+    data class Conflict(
+        val `conflict`: FfiSaveConflict) : FfiSaveOutcome() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSaveOutcome : FfiConverterRustBuffer<FfiSaveOutcome>{
+    override fun read(buf: ByteBuffer): FfiSaveOutcome {
+        return when(buf.getInt()) {
+            1 -> FfiSaveOutcome.Success(
+                FfiConverterTypeFfiSaveSuccessSnapshot.read(buf),
+                )
+            2 -> FfiSaveOutcome.Conflict(
+                FfiConverterTypeFfiSaveConflict.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiSaveOutcome) = when(value) {
+        is FfiSaveOutcome.Success -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeFfiSaveSuccessSnapshot.allocationSize(value.`snapshot`)
+            )
+        }
+        is FfiSaveOutcome.Conflict -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeFfiSaveConflict.allocationSize(value.`conflict`)
+            )
+        }
+    }
+
+    override fun write(value: FfiSaveOutcome, buf: ByteBuffer) {
+        when(value) {
+            is FfiSaveOutcome.Success -> {
+                buf.putInt(1)
+                FfiConverterTypeFfiSaveSuccessSnapshot.write(value.`snapshot`, buf)
+                Unit
+            }
+            is FfiSaveOutcome.Conflict -> {
+                buf.putInt(2)
+                FfiConverterTypeFfiSaveConflict.write(value.`conflict`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -3000,6 +3340,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIdentity?> {
+    override fun read(buf: ByteBuffer): FfiFileIdentity? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiFileIdentity.read(buf)
+    }
+
+    override fun allocationSize(value: FfiFileIdentity?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiFileIdentity.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiFileIdentity?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiFileIdentity.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRectMilliPt?> {
     override fun read(buf: ByteBuffer): FfiPdfRectMilliPt? {
         if (buf.get().toInt() == 0) {
@@ -3022,6 +3394,38 @@ public object FfiConverterOptionalTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<
         } else {
             buf.put(1)
             FfiConverterTypeFfiPdfRectMilliPt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiSaveSuccessSnapshot: FfiConverterRustBuffer<FfiSaveSuccessSnapshot?> {
+    override fun read(buf: ByteBuffer): FfiSaveSuccessSnapshot? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiSaveSuccessSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: FfiSaveSuccessSnapshot?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiSaveSuccessSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiSaveSuccessSnapshot?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiSaveSuccessSnapshot.write(value, buf)
         }
     }
 }
@@ -3263,6 +3667,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Inspects whether on-disk file for `session_id` was modified externally (`FILELOCK-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCheckExternalChanges`(`sessionId`: kotlin.String): FfiExternalChangeCheckResult {
+            return FfiConverterTypeFfiExternalChangeCheckResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_check_external_changes(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCloseSession`(`sessionId`: kotlin.String)
@@ -3282,6 +3699,18 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Generates a collision-free file path for `base_path` and `suffix` (`FILELOCK-004`).
+         */ fun `documentCoreGenerateCollisionFreePath`(`basePath`: kotlin.String, `suffix`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
+        FfiConverterString.lower(`basePath`),FfiConverterString.lower(`suffix`),_status)
 }
     )
     }
@@ -3497,6 +3926,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Resolves an external save conflict according to `resolution` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreResolveSaveConflict`(`sessionId`: kotlin.String, `resolution`: FfiSaveConflictResolution): FfiSaveSuccessSnapshot? {
+            return FfiConverterOptionalTypeFfiSaveSuccessSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_resolve_save_conflict(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiSaveConflictResolution.lower(`resolution`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Restores and replays a `PersistentTransactionJournal` JSON onto a freshly opened session (`ARCHITECTURE.md` §§11–12, `UNDO-001`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRestoreTransactionJournalJson`(`sessionId`: kotlin.String, `journalJson`: kotlin.String): FfiTransactionHistorySnapshot {
@@ -3517,6 +3959,45 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_rotate_pages(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`deltaDegrees`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Safe save of active `session_id` back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSaveSession`(`sessionId`: kotlin.String): FfiSaveOutcome {
+            return FfiConverterTypeFfiSaveOutcome.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_save_session(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * 'Save As' of active `session_id` to `target_token` (`SAVE-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSaveSessionAs`(`sessionId`: kotlin.String, `targetToken`: kotlin.String): FfiSaveOutcome {
+            return FfiConverterTypeFfiSaveOutcome.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_save_session_as(
+        FfiConverterString.lower(`sessionId`),FfiConverterString.lower(`targetToken`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Saves a guaranteed collision-free safe copy of `session_id` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSaveSessionCollisionFreeCopy`(`sessionId`: kotlin.String): FfiSaveSuccessSnapshot {
+            return FfiConverterTypeFfiSaveSuccessSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_save_session_collision_free_copy(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

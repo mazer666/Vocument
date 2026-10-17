@@ -362,5 +362,88 @@ struct VocumentMacHandshakeCLI {
         try client.closeSession(sessionId: m04Session.sessionId)
         try client.closeSession(sessionId: replaySession.sessionId)
         print("✓ Swift (macOS M0.4) → TransactionManager → HighlightAnnotation(\(replayedAnnots[0].annotationId)) → RotatePages(+90° → \(rotGeometry.widthMilliPt / 1000)x\(rotGeometry.heightMilliPt / 1000)pt) → Undo/Redo → PersistentTransactionJournal(replay=\(replayedHist.undoCount) tx) verified")
+
+        // M0.5 verification: Safe Save, Atomic Staging, Post-Save Validation, Save As, External Conflict Detection, Gate, and Collision-Free Safe Copy
+        let m05TempDir = FileManager.default.temporaryDirectory.appendingPathComponent("voc_mac_m05_\(ProcessInfo.processInfo.processIdentifier)")
+        try FileManager.default.createDirectory(at: m05TempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: m05TempDir)
+        }
+        let m05TestPdf = m05TempDir.appendingPathComponent("contract.pdf")
+        let origPdfBytes = try Data(contentsOf: samplePdfURL)
+        try origPdfBytes.write(to: m05TestPdf)
+
+        let m05Session = try client.openScopedDocument(at: m05TestPdf)
+        _ = try client.rotatePages(sessionId: m05Session.sessionId, pageIndices: [0], deltaDegrees: 90)
+        let dirtySnap = try client.sessionSnapshot(sessionId: m05Session.sessionId)
+        guard dirtySnap.isDirty else {
+            fatalError("Expected session to be dirty after rotation in M0.5 handshake")
+        }
+
+        // 1. Safe save of dirty session:
+        let saveOutcome = try client.saveSession(sessionId: m05Session.sessionId)
+        guard case .success(let succ) = saveOutcome else {
+            fatalError("Expected successful save outcome on clean target file")
+        }
+        guard succ.savedRevision == 2 else {
+            fatalError("Expected saved revision == 2, got \(succ.savedRevision)")
+        }
+        let cleanSnap = try client.sessionSnapshot(sessionId: m05Session.sessionId)
+        guard !cleanSnap.isDirty else {
+            fatalError("Expected session isDirty == false after successful save")
+        }
+
+        // 2. Simulate external file modification on disk:
+        Thread.sleep(forTimeInterval: 0.02)
+        var extBytes = origPdfBytes
+        extBytes.append(Data("\n%external edit from competitor app\n".utf8))
+        try extBytes.write(to: m05TestPdf)
+
+        // Verify proactive check detects external change:
+        let extCheck = try client.checkExternalChanges(sessionId: m05Session.sessionId)
+        guard extCheck.hasExternalChanges && extCheck.comparisonSummary.contains("ModifiedExternally") else {
+            fatalError("Expected proactive check to detect ModifiedExternally")
+        }
+
+        // Make another local mutation:
+        _ = try client.rotatePages(sessionId: m05Session.sessionId, pageIndices: [0], deltaDegrees: 90)
+
+        // 3. M0.5 GATE VERIFICATION: Save MUST NOT silently overwrite!
+        let conflictOutcome = try client.saveSession(sessionId: m05Session.sessionId)
+        guard case .conflict(let conflict) = conflictOutcome else {
+            fatalError("FATAL: M0.5 Gate breached! External file was silently overwritten.")
+        }
+        guard conflict.comparisonSummary.contains("ModifiedExternally") else {
+            fatalError("Expected conflict comparison to contain ModifiedExternally, got \(conflict.comparisonSummary)")
+        }
+        guard conflict.suggestedSafeCopyPath.contains("Conflicted Copy") else {
+            fatalError("Expected suggestedSafeCopyPath to suggest Conflicted Copy, got \(conflict.suggestedSafeCopyPath)")
+        }
+
+        // Verify disk content was NOT overwritten:
+        let onDisk = try Data(contentsOf: m05TestPdf)
+        guard onDisk == extBytes else {
+            fatalError("FATAL: Disk content was corrupted or overwritten!")
+        }
+
+        // 4. Resolve conflict via collision-free safe copy:
+        guard let safeCopySnap = try client.resolveSaveConflict(
+            sessionId: m05Session.sessionId,
+            resolution: .saveLocalAsCollisionFreeCopy
+        ) else {
+            fatalError("Expected resolveSaveConflict to return safe copy snapshot")
+        }
+        guard safeCopySnap.targetToken.contains("Safe Copy") && FileManager.default.fileExists(atPath: safeCopySnap.targetToken) else {
+            fatalError("Expected collision-free safe copy file to exist on disk: \(safeCopySnap.targetToken)")
+        }
+
+        // 5. Collision-free path generator verification:
+        let generatedCollPath = client.generateCollisionFreePath(basePath: m05TestPdf.path, suffix: "Safe Copy")
+        guard generatedCollPath.contains("Safe Copy") else {
+            fatalError("Unexpected generated collision-free path: \(generatedCollPath)")
+        }
+
+        try client.closeSession(sessionId: m05Session.sessionId)
+        print("✓ Swift (macOS M0.5) → SafeSave → AtomicStaging → PostSaveValidation → ExternalConflictDetection → GateVerified(no-silent-overwrite) → CollisionFreeSafeCopy(\(safeCopySnap.savedRevision) rev) verified")
     }
 }

@@ -43,6 +43,8 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.1-ACCEPTANCE.md"
   "docs/acceptance/M0.2-ACCEPTANCE.md"
   "docs/acceptance/M0.3-ACCEPTANCE.md"
+  "docs/acceptance/M0.4-ACCEPTANCE.md"
+  "docs/acceptance/M0.5-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -50,6 +52,8 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0004-m0-1-filebroker-document-session-and-mupdf-adapter.md"
   "docs/adr/ADR-0005-m0-2-rendering-actor-tile-cache-and-canvas.md"
   "docs/adr/ADR-0006-m0-3-navigation-thumbnails-selection-and-fts5-search.md"
+  "docs/adr/ADR-0007-m0-4-transaction-manager-mutations-undo-redo-and-journal.md"
+  "docs/adr/ADR-0008-m0-5-safe-save-atomic-staging-validation-and-conflict-handling.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
@@ -122,5 +126,12 @@ if grep -RIn 'apply_engine_mutation_for_transaction_manager' core/ platform/ app
   exit 1
 fi
 echo "✓ M0.4 Gate verified: Mutation never bypasses TransactionManager."
+
+# Enforce M0.5 Gate: Never silently overwrite externally changed content
+if ! grep -q "gate_never_silently_overwrites_externally_changed_content" core/vocument-core/tests/safe_save_tests.rs; then
+  echo "ERROR (M0.5 Gate): M0.5 gate test 'gate_never_silently_overwrites_externally_changed_content' missing!" >&2
+  exit 1
+fi
+echo "✓ M0.5 Gate verified: Never silently overwrite externally changed content."
 
 echo "==> Repository validation passed."

@@ -30,6 +30,8 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var currentPageRotationDegrees: UInt32 = 0
     @Published var currentPageHighlights: [FfiHighlightAnnotation] = []
     @Published var exportedJournalJsonPreview: String?
+    @Published var activeConflict: FfiSaveConflict?
+    @Published var saveNotificationMessage: String?
     @Published var errorMessage: String?
 
     init() {
@@ -257,6 +259,85 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func save() {
+        guard let session = activeSession else { return }
+        do {
+            let outcome = try coreClient.saveSession(sessionId: session.sessionId)
+            switch outcome {
+            case .success(let snapshot):
+                handleSaveSuccess(snapshot: snapshot)
+            case .conflict(let conflict):
+                activeConflict = conflict
+                saveNotificationMessage = "Save conflict: File was modified externally."
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func saveAsViaPanel() {
+        guard let session = activeSession else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = session.fileIdentity.displayName
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let outcome = try coreClient.saveSessionAs(
+                    sessionId: session.sessionId,
+                    targetToken: url.path
+                )
+                switch outcome {
+                case .success(let snapshot):
+                    handleSaveSuccess(snapshot: snapshot)
+                case .conflict(let conflict):
+                    activeConflict = conflict
+                    saveNotificationMessage = "Save As conflict: Target was modified externally."
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func saveCollisionFreeCopy() {
+        guard let session = activeSession else { return }
+        do {
+            let snapshot = try coreClient.saveSessionCollisionFreeCopy(sessionId: session.sessionId)
+            handleSaveSuccess(snapshot: snapshot)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func resolveActiveConflict(_ resolution: FfiSaveConflictResolution) {
+        guard let session = activeSession else { return }
+        activeConflict = nil
+        do {
+            if resolution == .reloadExternalVersion {
+                _ = try coreClient.resolveSaveConflict(sessionId: session.sessionId, resolution: resolution)
+                let diskUrl = URL(fileURLWithPath: session.fileIdentity.sourceToken)
+                openDocument(at: diskUrl)
+                saveNotificationMessage = "Reloaded external document from disk."
+                return
+            }
+            if let snapshot = try coreClient.resolveSaveConflict(sessionId: session.sessionId, resolution: resolution) {
+                handleSaveSuccess(snapshot: snapshot)
+            } else {
+                saveNotificationMessage = "Save cancelled."
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func handleSaveSuccess(snapshot: FfiSaveSuccessSnapshot) {
+        saveNotificationMessage = "Saved \(snapshot.newFileIdentity.displayName) (Rev \(snapshot.savedRevision), \(snapshot.bytesWritten) bytes)."
+        activeConflict = nil
+        errorMessage = nil
+        activeSession = try? coreClient.sessionSnapshot(sessionId: snapshot.sessionId)
+        transactionHistory = try? coreClient.transactionHistory(sessionId: snapshot.sessionId)
     }
 
     private func refreshAfterMutation(

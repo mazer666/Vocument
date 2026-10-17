@@ -41,6 +41,8 @@ pub enum SessionError {
     SearchIndex(#[from] SearchIndexError),
     #[error(transparent)]
     Transaction(#[from] TransactionError),
+    #[error(transparent)]
+    Save(#[from] crate::save::SaveError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
     #[error("session registry lock poisoned")]
@@ -100,13 +102,21 @@ impl DocumentSession {
         self.revision = self.transaction_manager.current_revision();
         self.is_dirty = self.transaction_manager.is_dirty();
     }
+
+    /// Marks the active session as cleanly saved and updates its baseline `FileIdentity` (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).
+    pub fn mark_as_saved(&mut self, new_identity: FileIdentity) {
+        self.file_identity = new_identity;
+        self.transaction_manager.mark_as_saved();
+        self.sync_from_transaction_manager();
+    }
 }
 
 /// Thread-safe registry owning active `DocumentSession` instances, central `JobManager`,
 /// and shared `RenderPipeline` inside the Rust core (`ARCHITECTURE.md` §§6–9).
 #[derive(Debug)]
 pub struct SessionRegistry {
-    pdf_engine: Box<dyn PdfEngine>,
+    pub(crate) pdf_engine: Box<dyn PdfEngine>,
+    pub(crate) file_broker: Arc<dyn FileBroker>,
     job_manager: JobManager,
     render_pipeline: RenderPipeline,
     next_session_number: AtomicU64,
@@ -115,6 +125,13 @@ pub struct SessionRegistry {
 
 impl SessionRegistry {
     pub fn new(pdf_engine: Box<dyn PdfEngine>) -> Self {
+        Self::with_broker(
+            pdf_engine,
+            Arc::new(crate::file_broker::ScopedLocalFileBroker::new()),
+        )
+    }
+
+    pub fn with_broker(pdf_engine: Box<dyn PdfEngine>, file_broker: Arc<dyn FileBroker>) -> Self {
         let budgets = PerformanceBudgetsConfig::load_embedded().ok();
         let tile_cache_bytes = budgets
             .as_ref()
@@ -135,6 +152,7 @@ impl SessionRegistry {
 
         Self {
             pdf_engine,
+            file_broker,
             job_manager: JobManager::new(yield_bg),
             render_pipeline: RenderPipeline::with_thumbnail_budget(
                 tile_cache_bytes,
@@ -144,6 +162,14 @@ impl SessionRegistry {
             next_session_number: AtomicU64::new(1),
             sessions: Mutex::new(BTreeMap::new()),
         }
+    }
+
+    pub fn file_broker(&self) -> Arc<dyn FileBroker> {
+        Arc::clone(&self.file_broker)
+    }
+
+    pub fn pdf_engine(&self) -> &dyn PdfEngine {
+        self.pdf_engine.as_ref()
     }
 
     /// Opens a PDF through a `FileBroker` source token and registers a new `DocumentSession`.

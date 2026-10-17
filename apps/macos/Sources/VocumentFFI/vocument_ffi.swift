@@ -894,6 +894,103 @@ public func FfiConverterTypeFfiDocumentSessionSnapshot_lower(_ value: FfiDocumen
 
 
 /**
+ * External change inspection result crossing UniFFI (`FILELOCK-002`).
+ */
+public struct FfiExternalChangeCheckResult {
+    public var sessionId: String
+    public var sourceToken: String
+    public var hasExternalChanges: Bool
+    public var comparisonSummary: String
+    public var observedIdentity: FfiFileIdentity?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, sourceToken: String, hasExternalChanges: Bool, comparisonSummary: String, observedIdentity: FfiFileIdentity?) {
+        self.sessionId = sessionId
+        self.sourceToken = sourceToken
+        self.hasExternalChanges = hasExternalChanges
+        self.comparisonSummary = comparisonSummary
+        self.observedIdentity = observedIdentity
+    }
+}
+
+#if compiler(>=6)
+extension FfiExternalChangeCheckResult: Sendable {}
+#endif
+
+
+extension FfiExternalChangeCheckResult: Equatable, Hashable {
+    public static func ==(lhs: FfiExternalChangeCheckResult, rhs: FfiExternalChangeCheckResult) -> Bool {
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.sourceToken != rhs.sourceToken {
+            return false
+        }
+        if lhs.hasExternalChanges != rhs.hasExternalChanges {
+            return false
+        }
+        if lhs.comparisonSummary != rhs.comparisonSummary {
+            return false
+        }
+        if lhs.observedIdentity != rhs.observedIdentity {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sessionId)
+        hasher.combine(sourceToken)
+        hasher.combine(hasExternalChanges)
+        hasher.combine(comparisonSummary)
+        hasher.combine(observedIdentity)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiExternalChangeCheckResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiExternalChangeCheckResult {
+        return
+            try FfiExternalChangeCheckResult(
+                sessionId: FfiConverterString.read(from: &buf), 
+                sourceToken: FfiConverterString.read(from: &buf), 
+                hasExternalChanges: FfiConverterBool.read(from: &buf), 
+                comparisonSummary: FfiConverterString.read(from: &buf), 
+                observedIdentity: FfiConverterOptionTypeFfiFileIdentity.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiExternalChangeCheckResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.sourceToken, into: &buf)
+        FfiConverterBool.write(value.hasExternalChanges, into: &buf)
+        FfiConverterString.write(value.comparisonSummary, into: &buf)
+        FfiConverterOptionTypeFfiFileIdentity.write(value.observedIdentity, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExternalChangeCheckResult_lift(_ buf: RustBuffer) throws -> FfiExternalChangeCheckResult {
+    return try FfiConverterTypeFfiExternalChangeCheckResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExternalChangeCheckResult_lower(_ value: FfiExternalChangeCheckResult) -> RustBuffer {
+    return FfiConverterTypeFfiExternalChangeCheckResult.lower(value)
+}
+
+
+/**
  * Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
  */
 public struct FfiFileIdentity {
@@ -1891,6 +1988,208 @@ public func FfiConverterTypeFfiRenderedTile_lift(_ buf: RustBuffer) throws -> Ff
 #endif
 public func FfiConverterTypeFfiRenderedTile_lower(_ value: FfiRenderedTile) -> RustBuffer {
     return FfiConverterTypeFfiRenderedTile.lower(value)
+}
+
+
+/**
+ * Conflict contract crossing UniFFI when external change is detected on disk (`FILELOCK-003`).
+ */
+public struct FfiSaveConflict {
+    public var sessionId: String
+    public var targetToken: String
+    public var baselineIdentity: FfiFileIdentity
+    public var observedExternalIdentity: FfiFileIdentity
+    public var comparisonSummary: String
+    public var suggestedSafeCopyPath: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, targetToken: String, baselineIdentity: FfiFileIdentity, observedExternalIdentity: FfiFileIdentity, comparisonSummary: String, suggestedSafeCopyPath: String) {
+        self.sessionId = sessionId
+        self.targetToken = targetToken
+        self.baselineIdentity = baselineIdentity
+        self.observedExternalIdentity = observedExternalIdentity
+        self.comparisonSummary = comparisonSummary
+        self.suggestedSafeCopyPath = suggestedSafeCopyPath
+    }
+}
+
+#if compiler(>=6)
+extension FfiSaveConflict: Sendable {}
+#endif
+
+
+extension FfiSaveConflict: Equatable, Hashable {
+    public static func ==(lhs: FfiSaveConflict, rhs: FfiSaveConflict) -> Bool {
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.targetToken != rhs.targetToken {
+            return false
+        }
+        if lhs.baselineIdentity != rhs.baselineIdentity {
+            return false
+        }
+        if lhs.observedExternalIdentity != rhs.observedExternalIdentity {
+            return false
+        }
+        if lhs.comparisonSummary != rhs.comparisonSummary {
+            return false
+        }
+        if lhs.suggestedSafeCopyPath != rhs.suggestedSafeCopyPath {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sessionId)
+        hasher.combine(targetToken)
+        hasher.combine(baselineIdentity)
+        hasher.combine(observedExternalIdentity)
+        hasher.combine(comparisonSummary)
+        hasher.combine(suggestedSafeCopyPath)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSaveConflict: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSaveConflict {
+        return
+            try FfiSaveConflict(
+                sessionId: FfiConverterString.read(from: &buf), 
+                targetToken: FfiConverterString.read(from: &buf), 
+                baselineIdentity: FfiConverterTypeFfiFileIdentity.read(from: &buf), 
+                observedExternalIdentity: FfiConverterTypeFfiFileIdentity.read(from: &buf), 
+                comparisonSummary: FfiConverterString.read(from: &buf), 
+                suggestedSafeCopyPath: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSaveConflict, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.targetToken, into: &buf)
+        FfiConverterTypeFfiFileIdentity.write(value.baselineIdentity, into: &buf)
+        FfiConverterTypeFfiFileIdentity.write(value.observedExternalIdentity, into: &buf)
+        FfiConverterString.write(value.comparisonSummary, into: &buf)
+        FfiConverterString.write(value.suggestedSafeCopyPath, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveConflict_lift(_ buf: RustBuffer) throws -> FfiSaveConflict {
+    return try FfiConverterTypeFfiSaveConflict.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveConflict_lower(_ value: FfiSaveConflict) -> RustBuffer {
+    return FfiConverterTypeFfiSaveConflict.lower(value)
+}
+
+
+/**
+ * Snapshot describing a successfully completed safe save crossing UniFFI.
+ */
+public struct FfiSaveSuccessSnapshot {
+    public var sessionId: String
+    public var targetToken: String
+    public var newFileIdentity: FfiFileIdentity
+    public var savedRevision: UInt64
+    public var bytesWritten: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, targetToken: String, newFileIdentity: FfiFileIdentity, savedRevision: UInt64, bytesWritten: UInt64) {
+        self.sessionId = sessionId
+        self.targetToken = targetToken
+        self.newFileIdentity = newFileIdentity
+        self.savedRevision = savedRevision
+        self.bytesWritten = bytesWritten
+    }
+}
+
+#if compiler(>=6)
+extension FfiSaveSuccessSnapshot: Sendable {}
+#endif
+
+
+extension FfiSaveSuccessSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiSaveSuccessSnapshot, rhs: FfiSaveSuccessSnapshot) -> Bool {
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.targetToken != rhs.targetToken {
+            return false
+        }
+        if lhs.newFileIdentity != rhs.newFileIdentity {
+            return false
+        }
+        if lhs.savedRevision != rhs.savedRevision {
+            return false
+        }
+        if lhs.bytesWritten != rhs.bytesWritten {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sessionId)
+        hasher.combine(targetToken)
+        hasher.combine(newFileIdentity)
+        hasher.combine(savedRevision)
+        hasher.combine(bytesWritten)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSaveSuccessSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSaveSuccessSnapshot {
+        return
+            try FfiSaveSuccessSnapshot(
+                sessionId: FfiConverterString.read(from: &buf), 
+                targetToken: FfiConverterString.read(from: &buf), 
+                newFileIdentity: FfiConverterTypeFfiFileIdentity.read(from: &buf), 
+                savedRevision: FfiConverterUInt64.read(from: &buf), 
+                bytesWritten: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSaveSuccessSnapshot, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.targetToken, into: &buf)
+        FfiConverterTypeFfiFileIdentity.write(value.newFileIdentity, into: &buf)
+        FfiConverterUInt64.write(value.savedRevision, into: &buf)
+        FfiConverterUInt64.write(value.bytesWritten, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveSuccessSnapshot_lift(_ buf: RustBuffer) throws -> FfiSaveSuccessSnapshot {
+    return try FfiConverterTypeFfiSaveSuccessSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveSuccessSnapshot_lower(_ value: FfiSaveSuccessSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiSaveSuccessSnapshot.lower(value)
 }
 
 
@@ -2988,6 +3287,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case TransactionFailure(details: String
     )
+    case SaveFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -3025,7 +3326,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 7: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .InternalFailure(
+        case 8: return .SaveFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 9: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -3074,8 +3378,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(8))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(9))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -3373,6 +3682,184 @@ extension FfiPageLabelStyle: Equatable, Hashable {}
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Conflict resolution choices crossing UniFFI (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+ */
+
+public enum FfiSaveConflictResolution {
+    
+    /**
+     * Save local dirty state to a collision-free safe copy path, leaving external file untouched.
+     */
+    case saveLocalAsCollisionFreeCopy
+    /**
+     * Explicitly overwrites external file after user confirmation.
+     */
+    case overwriteExternalExplicitly
+    /**
+     * Discards local dirty edits and reloads external version from disk.
+     */
+    case reloadExternalVersion
+    /**
+     * Cancels save and keeps local dirty edits in session.
+     */
+    case cancel
+}
+
+
+#if compiler(>=6)
+extension FfiSaveConflictResolution: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSaveConflictResolution: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSaveConflictResolution
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSaveConflictResolution {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .saveLocalAsCollisionFreeCopy
+        
+        case 2: return .overwriteExternalExplicitly
+        
+        case 3: return .reloadExternalVersion
+        
+        case 4: return .cancel
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSaveConflictResolution, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .saveLocalAsCollisionFreeCopy:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .overwriteExternalExplicitly:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .reloadExternalVersion:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .cancel:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveConflictResolution_lift(_ buf: RustBuffer) throws -> FfiSaveConflictResolution {
+    return try FfiConverterTypeFfiSaveConflictResolution.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveConflictResolution_lower(_ value: FfiSaveConflictResolution) -> RustBuffer {
+    return FfiConverterTypeFfiSaveConflictResolution.lower(value)
+}
+
+
+extension FfiSaveConflictResolution: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Safe save outcome crossing UniFFI: either success or conflict (`ROADMAP.md` M0.5 Gate).
+ */
+
+public enum FfiSaveOutcome {
+    
+    case success(snapshot: FfiSaveSuccessSnapshot
+    )
+    case conflict(conflict: FfiSaveConflict
+    )
+}
+
+
+#if compiler(>=6)
+extension FfiSaveOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSaveOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSaveOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSaveOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .success(snapshot: try FfiConverterTypeFfiSaveSuccessSnapshot.read(from: &buf)
+        )
+        
+        case 2: return .conflict(conflict: try FfiConverterTypeFfiSaveConflict.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSaveOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .success(snapshot):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeFfiSaveSuccessSnapshot.write(snapshot, into: &buf)
+            
+        
+        case let .conflict(conflict):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeFfiSaveConflict.write(conflict, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveOutcome_lift(_ buf: RustBuffer) throws -> FfiSaveOutcome {
+    return try FfiConverterTypeFfiSaveOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSaveOutcome_lower(_ value: FfiSaveOutcome) -> RustBuffer {
+    return FfiConverterTypeFfiSaveOutcome.lower(value)
+}
+
+
+extension FfiSaveOutcome: Equatable, Hashable {}
+
+
+
+
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3424,6 +3911,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiFileIdentity: FfiConverterRustBuffer {
+    typealias SwiftType = FfiFileIdentity?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiFileIdentity.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiFileIdentity.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
     typealias SwiftType = FfiPdfRectMilliPt?
 
@@ -3440,6 +3951,30 @@ fileprivate struct FfiConverterOptionTypeFfiPdfRectMilliPt: FfiConverterRustBuff
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeFfiSaveSuccessSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSaveSuccessSnapshot?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiSaveSuccessSnapshot.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiSaveSuccessSnapshot.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -3656,6 +4191,16 @@ public func documentCoreAddHighlightAnnotation(sessionId: String, annotation: Ff
 })
 }
 /**
+ * Inspects whether on-disk file for `session_id` was modified externally (`FILELOCK-002`).
+ */
+public func documentCoreCheckExternalChanges(sessionId: String)throws  -> FfiExternalChangeCheckResult  {
+    return try  FfiConverterTypeFfiExternalChangeCheckResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_check_external_changes(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
  * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
  */
 public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -3671,6 +4216,17 @@ public func documentCoreExportTransactionJournalJson(sessionId: String)throws  -
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
         FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Generates a collision-free file path for `base_path` and `suffix` (`FILELOCK-004`).
+ */
+public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
+        FfiConverterString.lower(basePath),
+        FfiConverterString.lower(suffix),$0
     )
 })
 }
@@ -3847,6 +4403,17 @@ public func documentCoreResolvePageNavigation(sessionId: String, query: String)t
 })
 }
 /**
+ * Resolves an external save conflict according to `resolution` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+ */
+public func documentCoreResolveSaveConflict(sessionId: String, resolution: FfiSaveConflictResolution)throws  -> FfiSaveSuccessSnapshot?  {
+    return try  FfiConverterOptionTypeFfiSaveSuccessSnapshot.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_resolve_save_conflict(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiSaveConflictResolution_lower(resolution),$0
+    )
+})
+}
+/**
  * Restores and replays a `PersistentTransactionJournal` JSON onto a freshly opened session (`ARCHITECTURE.md` §§11–12, `UNDO-001`).
  */
 public func documentCoreRestoreTransactionJournalJson(sessionId: String, journalJson: String)throws  -> FfiTransactionHistorySnapshot  {
@@ -3866,6 +4433,37 @@ public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], de
         FfiConverterString.lower(sessionId),
         FfiConverterSequenceUInt32.lower(pageIndices),
         FfiConverterInt32.lower(deltaDegrees),$0
+    )
+})
+}
+/**
+ * Safe save of active `session_id` back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
+ */
+public func documentCoreSaveSession(sessionId: String)throws  -> FfiSaveOutcome  {
+    return try  FfiConverterTypeFfiSaveOutcome_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_save_session(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * 'Save As' of active `session_id` to `target_token` (`SAVE-002`).
+ */
+public func documentCoreSaveSessionAs(sessionId: String, targetToken: String)throws  -> FfiSaveOutcome  {
+    return try  FfiConverterTypeFfiSaveOutcome_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_save_session_as(
+        FfiConverterString.lower(sessionId),
+        FfiConverterString.lower(targetToken),$0
+    )
+})
+}
+/**
+ * Saves a guaranteed collision-free safe copy of `session_id` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+ */
+public func documentCoreSaveSessionCollisionFreeCopy(sessionId: String)throws  -> FfiSaveSuccessSnapshot  {
+    return try  FfiConverterTypeFfiSaveSuccessSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_save_session_collision_free_copy(
+        FfiConverterString.lower(sessionId),$0
     )
 })
 }
@@ -3971,10 +4569,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
@@ -4025,10 +4629,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_resolve_save_conflict() != 19961) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_save_session_as() != 10212) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_save_session_collision_free_copy() != 20495) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506) {

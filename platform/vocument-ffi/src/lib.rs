@@ -6,6 +6,7 @@
 pub mod mutation_dto;
 pub mod navigation_search_dto;
 pub mod render_dto;
+pub mod save_dto;
 pub mod session_dto;
 
 use std::sync::OnceLock;
@@ -32,6 +33,13 @@ pub use navigation_search_dto::{
 pub use render_dto::{
     FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
     FfiTileRenderRequest, FfiViewportRenderResult,
+};
+pub use save_dto::{
+    FfiExternalChangeCheckResult, FfiSaveConflict, FfiSaveConflictResolution, FfiSaveOutcome,
+    FfiSaveSuccessSnapshot, document_core_check_external_changes,
+    document_core_generate_collision_free_path, document_core_resolve_save_conflict,
+    document_core_save_session, document_core_save_session_as,
+    document_core_save_session_collision_free_copy,
 };
 pub use session_dto::{
     DocumentCoreHandshake, FfiBrokeredFileDescriptor, FfiDocumentSessionSnapshot,
@@ -64,6 +72,8 @@ pub enum DocumentCoreError {
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
     TransactionFailure { details: String },
+    #[error("save error: {details}")]
+    SaveFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }
@@ -92,6 +102,9 @@ impl From<SessionError> for DocumentCoreError {
             },
             SessionError::Transaction(tx) => Self::TransactionFailure {
                 details: tx.to_string(),
+            },
+            SessionError::Save(save_err) => Self::SaveFailure {
+                details: save_err.to_string(),
             },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::RegistryPoisoned => Self::InternalFailure {

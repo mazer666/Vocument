@@ -223,6 +223,39 @@ public struct DocumentCoreClient: Sendable {
         )
     }
 
+    /// Safe save of active `sessionId` back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
+    public func saveSession(sessionId: String) throws -> FfiSaveOutcome {
+        try documentCoreSaveSession(sessionId: sessionId)
+    }
+
+    /// 'Save As' of active `sessionId` to `targetToken` (`SAVE-002`).
+    public func saveSessionAs(sessionId: String, targetToken: String) throws -> FfiSaveOutcome {
+        try documentCoreSaveSessionAs(sessionId: sessionId, targetToken: targetToken)
+    }
+
+    /// Saves a collision-free safe copy of `sessionId` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+    public func saveSessionCollisionFreeCopy(sessionId: String) throws -> FfiSaveSuccessSnapshot {
+        try documentCoreSaveSessionCollisionFreeCopy(sessionId: sessionId)
+    }
+
+    /// Inspects whether on-disk file for `sessionId` was modified externally (`FILELOCK-002`).
+    public func checkExternalChanges(sessionId: String) throws -> FfiExternalChangeCheckResult {
+        try documentCoreCheckExternalChanges(sessionId: sessionId)
+    }
+
+    /// Resolves an external save conflict according to `resolution` (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+    public func resolveSaveConflict(
+        sessionId: String,
+        resolution: FfiSaveConflictResolution
+    ) throws -> FfiSaveSuccessSnapshot? {
+        try documentCoreResolveSaveConflict(sessionId: sessionId, resolution: resolution)
+    }
+
+    /// Generates a collision-free file path for `basePath` and `suffix` (`FILELOCK-004`).
+    public func generateCollisionFreePath(basePath: String, suffix: String) -> String {
+        documentCoreGenerateCollisionFreePath(basePath: basePath, suffix: suffix)
+    }
+
     /// Converts an immutable `FfiRenderedTile` RGBA8 buffer into a native `CGImage` (`ARCHITECTURE.md` §10).
     public static func makeCGImage(from tile: FfiRenderedTile) -> CGImage? {
         makeCGImageFromRgba8(

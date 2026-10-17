@@ -71,6 +71,25 @@ struct DocumentCanvasView: View {
                 .disabled(!(coordinator.transactionHistory?.canRedo ?? false))
                 .help(coordinator.transactionHistory?.redoDescription ?? "Nothing to redo")
 
+                Divider().frame(height: 18)
+
+                Button("Save") {
+                    coordinator.save()
+                }
+                .disabled(!(coordinator.transactionHistory?.isDirty ?? false))
+                .help("Atomically saves changes to disk (Cmd+S)")
+                .keyboardShortcut("s", modifiers: .command)
+
+                Button("Save As…") {
+                    coordinator.saveAsViaPanel()
+                }
+                .help("Saves document to a new file location")
+
+                Button("Safe Copy") {
+                    coordinator.saveCollisionFreeCopy()
+                }
+                .help("Saves a non-colliding copy with timestamp/counter")
+
                 Spacer()
 
                 Menu("Memory Pressure") {
@@ -84,6 +103,12 @@ struct DocumentCanvasView: View {
                         coordinator.applyMemoryPressure(.critical)
                     }
                 }
+            }
+
+            if let notice = coordinator.saveNotificationMessage {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(Color.green)
             }
 
             if let hist = coordinator.transactionHistory {
@@ -119,5 +144,77 @@ struct DocumentCanvasView: View {
             .background(Color(nsColor: .underPageBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
+        .sheet(item: $coordinator.activeConflict) { conflict in
+            SaveConflictSheet(coordinator: coordinator, conflict: conflict)
+        }
     }
+}
+
+/// Conflict resolution dialog presenting safe-copy, explicit overwrite, reload, or cancel (`SAVE-001`, `FILELOCK-004`).
+struct SaveConflictSheet: View {
+    @ObservedObject var coordinator: MacDocumentSessionCoordinator
+    let conflict: FfiSaveConflict
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("External Change Detected")
+                        .font(.headline)
+                    Text("The file has been modified outside Vocument since it was opened.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Target Path:").font(.caption).bold()
+                Text(conflict.targetToken).font(.caption).foregroundStyle(.secondary)
+
+                Text("Comparison:").font(.caption).bold()
+                Text(conflict.comparisonSummary).font(.caption).foregroundStyle(.secondary)
+
+                Text("Safe Copy Target:").font(.caption).bold()
+                Text(conflict.suggestedSafeCopyPath).font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(6)
+
+            Divider()
+
+            VStack(spacing: 8) {
+                Button("Save Local Changes as Safe Copy (Recommended)") {
+                    coordinator.resolveActiveConflict(.saveLocalAsCollisionFreeCopy)
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+
+                Button("Overwrite External Changes on Disk") {
+                    coordinator.resolveActiveConflict(.overwriteExternalExplicitly)
+                }
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity)
+
+                Button("Discard Local Changes & Reload External File") {
+                    coordinator.resolveActiveConflict(.reloadExternalVersion)
+                }
+                .frame(maxWidth: .infinity)
+
+                Button("Cancel Save") {
+                    coordinator.resolveActiveConflict(.cancel)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+    }
+}
+
+extension FfiSaveConflict: Identifiable {
+    public var id: String { "\(sessionId)-\(targetToken)-\(observedExternalIdentity.sha256Hex)" }
 }

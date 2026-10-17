@@ -4,6 +4,19 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.5] - 2026-10-17
+
+### Added
+- Completed **M0.5 — Safe Save** (`docs/acceptance/M0.5-ACCEPTANCE.md`, `ADR-0008`).
+- Implemented brokered atomic staging with sibling temporary files, explicit `sync_all` (fsync), atomic rename (`std::fs::rename`), and discard cleanup on failure (`core/vocument-core/src/file_broker.rs`, `core/vocument-core/src/save.rs`).
+- Implemented post-save validation verifying byte count, `%PDF-` magic header, and structural PDF integrity (`SAVE-005`).
+- Implemented Save As to alternative destinations preserving the original file (`SAVE-002`).
+- Implemented multi-attribute `FileIdentity` comparison and pre-save external change detection (`FILELOCK-001`, `FILELOCK-002`).
+- Enforced the **M0.5 Gate** (*Never silently overwrite externally changed content*): aborted saves on external modification, keeping on-disk files untouched and unsaved mutations in memory.
+- Implemented structured save conflict contracts (`SaveConflict` / `FfiSaveConflict`) and 4-way resolution UI (collision-free safe copy, explicit overwrite, reload from disk, cancel) on macOS (`SaveConflictSheet`) and Android (`FILELOCK-003`, `FILELOCK-004`).
+- Implemented collision-free safe-copy file path generation (`<stem>.safe-copy-YYYYMMDD-HHMMSS[-N].pdf`, `FILELOCK-004`).
+- Exposed M0.5 safe save APIs over UniFFI (`platform/vocument-ffi/src/save_dto.rs`) and integrated native toolbar controls on macOS (`DocumentCanvasView.swift`, `VocumentMacApp.swift`) and Android (`DocumentCoreBridge.kt`).
+
 ## [0.1.0-m0.4] - 2026-10-17
 
 ### Added

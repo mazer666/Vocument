@@ -3,6 +3,8 @@ package org.vocument.app
 import java.io.File
 import uniffi.vocument_ffi.FfiFileAccessOrigin
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
+import uniffi.vocument_ffi.FfiSaveConflictResolution
+import uniffi.vocument_ffi.FfiSaveOutcome
 import uniffi.vocument_ffi.FfiTileRenderRequest
 
 fun main() {
@@ -370,4 +372,94 @@ fun main() {
             "RotatePages(+90° → ${rotGeo.widthMilliPt / 1000u}x${rotGeo.heightMilliPt / 1000u}pt) → Undo/Redo → " +
             "PersistentTransactionJournal(replay=${replayedHist.undoCount} tx) verified"
     )
+
+    // M0.5 verification: Safe Save, Atomic Staging, Post-Save Validation, External Conflict Detection, Gate, and Collision-Free Safe Copy
+    val m05TempDir = File(System.getProperty("java.io.tmpdir"), "voc_kt_m05_${System.currentTimeMillis()}")
+    m05TempDir.mkdirs()
+    try {
+        val m05TestPdf = File(m05TempDir, "contract.pdf")
+        val samplePdf = File("tests/corpus/m0_1_sample_two_pages.pdf")
+        val origBytes = samplePdf.readBytes()
+        m05TestPdf.writeBytes(origBytes)
+
+        val m05Session = bridge.openLocalDocument(m05TestPdf.absolutePath)
+
+        // Mutate session:
+        bridge.rotatePages(m05Session.sessionId, listOf(0u), 90)
+        val dirtySnap = bridge.getSessionSnapshot(m05Session.sessionId)
+        check(dirtySnap.isDirty) {
+            "Expected session to be dirty after mutation"
+        }
+
+        // 1. Safe save dirty session:
+        val saveOutcome = bridge.saveSession(m05Session.sessionId)
+        check(saveOutcome is FfiSaveOutcome.Success) {
+            "Expected successful save outcome on clean target"
+        }
+        check(saveOutcome.snapshot.savedRevision == 2uL) {
+            "Expected saved revision == 2, got ${saveOutcome.snapshot.savedRevision}"
+        }
+        val cleanSnap = bridge.getSessionSnapshot(m05Session.sessionId)
+        check(!cleanSnap.isDirty) {
+            "Expected isDirty == false after successful save"
+        }
+
+        // 2. Simulate external modification:
+        Thread.sleep(20)
+        val extBytes = origBytes + "\n%external change by another process\n".toByteArray(Charsets.UTF_8)
+        m05TestPdf.writeBytes(extBytes)
+
+        val extCheck = bridge.checkExternalChanges(m05Session.sessionId)
+        check(extCheck.hasExternalChanges && extCheck.comparisonSummary.contains("ModifiedExternally")) {
+            "Expected proactive external change check to detect ModifiedExternally"
+        }
+
+        // Make another local mutation:
+        bridge.rotatePages(m05Session.sessionId, listOf(0u), 90)
+
+        // 3. M0.5 GATE VERIFICATION: Save MUST NOT silently overwrite!
+        val conflictOutcome = bridge.saveSession(m05Session.sessionId)
+        check(conflictOutcome is FfiSaveOutcome.Conflict) {
+            "FATAL: M0.5 Gate breached! External file was silently overwritten."
+        }
+        check(conflictOutcome.conflict.comparisonSummary.contains("ModifiedExternally")) {
+            "Expected comparisonSummary to contain ModifiedExternally"
+        }
+        check(conflictOutcome.conflict.suggestedSafeCopyPath.contains("Conflicted Copy")) {
+            "Expected suggestedSafeCopyPath to suggest Conflicted Copy"
+        }
+
+        // Verify disk content was NOT overwritten:
+        val onDisk = m05TestPdf.readBytes()
+        check(onDisk.contentEquals(extBytes)) {
+            "FATAL: Disk content was overwritten or corrupted!"
+        }
+
+        // 4. Resolve conflict via collision-free safe copy:
+        val safeCopySnap = bridge.resolveSaveConflict(
+            m05Session.sessionId,
+            FfiSaveConflictResolution.SAVE_LOCAL_AS_COLLISION_FREE_COPY
+        )
+        check(safeCopySnap != null && safeCopySnap.targetToken.contains("Safe Copy")) {
+            "Expected safe copy snapshot with collision-free path"
+        }
+        check(File(safeCopySnap.targetToken).exists()) {
+            "Expected safe copy file to exist on disk: ${safeCopySnap.targetToken}"
+        }
+
+        // 5. Collision-free path generator verification:
+        val collPath = bridge.generateCollisionFreePath(m05TestPdf.absolutePath, "Safe Copy")
+        check(collPath.contains("Safe Copy")) {
+            "Unexpected collision-free path generated: $collPath"
+        }
+
+        bridge.closeSession(m05Session.sessionId)
+        println(
+            "✓ Kotlin (Android M0.5) → SafeSave → AtomicStaging → PostSaveValidation → " +
+                "ExternalConflictDetection → GateVerified(no-silent-overwrite) → " +
+                "CollisionFreeSafeCopy(${safeCopySnap.savedRevision} rev) verified"
+        )
+    } finally {
+        m05TempDir.deleteRecursively()
+    }
 }

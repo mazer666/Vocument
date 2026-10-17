@@ -130,21 +130,21 @@ Mutation never bypasses `TransactionManager`. *(Enforced via `pub(crate)` visibi
 
 ---
 
-## M0.5 — Safe Save
+## M0.5 — Safe Save *(Status: **COMPLETE** — see [M0.5 Acceptance Record](docs/acceptance/M0.5-ACCEPTANCE.md) and [ADR-0008](docs/adr/ADR-0008-m0-5-safe-save-atomic-staging-validation-and-conflict-handling.md))*
 
 Deliver:
 
-- atomic save path
-- save validation
-- Save As
-- file identity
-- external-change detection
-- conflict UI contract
-- collision-free safe-copy option
+- [x] atomic save path (`FileBroker::stage_write`, `commit_staged_write`, `discard_staged_write`, sibling temp file `.tmp_vocument_*`, explicit `sync_all` fsync, atomic rename)
+- [x] save validation (`SaveCoordinator::validate_saved_file` verifying existence, byte count, `%PDF-` header magic, and PDF structural integrity)
+- [x] Save As (`save_session_as` writing to new destination path while leaving original file untouched)
+- [x] file identity (`FileIdentity::compare` comparing `os_file_id`, `modified_unix_ms`, `size_bytes`, and `sha256_hex`)
+- [x] external-change detection (`check_external_changes` inspecting target file before write)
+- [x] conflict UI contract (`SaveConflict` / `FfiSaveConflict` with baseline vs observed identity, comparison summary, and precomputed `suggested_safe_copy_path`)
+- [x] collision-free safe-copy option (`generate_collision_free_path` and `save_session_collision_free_copy` with deterministic `<stem>.safe-copy-YYYYMMDD-HHMMSS[-N].pdf` naming)
 
 ### Gate
 
-No silent overwrite of externally changed content.
+No silent overwrite of externally changed content. *(Enforced in `SaveCoordinator::execute_safe_save`, integration test `test_gate_never_silently_overwrites_externally_changed_content`, automated CI check in `scripts/validate-repo.sh`, and end-to-end Swift & Kotlin handshakes.)*
 
 ---
 

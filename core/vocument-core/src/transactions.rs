@@ -298,6 +298,11 @@ impl TransactionManager {
         self.current_revision != self.saved_revision
     }
 
+    /// Marks the current document revision as cleanly saved (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).
+    pub fn mark_as_saved(&mut self) {
+        self.saved_revision = self.current_revision;
+    }
+
     pub fn can_undo(&self) -> bool {
         !self.undo_stack.is_empty()
     }

@@ -4,6 +4,7 @@ import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiBrokeredFileDescriptor
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiFileAccessOrigin
+import uniffi.vocument_ffi.FfiExternalChangeCheckResult
 import uniffi.vocument_ffi.FfiHighlightAnnotation
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiPageDescriptor
@@ -12,6 +13,10 @@ import uniffi.vocument_ffi.FfiPdfPageGeometry
 import uniffi.vocument_ffi.FfiPdfRectMilliPt
 import uniffi.vocument_ffi.FfiRenderedThumbnail
 import uniffi.vocument_ffi.FfiRenderedTile
+import uniffi.vocument_ffi.FfiSaveConflict
+import uniffi.vocument_ffi.FfiSaveConflictResolution
+import uniffi.vocument_ffi.FfiSaveOutcome
+import uniffi.vocument_ffi.FfiSaveSuccessSnapshot
 import uniffi.vocument_ffi.FfiSearchIndexProgress
 import uniffi.vocument_ffi.FfiSearchResponse
 import uniffi.vocument_ffi.FfiTextSelectionResult
@@ -21,13 +26,16 @@ import uniffi.vocument_ffi.FfiTileRenderRequest
 import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
 import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
+import uniffi.vocument_ffi.documentCoreCheckExternalChanges
 import uniffi.vocument_ffi.documentCoreCloseSession
 import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
+import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
 import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
 import uniffi.vocument_ffi.documentCoreHandshake
 import uniffi.vocument_ffi.documentCoreIndexSearchBatch
 import uniffi.vocument_ffi.documentCoreOpenBrokeredFile
+import uniffi.vocument_ffi.documentCoreOpenMacosScopedFile
 import uniffi.vocument_ffi.documentCorePageDescriptors
 import uniffi.vocument_ffi.documentCorePageGeometry
 import uniffi.vocument_ffi.documentCorePageHighlightAnnotations
@@ -38,8 +46,12 @@ import uniffi.vocument_ffi.documentCoreRenderPageThumbnail
 import uniffi.vocument_ffi.documentCoreRenderViewportWithPrefetch
 import uniffi.vocument_ffi.documentCoreRenderVisibleTile
 import uniffi.vocument_ffi.documentCoreResolvePageNavigation
+import uniffi.vocument_ffi.documentCoreResolveSaveConflict
 import uniffi.vocument_ffi.documentCoreRestoreTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreRotatePages
+import uniffi.vocument_ffi.documentCoreSaveSession
+import uniffi.vocument_ffi.documentCoreSaveSessionAs
+import uniffi.vocument_ffi.documentCoreSaveSessionCollisionFreeCopy
 import uniffi.vocument_ffi.documentCoreSearchExact
 import uniffi.vocument_ffi.documentCoreSearchIndexProgress
 import uniffi.vocument_ffi.documentCoreSelectPageText
@@ -78,6 +90,13 @@ class DocumentCoreBridge {
             bytes = bytes
         )
         return documentCoreOpenBrokeredFile(descriptor)
+    }
+
+    /**
+     * Opens a local PDF file path via `ScopedLocalFileBroker`.
+     */
+    fun openLocalDocument(filePath: String): FfiDocumentSessionSnapshot {
+        return documentCoreOpenMacosScopedFile(filePath)
     }
 
     fun getSessionSnapshot(sessionId: String): FfiDocumentSessionSnapshot {
@@ -296,6 +315,51 @@ class DocumentCoreBridge {
         journalJson: String
     ): FfiTransactionHistorySnapshot {
         return documentCoreRestoreTransactionJournalJson(sessionId, journalJson)
+    }
+
+    /**
+     * Safe save of active [sessionId] back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
+     */
+    fun saveSession(sessionId: String): FfiSaveOutcome {
+        return documentCoreSaveSession(sessionId)
+    }
+
+    /**
+     * 'Save As' of active [sessionId] to [targetToken] (`SAVE-002`).
+     */
+    fun saveSessionAs(sessionId: String, targetToken: String): FfiSaveOutcome {
+        return documentCoreSaveSessionAs(sessionId, targetToken)
+    }
+
+    /**
+     * Saves a collision-free safe copy of [sessionId] (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+     */
+    fun saveSessionCollisionFreeCopy(sessionId: String): FfiSaveSuccessSnapshot {
+        return documentCoreSaveSessionCollisionFreeCopy(sessionId)
+    }
+
+    /**
+     * Inspects whether on-disk file for [sessionId] was modified externally (`FILELOCK-002`).
+     */
+    fun checkExternalChanges(sessionId: String): FfiExternalChangeCheckResult {
+        return documentCoreCheckExternalChanges(sessionId)
+    }
+
+    /**
+     * Resolves an external save conflict according to [resolution] (`ARCHITECTURE.md` §16, `FILELOCK-004`).
+     */
+    fun resolveSaveConflict(
+        sessionId: String,
+        resolution: FfiSaveConflictResolution
+    ): FfiSaveSuccessSnapshot? {
+        return documentCoreResolveSaveConflict(sessionId, resolution)
+    }
+
+    /**
+     * Generates a collision-free file path for [basePath] and [suffix] (`FILELOCK-004`).
+     */
+    fun generateCollisionFreePath(basePath: String, suffix: String): String {
+        return documentCoreGenerateCollisionFreePath(basePath, suffix)
     }
 
     /**

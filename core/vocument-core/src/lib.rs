@@ -10,6 +10,7 @@ pub mod jobs;
 pub mod navigation;
 pub mod pdf_engine;
 pub mod render;
+pub mod save;
 pub mod search_index;
 pub mod session;
 pub mod session_mutations;
