@@ -7,9 +7,21 @@ repository.workspace = true
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
+name = "vocument_ffi"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
 
 [dependencies]
 vocument-core = { path = "../../core/vocument-core" }
+uniffi.workspace = true
+thiserror.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "allow"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"

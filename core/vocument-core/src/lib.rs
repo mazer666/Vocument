@@ -18,6 +18,8 @@ pub struct CoreBootstrapSnapshot {
     pub strict_offline_default: bool,
     pub telemetry_enabled: bool,
     pub target_fps: u32,
+    pub default_german_variant: String,
+    pub built_in_ocr_languages: Vec<String>,
 }
 
 /// Validates embedded/central configuration and returns the M0.0 bootstrap snapshot.
@@ -26,14 +28,14 @@ pub fn bootstrap_core_snapshot() -> Result<CoreBootstrapSnapshot, ConfigError> {
     let budgets = PerformanceBudgetsConfig::load_embedded()?;
     let security = SecurityPolicyConfig::load_embedded()?;
 
-    let _ = defaults;
-
     Ok(CoreBootstrapSnapshot {
         baseline_version: BASELINE_VERSION.to_owned(),
         milestone: "M0".to_owned(),
         strict_offline_default: security.network.default_policy == "deny_all",
         telemetry_enabled: security.privacy_and_logging.enable_telemetry,
         target_fps: budgets.interaction.target_scroll_zoom_fps,
+        default_german_variant: defaults.internationalisation.default_german_variant,
+        built_in_ocr_languages: defaults.ocr.built_in_languages,
     })
 }
 
@@ -49,5 +51,7 @@ mod tests {
         assert!(snapshot.strict_offline_default);
         assert!(!snapshot.telemetry_enabled);
         assert_eq!(snapshot.target_fps, 60);
+        assert_eq!(snapshot.default_german_variant, "de-AT");
+        assert_eq!(snapshot.built_in_ocr_languages, vec!["deu", "eng"]);
     }
 }

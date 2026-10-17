@@ -33,7 +33,7 @@ See `QUALITY.md` and `docs/acceptance/ACCEPTANCE_TEMPLATE.md`.
 
 Prove that the architecture works end-to-end on both macOS and Android before adding feature breadth.
 
-## M0.0 — Repository & Build Skeleton
+## M0.0 — Repository & Build Skeleton (Status: `done` — see [`docs/acceptance/M0.0-ACCEPTANCE.md`](docs/acceptance/M0.0-ACCEPTANCE.md))
 
 Deliver:
 
@@ -49,7 +49,7 @@ Deliver:
 
 ### Gate
 
-A clean clone can be bootstrapped and built by following documented commands without tribal knowledge.
+A clean clone can be bootstrapped and built by following documented commands without tribal knowledge (`make check` / `./scripts/local-ci.sh`).
 
 ---
 

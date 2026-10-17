@@ -1,10 +1,16 @@
 import Testing
+import VocumentFFI
 @testable import VocumentMacKit
 
 @Test
-func verifyMacPlatformBaseline() {
+func verifyMacPlatformUniFFIHandshake() throws {
     let client = DocumentCoreClient()
-    #expect(client.baselineVersion == "0.1")
-    #expect(client.currentMilestone == "M0")
-    #expect(client.strictOfflineDefault == true)
+    let handshake = try client.performHandshake()
+    #expect(handshake.baselineVersion == "0.1")
+    #expect(handshake.milestone == "M0")
+    #expect(handshake.strictOfflineDefault == true)
+    #expect(handshake.telemetryEnabled == false)
+    #expect(handshake.targetFps == 60)
+    #expect(handshake.defaultGermanVariant == "de-AT")
+    #expect(handshake.builtInOcrLanguages == ["deu", "eng"])
 }

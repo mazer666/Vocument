@@ -10,15 +10,55 @@ let package = Package(
         .library(
             name: "VocumentMacKit",
             targets: ["VocumentMacKit"]
+        ),
+        .executable(
+            name: "VocumentMacApp",
+            targets: ["VocumentMacApp"]
+        ),
+        .executable(
+            name: "vocument-mac-handshake",
+            targets: ["VocumentMacHandshakeCLI"]
         )
     ],
     targets: [
         .target(
-            name: "VocumentMacKit"
+            name: "vocument_ffiFFI",
+            path: "Sources/VocumentFFIHeaders",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "VocumentFFI",
+            dependencies: ["vocument_ffiFFI"],
+            path: "Sources/VocumentFFI",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-L../../target/debug",
+                    "-lvocument_ffi"
+                ])
+            ]
+        ),
+        .target(
+            name: "VocumentMacKit",
+            dependencies: ["VocumentFFI"],
+            path: "Sources/VocumentMacKit"
+        ),
+        .executableTarget(
+            name: "VocumentMacApp",
+            dependencies: ["VocumentMacKit"],
+            path: "Sources/VocumentMacApp"
+        ),
+        .executableTarget(
+            name: "VocumentMacHandshakeCLI",
+            dependencies: ["VocumentMacKit"],
+            path: "Sources/VocumentMacHandshakeCLI"
         ),
         .testTarget(
             name: "VocumentMacKitTests",
-            dependencies: ["VocumentMacKit"]
+            dependencies: ["VocumentMacKit"],
+            path: "Tests/VocumentMacKitTests"
         )
     ]
 )

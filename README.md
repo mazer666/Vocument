@@ -11,18 +11,30 @@ Vocument is designed to be local-first, offline-first, interoperable and underst
 ## Current project status
 
 - **Baseline:** Implementation Baseline v0.1
-- **Current milestone:** M0 — Foundation / “Trustworthy Viewer”
+- **Current milestone:** M0 — Foundation / “Trustworthy Viewer” (`M0.0` complete, `M0.1` next — see [`docs/acceptance/M0.0-ACCEPTANCE.md`](docs/acceptance/M0.0-ACCEPTANCE.md))
 - **Phase-1 platforms:** macOS 15+ on Apple Silicon, Android 13+
-- **Shared core:** Rust
-- **macOS UI:** SwiftUI + AppKit where native document lifecycle integration is useful
-- **Android UI:** Kotlin + Jetpack Compose
-- **Primary PDF engine:** MuPDF, behind Vocument's own `PdfEngine` interface
-- **Initial OCR engine:** Tesseract, behind `OcrProvider`
-- **Core ↔ native bridge:** UniFFI
+- **Shared core:** Rust (`core/vocument-core`)
+- **macOS UI:** SwiftUI + AppKit (`apps/macos`)
+- **Android UI:** Kotlin + Jetpack Compose (`apps/android`)
+- **Primary PDF engine:** MuPDF, behind Vocument's own `PdfEngine` interface (`engines/pdf-mupdf`)
+- **Initial OCR engine:** Tesseract, behind `OcrProvider` (`engines/ocr`)
+- **Core ↔ native bridge:** UniFFI (`platform/vocument-ffi`)
 - **License:** AGPLv3
 - **External contributions:** DCO, no CLA
 
 See [`project/project.yaml`](project/project.yaml) for the machine-readable project status.
+
+---
+
+## Quickstart (Developer Commands)
+
+A clean clone can be validated, built, and verified end-to-end across Rust, Swift (macOS), and Kotlin (Android) with a single command:
+
+```bash
+make check          # Runs ./scripts/local-ci.sh (repo validation, cargo fmt/clippy/test, UniFFI binding check, Swift & Kotlin handshakes)
+make bindings       # Regenerates Swift & Kotlin UniFFI bindings from platform/vocument-ffi
+make hooks          # Installs local Git hooks (DCO sign-off check & pre-push local CI)
+```
 
 ---
 
@@ -36,7 +48,7 @@ You should not need to understand the entire codebase before changing one thing.
 4. Read [`REQUIREMENTS.md`](REQUIREMENTS.md) before changing behaviour.
 5. Read [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing structure, dependencies or technical boundaries.
 6. Read [`AGENTS.md`](AGENTS.md) if you are using Codex/another coding agent.
-7. Run the repository validation checks before committing.
+7. Run `make check` (`./scripts/local-ci.sh`) before committing.
 
 ### Golden rule
 

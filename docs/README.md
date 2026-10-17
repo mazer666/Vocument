@@ -18,5 +18,9 @@ This directory contains detailed living documentation for Vocument.
 - [`project/RISKS.md`](project/RISKS.md) — Active risk register
 - [`features/FEATURE_TEMPLATE.md`](features/FEATURE_TEMPLATE.md) — Template for granular feature specifications
 - [`acceptance/ACCEPTANCE_TEMPLATE.md`](acceptance/ACCEPTANCE_TEMPLATE.md) — Template for milestone/feature acceptance evidence
+- [`acceptance/M0.0-ACCEPTANCE.md`](acceptance/M0.0-ACCEPTANCE.md) — Completed acceptance record for M0.0
 - [`adr/ADR_TEMPLATE.md`](adr/ADR_TEMPLATE.md) — Template for Architecture Decision Records
+- [`adr/ADR-0001-cargo-workspace-and-module-boundaries.md`](adr/ADR-0001-cargo-workspace-and-module-boundaries.md) — Cargo workspace & crate layering
+- [`adr/ADR-0002-central-configuration-sync.md`](adr/ADR-0002-central-configuration-sync.md) — Central `/config/*.toml` synchronization
+- [`adr/ADR-0003-uniffi-binding-generation-and-bridge-verification.md`](adr/ADR-0003-uniffi-binding-generation-and-bridge-verification.md) — UniFFI binding generation & Swift/Kotlin bridge verification
 - [`cr/CR_TEMPLATE.md`](cr/CR_TEMPLATE.md) — Template for Change Requests

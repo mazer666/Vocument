@@ -1,9 +1,12 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "implementation-bootstrap"
+  product_status: "m0-in-progress"
   current_milestone: "M0"
   current_milestone_name: "Foundation / Trustworthy Viewer"
+  current_submilestone: "M0.1"
+  completed_submilestones:
+    - "M0.0"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

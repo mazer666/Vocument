@@ -4,6 +4,15 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.0] - 2026-10-17
+
+### Added
+- Completed **M0.0 — Repository & Build Skeleton** (`docs/acceptance/M0.0-ACCEPTANCE.md`).
+- Real **UniFFI** proc-macro boundary in `platform/vocument-ffi` (`DocumentCoreHandshake`, `DocumentCoreError`, `document_core_handshake()`) and reproducible binding generator `scripts/generate-bindings.sh` (`ADR-0003`).
+- Native **macOS 15+** Swift package (`apps/macos`) with `VocumentFFI` C/Swift targets, `VocumentMacKit` (`DocumentCoreClient` calling UniFFI directly with zero hardcoded defaults), `VocumentMacApp` (SwiftUI/AppKit shell), and `vocument-mac-handshake` CLI verifier.
+- Native **Android 13+ (`minSdk = 33`, `arm64-v8a`)** project (`apps/android`) with Jetpack Compose (`MainActivity.kt`), `DocumentCoreBridge.kt` calling generated UniFFI bindings, and headless Kotlin/JNA verification (`scripts/verify-kotlin-handshake.sh`).
+- Official AGPLv3 `LICENSE`, `REUSE.toml`, `rust-toolchain.toml`, `deny.toml`, Git hooks (`scripts/install-hooks.sh`), and immutable Baseline 0.1 snapshot (`archive/baselines/0.1/`).
+
 ## [0.1] - 2026-10-17
 
 ### Added

@@ -39,11 +39,18 @@ REQUIRED_FILES=(
   "docs/project/RISKS.md"
   "docs/features/FEATURE_TEMPLATE.md"
   "docs/acceptance/ACCEPTANCE_TEMPLATE.md"
+  "docs/acceptance/M0.0-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
+  "docs/adr/ADR-0003-uniffi-binding-generation-and-bridge-verification.md"
   "docs/cr/CR_TEMPLATE.md"
   "archive/baselines/0.1/MANIFEST.sha256"
+  "scripts/generate-bindings.sh"
+  "scripts/verify-kotlin-handshake.sh"
+  "apps/macos/Package.swift"
+  "apps/android/app/build.gradle.kts"
+  "apps/android/app/src/main/AndroidManifest.xml"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
