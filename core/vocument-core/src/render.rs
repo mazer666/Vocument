@@ -1,17 +1,20 @@
-//! `DocumentActor` and display-list / render-worker pipeline (`ARCHITECTURE.md` §§7–9, `ROADMAP.md` M0.2).
+//! `DocumentActor` and display-list / render-worker pipeline (`ARCHITECTURE.md` §§7–10, `ROADMAP.md` M0.2–M0.3).
 //!
-//! Architecture rules (`ARCHITECTURE.md` §7):
+//! Architecture rules (`ARCHITECTURE.md` §§7–10):
 //! - Each PDF session has a serialized `DocumentActor` for operations that mutate or depend on
-//!   the mutable MuPDF document state (including page parsing and display-list creation).
+//!   the mutable MuPDF document state (including page parsing, display-list creation, and structured text extraction).
 //! - Immutable `PdfEngineDisplayList` instances are cached per `(page_index, revision)` and
-//!   shared via `Arc` so tile rasterization can execute without holding the `DocumentActor` lock.
+//!   shared via `Arc` so tile and thumbnail rasterization can execute without holding the `DocumentActor` lock.
 //! - Visible tiles run at `JobPriority::VisiblePageRender`; neighbouring-page prefetch runs at
-//!   `JobPriority::NearbyPagePrefetch` (`ARCHITECTURE.md` §8).
+//!   `JobPriority::NearbyPagePrefetch`; thumbnails run at `JobPriority::ThumbnailGeneration` (`ARCHITECTURE.md` §8).
 
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
     PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError, PdfPageGeometry,
-    PdfTileRenderRequest,
+    PdfPageStructuredText, PdfTileRenderRequest,
+};
+use crate::thumbnail_cache::{
+    RenderedThumbnail, ThumbnailCache, ThumbnailCacheStats, ThumbnailKey,
 };
 use crate::tile_cache::{MemoryPressureLevel, RenderedTile, TileCache, TileCacheStats, TileKey};
 use serde::{Deserialize, Serialize};
@@ -29,6 +32,8 @@ pub enum RenderPipelineError {
     DisplayListCachePoisoned,
     #[error("tile cache lock poisoned")]
     TileCachePoisoned,
+    #[error("thumbnail cache lock poisoned")]
+    ThumbnailCachePoisoned,
     #[error("job manager error: {details}")]
     JobFailure { details: String },
 }
@@ -72,6 +77,27 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.page_geometry(page_index)?)
+    }
+
+    /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).
+    pub fn page_label(&self, page_index: u32) -> Result<Option<String>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.page_label(page_index)?)
+    }
+
+    /// Extracts structured text lines and bounding boxes for `page_index` (`0`-based) under serialized actor access (`ROADMAP.md` M0.3).
+    pub fn extract_page_text(
+        &self,
+        page_index: u32,
+    ) -> Result<PdfPageStructuredText, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.extract_page_text(page_index)?)
     }
 
     /// Obtains an immutable `Arc<dyn PdfEngineDisplayList>` for `(revision, page_index)`.
@@ -121,17 +147,27 @@ impl DocumentActor {
     }
 }
 
-/// Coordinates `DocumentActor`, `JobManager`, and adaptive `TileCache` for a session (`ROADMAP.md` M0.2).
+/// Coordinates `DocumentActor`, `JobManager`, adaptive `TileCache`, and separate `ThumbnailCache` (`ROADMAP.md` M0.2–M0.3).
 #[derive(Debug)]
 pub struct RenderPipeline {
     tile_cache: Mutex<TileCache>,
+    thumbnail_cache: Mutex<ThumbnailCache>,
     prefetch_radius: u32,
 }
 
 impl RenderPipeline {
     pub fn new(tile_cache_max_bytes: usize, prefetch_radius: u32) -> Self {
+        Self::with_thumbnail_budget(tile_cache_max_bytes, 48 * 1024 * 1024, prefetch_radius)
+    }
+
+    pub fn with_thumbnail_budget(
+        tile_cache_max_bytes: usize,
+        thumbnail_cache_max_bytes: usize,
+        prefetch_radius: u32,
+    ) -> Self {
         Self {
             tile_cache: Mutex::new(TileCache::new(tile_cache_max_bytes)),
+            thumbnail_cache: Mutex::new(ThumbnailCache::new(thumbnail_cache_max_bytes)),
             prefetch_radius,
         }
     }
@@ -211,6 +247,98 @@ impl RenderPipeline {
         let _ = job_manager.mark_completed(job.job_id);
 
         Ok(rendered)
+    }
+
+    /// Renders (or serves from the separate `ThumbnailCache`) a low-resolution page thumbnail
+    /// fitted within `max_dimension_px` (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_page_thumbnail(
+        &self,
+        actor: &DocumentActor,
+        job_manager: &JobManager,
+        session_id: &str,
+        document_id: &str,
+        revision: u64,
+        page_index: u32,
+        logical_label: String,
+        max_dimension_px: u32,
+    ) -> Result<RenderedThumbnail, RenderPipelineError> {
+        let clamped_max = max_dimension_px.clamp(32, 512);
+        let thumb_key = ThumbnailKey {
+            document_id: document_id.to_owned(),
+            revision,
+            page_index,
+            max_dimension_px: clamped_max,
+        };
+
+        // 1. Check separate ThumbnailCache first:
+        {
+            let mut thumb_guard = self
+                .thumbnail_cache
+                .lock()
+                .map_err(|_| RenderPipelineError::ThumbnailCachePoisoned)?;
+            if let Some(hit) = thumb_guard.get(&thumb_key) {
+                return Ok(hit);
+            }
+        }
+
+        // 2. Schedule thumbnail job at JobPriority::Thumbnails (5):
+        let job = job_manager
+            .enqueue_job(
+                session_id,
+                revision,
+                JobKind::RenderThumbnail,
+                JobPriority::Thumbnails,
+                false,
+            )
+            .map_err(|err| RenderPipelineError::JobFailure {
+                details: err.to_string(),
+            })?;
+        let _ = job_manager.mark_running(job.job_id);
+
+        // 3. Acquire display list and compute proportional thumbnail scale:
+        let display_list = actor.acquire_display_list(revision, page_index)?;
+        let geom = display_list.page_geometry();
+        let max_milli_pt = geom.width_milli_pt.max(geom.height_milli_pt).max(1_000);
+        let scale_milli = ((u64::from(clamped_max) * 1_000_000 + u64::from(max_milli_pt) / 2)
+            / u64::from(max_milli_pt))
+        .clamp(20, 2000) as u32;
+        let width_px = ((u64::from(geom.width_milli_pt) * u64::from(scale_milli) + 500_000)
+            / 1_000_000)
+            .max(1) as u32;
+        let height_px = ((u64::from(geom.height_milli_pt) * u64::from(scale_milli) + 500_000)
+            / 1_000_000)
+            .max(1) as u32;
+
+        let bitmap = display_list.render_tile(PdfTileRenderRequest {
+            page_index,
+            scale_milli,
+            tile_x_px: 0,
+            tile_y_px: 0,
+            tile_width_px: width_px,
+            tile_height_px: height_px,
+        })?;
+
+        let thumbnail = RenderedThumbnail {
+            key: thumb_key,
+            physical_page_number: page_index + 1,
+            logical_label,
+            width_px: bitmap.width_px,
+            height_px: bitmap.height_px,
+            stride_bytes: bitmap.stride_bytes,
+            rgba_bytes: bitmap.rgba_bytes,
+        };
+
+        {
+            let mut thumb_guard = self
+                .thumbnail_cache
+                .lock()
+                .map_err(|_| RenderPipelineError::ThumbnailCachePoisoned)?;
+            thumb_guard.insert(thumbnail.clone());
+        }
+        let _ = job_manager.mark_completed(job.job_id);
+
+        Ok(thumbnail)
     }
 
     /// Renders the requested visible tile at highest priority (`VisiblePageRender`) and prefetches
@@ -295,7 +423,7 @@ impl RenderPipeline {
         })
     }
 
-    /// Propagates OS memory pressure (`Normal`, `Warning`, `Critical`) to the tile cache (`ARCHITECTURE.md` §9).
+    /// Propagates OS memory pressure (`Normal`, `Warning`, `Critical`) to both `TileCache` and `ThumbnailCache` (`ARCHITECTURE.md` §9).
     pub fn handle_memory_pressure(
         &self,
         actor: Option<&DocumentActor>,
@@ -305,6 +433,13 @@ impl RenderPipeline {
             && let Some(act) = actor
         {
             let _ = act.clear_display_lists();
+        }
+        {
+            let mut thumb_guard = self
+                .thumbnail_cache
+                .lock()
+                .map_err(|_| RenderPipelineError::ThumbnailCachePoisoned)?;
+            let _ = thumb_guard.apply_memory_pressure(level);
         }
         let mut cache_guard = self
             .tile_cache
@@ -319,5 +454,13 @@ impl RenderPipeline {
             .lock()
             .map_err(|_| RenderPipelineError::TileCachePoisoned)?;
         Ok(cache_guard.stats())
+    }
+
+    pub fn thumbnail_cache_stats(&self) -> Result<ThumbnailCacheStats, RenderPipelineError> {
+        let thumb_guard = self
+            .thumbnail_cache
+            .lock()
+            .map_err(|_| RenderPipelineError::ThumbnailCachePoisoned)?;
+        Ok(thumb_guard.stats())
     }
 }

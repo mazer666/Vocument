@@ -1,0 +1,69 @@
+%PDF-1.7
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [ 0 << /S /r >> 2 << /S /D /St 1 >> ] >> >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 154 >>
+stream
+BT /F1 18 Tf 72 750 Td (Vocument Preface and Navigation Overview) Tj /F1 12 Tf 0 -28 Td (This preface introduces local-first document architecture.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 257 >>
+stream
+BT /F1 18 Tf 72 750 Td (Table of Contents and Executive Summary) Tj /F1 12 Tf 0 -28 Td (Vocument provides trust-) Tj 0 -16 Td (worthy offline document workflows) Tj 0 -16 Td (across macOS and Android.) Tj 0 -36 Td (Second paragraph remains separated.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 189 >>
+stream
+BT /F1 18 Tf 72 750 Td (Chapter 1: Progressive SQLite FTS5 Search) Tj /F1 12 Tf 0 -28 Td (Exact classic search returns matches immediately while indexing continues in the background.) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 179 >>
+stream
+BT /F1 18 Tf 72 750 Td (Chapter 2: Adaptive Thumbnail Cache and Selection) Tj /F1 12 Tf 0 -28 Td (Users can jump to logical labels like ii or 1 and copy cleaned plain text.) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Title (Vocument M0.3 Navigation and Search Fixture) /Author (Vocument Engineering) /Subject (M0.3 Navigation, Thumbnails, Text Selection, and FTS5 Search) /Creator (Vocument Corpus Generator) /Producer (Vocument 0.1) >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000009 00000 n 
+0000000120 00000 n 
+0000000196 00000 n 
+0000000266 00000 n 
+0000000471 00000 n 
+0000000597 00000 n 
+0000000905 00000 n 
+0000001031 00000 n 
+0000001271 00000 n 
+0000001397 00000 n 
+0000001628 00000 n 
+0000001756 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R /Info 12 0 R >>
+startxref
+1996
+%%EOF

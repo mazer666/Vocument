@@ -4,6 +4,17 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.3] - 2026-10-17
+
+### Added
+- Completed **M0.3 — Navigation & Classic Search** (`docs/acceptance/M0.3-ACCEPTANCE.md`, `ADR-0006`).
+- Implemented MuPDF structured text and embedded `/PageLabels` extraction (`engines/pdf-mupdf/csrc/mupdf_text_bridge.c`, `engines/pdf-mupdf/src/text_extract.rs`).
+- Implemented logical page labels (`PAGELABEL-001`..`004`), custom label range overrides, and logical/physical page navigation (`core/vocument-core/src/navigation.rs`).
+- Implemented a separate bounded LRU `ThumbnailCache` (`core/vocument-core/src/thumbnail_cache.rs`) and thumbnail rendering at `JobPriority::Thumbnails` (`PAGEVIEW-001`, `PAGEVIEW-002`).
+- Implemented full-page and rectangular text selection with both raw copy (`OCRCOPY-001`) and dehyphenated, paragraph-preserving cleaned plain-text copy (`OCRCOPY-002`, `core/vocument-core/src/text_selection.rs`).
+- Implemented progressive local SQLite FTS5 indexing and classic exact search (`core/vocument-core/src/search_index.rs`, `SEARCH-001`, `SEARCH-002`, `SEARCH-009`), returning results in `< 1 ms` even before full document indexing completes (M0.3 Gate).
+- Exposed M0.3 navigation, thumbnail, text selection, and search APIs over UniFFI (`platform/vocument-ffi`) and integrated native sidebar/panel views on macOS (`NavigationAndSearchSidebarView.swift`) and Android (`NavigationAndSearchPanel.kt`).
+
 ## [0.1.0-m0.2] - 2026-10-17
 
 ### Added

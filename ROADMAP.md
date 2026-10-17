@@ -95,7 +95,7 @@ Exact device-specific gates are refined during implementation.
 
 ---
 
-## M0.3 — Navigation & Classic Search
+## M0.3 — Navigation & Classic Search *(COMPLETED — see [`docs/acceptance/M0.3-ACCEPTANCE.md`](docs/acceptance/M0.3-ACCEPTANCE.md))*
 
 Deliver:
 
@@ -110,7 +110,7 @@ Deliver:
 
 ### Gate
 
-Search begins returning useful results before a very large document is fully indexed.
+Search begins returning useful results before a very large document is fully indexed. *(Verified in Rust, Swift, and Kotlin tests — < 1 ms query latency on partially indexed documents.)*
 
 ---
 

@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 import VocumentMacKit
 import VocumentFFI
 
-/// Observable document session and rendering view-model for macOS (`ARCHITECTURE.md` §§3–10, `ROADMAP.md` M0.1–M0.2).
+/// Observable document session, rendering, navigation, and search view-model for macOS (`ARCHITECTURE.md` §§3–10, 17, `ROADMAP.md` M0.1–M0.3).
 /// Uses `ObservableObject` so it compiles cleanly under both Xcode and standalone Command Line Tools.
 @MainActor
 final class MacDocumentSessionCoordinator: ObservableObject {
@@ -19,6 +19,13 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var renderedPageImage: CGImage?
     @Published var cacheStats: FfiTileCacheStats?
     @Published var prefetchedPages: [UInt32] = []
+    @Published var pageDescriptors: [FfiPageDescriptor] = []
+    @Published var thumbnailImages: [UInt32: CGImage] = [:]
+    @Published var navigationInput: String = ""
+    @Published var searchQuery: String = ""
+    @Published var searchHits: [FfiSearchHit] = []
+    @Published var searchProgress: FfiSearchIndexProgress?
+    @Published var selectedTextPreview: String?
     @Published var errorMessage: String?
 
     init() {
@@ -27,6 +34,11 @@ final class MacDocumentSessionCoordinator: ObservableObject {
 
     var pageCount: UInt32 {
         activeSession?.pdfSummary.pageCount ?? 0
+    }
+
+    var currentLogicalLabel: String {
+        pageDescriptors.first(where: { $0.pageIndex == currentPageIndex })?.logicalLabel
+            ?? "\(currentPageIndex + 1)"
     }
 
     var prefetchedPagesSummary: String {
@@ -54,8 +66,12 @@ final class MacDocumentSessionCoordinator: ObservableObject {
             activeSession = session
             currentPageIndex = 0
             scaleMilli = 1000
+            thumbnailImages = [:]
+            searchHits = []
             errorMessage = nil
+            pageDescriptors = try coreClient.pageDescriptors(sessionId: session.sessionId)
             renderCurrentViewport()
+            loadThumbnailsAndInitialSearchBatch(sessionId: session.sessionId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -69,8 +85,74 @@ final class MacDocumentSessionCoordinator: ObservableObject {
 
     func stepPage(by delta: Int) {
         guard canStepPage(by: delta) else { return }
-        currentPageIndex = UInt32(Int(currentPageIndex) + delta)
+        jumpToPageIndex(UInt32(Int(currentPageIndex) + delta))
+    }
+
+    func jumpToPageIndex(_ index: UInt32) {
+        guard index < pageCount else { return }
+        currentPageIndex = index
         renderCurrentViewport()
+    }
+
+    func jumpToQuery() {
+        guard let session = activeSession else { return }
+        do {
+            let resolved = try coreClient.resolvePageNavigation(
+                sessionId: session.sessionId,
+                query: navigationInput
+            )
+            jumpToPageIndex(resolved.pageIndex)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func indexNextBatch() {
+        guard let session = activeSession else { return }
+        do {
+            searchProgress = try coreClient.indexSearchBatch(
+                sessionId: session.sessionId,
+                preferredStartPage: currentPageIndex,
+                maxPages: 2
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func performSearch() {
+        guard let session = activeSession else { return }
+        do {
+            let response = try coreClient.searchExact(
+                sessionId: session.sessionId,
+                query: searchQuery
+            )
+            searchHits = response.hits
+            searchProgress = response.progress
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func copyCurrentPageText(cleaned: Bool) {
+        guard let session = activeSession else { return }
+        do {
+            let sel = try coreClient.selectPageText(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                selectionRect: nil
+            )
+            let payload = cleaned ? sel.cleanedText : sel.rawText
+            selectedTextPreview = payload
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(payload, forType: .string)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func adjustZoom(deltaMilli: Int) {
@@ -83,6 +165,9 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     func applyMemoryPressure(_ level: FfiMemoryPressureLevel) {
         do {
             cacheStats = try coreClient.handleMemoryPressure(level: level)
+            if level == .critical {
+                thumbnailImages = [:]
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -121,10 +206,35 @@ final class MacDocumentSessionCoordinator: ObservableObject {
             renderedPageImage = DocumentCoreClient.makeCGImage(from: result.visibleTile)
             prefetchedPages = result.prefetchedPages
             cacheStats = result.cacheStats
+            if let sel = try? coreClient.selectPageText(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                selectionRect: nil
+            ) {
+                selectedTextPreview = sel.cleanedText
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func loadThumbnailsAndInitialSearchBatch(sessionId: String) {
+        for desc in pageDescriptors {
+            if let thumb = try? coreClient.renderPageThumbnail(
+                sessionId: sessionId,
+                pageIndex: desc.pageIndex,
+                maxDimensionPx: 140
+            ),
+               let cgImg = DocumentCoreClient.makeCGImage(from: thumb) {
+                thumbnailImages[desc.pageIndex] = cgImg
+            }
+        }
+        searchProgress = try? coreClient.indexSearchBatch(
+            sessionId: sessionId,
+            preferredStartPage: currentPageIndex,
+            maxPages: 2
+        )
     }
 
     private func setupSystemMemoryPressureObserver() {
@@ -156,7 +266,7 @@ struct VocumentMacApp: App {
     var body: some Scene {
         WindowGroup("Vocument") {
             CalmReaderSessionView(coordinator: coordinator)
-                .frame(minWidth: 900, minHeight: 680)
+                .frame(minWidth: 1080, minHeight: 720)
         }
     }
 }
@@ -186,7 +296,10 @@ struct CalmReaderSessionView: View {
             }
 
             if coordinator.activeSession != nil {
-                DocumentCanvasView(coordinator: coordinator)
+                HStack(alignment: .top, spacing: 16) {
+                    NavigationAndSearchSidebarView(coordinator: coordinator)
+                    DocumentCanvasView(coordinator: coordinator)
+                }
             } else {
                 Text("No document open. Choose 'Open PDF…' or open a file from Finder.")
                     .foregroundStyle(.secondary)

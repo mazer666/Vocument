@@ -32,12 +32,15 @@ import androidx.compose.ui.unit.dp
 import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
+import uniffi.vocument_ffi.FfiPageDescriptor
+import uniffi.vocument_ffi.FfiSearchIndexProgress
 import uniffi.vocument_ffi.FfiViewportRenderResult
 
 /**
  * Native Android 13+ Activity using Jetpack Compose (`MOBILE-001`, `MOBILE-002`, `BIGMOBILE-001`, `VIEW-001`).
  * Opens PDFs via Android Storage Access Framework (`FileBroker`), renders tiles via `DocumentActor` +
- * `TileCache`, and forwards Android `onTrimMemory` pressure signals to `DocumentCore` (`ROADMAP.md` M0.2).
+ * `TileCache`, provides M0.3 thumbnails, logical page labels, cleaned text copy, and progressive
+ * SQLite FTS5 search, and forwards Android `onTrimMemory` pressure signals to `DocumentCore` (`ROADMAP.md` M0.3).
  */
 class MainActivity : ComponentActivity() {
     private val coreBridge = DocumentCoreBridge()
@@ -77,6 +80,9 @@ fun MinimalReaderSessionScreen(
     var currentPageIndex by remember { mutableStateOf(0u) }
     var scaleMilli by remember { mutableStateOf(1000u) }
     var viewportResult by remember { mutableStateOf<FfiViewportRenderResult?>(null) }
+    var pageDescriptors by remember { mutableStateOf<List<FfiPageDescriptor>>(emptyList()) }
+    var indexProgress by remember { mutableStateOf<FfiSearchIndexProgress?>(null) }
+    var activeTab by remember { mutableStateOf(0) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun refreshViewport(
@@ -106,6 +112,8 @@ fun MinimalReaderSessionScreen(
                 openUriViaSafBroker(context, coreBridge, uri)
             }.onSuccess { snapshot ->
                 activeSession = snapshot
+                pageDescriptors = runCatching { coreBridge.pageDescriptors(snapshot.sessionId) }.getOrDefault(emptyList())
+                indexProgress = runCatching { coreBridge.indexSearchBatch(snapshot.sessionId, 0u, 2u) }.getOrNull()
                 refreshViewport(snapshot, pageIndex = 0u, scale = 1000u)
             }.onFailure { err ->
                 errorMessage = err.message
@@ -117,20 +125,20 @@ fun MinimalReaderSessionScreen(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = true,
-                    onClick = {},
+                    selected = activeTab == 0,
+                    onClick = { activeTab = 0 },
                     icon = {},
                     label = { Text("Pages") }
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = activeTab == 1,
+                    onClick = { activeTab = 1 },
                     icon = {},
-                    label = { Text("Search") }
+                    label = { Text("Nav & Search") }
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = activeTab == 2,
+                    onClick = { activeTab = 2 },
                     icon = {},
                     label = { Text("Tools") }
                 )
@@ -165,24 +173,44 @@ fun MinimalReaderSessionScreen(
             val currentViewport = viewportResult
             if (session != null && currentViewport != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                DocumentCanvas(
-                    session = session,
-                    currentPageIndex = currentPageIndex,
-                    scaleMilli = scaleMilli,
-                    viewportResult = currentViewport,
-                    coreBridge = coreBridge,
-                    onPageChange = { nextPage -> refreshViewport(session, nextPage, scaleMilli) },
-                    onScaleChange = { nextScale -> refreshViewport(session, currentPageIndex, nextScale) },
-                    onMemoryPressure = { level ->
-                        runCatching {
-                            coreBridge.handleMemoryPressure(level)
-                            if (level == FfiMemoryPressureLevel.CRITICAL) {
-                                coreBridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
+                if (activeTab == 1) {
+                    NavigationAndSearchPanel(
+                        sessionId = session.sessionId,
+                        currentPageIndex = currentPageIndex,
+                        descriptors = pageDescriptors,
+                        indexProgress = indexProgress,
+                        coreBridge = coreBridge,
+                        onSelectPage = { targetPage ->
+                            refreshViewport(session, targetPage, scaleMilli)
+                            activeTab = 0
+                        },
+                        onIndexNextBatch = {
+                            indexProgress = runCatching {
+                                coreBridge.indexSearchBatch(session.sessionId, currentPageIndex, 2u)
+                            }.getOrNull()
+                        },
+                        onError = { err -> errorMessage = err }
+                    )
+                } else {
+                    DocumentCanvas(
+                        session = session,
+                        currentPageIndex = currentPageIndex,
+                        scaleMilli = scaleMilli,
+                        viewportResult = currentViewport,
+                        coreBridge = coreBridge,
+                        onPageChange = { nextPage -> refreshViewport(session, nextPage, scaleMilli) },
+                        onScaleChange = { nextScale -> refreshViewport(session, currentPageIndex, nextScale) },
+                        onMemoryPressure = { level ->
+                            runCatching {
+                                coreBridge.handleMemoryPressure(level)
+                                if (level == FfiMemoryPressureLevel.CRITICAL) {
+                                    coreBridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
+                                }
+                                refreshViewport(session, currentPageIndex, scaleMilli)
                             }
-                            refreshViewport(session, currentPageIndex, scaleMilli)
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }

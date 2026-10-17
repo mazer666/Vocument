@@ -3,8 +3,8 @@ import CoreGraphics
 import VocumentMacKit
 import VocumentFFI
 
-/// Native macOS `DocumentCanvas` view rendering RGBA8 tiles from `DocumentCore` (`ARCHITECTURE.md` §10, `ROADMAP.md` M0.2).
-/// Supports page scroll/navigation, quantized zoom (`50%`–`300%`), neighbouring-page prefetch, and memory-pressure controls.
+/// Native macOS `DocumentCanvas` view rendering RGBA8 tiles from `DocumentCore` (`ARCHITECTURE.md` §10, `ROADMAP.md` M0.2–M0.3).
+/// Displays both logical page label and physical page number (`PAGELABEL-002`).
 struct DocumentCanvasView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
 
@@ -16,7 +16,7 @@ struct DocumentCanvasView: View {
                 }
                 .disabled(!coordinator.canStepPage(by: -1))
 
-                Text("Page \(coordinator.currentPageIndex + 1) / \(coordinator.pageCount)")
+                Text("Label \(coordinator.currentLogicalLabel) (Page \(coordinator.currentPageIndex + 1) / \(coordinator.pageCount))")
                     .monospacedDigit()
                     .bold()
 

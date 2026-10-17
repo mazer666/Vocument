@@ -66,5 +66,36 @@ class DocumentCoreBridgeTest {
         bridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
 
         bridge.closeSession(session.sessionId)
+
+        val m03File = File("../../tests/corpus/m0_3_navigation_and_search.pdf")
+        val m03Session = bridge.openSafDocument(
+            safUriString = "content://com.android.providers.downloads.documents/document/m0_3_test",
+            displayName = m03File.name,
+            safDocumentId = "downloads:m0_3_test",
+            lastModifiedUnixMs = m03File.lastModified(),
+            bytes = m03File.readBytes()
+        )
+        val descriptors = bridge.pageDescriptors(m03Session.sessionId)
+        assertEquals(listOf("i", "ii", "1", "2"), descriptors.map { it.logicalLabel })
+
+        val navTarget = bridge.resolvePageNavigation(m03Session.sessionId, "1")
+        assertEquals(2u, navTarget.pageIndex)
+
+        val thumb = bridge.renderPageThumbnail(m03Session.sessionId, 0u, 128u)
+        assertEquals(128u, thumb.heightPx)
+
+        val selection = bridge.selectPageText(m03Session.sessionId, 1u, null)
+        assertTrue(selection.cleanedText.contains("trustworthy"))
+
+        val progress = bridge.indexSearchBatch(m03Session.sessionId, 2u, 1u)
+        assertEquals(1u, progress.indexedPages)
+        assertFalse(progress.isComplete)
+
+        val searchResponse = bridge.searchExact(m03Session.sessionId, "SQLite FTS5")
+        assertFalse(searchResponse.progress.isComplete)
+        assertEquals(1, searchResponse.hits.size)
+        assertEquals(2u, searchResponse.hits[0].pageIndex)
+
+        bridge.closeSession(m03Session.sessionId)
     }
 }

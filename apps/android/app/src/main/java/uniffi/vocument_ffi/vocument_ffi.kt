@@ -731,6 +731,24 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -754,15 +772,33 @@ fun uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_descriptors(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_geometry(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_search_exact(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_search_index_progress(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats(
 ): Short
@@ -819,15 +855,33 @@ fun uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(`level`: Ru
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: RustBuffer.ByValue,`preferredStartPage`: Int,`maxPages`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_page_descriptors(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_geometry(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_render_page_thumbnail(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`maxDimensionPx`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_search_exact(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_search_index_progress(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`selectionRect`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -963,10 +1017,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 15904.toShort()) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 11251.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_index_search_batch() != 35695.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214.toShort()) {
@@ -975,13 +1032,37 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_descriptors() != 54455.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail() != 43380.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch() != 51535.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_search_index_progress() != 31512.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732.toShort()) {
@@ -1086,6 +1167,29 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterInt: FfiConverter<Int, Int> {
+    override fun lift(value: Int): Int {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Int {
+        return buf.getInt()
+    }
+
+    override fun lower(value: Int): Int {
+        return value
+    }
+
+    override fun allocationSize(value: Int) = 4UL
+
+    override fun write(value: Int, buf: ByteBuffer) {
+        buf.putInt(value)
     }
 }
 
@@ -1450,6 +1554,88 @@ public object FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIde
 
 
 /**
+ * Combined physical and logical identity of a page (`PAGELABEL-002`).
+ */
+data class FfiPageDescriptor (
+    var `pageIndex`: kotlin.UInt, 
+    var `physicalPageNumber`: kotlin.UInt, 
+    var `logicalLabel`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageDescriptor: FfiConverterRustBuffer<FfiPageDescriptor> {
+    override fun read(buf: ByteBuffer): FfiPageDescriptor {
+        return FfiPageDescriptor(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageDescriptor) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`physicalPageNumber`) +
+            FfiConverterString.allocationSize(value.`logicalLabel`)
+    )
+
+    override fun write(value: FfiPageDescriptor, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`physicalPageNumber`, buf)
+            FfiConverterString.write(value.`logicalLabel`, buf)
+    }
+}
+
+
+
+/**
+ * Rule defining how logical page labels are formatted starting at `start_page_index` (`PAGELABEL-004`).
+ */
+data class FfiPageLabelRange (
+    var `startPageIndex`: kotlin.UInt, 
+    var `style`: FfiPageLabelStyle, 
+    var `prefix`: kotlin.String, 
+    var `startNumber`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageLabelRange: FfiConverterRustBuffer<FfiPageLabelRange> {
+    override fun read(buf: ByteBuffer): FfiPageLabelRange {
+        return FfiPageLabelRange(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiPageLabelStyle.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageLabelRange) = (
+            FfiConverterUInt.allocationSize(value.`startPageIndex`) +
+            FfiConverterTypeFfiPageLabelStyle.allocationSize(value.`style`) +
+            FfiConverterString.allocationSize(value.`prefix`) +
+            FfiConverterUInt.allocationSize(value.`startNumber`)
+    )
+
+    override fun write(value: FfiPageLabelRange, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`startPageIndex`, buf)
+            FfiConverterTypeFfiPageLabelStyle.write(value.`style`, buf)
+            FfiConverterString.write(value.`prefix`, buf)
+            FfiConverterUInt.write(value.`startNumber`, buf)
+    }
+}
+
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 data class FfiPdfDocumentSummary (
@@ -1564,6 +1750,116 @@ public object FfiConverterTypeFfiPdfPageGeometry: FfiConverterRustBuffer<FfiPdfP
 
 
 /**
+ * Axis-aligned rectangle on a PDF page in milli-points (`1/1000` pt).
+ */
+data class FfiPdfRectMilliPt (
+    var `x0MilliPt`: kotlin.Int, 
+    var `y0MilliPt`: kotlin.Int, 
+    var `x1MilliPt`: kotlin.Int, 
+    var `y1MilliPt`: kotlin.Int
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRectMilliPt> {
+    override fun read(buf: ByteBuffer): FfiPdfRectMilliPt {
+        return FfiPdfRectMilliPt(
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfRectMilliPt) = (
+            FfiConverterInt.allocationSize(value.`x0MilliPt`) +
+            FfiConverterInt.allocationSize(value.`y0MilliPt`) +
+            FfiConverterInt.allocationSize(value.`x1MilliPt`) +
+            FfiConverterInt.allocationSize(value.`y1MilliPt`)
+    )
+
+    override fun write(value: FfiPdfRectMilliPt, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`x0MilliPt`, buf)
+            FfiConverterInt.write(value.`y0MilliPt`, buf)
+            FfiConverterInt.write(value.`x1MilliPt`, buf)
+            FfiConverterInt.write(value.`y1MilliPt`, buf)
+    }
+}
+
+
+
+/**
+ * Rendered RGBA8 page thumbnail DTO (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
+ */
+data class FfiRenderedThumbnail (
+    var `documentId`: kotlin.String, 
+    var `revision`: kotlin.ULong, 
+    var `pageIndex`: kotlin.UInt, 
+    var `physicalPageNumber`: kotlin.UInt, 
+    var `logicalLabel`: kotlin.String, 
+    var `maxDimensionPx`: kotlin.UInt, 
+    var `widthPx`: kotlin.UInt, 
+    var `heightPx`: kotlin.UInt, 
+    var `strideBytes`: kotlin.UInt, 
+    var `rgbaBytes`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRenderedThumbnail: FfiConverterRustBuffer<FfiRenderedThumbnail> {
+    override fun read(buf: ByteBuffer): FfiRenderedThumbnail {
+        return FfiRenderedThumbnail(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiRenderedThumbnail) = (
+            FfiConverterString.allocationSize(value.`documentId`) +
+            FfiConverterULong.allocationSize(value.`revision`) +
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`physicalPageNumber`) +
+            FfiConverterString.allocationSize(value.`logicalLabel`) +
+            FfiConverterUInt.allocationSize(value.`maxDimensionPx`) +
+            FfiConverterUInt.allocationSize(value.`widthPx`) +
+            FfiConverterUInt.allocationSize(value.`heightPx`) +
+            FfiConverterUInt.allocationSize(value.`strideBytes`) +
+            FfiConverterByteArray.allocationSize(value.`rgbaBytes`)
+    )
+
+    override fun write(value: FfiRenderedThumbnail, buf: ByteBuffer) {
+            FfiConverterString.write(value.`documentId`, buf)
+            FfiConverterULong.write(value.`revision`, buf)
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`physicalPageNumber`, buf)
+            FfiConverterString.write(value.`logicalLabel`, buf)
+            FfiConverterUInt.write(value.`maxDimensionPx`, buf)
+            FfiConverterUInt.write(value.`widthPx`, buf)
+            FfiConverterUInt.write(value.`heightPx`, buf)
+            FfiConverterUInt.write(value.`strideBytes`, buf)
+            FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+    }
+}
+
+
+
+/**
  * Immutable rendered RGBA8 tile bitmap DTO returned to Swift and Kotlin (`ARCHITECTURE.md` §10).
  */
 data class FfiRenderedTile (
@@ -1625,6 +1921,237 @@ public object FfiConverterTypeFfiRenderedTile: FfiConverterRustBuffer<FfiRendere
             FfiConverterUInt.write(value.`heightPx`, buf)
             FfiConverterUInt.write(value.`strideBytes`, buf)
             FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+    }
+}
+
+
+
+/**
+ * A single page-level match returned by classic exact FTS5 search (`SEARCH-002`).
+ */
+data class FfiSearchHit (
+    var `pageIndex`: kotlin.UInt, 
+    var `physicalPageNumber`: kotlin.UInt, 
+    var `logicalPageLabel`: kotlin.String, 
+    var `snippet`: kotlin.String, 
+    var `matchCount`: kotlin.UInt, 
+    var `highlightRects`: List<FfiPdfRectMilliPt>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSearchHit: FfiConverterRustBuffer<FfiSearchHit> {
+    override fun read(buf: ByteBuffer): FfiSearchHit {
+        return FfiSearchHit(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSearchHit) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`physicalPageNumber`) +
+            FfiConverterString.allocationSize(value.`logicalPageLabel`) +
+            FfiConverterString.allocationSize(value.`snippet`) +
+            FfiConverterUInt.allocationSize(value.`matchCount`) +
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.allocationSize(value.`highlightRects`)
+    )
+
+    override fun write(value: FfiSearchHit, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`physicalPageNumber`, buf)
+            FfiConverterString.write(value.`logicalPageLabel`, buf)
+            FfiConverterString.write(value.`snippet`, buf)
+            FfiConverterUInt.write(value.`matchCount`, buf)
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.`highlightRects`, buf)
+    }
+}
+
+
+
+/**
+ * Progress snapshot of the progressive SQLite FTS5 index (`SEARCH-009`, `ROADMAP.md` M0.3 Gate).
+ */
+data class FfiSearchIndexProgress (
+    var `indexedPages`: kotlin.UInt, 
+    var `totalPages`: kotlin.UInt, 
+    var `isComplete`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSearchIndexProgress: FfiConverterRustBuffer<FfiSearchIndexProgress> {
+    override fun read(buf: ByteBuffer): FfiSearchIndexProgress {
+        return FfiSearchIndexProgress(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSearchIndexProgress) = (
+            FfiConverterUInt.allocationSize(value.`indexedPages`) +
+            FfiConverterUInt.allocationSize(value.`totalPages`) +
+            FfiConverterBoolean.allocationSize(value.`isComplete`)
+    )
+
+    override fun write(value: FfiSearchIndexProgress, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`indexedPages`, buf)
+            FfiConverterUInt.write(value.`totalPages`, buf)
+            FfiConverterBoolean.write(value.`isComplete`, buf)
+    }
+}
+
+
+
+/**
+ * Complete response from an exact search query, including current progressive indexing status (`ROADMAP.md` M0.3 Gate).
+ */
+data class FfiSearchResponse (
+    var `query`: kotlin.String, 
+    var `hits`: List<FfiSearchHit>, 
+    var `progress`: FfiSearchIndexProgress
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSearchResponse: FfiConverterRustBuffer<FfiSearchResponse> {
+    override fun read(buf: ByteBuffer): FfiSearchResponse {
+        return FfiSearchResponse(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiSearchHit.read(buf),
+            FfiConverterTypeFfiSearchIndexProgress.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSearchResponse) = (
+            FfiConverterString.allocationSize(value.`query`) +
+            FfiConverterSequenceTypeFfiSearchHit.allocationSize(value.`hits`) +
+            FfiConverterTypeFfiSearchIndexProgress.allocationSize(value.`progress`)
+    )
+
+    override fun write(value: FfiSearchResponse, buf: ByteBuffer) {
+            FfiConverterString.write(value.`query`, buf)
+            FfiConverterSequenceTypeFfiSearchHit.write(value.`hits`, buf)
+            FfiConverterTypeFfiSearchIndexProgress.write(value.`progress`, buf)
+    }
+}
+
+
+
+/**
+ * Text selection result containing both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`).
+ */
+data class FfiTextSelectionResult (
+    var `pageIndex`: kotlin.UInt, 
+    var `rawText`: kotlin.String, 
+    var `cleanedText`: kotlin.String, 
+    var `highlightRects`: List<FfiPdfRectMilliPt>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTextSelectionResult: FfiConverterRustBuffer<FfiTextSelectionResult> {
+    override fun read(buf: ByteBuffer): FfiTextSelectionResult {
+        return FfiTextSelectionResult(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTextSelectionResult) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterString.allocationSize(value.`rawText`) +
+            FfiConverterString.allocationSize(value.`cleanedText`) +
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.allocationSize(value.`highlightRects`)
+    )
+
+    override fun write(value: FfiTextSelectionResult, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterString.write(value.`rawText`, buf)
+            FfiConverterString.write(value.`cleanedText`, buf)
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.`highlightRects`, buf)
+    }
+}
+
+
+
+/**
+ * Telemetry snapshot of the separate `ThumbnailCache` (`ARCHITECTURE.md` §9).
+ */
+data class FfiThumbnailCacheStats (
+    var `configuredMaxBytes`: kotlin.ULong, 
+    var `effectiveMaxBytes`: kotlin.ULong, 
+    var `currentUsedBytes`: kotlin.ULong, 
+    var `cachedThumbnailCount`: kotlin.UInt, 
+    var `hitCount`: kotlin.ULong, 
+    var `missCount`: kotlin.ULong, 
+    var `evictionCount`: kotlin.ULong, 
+    var `pressureLevel`: FfiMemoryPressureLevel
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiThumbnailCacheStats: FfiConverterRustBuffer<FfiThumbnailCacheStats> {
+    override fun read(buf: ByteBuffer): FfiThumbnailCacheStats {
+        return FfiThumbnailCacheStats(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeFfiMemoryPressureLevel.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiThumbnailCacheStats) = (
+            FfiConverterULong.allocationSize(value.`configuredMaxBytes`) +
+            FfiConverterULong.allocationSize(value.`effectiveMaxBytes`) +
+            FfiConverterULong.allocationSize(value.`currentUsedBytes`) +
+            FfiConverterUInt.allocationSize(value.`cachedThumbnailCount`) +
+            FfiConverterULong.allocationSize(value.`hitCount`) +
+            FfiConverterULong.allocationSize(value.`missCount`) +
+            FfiConverterULong.allocationSize(value.`evictionCount`) +
+            FfiConverterTypeFfiMemoryPressureLevel.allocationSize(value.`pressureLevel`)
+    )
+
+    override fun write(value: FfiThumbnailCacheStats, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`configuredMaxBytes`, buf)
+            FfiConverterULong.write(value.`effectiveMaxBytes`, buf)
+            FfiConverterULong.write(value.`currentUsedBytes`, buf)
+            FfiConverterUInt.write(value.`cachedThumbnailCount`, buf)
+            FfiConverterULong.write(value.`hitCount`, buf)
+            FfiConverterULong.write(value.`missCount`, buf)
+            FfiConverterULong.write(value.`evictionCount`, buf)
+            FfiConverterTypeFfiMemoryPressureLevel.write(value.`pressureLevel`, buf)
     }
 }
 
@@ -1824,6 +2351,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "sessionId=${ `sessionId` }"
     }
     
+    class NavigationFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class InternalFailure(
         
         val `details`: kotlin.String
@@ -1861,7 +2396,10 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             5 -> DocumentCoreException.SessionNotFound(
                 FfiConverterString.read(buf),
                 )
-            6 -> DocumentCoreException.InternalFailure(
+            6 -> DocumentCoreException.NavigationFailure(
+                FfiConverterString.read(buf),
+                )
+            7 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -1893,6 +2431,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`sessionId`)
+            )
+            is DocumentCoreException.NavigationFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.InternalFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -1928,8 +2471,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`sessionId`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.NavigationFailure -> {
                 buf.putInt(6)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(7)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -2008,6 +2556,43 @@ public object FfiConverterTypeFfiMemoryPressureLevel: FfiConverterRustBuffer<Ffi
 
 
 
+/**
+ * Numbering style for a logical page-label range (`PAGELABEL-001`).
+ */
+
+enum class FfiPageLabelStyle {
+    
+    DECIMAL_ARABIC,
+    ROMAN_LOWER,
+    ROMAN_UPPER,
+    ALPHABETIC_LOWER,
+    ALPHABETIC_UPPER,
+    PREFIX_ONLY;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageLabelStyle: FfiConverterRustBuffer<FfiPageLabelStyle> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiPageLabelStyle.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiPageLabelStyle) = 4UL
+
+    override fun write(value: FfiPageLabelStyle, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -2076,6 +2661,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRectMilliPt?> {
+    override fun read(buf: ByteBuffer): FfiPdfRectMilliPt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiPdfRectMilliPt.read(buf)
+    }
+
+    override fun allocationSize(value: FfiPdfRectMilliPt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiPdfRectMilliPt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -2125,6 +2742,118 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer<List<FfiPageDescriptor>> {
+    override fun read(buf: ByteBuffer): List<FfiPageDescriptor> {
+        val len = buf.getInt()
+        return List<FfiPageDescriptor>(len) {
+            FfiConverterTypeFfiPageDescriptor.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPageDescriptor>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPageDescriptor.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPageDescriptor>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPageDescriptor.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiPageLabelRange: FfiConverterRustBuffer<List<FfiPageLabelRange>> {
+    override fun read(buf: ByteBuffer): List<FfiPageLabelRange> {
+        val len = buf.getInt()
+        return List<FfiPageLabelRange>(len) {
+            FfiConverterTypeFfiPageLabelRange.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPageLabelRange>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPageLabelRange.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPageLabelRange>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPageLabelRange.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<List<FfiPdfRectMilliPt>> {
+    override fun read(buf: ByteBuffer): List<FfiPdfRectMilliPt> {
+        val len = buf.getInt()
+        return List<FfiPdfRectMilliPt>(len) {
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPdfRectMilliPt>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPdfRectMilliPt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPdfRectMilliPt>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPdfRectMilliPt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<FfiSearchHit>> {
+    override fun read(buf: ByteBuffer): List<FfiSearchHit> {
+        val len = buf.getInt()
+        return List<FfiSearchHit>(len) {
+            FfiConverterTypeFfiSearchHit.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSearchHit>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSearchHit.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSearchHit>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSearchHit.write(it, buf)
+        }
+    }
+}
         /**
          * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
          */
@@ -2151,7 +2880,7 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     
 
         /**
-         * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+         * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` and `ThumbnailCache` (`ARCHITECTURE.md` §9).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreHandleMemoryPressure`(`level`: FfiMemoryPressureLevel): FfiTileCacheStats {
             return FfiConverterTypeFfiTileCacheStats.lift(
@@ -2171,6 +2900,20 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_handshake(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around
+         * `preferred_start_page` (`SEARCH-009`, `ARCHITECTURE.md` §17, `ROADMAP.md` M0.3 Gate).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreIndexSearchBatch`(`sessionId`: kotlin.String, `preferredStartPage`: kotlin.UInt, `maxPages`: kotlin.UInt): FfiSearchIndexProgress {
+            return FfiConverterTypeFfiSearchIndexProgress.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_index_search_batch(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`preferredStartPage`),FfiConverterUInt.lower(`maxPages`),_status)
 }
     )
     }
@@ -2203,6 +2946,19 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     
 
         /**
+         * Returns all physical and logical `FfiPageDescriptor` entries for `session_id` (`PAGELABEL-001`, `PAGELABEL-002`, `ROADMAP.md` M0.3).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageDescriptors`(`sessionId`: kotlin.String): List<FfiPageDescriptor> {
+            return FfiConverterSequenceTypeFfiPageDescriptor.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_descriptors(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Queries the unscaled geometry (points and rotation) of `page_index` via `DocumentActor` (`ROADMAP.md` M0.2).
          */
     @Throws(DocumentCoreException::class) fun `documentCorePageGeometry`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiPdfPageGeometry {
@@ -2210,6 +2966,19 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_geometry(
         FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders a low-resolution page thumbnail fitted to `max_dimension_px` via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRenderPageThumbnail`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `maxDimensionPx`: kotlin.UInt): FfiRenderedThumbnail {
+            return FfiConverterTypeFfiRenderedThumbnail.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_render_page_thumbnail(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterUInt.lower(`maxDimensionPx`),_status)
 }
     )
     }
@@ -2236,6 +3005,85 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
         FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiTileRenderRequest.lower(`request`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Resolves a user navigation target (`query`: logical label like `"ii"` or `"A-2"`, or physical page `"2"` / `"#2"`) (`PAGELABEL-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreResolvePageNavigation`(`sessionId`: kotlin.String, `query`: kotlin.String): FfiPageDescriptor {
+            return FfiConverterTypeFfiPageDescriptor.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(
+        FfiConverterString.lower(`sessionId`),FfiConverterString.lower(`query`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes a classic exact search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSearchExact`(`sessionId`: kotlin.String, `query`: kotlin.String): FfiSearchResponse {
+            return FfiConverterTypeFfiSearchResponse.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_search_exact(
+        FfiConverterString.lower(`sessionId`),FfiConverterString.lower(`query`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Queries the current progressive SQLite FTS5 indexing progress for `session_id`.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSearchIndexProgress`(`sessionId`: kotlin.String): FfiSearchIndexProgress {
+            return FfiConverterTypeFfiSearchIndexProgress.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_search_index_progress(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Selects text on `page_index` (either full-page when `selection_rect` is `None`, or intersecting `selection_rect`),
+         * returning both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`) plus `highlight_rects`.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSelectPageText`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `selectionRect`: FfiPdfRectMilliPt?): FfiTextSelectionResult {
+            return FfiConverterTypeFfiTextSelectionResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_select_page_text(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterOptionalTypeFfiPdfRectMilliPt.lower(`selectionRect`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSetPageLabelRanges`(`sessionId`: kotlin.String, `ranges`: List<FfiPageLabelRange>): List<FfiPageDescriptor> {
+            return FfiConverterSequenceTypeFfiPageDescriptor.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceTypeFfiPageLabelRange.lower(`ranges`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns current telemetry statistics of the separate `ThumbnailCache`.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreThumbnailCacheStats`(): FfiThumbnailCacheStats {
+            return FfiConverterTypeFfiThumbnailCacheStats.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats(
+        _status)
 }
     )
     }

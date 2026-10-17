@@ -176,4 +176,103 @@ fun main() {
             "first_page_ms=$formattedMs, tile=595x842, prefetched=${viewport.prefetchedPages}, " +
             "zoom=200%, memory_pressure=ok"
     )
+
+    // M0.3 verification: Navigation, Logical Page Labels, ThumbnailCache, Cleaned Plain-Text Copy, and Progressive SQLite FTS5 Search
+    val m03File = File("tests/corpus/m0_3_navigation_and_search.pdf")
+    val m03Session = bridge.openSafDocument(
+        safUriString = "content://com.android.providers.downloads.documents/document/m0_3_sample",
+        displayName = m03File.name,
+        safDocumentId = "downloads:m0_3_sample",
+        lastModifiedUnixMs = m03File.lastModified(),
+        bytes = m03File.readBytes()
+    )
+    check(m03Session.pdfSummary.pageCount == 4u) {
+        "Expected 4 pages in M0.3 sample PDF, got ${m03Session.pdfSummary.pageCount}"
+    }
+
+    // 1. Page descriptors & logical labels (PAGELABEL-001..004)
+    val descriptors = bridge.pageDescriptors(m03Session.sessionId)
+    val labels = descriptors.map { it.logicalLabel }
+    check(labels == listOf("i", "ii", "1", "2")) {
+        "Expected embedded logical labels ['i', 'ii', '1', '2'], got $labels"
+    }
+    check(descriptors[2].physicalPageNumber == 3u) {
+        "Expected physicalPageNumber == 3 for index 2"
+    }
+    val navRoman = bridge.resolvePageNavigation(m03Session.sessionId, "ii")
+    check(navRoman.pageIndex == 1u && navRoman.physicalPageNumber == 2u) {
+        "Expected 'ii' to resolve to pageIndex=1"
+    }
+    val navArabic = bridge.resolvePageNavigation(m03Session.sessionId, "1")
+    check(navArabic.pageIndex == 2u && navArabic.physicalPageNumber == 3u) {
+        "Expected logical '1' to resolve to pageIndex=2 (physical #3)"
+    }
+    val navPhysical = bridge.resolvePageNavigation(m03Session.sessionId, "#1")
+    check(navPhysical.pageIndex == 0u) {
+        "Expected '#1' to resolve to pageIndex=0"
+    }
+
+    // 2. Thumbnail rendering & separate ThumbnailCache (PAGEVIEW-001, PAGEVIEW-002)
+    val thumbStatsBefore = bridge.thumbnailCacheStats()
+    val thumb0 = bridge.renderPageThumbnail(m03Session.sessionId, 0u, 160u)
+    check(thumb0.heightPx == 160u && thumb0.widthPx > 100u) {
+        "Unexpected thumbnail dimensions: ${thumb0.widthPx}x${thumb0.heightPx}"
+    }
+    val thumbPixels = bridge.decodeThumbnailToArgbPixels(thumb0)
+    check(thumbPixels.size == (thumb0.widthPx * thumb0.heightPx).toInt()) {
+        "Unexpected decoded thumbnail ARGB pixel count"
+    }
+    bridge.renderPageThumbnail(m03Session.sessionId, 0u, 160u)
+    val thumbStatsAfter = bridge.thumbnailCacheStats()
+    check(thumbStatsAfter.hitCount == thumbStatsBefore.hitCount + 1uL) {
+        "Expected ThumbnailCache hit on second thumbnail request"
+    }
+
+    // 3. Text selection & cleaned plain-text copy (OCRCOPY-001, OCRCOPY-002)
+    val selection = bridge.selectPageText(m03Session.sessionId, 1u, null)
+    check(selection.rawText.contains("trust-")) {
+        "Expected rawText to preserve hyphenated line break 'trust-'"
+    }
+    check(selection.cleanedText.contains("trustworthy") && !selection.cleanedText.contains("trust-")) {
+        "Expected cleanedText to rejoin 'trust-\\nworthy' into 'trustworthy', got: ${selection.cleanedText}"
+    }
+    check(selection.cleanedText.contains("\n\nSecond paragraph")) {
+        "Expected cleanedText to preserve paragraph break"
+    }
+
+    // 4. Progressive SQLite FTS5 Search BEFORE indexing completes (M0.3 Gate, SEARCH-001, SEARCH-002, SEARCH-009)
+    val partialProgress = bridge.indexSearchBatch(m03Session.sessionId, 2u, 1u)
+    check(partialProgress.indexedPages == 1u && !partialProgress.isComplete) {
+        "Expected partial indexing state (1/4 pages)"
+    }
+
+    val searchStartNs = System.nanoTime()
+    val partialSearch = bridge.searchExact(m03Session.sessionId, "SQLite FTS5")
+    val searchMs = (System.nanoTime() - searchStartNs) / 1_000_000.0
+    check(searchMs < 150.0) {
+        "Classic FTS5 search exceeded 150 ms target: $searchMs ms"
+    }
+    check(!partialSearch.progress.isComplete && partialSearch.progress.indexedPages == 1u) {
+        "Expected search response to reflect partial indexing state"
+    }
+    check(
+        partialSearch.hits.size == 1 &&
+            partialSearch.hits[0].pageIndex == 2u &&
+            partialSearch.hits[0].logicalPageLabel == "1"
+    ) {
+        "Expected partial FTS5 search hit on pageIndex=2 (label '1')"
+    }
+
+    val finalProgress = bridge.indexSearchBatch(m03Session.sessionId, 0u, 10u)
+    check(finalProgress.isComplete && finalProgress.indexedPages == 4u) {
+        "Expected full FTS5 index completion (4/4 pages)"
+    }
+
+    bridge.closeSession(m03Session.sessionId)
+    val formattedSearchMs = String.format(java.util.Locale.ROOT, "%.2f", searchMs)
+    println(
+        "✓ Kotlin (Android M0.3) → PageLabels(${labels.joinToString(",")}) → " +
+            "ThumbnailCache(${thumb0.widthPx}x${thumb0.heightPx}) → CleanedCopy(OCRCOPY-002) → " +
+            "SQLite FTS5 Search verified: partial_hits=${partialSearch.hits.size} (1/4 indexed), search_ms=$formattedSearchMs"
+    )
 }

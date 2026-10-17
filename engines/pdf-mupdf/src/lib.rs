@@ -1,6 +1,8 @@
-//! MuPDF adapter behind Vocument's `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 18, `ROADMAP.md` M0.1–M0.2).
+//! MuPDF adapter behind Vocument's `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 17, 18, `ROADMAP.md` M0.1–M0.3).
 //!
 //! No UI layer may depend on this crate directly.
+
+pub mod text_extract;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
@@ -8,7 +10,7 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfPageGeometry, PdfTileBitmap, PdfTileRenderRequest,
+    PdfPageGeometry, PdfPageStructuredText, PdfTileBitmap, PdfTileRenderRequest,
 };
 
 /// Identifier prefix of the PDF engine adapter.
@@ -84,7 +86,7 @@ unsafe extern "C" {
     fn vocument_mupdf_drop_display_list(handle: *mut RawMuPdfDisplayListHandle);
 }
 
-fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
+pub(crate) fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
     // SAFETY: `buf` is zero-initialized and NUL-terminated by `mupdf_bridge.c`.
     let c_str = unsafe { CStr::from_ptr(buf.as_ptr()) };
     let text = c_str.to_string_lossy().trim().to_owned();
@@ -238,6 +240,22 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         }
     }
 
+    fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError> {
+        text_extract::query_embedded_page_label(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+        )
+    }
+
+    fn extract_page_text(&self, page_index: u32) -> Result<PdfPageStructuredText, PdfEngineError> {
+        text_extract::extract_structured_page_text(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+        )
+    }
+
     fn create_display_list(
         &self,
         page_index: u32,
@@ -375,6 +393,7 @@ impl PdfEngine for MuPdfEngineAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     /// Generates a minimal, specification-valid 2-page PDF with exact xref byte offsets and Info metadata.
     pub fn sample_two_page_pdf_bytes() -> Vec<u8> {
@@ -467,6 +486,26 @@ mod tests {
         assert_eq!(tile.height_px, 128);
         assert_eq!(tile.stride_bytes, 512);
         assert_eq!(tile.rgba_bytes.len(), 128 * 128 * 4);
+    }
+
+    #[test]
+    fn mupdf_adapter_extracts_embedded_page_labels_and_structured_text() {
+        let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/corpus/m0_3_navigation_and_search.pdf");
+        let bytes = std::fs::read(&fixture_path).expect("read M0.3 PDF fixture");
+        let adapter = MuPdfEngineAdapter::new();
+        let doc = adapter.open_pdf_bytes(&bytes).expect("open M0.3 PDF");
+
+        assert_eq!(doc.summary().page_count, 4);
+        assert_eq!(doc.page_label(0).expect("label 0").as_deref(), Some("i"));
+        assert_eq!(doc.page_label(1).expect("label 1").as_deref(), Some("ii"));
+        assert_eq!(doc.page_label(2).expect("label 2").as_deref(), Some("1"));
+        assert_eq!(doc.page_label(3).expect("label 3").as_deref(), Some("2"));
+
+        let page_1_text = doc.extract_page_text(1).expect("extract page 1 text");
+        assert_eq!(page_1_text.embedded_page_label.as_deref(), Some("ii"));
+        assert!(page_1_text.lines.len() >= 4);
+        assert!(page_1_text.lines.iter().any(|l| l.text.contains("trust-")));
     }
 
     #[test]

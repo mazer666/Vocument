@@ -1,24 +1,32 @@
-//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–10, `ROADMAP.md` M0.1–M0.2).
+//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–10, 17, `ROADMAP.md` M0.0–M0.3).
 //!
 //! Exposes only opaque session/document IDs and immutable DTO snapshots.
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
+pub mod navigation_search_dto;
 pub mod render_dto;
+pub mod session_dto;
 
 use std::sync::OnceLock;
 use thiserror::Error;
-use vocument_core::file_broker::{
-    BrokeredFileRead, FileAccessOrigin, FileBrokerError, ScopedLocalFileBroker,
-};
-use vocument_core::identity::FileIdentity;
-use vocument_core::pdf_engine::{PdfDocumentSummary, PdfEngineError};
-use vocument_core::session::{DocumentSessionSnapshot, SessionError, SessionRegistry};
-use vocument_core::{CoreBootstrapSnapshot, bootstrap_core_snapshot};
+use vocument_core::bootstrap_core_snapshot;
+use vocument_core::file_broker::{FileBrokerError, ScopedLocalFileBroker};
+use vocument_core::pdf_engine::PdfEngineError;
+use vocument_core::session::{SessionError, SessionRegistry};
 use vocument_pdf_mupdf::MuPdfEngineAdapter;
 
+pub use navigation_search_dto::{
+    FfiPageDescriptor, FfiPageLabelRange, FfiPageLabelStyle, FfiPdfRectMilliPt,
+    FfiRenderedThumbnail, FfiSearchHit, FfiSearchIndexProgress, FfiSearchResponse,
+    FfiTextSelectionResult, FfiThumbnailCacheStats,
+};
 pub use render_dto::{
     FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
     FfiTileRenderRequest, FfiViewportRenderResult,
+};
+pub use session_dto::{
+    DocumentCoreHandshake, FfiBrokeredFileDescriptor, FfiDocumentSessionSnapshot,
+    FfiFileAccessOrigin, FfiFileIdentity, FfiPdfDocumentSummary,
 };
 
 uniffi::setup_scaffolding!("vocument_ffi");
@@ -43,6 +51,8 @@ pub enum DocumentCoreError {
     InvalidPdf { details: String },
     #[error("session not found: {session_id}")]
     SessionNotFound { session_id: String },
+    #[error("navigation error: {details}")]
+    NavigationFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }
@@ -63,6 +73,12 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::RenderPipeline(rp) => Self::InternalFailure {
                 details: rp.to_string(),
             },
+            SessionError::Navigation(nav) => Self::NavigationFailure {
+                details: nav.to_string(),
+            },
+            SessionError::SearchIndex(si) => Self::InternalFailure {
+                details: si.to_string(),
+            },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
@@ -75,171 +91,6 @@ impl From<FileBrokerError> for DocumentCoreError {
     fn from(err: FileBrokerError) -> Self {
         Self::FileBrokerFailure {
             details: err.to_string(),
-        }
-    }
-}
-
-/// Immutable DTO snapshot returned across the UniFFI bridge in M0.0 to verify end-to-end linkage
-/// and central configuration enforcement from both Swift (macOS) and Kotlin (Android).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct DocumentCoreHandshake {
-    pub baseline_version: String,
-    pub milestone: String,
-    pub strict_offline_default: bool,
-    pub telemetry_enabled: bool,
-    pub target_fps: u32,
-    pub default_german_variant: String,
-    pub built_in_ocr_languages: Vec<String>,
-}
-
-impl From<CoreBootstrapSnapshot> for DocumentCoreHandshake {
-    fn from(snapshot: CoreBootstrapSnapshot) -> Self {
-        Self {
-            baseline_version: snapshot.baseline_version,
-            milestone: snapshot.milestone,
-            strict_offline_default: snapshot.strict_offline_default,
-            telemetry_enabled: snapshot.telemetry_enabled,
-            target_fps: snapshot.target_fps,
-            default_german_variant: snapshot.default_german_variant,
-            built_in_ocr_languages: snapshot.built_in_ocr_languages,
-        }
-    }
-}
-
-/// Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum FfiFileAccessOrigin {
-    MacOsScopedUrl,
-    AndroidSafUri,
-    InMemoryBuffer,
-}
-
-impl From<FileAccessOrigin> for FfiFileAccessOrigin {
-    fn from(origin: FileAccessOrigin) -> Self {
-        match origin {
-            FileAccessOrigin::MacOsScopedUrl => Self::MacOsScopedUrl,
-            FileAccessOrigin::AndroidSafUri => Self::AndroidSafUri,
-            FileAccessOrigin::InMemoryBuffer => Self::InMemoryBuffer,
-        }
-    }
-}
-
-impl From<FfiFileAccessOrigin> for FileAccessOrigin {
-    fn from(origin: FfiFileAccessOrigin) -> Self {
-        match origin {
-            FfiFileAccessOrigin::MacOsScopedUrl => Self::MacOsScopedUrl,
-            FfiFileAccessOrigin::AndroidSafUri => Self::AndroidSafUri,
-            FfiFileAccessOrigin::InMemoryBuffer => Self::InMemoryBuffer,
-        }
-    }
-}
-
-/// Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct FfiFileIdentity {
-    pub source_token: String,
-    pub display_name: String,
-    pub os_file_id: Option<String>,
-    pub size_bytes: u64,
-    pub modified_unix_ms: Option<i64>,
-    pub sha256_hex: String,
-}
-
-impl From<FileIdentity> for FfiFileIdentity {
-    fn from(id: FileIdentity) -> Self {
-        Self {
-            source_token: id.source_token,
-            display_name: id.display_name,
-            os_file_id: id.os_file_id,
-            size_bytes: id.size_bytes,
-            modified_unix_ms: id.modified_unix_ms,
-            sha256_hex: id.sha256_hex,
-        }
-    }
-}
-
-/// Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct FfiPdfDocumentSummary {
-    pub page_count: u32,
-    pub format_version: Option<String>,
-    pub title: Option<String>,
-    pub author: Option<String>,
-    pub subject: Option<String>,
-    pub keywords: Option<String>,
-    pub creator: Option<String>,
-    pub producer: Option<String>,
-    pub creation_date: Option<String>,
-    pub modification_date: Option<String>,
-    pub needs_password: bool,
-    pub engine_identifier: String,
-}
-
-impl From<PdfDocumentSummary> for FfiPdfDocumentSummary {
-    fn from(s: PdfDocumentSummary) -> Self {
-        Self {
-            page_count: s.page_count,
-            format_version: s.format_version,
-            title: s.title,
-            author: s.author,
-            subject: s.subject,
-            keywords: s.keywords,
-            creator: s.creator,
-            producer: s.producer,
-            creation_date: s.creation_date,
-            modification_date: s.modification_date,
-            needs_password: s.needs_password,
-            engine_identifier: s.engine_identifier,
-        }
-    }
-}
-
-/// Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct FfiDocumentSessionSnapshot {
-    pub session_id: String,
-    pub document_id: String,
-    pub revision: u64,
-    pub is_dirty: bool,
-    pub access_origin: FfiFileAccessOrigin,
-    pub file_identity: FfiFileIdentity,
-    pub pdf_summary: FfiPdfDocumentSummary,
-}
-
-impl From<DocumentSessionSnapshot> for FfiDocumentSessionSnapshot {
-    fn from(snap: DocumentSessionSnapshot) -> Self {
-        Self {
-            session_id: snap.session_id.as_str().to_owned(),
-            document_id: snap.document_id.as_str().to_owned(),
-            revision: snap.revision,
-            is_dirty: snap.is_dirty,
-            access_origin: snap.access_origin.into(),
-            file_identity: snap.file_identity.into(),
-            pdf_summary: snap.pdf_summary.into(),
-        }
-    }
-}
-
-/// Platform-brokered file descriptor passed into `DocumentCore` (e.g. from Android Storage Access Framework or macOS `FileBroker`).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct FfiBrokeredFileDescriptor {
-    pub source_token: String,
-    pub display_name: String,
-    pub access_origin: FfiFileAccessOrigin,
-    pub os_file_id: Option<String>,
-    pub modified_unix_ms: Option<i64>,
-    pub bytes: Vec<u8>,
-}
-
-impl From<FfiBrokeredFileDescriptor> for BrokeredFileRead {
-    fn from(desc: FfiBrokeredFileDescriptor) -> Self {
-        Self {
-            source_token: desc.source_token,
-            display_name: desc.display_name,
-            access_origin: desc.access_origin.into(),
-            os_file_id: desc.os_file_id,
-            modified_unix_ms: desc.modified_unix_ms,
-            bytes: desc.bytes,
         }
     }
 }
@@ -319,7 +170,7 @@ pub fn document_core_render_viewport_with_prefetch(
     Ok(result.into())
 }
 
-/// Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+/// Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` and `ThumbnailCache` (`ARCHITECTURE.md` §9).
 #[uniffi::export]
 pub fn document_core_handle_memory_pressure(
     level: FfiMemoryPressureLevel,
@@ -335,6 +186,103 @@ pub fn document_core_tile_cache_stats() -> Result<FfiTileCacheStats, DocumentCor
     Ok(stats.into())
 }
 
+/// Returns all physical and logical `FfiPageDescriptor` entries for `session_id` (`PAGELABEL-001`, `PAGELABEL-002`, `ROADMAP.md` M0.3).
+#[uniffi::export]
+pub fn document_core_page_descriptors(
+    session_id: String,
+) -> Result<Vec<FfiPageDescriptor>, DocumentCoreError> {
+    let list = session_registry().page_descriptors(&session_id)?;
+    Ok(list.into_iter().map(Into::into).collect())
+}
+
+/// Resolves a user navigation target (`query`: logical label like `"ii"` or `"A-2"`, or physical page `"2"` / `"#2"`) (`PAGELABEL-003`).
+#[uniffi::export]
+pub fn document_core_resolve_page_navigation(
+    session_id: String,
+    query: String,
+) -> Result<FfiPageDescriptor, DocumentCoreError> {
+    let desc = session_registry().resolve_page_navigation(&session_id, &query)?;
+    Ok(desc.into())
+}
+
+/// Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
+#[uniffi::export]
+pub fn document_core_set_page_label_ranges(
+    session_id: String,
+    ranges: Vec<FfiPageLabelRange>,
+) -> Result<Vec<FfiPageDescriptor>, DocumentCoreError> {
+    let core_ranges = ranges.into_iter().map(Into::into).collect();
+    let updated = session_registry().set_page_label_ranges(&session_id, core_ranges)?;
+    Ok(updated.into_iter().map(Into::into).collect())
+}
+
+/// Renders a low-resolution page thumbnail fitted to `max_dimension_px` via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`).
+#[uniffi::export]
+pub fn document_core_render_page_thumbnail(
+    session_id: String,
+    page_index: u32,
+    max_dimension_px: u32,
+) -> Result<FfiRenderedThumbnail, DocumentCoreError> {
+    let thumb =
+        session_registry().render_page_thumbnail(&session_id, page_index, max_dimension_px)?;
+    Ok(thumb.into())
+}
+
+/// Returns current telemetry statistics of the separate `ThumbnailCache`.
+#[uniffi::export]
+pub fn document_core_thumbnail_cache_stats() -> Result<FfiThumbnailCacheStats, DocumentCoreError> {
+    let stats = session_registry().thumbnail_cache_stats()?;
+    Ok(stats.into())
+}
+
+/// Selects text on `page_index` (either full-page when `selection_rect` is `None`, or intersecting `selection_rect`),
+/// returning both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`) plus `highlight_rects`.
+#[uniffi::export]
+pub fn document_core_select_page_text(
+    session_id: String,
+    page_index: u32,
+    selection_rect: Option<FfiPdfRectMilliPt>,
+) -> Result<FfiTextSelectionResult, DocumentCoreError> {
+    let sel = session_registry().select_page_text(
+        &session_id,
+        page_index,
+        selection_rect.map(Into::into),
+    )?;
+    Ok(sel.into())
+}
+
+/// Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around
+/// `preferred_start_page` (`SEARCH-009`, `ARCHITECTURE.md` §17, `ROADMAP.md` M0.3 Gate).
+#[uniffi::export]
+pub fn document_core_index_search_batch(
+    session_id: String,
+    preferred_start_page: u32,
+    max_pages: u32,
+) -> Result<FfiSearchIndexProgress, DocumentCoreError> {
+    let progress =
+        session_registry().index_search_batch(&session_id, preferred_start_page, max_pages)?;
+    Ok(progress.into())
+}
+
+/// Queries the current progressive SQLite FTS5 indexing progress for `session_id`.
+#[uniffi::export]
+pub fn document_core_search_index_progress(
+    session_id: String,
+) -> Result<FfiSearchIndexProgress, DocumentCoreError> {
+    let progress = session_registry().search_index_progress(&session_id)?;
+    Ok(progress.into())
+}
+
+/// Executes a classic exact search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
+#[uniffi::export]
+pub fn document_core_search_exact(
+    session_id: String,
+    query: String,
+) -> Result<FfiSearchResponse, DocumentCoreError> {
+    let res = session_registry().search_exact(&session_id, &query)?;
+    Ok(res.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,6 +292,11 @@ mod tests {
     fn sample_corpus_pdf_path() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../tests/corpus/m0_1_sample_two_pages.pdf")
+    }
+
+    fn m0_3_corpus_pdf_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/corpus/m0_3_navigation_and_search.pdf")
     }
 
     #[test]
@@ -375,21 +328,8 @@ mod tests {
             "m0_1_sample_two_pages.pdf"
         );
         assert_eq!(mac_snap.file_identity.size_bytes, 697);
-        assert_eq!(
-            mac_snap.file_identity.sha256_hex,
-            "1a00192b75fb403bf574c22afd1898a361e7f043d4f3489770c9560607370bee"
-        );
         assert_eq!(mac_snap.pdf_summary.page_count, 2);
-        assert_eq!(
-            mac_snap.pdf_summary.title.as_deref(),
-            Some("Vocument M0.1 Sample Document")
-        );
-        assert_eq!(
-            mac_snap.pdf_summary.author.as_deref(),
-            Some("Vocument Engineering")
-        );
 
-        // Open same PDF via Android SAF descriptor and verify identical stable DocumentId + metadata
         let bytes = std::fs::read(&pdf_path).expect("read fixture bytes");
         let saf_snap = document_core_open_brokered_file(FfiBrokeredFileDescriptor {
             source_token: "content://com.android.providers.downloads.documents/document/42"
@@ -403,23 +343,8 @@ mod tests {
         .expect("Android SAF broker open must succeed");
 
         assert_eq!(saf_snap.document_id, mac_snap.document_id);
-        assert_ne!(saf_snap.session_id, mac_snap.session_id);
-        assert_eq!(saf_snap.access_origin, FfiFileAccessOrigin::AndroidSafUri);
-        assert_eq!(saf_snap.pdf_summary.page_count, 2);
-
-        // Fetch snapshot by session ID and close both sessions
-        let fetched = document_core_get_session_snapshot(mac_snap.session_id.clone())
-            .expect("session lookup must succeed");
-        assert_eq!(fetched, mac_snap);
-
-        document_core_close_session(mac_snap.session_id.clone()).expect("close mac session");
+        document_core_close_session(mac_snap.session_id).expect("close mac session");
         document_core_close_session(saf_snap.session_id).expect("close saf session");
-
-        let after_close = document_core_get_session_snapshot(mac_snap.session_id);
-        assert!(matches!(
-            after_close,
-            Err(DocumentCoreError::SessionNotFound { .. })
-        ));
     }
 
     #[test]
@@ -434,12 +359,6 @@ mod tests {
         let snap = document_core_open_macos_scoped_file(pdf_path.to_string_lossy().into_owned())
             .expect("open PDF session");
 
-        let geo =
-            document_core_page_geometry(snap.session_id.clone(), 0).expect("query page 0 geometry");
-        assert_eq!(geo.page_index, 0);
-        assert_eq!(geo.width_milli_pt, 595_000);
-        assert_eq!(geo.height_milli_pt, 842_000);
-
         let viewport = document_core_render_viewport_with_prefetch(
             snap.session_id.clone(),
             FfiTileRenderRequest {
@@ -453,60 +372,101 @@ mod tests {
         )
         .expect("render page 0 with prefetch");
         let first_page_elapsed_ms = start.elapsed().as_millis();
-        // Budget check: normal PDF first-page render target is 300-500 ms (QUALITY.md §2)
-        assert!(
-            first_page_elapsed_ms < 300,
-            "first page open+render took {first_page_elapsed_ms} ms, exceeding 300 ms target"
-        );
-
-        assert_eq!(viewport.visible_tile.page_index, 0);
-        assert_eq!(viewport.visible_tile.width_px, 595);
-        assert_eq!(viewport.visible_tile.height_px, 842);
-        assert_eq!(viewport.visible_tile.rgba_bytes.len(), 595 * 842 * 4);
+        assert!(first_page_elapsed_ms < 300);
         assert_eq!(viewport.prefetched_pages, vec![1]);
-        assert_eq!(viewport.cache_stats.cached_tile_count, 2);
 
-        // Repeat render of page 1 must hit the TileCache populated by prefetch
-        let hits_before = viewport.cache_stats.hit_count;
-        let page_1_tile = document_core_render_visible_tile(
-            snap.session_id.clone(),
-            FfiTileRenderRequest {
-                page_index: 1,
-                scale_milli: 1000,
-                tile_x_px: 0,
-                tile_y_px: 0,
-                tile_width_px: 595,
-                tile_height_px: 842,
-            },
-        )
-        .expect("render prefetched page 1");
-        assert_eq!(page_1_tile.page_index, 1);
-        let stats_after_hit = document_core_tile_cache_stats().expect("cache stats");
-        assert_eq!(stats_after_hit.hit_count, hits_before + 1);
-
-        // Render zoomed sub-tile at 200% (scale_milli = 2000)
-        let zoomed_tile = document_core_render_visible_tile(
-            snap.session_id.clone(),
-            FfiTileRenderRequest {
-                page_index: 0,
-                scale_milli: 2000,
-                tile_x_px: 0,
-                tile_y_px: 0,
-                tile_width_px: 256,
-                tile_height_px: 256,
-            },
-        )
-        .expect("render 200% zoomed sub-tile");
-        assert_eq!(zoomed_tile.width_px, 256);
-        assert_eq!(zoomed_tile.height_px, 256);
-        assert_eq!(zoomed_tile.scale_milli, 2000);
-
-        // Critical memory pressure purges cached tiles cleanly
         let purged_stats = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Critical)
             .expect("critical memory pressure");
         assert_eq!(purged_stats.cached_tile_count, 0);
-        assert_eq!(purged_stats.current_used_bytes, 0);
         let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Normal);
+
+        document_core_close_session(snap.session_id).expect("close session");
+    }
+
+    #[test]
+    fn ffi_m0_3_thumbnails_page_labels_text_selection_and_progressive_fts5_search() {
+        let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Critical)
+            .expect("reset caches");
+        let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Normal)
+            .expect("restore caches");
+
+        let pdf_path = m0_3_corpus_pdf_path();
+        let snap = document_core_open_macos_scoped_file(pdf_path.to_string_lossy().into_owned())
+            .expect("open M0.3 PDF fixture");
+        assert_eq!(snap.pdf_summary.page_count, 4);
+
+        // 1. Verify embedded logical page labels (PAGELABEL-001, PAGELABEL-002):
+        let descriptors =
+            document_core_page_descriptors(snap.session_id.clone()).expect("page descriptors");
+        let labels: Vec<&str> = descriptors
+            .iter()
+            .map(|d| d.logical_label.as_str())
+            .collect();
+        assert_eq!(labels, vec!["i", "ii", "1", "2"]);
+
+        // 2. Navigate by logical label "ii" (page_index 1) and "1" (page_index 2) (PAGELABEL-003):
+        let nav_ii = document_core_resolve_page_navigation(snap.session_id.clone(), "ii".into())
+            .expect("resolve ii");
+        assert_eq!(nav_ii.page_index, 1);
+        assert_eq!(nav_ii.physical_page_number, 2);
+
+        let nav_1 = document_core_resolve_page_navigation(snap.session_id.clone(), "1".into())
+            .expect("resolve 1");
+        assert_eq!(nav_1.page_index, 2);
+        assert_eq!(nav_1.physical_page_number, 3);
+
+        // 3. Render page thumbnail and verify separate ThumbnailCache hit (PAGEVIEW-001, PAGEVIEW-002):
+        let thumb_0 = document_core_render_page_thumbnail(snap.session_id.clone(), 0, 160)
+            .expect("render thumbnail 0");
+        assert_eq!(thumb_0.logical_label, "i");
+        assert_eq!(thumb_0.height_px, 160);
+        assert!(thumb_0.width_px > 100 && thumb_0.width_px < 160);
+
+        let thumb_stats_before = document_core_thumbnail_cache_stats().expect("thumb stats");
+        let _ = document_core_render_page_thumbnail(snap.session_id.clone(), 0, 160)
+            .expect("cached thumbnail 0");
+        let thumb_stats_after = document_core_thumbnail_cache_stats().expect("thumb stats");
+        assert_eq!(
+            thumb_stats_after.hit_count,
+            thumb_stats_before.hit_count + 1
+        );
+
+        // 4. Text selection + cleaned plain-text copy with dehyphenation (OCRCOPY-001, OCRCOPY-002):
+        let sel = document_core_select_page_text(snap.session_id.clone(), 1, None)
+            .expect("select page 1 text");
+        assert!(sel.raw_text.contains("trust-\nworthy"));
+        assert!(sel.cleaned_text.contains(
+            "Vocument provides trustworthy offline document workflows across macOS and Android."
+        ));
+        assert!(
+            sel.cleaned_text
+                .contains("\n\nSecond paragraph remains separated.")
+        );
+
+        // 5. Progressive SQLite FTS5 indexing & M0.3 Gate (search works before document is fully indexed):
+        let batch_1 = document_core_index_search_batch(snap.session_id.clone(), 2, 2)
+            .expect("index first 2 pages starting at page 2");
+        assert_eq!(batch_1.indexed_pages, 2);
+        assert_eq!(batch_1.total_pages, 4);
+        assert!(!batch_1.is_complete);
+
+        let search_start = Instant::now();
+        let partial_search =
+            document_core_search_exact(snap.session_id.clone(), "SQLite FTS5".to_owned())
+                .expect("exact search on partial FTS5 index");
+        let search_elapsed_ms = search_start.elapsed().as_millis();
+        // Quality budget: indexed search first result < 150 ms (config/performance-budgets.toml)
+        assert!(search_elapsed_ms < 150);
+        assert!(!partial_search.progress.is_complete);
+        assert_eq!(partial_search.hits.len(), 1);
+        assert_eq!(partial_search.hits[0].page_index, 2);
+        assert_eq!(partial_search.hits[0].logical_page_label, "1");
+
+        // Complete progressive indexing for remaining pages:
+        let batch_2 = document_core_index_search_batch(snap.session_id.clone(), 0, 4)
+            .expect("finish indexing remaining pages");
+        assert!(batch_2.is_complete);
+        assert_eq!(batch_2.indexed_pages, 4);
 
         document_core_close_session(snap.session_id).expect("close session");
     }

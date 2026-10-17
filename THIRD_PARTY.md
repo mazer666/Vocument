@@ -20,8 +20,8 @@ Before adding any Cargo crate, Swift package, Gradle dependency, or C/C++ librar
 
 | Component | Role / Adapter Boundary | License | Status |
 |---|---|---|---|
-| **MuPDF** | Primary PDF rendering & editing behind `PdfEngine` | AGPL-3.0-or-later | Planned (M0) |
+| **MuPDF** | Primary PDF rendering, text & `/PageLabels` behind `PdfEngine` | AGPL-3.0-or-later | Active (`M0.1`–`M0.3`) |
 | **Tesseract** | Local OCR engine behind `OcrProvider` | Apache-2.0 | Planned (M1) |
-| **UniFFI** | Rust ↔ Swift/Kotlin bindings generator | MPL-2.0 | Planned (M0) |
-| **SQLite (with FTS5)** | `AppCatalog` bookkeeping & exact full-text search | Public Domain | Planned (M0) |
+| **UniFFI** | Rust ↔ Swift/Kotlin bindings generator | MPL-2.0 | Active (`M0.0`–`M0.3`) |
+| **SQLite (with FTS5) + `rusqlite 0.32`** | `AppCatalog` bookkeeping & progressive exact full-text search (`SessionSearchIndex`) | Public Domain / MIT | Active (`M0.3`) |
 | **Wasmtime** | Sandboxed community plugin runtime | Apache-2.0 WITH LLVM-exception | Planned (Later) |

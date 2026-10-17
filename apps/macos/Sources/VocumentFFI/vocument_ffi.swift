@@ -416,6 +416,22 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
     typealias FfiType = UInt64
     typealias SwiftType = UInt64
@@ -967,6 +983,176 @@ public func FfiConverterTypeFfiFileIdentity_lower(_ value: FfiFileIdentity) -> R
 
 
 /**
+ * Combined physical and logical identity of a page (`PAGELABEL-002`).
+ */
+public struct FfiPageDescriptor {
+    public var pageIndex: UInt32
+    public var physicalPageNumber: UInt32
+    public var logicalLabel: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, physicalPageNumber: UInt32, logicalLabel: String) {
+        self.pageIndex = pageIndex
+        self.physicalPageNumber = physicalPageNumber
+        self.logicalLabel = logicalLabel
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageDescriptor: Sendable {}
+#endif
+
+
+extension FfiPageDescriptor: Equatable, Hashable {
+    public static func ==(lhs: FfiPageDescriptor, rhs: FfiPageDescriptor) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.physicalPageNumber != rhs.physicalPageNumber {
+            return false
+        }
+        if lhs.logicalLabel != rhs.logicalLabel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(physicalPageNumber)
+        hasher.combine(logicalLabel)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageDescriptor: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageDescriptor {
+        return
+            try FfiPageDescriptor(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                physicalPageNumber: FfiConverterUInt32.read(from: &buf), 
+                logicalLabel: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageDescriptor, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.physicalPageNumber, into: &buf)
+        FfiConverterString.write(value.logicalLabel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageDescriptor_lift(_ buf: RustBuffer) throws -> FfiPageDescriptor {
+    return try FfiConverterTypeFfiPageDescriptor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageDescriptor_lower(_ value: FfiPageDescriptor) -> RustBuffer {
+    return FfiConverterTypeFfiPageDescriptor.lower(value)
+}
+
+
+/**
+ * Rule defining how logical page labels are formatted starting at `start_page_index` (`PAGELABEL-004`).
+ */
+public struct FfiPageLabelRange {
+    public var startPageIndex: UInt32
+    public var style: FfiPageLabelStyle
+    public var prefix: String
+    public var startNumber: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startPageIndex: UInt32, style: FfiPageLabelStyle, prefix: String, startNumber: UInt32) {
+        self.startPageIndex = startPageIndex
+        self.style = style
+        self.prefix = prefix
+        self.startNumber = startNumber
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageLabelRange: Sendable {}
+#endif
+
+
+extension FfiPageLabelRange: Equatable, Hashable {
+    public static func ==(lhs: FfiPageLabelRange, rhs: FfiPageLabelRange) -> Bool {
+        if lhs.startPageIndex != rhs.startPageIndex {
+            return false
+        }
+        if lhs.style != rhs.style {
+            return false
+        }
+        if lhs.prefix != rhs.prefix {
+            return false
+        }
+        if lhs.startNumber != rhs.startNumber {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(startPageIndex)
+        hasher.combine(style)
+        hasher.combine(prefix)
+        hasher.combine(startNumber)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageLabelRange: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageLabelRange {
+        return
+            try FfiPageLabelRange(
+                startPageIndex: FfiConverterUInt32.read(from: &buf), 
+                style: FfiConverterTypeFfiPageLabelStyle.read(from: &buf), 
+                prefix: FfiConverterString.read(from: &buf), 
+                startNumber: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageLabelRange, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.startPageIndex, into: &buf)
+        FfiConverterTypeFfiPageLabelStyle.write(value.style, into: &buf)
+        FfiConverterString.write(value.prefix, into: &buf)
+        FfiConverterUInt32.write(value.startNumber, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageLabelRange_lift(_ buf: RustBuffer) throws -> FfiPageLabelRange {
+    return try FfiConverterTypeFfiPageLabelRange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageLabelRange_lower(_ value: FfiPageLabelRange) -> RustBuffer {
+    return FfiConverterTypeFfiPageLabelRange.lower(value)
+}
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 public struct FfiPdfDocumentSummary {
@@ -1201,6 +1387,232 @@ public func FfiConverterTypeFfiPdfPageGeometry_lower(_ value: FfiPdfPageGeometry
 
 
 /**
+ * Axis-aligned rectangle on a PDF page in milli-points (`1/1000` pt).
+ */
+public struct FfiPdfRectMilliPt {
+    public var x0MilliPt: Int32
+    public var y0MilliPt: Int32
+    public var x1MilliPt: Int32
+    public var y1MilliPt: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(x0MilliPt: Int32, y0MilliPt: Int32, x1MilliPt: Int32, y1MilliPt: Int32) {
+        self.x0MilliPt = x0MilliPt
+        self.y0MilliPt = y0MilliPt
+        self.x1MilliPt = x1MilliPt
+        self.y1MilliPt = y1MilliPt
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfRectMilliPt: Sendable {}
+#endif
+
+
+extension FfiPdfRectMilliPt: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfRectMilliPt, rhs: FfiPdfRectMilliPt) -> Bool {
+        if lhs.x0MilliPt != rhs.x0MilliPt {
+            return false
+        }
+        if lhs.y0MilliPt != rhs.y0MilliPt {
+            return false
+        }
+        if lhs.x1MilliPt != rhs.x1MilliPt {
+            return false
+        }
+        if lhs.y1MilliPt != rhs.y1MilliPt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x0MilliPt)
+        hasher.combine(y0MilliPt)
+        hasher.combine(x1MilliPt)
+        hasher.combine(y1MilliPt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfRectMilliPt {
+        return
+            try FfiPdfRectMilliPt(
+                x0MilliPt: FfiConverterInt32.read(from: &buf), 
+                y0MilliPt: FfiConverterInt32.read(from: &buf), 
+                x1MilliPt: FfiConverterInt32.read(from: &buf), 
+                y1MilliPt: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfRectMilliPt, into buf: inout [UInt8]) {
+        FfiConverterInt32.write(value.x0MilliPt, into: &buf)
+        FfiConverterInt32.write(value.y0MilliPt, into: &buf)
+        FfiConverterInt32.write(value.x1MilliPt, into: &buf)
+        FfiConverterInt32.write(value.y1MilliPt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfRectMilliPt_lift(_ buf: RustBuffer) throws -> FfiPdfRectMilliPt {
+    return try FfiConverterTypeFfiPdfRectMilliPt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) -> RustBuffer {
+    return FfiConverterTypeFfiPdfRectMilliPt.lower(value)
+}
+
+
+/**
+ * Rendered RGBA8 page thumbnail DTO (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
+ */
+public struct FfiRenderedThumbnail {
+    public var documentId: String
+    public var revision: UInt64
+    public var pageIndex: UInt32
+    public var physicalPageNumber: UInt32
+    public var logicalLabel: String
+    public var maxDimensionPx: UInt32
+    public var widthPx: UInt32
+    public var heightPx: UInt32
+    public var strideBytes: UInt32
+    public var rgbaBytes: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(documentId: String, revision: UInt64, pageIndex: UInt32, physicalPageNumber: UInt32, logicalLabel: String, maxDimensionPx: UInt32, widthPx: UInt32, heightPx: UInt32, strideBytes: UInt32, rgbaBytes: Data) {
+        self.documentId = documentId
+        self.revision = revision
+        self.pageIndex = pageIndex
+        self.physicalPageNumber = physicalPageNumber
+        self.logicalLabel = logicalLabel
+        self.maxDimensionPx = maxDimensionPx
+        self.widthPx = widthPx
+        self.heightPx = heightPx
+        self.strideBytes = strideBytes
+        self.rgbaBytes = rgbaBytes
+    }
+}
+
+#if compiler(>=6)
+extension FfiRenderedThumbnail: Sendable {}
+#endif
+
+
+extension FfiRenderedThumbnail: Equatable, Hashable {
+    public static func ==(lhs: FfiRenderedThumbnail, rhs: FfiRenderedThumbnail) -> Bool {
+        if lhs.documentId != rhs.documentId {
+            return false
+        }
+        if lhs.revision != rhs.revision {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.physicalPageNumber != rhs.physicalPageNumber {
+            return false
+        }
+        if lhs.logicalLabel != rhs.logicalLabel {
+            return false
+        }
+        if lhs.maxDimensionPx != rhs.maxDimensionPx {
+            return false
+        }
+        if lhs.widthPx != rhs.widthPx {
+            return false
+        }
+        if lhs.heightPx != rhs.heightPx {
+            return false
+        }
+        if lhs.strideBytes != rhs.strideBytes {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(documentId)
+        hasher.combine(revision)
+        hasher.combine(pageIndex)
+        hasher.combine(physicalPageNumber)
+        hasher.combine(logicalLabel)
+        hasher.combine(maxDimensionPx)
+        hasher.combine(widthPx)
+        hasher.combine(heightPx)
+        hasher.combine(strideBytes)
+        hasher.combine(rgbaBytes)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRenderedThumbnail: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRenderedThumbnail {
+        return
+            try FfiRenderedThumbnail(
+                documentId: FfiConverterString.read(from: &buf), 
+                revision: FfiConverterUInt64.read(from: &buf), 
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                physicalPageNumber: FfiConverterUInt32.read(from: &buf), 
+                logicalLabel: FfiConverterString.read(from: &buf), 
+                maxDimensionPx: FfiConverterUInt32.read(from: &buf), 
+                widthPx: FfiConverterUInt32.read(from: &buf), 
+                heightPx: FfiConverterUInt32.read(from: &buf), 
+                strideBytes: FfiConverterUInt32.read(from: &buf), 
+                rgbaBytes: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRenderedThumbnail, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.documentId, into: &buf)
+        FfiConverterUInt64.write(value.revision, into: &buf)
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.physicalPageNumber, into: &buf)
+        FfiConverterString.write(value.logicalLabel, into: &buf)
+        FfiConverterUInt32.write(value.maxDimensionPx, into: &buf)
+        FfiConverterUInt32.write(value.widthPx, into: &buf)
+        FfiConverterUInt32.write(value.heightPx, into: &buf)
+        FfiConverterUInt32.write(value.strideBytes, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRenderedThumbnail_lift(_ buf: RustBuffer) throws -> FfiRenderedThumbnail {
+    return try FfiConverterTypeFfiRenderedThumbnail.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRenderedThumbnail_lower(_ value: FfiRenderedThumbnail) -> RustBuffer {
+    return FfiConverterTypeFfiRenderedThumbnail.lower(value)
+}
+
+
+/**
  * Immutable rendered RGBA8 tile bitmap DTO returned to Swift and Kotlin (`ARCHITECTURE.md` §10).
  */
 public struct FfiRenderedTile {
@@ -1334,6 +1746,483 @@ public func FfiConverterTypeFfiRenderedTile_lift(_ buf: RustBuffer) throws -> Ff
 #endif
 public func FfiConverterTypeFfiRenderedTile_lower(_ value: FfiRenderedTile) -> RustBuffer {
     return FfiConverterTypeFfiRenderedTile.lower(value)
+}
+
+
+/**
+ * A single page-level match returned by classic exact FTS5 search (`SEARCH-002`).
+ */
+public struct FfiSearchHit {
+    public var pageIndex: UInt32
+    public var physicalPageNumber: UInt32
+    public var logicalPageLabel: String
+    public var snippet: String
+    public var matchCount: UInt32
+    public var highlightRects: [FfiPdfRectMilliPt]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, physicalPageNumber: UInt32, logicalPageLabel: String, snippet: String, matchCount: UInt32, highlightRects: [FfiPdfRectMilliPt]) {
+        self.pageIndex = pageIndex
+        self.physicalPageNumber = physicalPageNumber
+        self.logicalPageLabel = logicalPageLabel
+        self.snippet = snippet
+        self.matchCount = matchCount
+        self.highlightRects = highlightRects
+    }
+}
+
+#if compiler(>=6)
+extension FfiSearchHit: Sendable {}
+#endif
+
+
+extension FfiSearchHit: Equatable, Hashable {
+    public static func ==(lhs: FfiSearchHit, rhs: FfiSearchHit) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.physicalPageNumber != rhs.physicalPageNumber {
+            return false
+        }
+        if lhs.logicalPageLabel != rhs.logicalPageLabel {
+            return false
+        }
+        if lhs.snippet != rhs.snippet {
+            return false
+        }
+        if lhs.matchCount != rhs.matchCount {
+            return false
+        }
+        if lhs.highlightRects != rhs.highlightRects {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(physicalPageNumber)
+        hasher.combine(logicalPageLabel)
+        hasher.combine(snippet)
+        hasher.combine(matchCount)
+        hasher.combine(highlightRects)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSearchHit: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSearchHit {
+        return
+            try FfiSearchHit(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                physicalPageNumber: FfiConverterUInt32.read(from: &buf), 
+                logicalPageLabel: FfiConverterString.read(from: &buf), 
+                snippet: FfiConverterString.read(from: &buf), 
+                matchCount: FfiConverterUInt32.read(from: &buf), 
+                highlightRects: FfiConverterSequenceTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSearchHit, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.physicalPageNumber, into: &buf)
+        FfiConverterString.write(value.logicalPageLabel, into: &buf)
+        FfiConverterString.write(value.snippet, into: &buf)
+        FfiConverterUInt32.write(value.matchCount, into: &buf)
+        FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.highlightRects, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchHit_lift(_ buf: RustBuffer) throws -> FfiSearchHit {
+    return try FfiConverterTypeFfiSearchHit.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchHit_lower(_ value: FfiSearchHit) -> RustBuffer {
+    return FfiConverterTypeFfiSearchHit.lower(value)
+}
+
+
+/**
+ * Progress snapshot of the progressive SQLite FTS5 index (`SEARCH-009`, `ROADMAP.md` M0.3 Gate).
+ */
+public struct FfiSearchIndexProgress {
+    public var indexedPages: UInt32
+    public var totalPages: UInt32
+    public var isComplete: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(indexedPages: UInt32, totalPages: UInt32, isComplete: Bool) {
+        self.indexedPages = indexedPages
+        self.totalPages = totalPages
+        self.isComplete = isComplete
+    }
+}
+
+#if compiler(>=6)
+extension FfiSearchIndexProgress: Sendable {}
+#endif
+
+
+extension FfiSearchIndexProgress: Equatable, Hashable {
+    public static func ==(lhs: FfiSearchIndexProgress, rhs: FfiSearchIndexProgress) -> Bool {
+        if lhs.indexedPages != rhs.indexedPages {
+            return false
+        }
+        if lhs.totalPages != rhs.totalPages {
+            return false
+        }
+        if lhs.isComplete != rhs.isComplete {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(indexedPages)
+        hasher.combine(totalPages)
+        hasher.combine(isComplete)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSearchIndexProgress: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSearchIndexProgress {
+        return
+            try FfiSearchIndexProgress(
+                indexedPages: FfiConverterUInt32.read(from: &buf), 
+                totalPages: FfiConverterUInt32.read(from: &buf), 
+                isComplete: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSearchIndexProgress, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.indexedPages, into: &buf)
+        FfiConverterUInt32.write(value.totalPages, into: &buf)
+        FfiConverterBool.write(value.isComplete, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchIndexProgress_lift(_ buf: RustBuffer) throws -> FfiSearchIndexProgress {
+    return try FfiConverterTypeFfiSearchIndexProgress.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchIndexProgress_lower(_ value: FfiSearchIndexProgress) -> RustBuffer {
+    return FfiConverterTypeFfiSearchIndexProgress.lower(value)
+}
+
+
+/**
+ * Complete response from an exact search query, including current progressive indexing status (`ROADMAP.md` M0.3 Gate).
+ */
+public struct FfiSearchResponse {
+    public var query: String
+    public var hits: [FfiSearchHit]
+    public var progress: FfiSearchIndexProgress
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(query: String, hits: [FfiSearchHit], progress: FfiSearchIndexProgress) {
+        self.query = query
+        self.hits = hits
+        self.progress = progress
+    }
+}
+
+#if compiler(>=6)
+extension FfiSearchResponse: Sendable {}
+#endif
+
+
+extension FfiSearchResponse: Equatable, Hashable {
+    public static func ==(lhs: FfiSearchResponse, rhs: FfiSearchResponse) -> Bool {
+        if lhs.query != rhs.query {
+            return false
+        }
+        if lhs.hits != rhs.hits {
+            return false
+        }
+        if lhs.progress != rhs.progress {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(query)
+        hasher.combine(hits)
+        hasher.combine(progress)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSearchResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSearchResponse {
+        return
+            try FfiSearchResponse(
+                query: FfiConverterString.read(from: &buf), 
+                hits: FfiConverterSequenceTypeFfiSearchHit.read(from: &buf), 
+                progress: FfiConverterTypeFfiSearchIndexProgress.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSearchResponse, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.query, into: &buf)
+        FfiConverterSequenceTypeFfiSearchHit.write(value.hits, into: &buf)
+        FfiConverterTypeFfiSearchIndexProgress.write(value.progress, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchResponse_lift(_ buf: RustBuffer) throws -> FfiSearchResponse {
+    return try FfiConverterTypeFfiSearchResponse.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSearchResponse_lower(_ value: FfiSearchResponse) -> RustBuffer {
+    return FfiConverterTypeFfiSearchResponse.lower(value)
+}
+
+
+/**
+ * Text selection result containing both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`).
+ */
+public struct FfiTextSelectionResult {
+    public var pageIndex: UInt32
+    public var rawText: String
+    public var cleanedText: String
+    public var highlightRects: [FfiPdfRectMilliPt]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, rawText: String, cleanedText: String, highlightRects: [FfiPdfRectMilliPt]) {
+        self.pageIndex = pageIndex
+        self.rawText = rawText
+        self.cleanedText = cleanedText
+        self.highlightRects = highlightRects
+    }
+}
+
+#if compiler(>=6)
+extension FfiTextSelectionResult: Sendable {}
+#endif
+
+
+extension FfiTextSelectionResult: Equatable, Hashable {
+    public static func ==(lhs: FfiTextSelectionResult, rhs: FfiTextSelectionResult) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.rawText != rhs.rawText {
+            return false
+        }
+        if lhs.cleanedText != rhs.cleanedText {
+            return false
+        }
+        if lhs.highlightRects != rhs.highlightRects {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(rawText)
+        hasher.combine(cleanedText)
+        hasher.combine(highlightRects)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTextSelectionResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTextSelectionResult {
+        return
+            try FfiTextSelectionResult(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                rawText: FfiConverterString.read(from: &buf), 
+                cleanedText: FfiConverterString.read(from: &buf), 
+                highlightRects: FfiConverterSequenceTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTextSelectionResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterString.write(value.rawText, into: &buf)
+        FfiConverterString.write(value.cleanedText, into: &buf)
+        FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.highlightRects, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTextSelectionResult_lift(_ buf: RustBuffer) throws -> FfiTextSelectionResult {
+    return try FfiConverterTypeFfiTextSelectionResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTextSelectionResult_lower(_ value: FfiTextSelectionResult) -> RustBuffer {
+    return FfiConverterTypeFfiTextSelectionResult.lower(value)
+}
+
+
+/**
+ * Telemetry snapshot of the separate `ThumbnailCache` (`ARCHITECTURE.md` §9).
+ */
+public struct FfiThumbnailCacheStats {
+    public var configuredMaxBytes: UInt64
+    public var effectiveMaxBytes: UInt64
+    public var currentUsedBytes: UInt64
+    public var cachedThumbnailCount: UInt32
+    public var hitCount: UInt64
+    public var missCount: UInt64
+    public var evictionCount: UInt64
+    public var pressureLevel: FfiMemoryPressureLevel
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(configuredMaxBytes: UInt64, effectiveMaxBytes: UInt64, currentUsedBytes: UInt64, cachedThumbnailCount: UInt32, hitCount: UInt64, missCount: UInt64, evictionCount: UInt64, pressureLevel: FfiMemoryPressureLevel) {
+        self.configuredMaxBytes = configuredMaxBytes
+        self.effectiveMaxBytes = effectiveMaxBytes
+        self.currentUsedBytes = currentUsedBytes
+        self.cachedThumbnailCount = cachedThumbnailCount
+        self.hitCount = hitCount
+        self.missCount = missCount
+        self.evictionCount = evictionCount
+        self.pressureLevel = pressureLevel
+    }
+}
+
+#if compiler(>=6)
+extension FfiThumbnailCacheStats: Sendable {}
+#endif
+
+
+extension FfiThumbnailCacheStats: Equatable, Hashable {
+    public static func ==(lhs: FfiThumbnailCacheStats, rhs: FfiThumbnailCacheStats) -> Bool {
+        if lhs.configuredMaxBytes != rhs.configuredMaxBytes {
+            return false
+        }
+        if lhs.effectiveMaxBytes != rhs.effectiveMaxBytes {
+            return false
+        }
+        if lhs.currentUsedBytes != rhs.currentUsedBytes {
+            return false
+        }
+        if lhs.cachedThumbnailCount != rhs.cachedThumbnailCount {
+            return false
+        }
+        if lhs.hitCount != rhs.hitCount {
+            return false
+        }
+        if lhs.missCount != rhs.missCount {
+            return false
+        }
+        if lhs.evictionCount != rhs.evictionCount {
+            return false
+        }
+        if lhs.pressureLevel != rhs.pressureLevel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(configuredMaxBytes)
+        hasher.combine(effectiveMaxBytes)
+        hasher.combine(currentUsedBytes)
+        hasher.combine(cachedThumbnailCount)
+        hasher.combine(hitCount)
+        hasher.combine(missCount)
+        hasher.combine(evictionCount)
+        hasher.combine(pressureLevel)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiThumbnailCacheStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiThumbnailCacheStats {
+        return
+            try FfiThumbnailCacheStats(
+                configuredMaxBytes: FfiConverterUInt64.read(from: &buf), 
+                effectiveMaxBytes: FfiConverterUInt64.read(from: &buf), 
+                currentUsedBytes: FfiConverterUInt64.read(from: &buf), 
+                cachedThumbnailCount: FfiConverterUInt32.read(from: &buf), 
+                hitCount: FfiConverterUInt64.read(from: &buf), 
+                missCount: FfiConverterUInt64.read(from: &buf), 
+                evictionCount: FfiConverterUInt64.read(from: &buf), 
+                pressureLevel: FfiConverterTypeFfiMemoryPressureLevel.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiThumbnailCacheStats, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.configuredMaxBytes, into: &buf)
+        FfiConverterUInt64.write(value.effectiveMaxBytes, into: &buf)
+        FfiConverterUInt64.write(value.currentUsedBytes, into: &buf)
+        FfiConverterUInt32.write(value.cachedThumbnailCount, into: &buf)
+        FfiConverterUInt64.write(value.hitCount, into: &buf)
+        FfiConverterUInt64.write(value.missCount, into: &buf)
+        FfiConverterUInt64.write(value.evictionCount, into: &buf)
+        FfiConverterTypeFfiMemoryPressureLevel.write(value.pressureLevel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiThumbnailCacheStats_lift(_ buf: RustBuffer) throws -> FfiThumbnailCacheStats {
+    return try FfiConverterTypeFfiThumbnailCacheStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiThumbnailCacheStats_lower(_ value: FfiThumbnailCacheStats) -> RustBuffer {
+    return FfiConverterTypeFfiThumbnailCacheStats.lower(value)
 }
 
 
@@ -1660,6 +2549,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case SessionNotFound(sessionId: String
     )
+    case NavigationFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -1691,7 +2582,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 5: return .SessionNotFound(
             sessionId: try FfiConverterString.read(from: &buf)
             )
-        case 6: return .InternalFailure(
+        case 6: return .NavigationFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 7: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -1730,8 +2624,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(sessionId, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(6))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(7))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -1928,6 +2827,107 @@ extension FfiMemoryPressureLevel: Equatable, Hashable {}
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Numbering style for a logical page-label range (`PAGELABEL-001`).
+ */
+
+public enum FfiPageLabelStyle {
+    
+    case decimalArabic
+    case romanLower
+    case romanUpper
+    case alphabeticLower
+    case alphabeticUpper
+    case prefixOnly
+}
+
+
+#if compiler(>=6)
+extension FfiPageLabelStyle: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageLabelStyle: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPageLabelStyle
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageLabelStyle {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .decimalArabic
+        
+        case 2: return .romanLower
+        
+        case 3: return .romanUpper
+        
+        case 4: return .alphabeticLower
+        
+        case 5: return .alphabeticUpper
+        
+        case 6: return .prefixOnly
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiPageLabelStyle, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .decimalArabic:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .romanLower:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .romanUpper:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .alphabeticLower:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .alphabeticUpper:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .prefixOnly:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageLabelStyle_lift(_ buf: RustBuffer) throws -> FfiPageLabelStyle {
+    return try FfiConverterTypeFfiPageLabelStyle.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageLabelStyle_lower(_ value: FfiPageLabelStyle) -> RustBuffer {
+    return FfiConverterTypeFfiPageLabelStyle.lower(value)
+}
+
+
+extension FfiPageLabelStyle: Equatable, Hashable {}
+
+
+
+
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1971,6 +2971,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPdfRectMilliPt?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiPdfRectMilliPt.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -2025,6 +3049,106 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPageDescriptor]
+
+    public static func write(_ value: [FfiPageDescriptor], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPageDescriptor.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPageDescriptor] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPageDescriptor]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPageDescriptor.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiPageLabelRange: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPageLabelRange]
+
+    public static func write(_ value: [FfiPageLabelRange], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPageLabelRange.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPageLabelRange] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPageLabelRange]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPageLabelRange.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPdfRectMilliPt]
+
+    public static func write(_ value: [FfiPdfRectMilliPt], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPdfRectMilliPt.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPdfRectMilliPt] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPdfRectMilliPt]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiSearchHit]
+
+    public static func write(_ value: [FfiSearchHit], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiSearchHit.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiSearchHit] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiSearchHit]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiSearchHit.read(from: &buf))
+        }
+        return seq
+    }
+}
 /**
  * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
  */
@@ -2045,7 +3169,7 @@ public func documentCoreGetSessionSnapshot(sessionId: String)throws  -> FfiDocum
 })
 }
 /**
- * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+ * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` and `ThumbnailCache` (`ARCHITECTURE.md` §9).
  */
 public func documentCoreHandleMemoryPressure(level: FfiMemoryPressureLevel)throws  -> FfiTileCacheStats  {
     return try  FfiConverterTypeFfiTileCacheStats_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -2060,6 +3184,19 @@ public func documentCoreHandleMemoryPressure(level: FfiMemoryPressureLevel)throw
 public func documentCoreHandshake()throws  -> DocumentCoreHandshake  {
     return try  FfiConverterTypeDocumentCoreHandshake_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_handshake($0
+    )
+})
+}
+/**
+ * Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around
+ * `preferred_start_page` (`SEARCH-009`, `ARCHITECTURE.md` §17, `ROADMAP.md` M0.3 Gate).
+ */
+public func documentCoreIndexSearchBatch(sessionId: String, preferredStartPage: UInt32, maxPages: UInt32)throws  -> FfiSearchIndexProgress  {
+    return try  FfiConverterTypeFfiSearchIndexProgress_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_index_search_batch(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(preferredStartPage),
+        FfiConverterUInt32.lower(maxPages),$0
     )
 })
 }
@@ -2084,6 +3221,16 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
 })
 }
 /**
+ * Returns all physical and logical `FfiPageDescriptor` entries for `session_id` (`PAGELABEL-001`, `PAGELABEL-002`, `ROADMAP.md` M0.3).
+ */
+public func documentCorePageDescriptors(sessionId: String)throws  -> [FfiPageDescriptor]  {
+    return try  FfiConverterSequenceTypeFfiPageDescriptor.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_descriptors(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
  * Queries the unscaled geometry (points and rotation) of `page_index` via `DocumentActor` (`ROADMAP.md` M0.2).
  */
 public func documentCorePageGeometry(sessionId: String, pageIndex: UInt32)throws  -> FfiPdfPageGeometry  {
@@ -2091,6 +3238,18 @@ public func documentCorePageGeometry(sessionId: String, pageIndex: UInt32)throws
     uniffi_vocument_ffi_fn_func_document_core_page_geometry(
         FfiConverterString.lower(sessionId),
         FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Renders a low-resolution page thumbnail fitted to `max_dimension_px` via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`).
+ */
+public func documentCoreRenderPageThumbnail(sessionId: String, pageIndex: UInt32, maxDimensionPx: UInt32)throws  -> FfiRenderedThumbnail  {
+    return try  FfiConverterTypeFfiRenderedThumbnail_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_render_page_thumbnail(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterUInt32.lower(maxDimensionPx),$0
     )
 })
 }
@@ -2113,6 +3272,71 @@ public func documentCoreRenderVisibleTile(sessionId: String, request: FfiTileRen
     uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
         FfiConverterString.lower(sessionId),
         FfiConverterTypeFfiTileRenderRequest_lower(request),$0
+    )
+})
+}
+/**
+ * Resolves a user navigation target (`query`: logical label like `"ii"` or `"A-2"`, or physical page `"2"` / `"#2"`) (`PAGELABEL-003`).
+ */
+public func documentCoreResolvePageNavigation(sessionId: String, query: String)throws  -> FfiPageDescriptor  {
+    return try  FfiConverterTypeFfiPageDescriptor_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(
+        FfiConverterString.lower(sessionId),
+        FfiConverterString.lower(query),$0
+    )
+})
+}
+/**
+ * Executes a classic exact search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
+ */
+public func documentCoreSearchExact(sessionId: String, query: String)throws  -> FfiSearchResponse  {
+    return try  FfiConverterTypeFfiSearchResponse_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_search_exact(
+        FfiConverterString.lower(sessionId),
+        FfiConverterString.lower(query),$0
+    )
+})
+}
+/**
+ * Queries the current progressive SQLite FTS5 indexing progress for `session_id`.
+ */
+public func documentCoreSearchIndexProgress(sessionId: String)throws  -> FfiSearchIndexProgress  {
+    return try  FfiConverterTypeFfiSearchIndexProgress_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_search_index_progress(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Selects text on `page_index` (either full-page when `selection_rect` is `None`, or intersecting `selection_rect`),
+ * returning both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`) plus `highlight_rects`.
+ */
+public func documentCoreSelectPageText(sessionId: String, pageIndex: UInt32, selectionRect: FfiPdfRectMilliPt?)throws  -> FfiTextSelectionResult  {
+    return try  FfiConverterTypeFfiTextSelectionResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_select_page_text(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterOptionTypeFfiPdfRectMilliPt.lower(selectionRect),$0
+    )
+})
+}
+/**
+ * Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
+ */
+public func documentCoreSetPageLabelRanges(sessionId: String, ranges: [FfiPageLabelRange])throws  -> [FfiPageDescriptor]  {
+    return try  FfiConverterSequenceTypeFfiPageDescriptor.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceTypeFfiPageLabelRange.lower(ranges),$0
+    )
+})
+}
+/**
+ * Returns current telemetry statistics of the separate `ThumbnailCache`.
+ */
+public func documentCoreThumbnailCacheStats()throws  -> FfiThumbnailCacheStats  {
+    return try  FfiConverterTypeFfiThumbnailCacheStats_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats($0
     )
 })
 }
@@ -2147,10 +3371,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 15904) {
+    if (uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 11251) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_index_search_batch() != 35695) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214) {
@@ -2159,13 +3386,37 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_descriptors() != 54455) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail() != 43380) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch() != 51535) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_search_index_progress() != 31512) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732) {

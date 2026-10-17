@@ -58,4 +58,36 @@ func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
     let _ = try client.handleMemoryPressure(level: .normal)
 
     try client.closeSession(sessionId: session.sessionId)
+
+    let m03URL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("tests/corpus/m0_3_navigation_and_search.pdf")
+    let m03Session = try client.openScopedDocument(at: m03URL)
+    let descriptors = try client.pageDescriptors(sessionId: m03Session.sessionId)
+    #expect(descriptors.map(\.logicalLabel) == ["i", "ii", "1", "2"])
+
+    let navTarget = try client.resolvePageNavigation(sessionId: m03Session.sessionId, query: "1")
+    #expect(navTarget.pageIndex == 2)
+
+    let thumb = try client.renderPageThumbnail(sessionId: m03Session.sessionId, pageIndex: 0, maxDimensionPx: 128)
+    #expect(thumb.heightPx == 128)
+    #expect(DocumentCoreClient.makeCGImage(from: thumb) != nil)
+
+    let selection = try client.selectPageText(sessionId: m03Session.sessionId, pageIndex: 1, selectionRect: nil)
+    #expect(selection.cleanedText.contains("trustworthy"))
+
+    let progress = try client.indexSearchBatch(sessionId: m03Session.sessionId, preferredStartPage: 2, maxPages: 1)
+    #expect(progress.indexedPages == 1)
+    #expect(progress.isComplete == false)
+
+    let searchResponse = try client.searchExact(sessionId: m03Session.sessionId, query: "SQLite FTS5")
+    #expect(searchResponse.progress.isComplete == false)
+    #expect(searchResponse.hits.count == 1)
+    #expect(searchResponse.hits[0].pageIndex == 2)
+
+    try client.closeSession(sessionId: m03Session.sessionId)
 }

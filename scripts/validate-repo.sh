@@ -42,12 +42,14 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.0-ACCEPTANCE.md"
   "docs/acceptance/M0.1-ACCEPTANCE.md"
   "docs/acceptance/M0.2-ACCEPTANCE.md"
+  "docs/acceptance/M0.3-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
   "docs/adr/ADR-0003-uniffi-binding-generation-and-bridge-verification.md"
   "docs/adr/ADR-0004-m0-1-filebroker-document-session-and-mupdf-adapter.md"
   "docs/adr/ADR-0005-m0-2-rendering-actor-tile-cache-and-canvas.md"
+  "docs/adr/ADR-0006-m0-3-navigation-thumbnails-selection-and-fts5-search.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
@@ -55,10 +57,13 @@ REQUIRED_FILES=(
   "scripts/verify-kotlin-handshake.sh"
   "apps/macos/Package.swift"
   "apps/macos/Sources/VocumentMacApp/DocumentCanvasView.swift"
+  "apps/macos/Sources/VocumentMacApp/NavigationAndSearchSidebarView.swift"
   "apps/android/app/build.gradle.kts"
   "apps/android/app/src/main/AndroidManifest.xml"
   "apps/android/app/src/main/java/org/vocument/app/DocumentCanvas.kt"
+  "apps/android/app/src/main/java/org/vocument/app/NavigationAndSearchPanel.kt"
   "tests/corpus/m0_1_sample_two_pages.pdf"
+  "tests/corpus/m0_3_navigation_and_search.pdf"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do

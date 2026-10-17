@@ -1,16 +1,24 @@
-//! `DocumentSession` and `SessionRegistry` (`ARCHITECTURE.md` §§6–9, `ROADMAP.md` M0.1–M0.2).
+//! `DocumentSession` and `SessionRegistry` (`ARCHITECTURE.md` §§6–10, 17, `ROADMAP.md` M0.1–M0.3).
 //!
 //! Each opened document receives an application-owned `DocumentSession` with stable
-//! `SessionId`, `DocumentId`, `FileIdentity`, revision token, and serialized `DocumentActor`.
+//! `SessionId`, `DocumentId`, `FileIdentity`, revision token, serialized `DocumentActor`,
+//! `PageLabelCatalog`, and progressive `SessionSearchIndex`.
 
 use crate::config::PerformanceBudgetsConfig;
 use crate::file_broker::{BrokeredFileRead, FileAccessOrigin, FileBroker, FileBrokerError};
 use crate::identity::{DocumentId, FileIdentity, FileIdentityComparison, SessionId};
-use crate::jobs::{JobManager, JobPriority};
+use crate::jobs::{JobKind, JobManager, JobPriority};
+use crate::navigation::{PageDescriptor, PageLabelCatalog, PageLabelRange, PageNavigationError};
 use crate::pdf_engine::{
-    PdfDocumentSummary, PdfEngine, PdfEngineError, PdfPageGeometry, PdfTileRenderRequest,
+    PdfDocumentSummary, PdfEngine, PdfEngineError, PdfPageGeometry, PdfRectMilliPt,
+    PdfTileRenderRequest,
 };
 use crate::render::{DocumentActor, RenderPipeline, RenderPipelineError, ViewportRenderResult};
+use crate::search_index::{
+    SearchIndexError, SearchIndexProgress, SearchResponse, SessionSearchIndex,
+};
+use crate::text_selection::{TextSelectionResult, select_all_page_text, select_page_text_in_rect};
+use crate::thumbnail_cache::{RenderedThumbnail, ThumbnailCacheStats};
 use crate::tile_cache::{MemoryPressureLevel, RenderedTile, TileCacheStats};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -26,6 +34,10 @@ pub enum SessionError {
     PdfEngine(#[from] PdfEngineError),
     #[error(transparent)]
     RenderPipeline(#[from] RenderPipelineError),
+    #[error(transparent)]
+    Navigation(#[from] PageNavigationError),
+    #[error(transparent)]
+    SearchIndex(#[from] SearchIndexError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
     #[error("session registry lock poisoned")]
@@ -44,7 +56,7 @@ pub struct DocumentSessionSnapshot {
     pub pdf_summary: PdfDocumentSummary,
 }
 
-/// Application-owned live state for one opened document (`ARCHITECTURE.md` §§6–7).
+/// Application-owned live state for one opened document (`ARCHITECTURE.md` §§6–7, 17).
 #[derive(Debug)]
 pub struct DocumentSession {
     session_id: SessionId,
@@ -55,6 +67,8 @@ pub struct DocumentSession {
     file_identity: FileIdentity,
     pdf_summary: PdfDocumentSummary,
     actor: Arc<DocumentActor>,
+    label_catalog: PageLabelCatalog,
+    search_index: SessionSearchIndex,
 }
 
 impl DocumentSession {
@@ -97,6 +111,10 @@ impl SessionRegistry {
             .as_ref()
             .map(|b| (b.rendering_cache.android_tile_cache_max_mb as usize) * 1024 * 1024)
             .unwrap_or(192 * 1024 * 1024);
+        let thumbnail_cache_bytes = budgets
+            .as_ref()
+            .map(|b| (b.rendering_cache.thumbnail_cache_max_mb as usize) * 1024 * 1024)
+            .unwrap_or(64 * 1024 * 1024);
         let prefetch_radius = budgets
             .as_ref()
             .map(|b| b.rendering_cache.nearby_page_prefetch_radius)
@@ -109,7 +127,11 @@ impl SessionRegistry {
         Self {
             pdf_engine,
             job_manager: JobManager::new(yield_bg),
-            render_pipeline: RenderPipeline::new(tile_cache_bytes, prefetch_radius),
+            render_pipeline: RenderPipeline::with_thumbnail_budget(
+                tile_cache_bytes,
+                thumbnail_cache_bytes,
+                prefetch_radius,
+            ),
             next_session_number: AtomicU64::new(1),
             sessions: Mutex::new(BTreeMap::new()),
         }
@@ -140,6 +162,14 @@ impl SessionRegistry {
         let document_id = file_identity.stable_document_id();
         let engine_document = self.pdf_engine.open_pdf_bytes(&brokered.bytes)?;
         let pdf_summary = engine_document.summary().clone();
+
+        let mut embedded_labels = Vec::with_capacity(pdf_summary.page_count as usize);
+        for page_idx in 0..pdf_summary.page_count {
+            embedded_labels.push(engine_document.page_label(page_idx).ok().flatten());
+        }
+
+        let label_catalog = PageLabelCatalog::new(pdf_summary.page_count, embedded_labels);
+        let search_index = SessionSearchIndex::new(pdf_summary.page_count)?;
         let actor = Arc::new(DocumentActor::new(engine_document));
 
         let counter = self.next_session_number.fetch_add(1, Ordering::Relaxed);
@@ -154,6 +184,8 @@ impl SessionRegistry {
             file_identity,
             pdf_summary,
             actor,
+            label_catalog,
+            search_index,
         };
 
         let snapshot = session.snapshot();
@@ -192,6 +224,59 @@ impl SessionRegistry {
         Ok(actor.page_geometry(page_index)?)
     }
 
+    /// Returns all `PageDescriptor` entries (`page_index`, `physical_page_number`, `logical_label`) for `session_id` (`PAGELABEL-002`).
+    pub fn page_descriptors(&self, session_id: &str) -> Result<Vec<PageDescriptor>, SessionError> {
+        let guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        Ok(session.label_catalog.all_descriptors())
+    }
+
+    /// Resolves a navigation target (`query`: logical label like `"ii"` or `"A-2"`, or physical page `"2"` / `"#2"`) (`PAGELABEL-003`).
+    pub fn resolve_page_navigation(
+        &self,
+        session_id: &str,
+        query: &str,
+    ) -> Result<PageDescriptor, SessionError> {
+        let guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        Ok(session.label_catalog.resolve_navigation_target(query)?)
+    }
+
+    /// Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
+    pub fn set_page_label_ranges(
+        &self,
+        session_id: &str,
+        ranges: Vec<PageLabelRange>,
+    ) -> Result<Vec<PageDescriptor>, SessionError> {
+        let mut guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get_mut(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        session.label_catalog.set_custom_ranges(ranges)?;
+        session.revision += 1;
+        session.is_dirty = true;
+        Ok(session.label_catalog.all_descriptors())
+    }
+
     /// Renders a visible tile at `VisiblePageRender` priority (serving from `TileCache` on hit).
     pub fn render_visible_tile(
         &self,
@@ -209,6 +294,50 @@ impl SessionRegistry {
             JobPriority::VisiblePageRender,
         )?;
         Ok(tile)
+    }
+
+    /// Renders a low-resolution page thumbnail via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
+    pub fn render_page_thumbnail(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        max_dimension_px: u32,
+    ) -> Result<RenderedThumbnail, SessionError> {
+        let (actor, document_id, revision, logical_label) = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            if page_index >= session.pdf_summary.page_count {
+                return Err(SessionError::PdfEngine(PdfEngineError::PageOutOfBounds {
+                    page_index,
+                    page_count: session.pdf_summary.page_count,
+                }));
+            }
+            (
+                session.actor(),
+                session.document_id.clone(),
+                session.revision,
+                session.label_catalog.label_for_page(page_index),
+            )
+        };
+
+        let thumb = self.render_pipeline.render_page_thumbnail(
+            &actor,
+            &self.job_manager,
+            session_id,
+            document_id.as_str(),
+            revision,
+            page_index,
+            logical_label,
+            max_dimension_px,
+        )?;
+        Ok(thumb)
     }
 
     /// Renders the requested visible viewport tile and prefetches neighbouring pages (`ROADMAP.md` M0.2).
@@ -229,8 +358,132 @@ impl SessionRegistry {
         Ok(result)
     }
 
-    /// Applies an OS memory-pressure level (`Normal`, `Warning`, `Critical`) to the shared tile cache
-    /// and active `DocumentActor` display-list caches (`ARCHITECTURE.md` §9).
+    /// Selects text on `page_index` (either full-page when `selection_rect` is `None`, or intersecting `selection_rect`),
+    /// returning both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`) plus `highlight_rects`.
+    pub fn select_page_text(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        selection_rect: Option<PdfRectMilliPt>,
+    ) -> Result<TextSelectionResult, SessionError> {
+        let actor = self.session_actor_and_meta(session_id)?.0;
+        let structured = actor.extract_page_text(page_index)?;
+        let selection = match selection_rect {
+            Some(rect) => select_page_text_in_rect(&structured, rect),
+            None => select_all_page_text(&structured),
+        };
+        Ok(selection)
+    }
+
+    /// Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around
+    /// `preferred_start_page` (`SEARCH-009`, `ARCHITECTURE.md` §17, `ROADMAP.md` M0.3 Gate).
+    pub fn index_search_batch(
+        &self,
+        session_id: &str,
+        preferred_start_page: u32,
+        max_pages: u32,
+    ) -> Result<SearchIndexProgress, SessionError> {
+        let (actor, revision, pages_to_index) = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            let batch = session
+                .search_index
+                .next_unindexed_pages(preferred_start_page, max_pages);
+            (session.actor(), session.revision, batch)
+        };
+
+        if pages_to_index.is_empty() {
+            return self.search_index_progress(session_id);
+        }
+
+        let job = self
+            .job_manager
+            .enqueue_job(
+                session_id,
+                revision,
+                JobKind::IndexSearch,
+                JobPriority::BackgroundOcrIndex,
+                false,
+            )
+            .map_err(|err| {
+                SessionError::RenderPipeline(RenderPipelineError::JobFailure {
+                    details: err.to_string(),
+                })
+            })?;
+        let _ = self.job_manager.mark_running(job.job_id);
+
+        let mut extracted_pages = Vec::with_capacity(pages_to_index.len());
+        for page_idx in pages_to_index {
+            extracted_pages.push(actor.extract_page_text(page_idx)?);
+        }
+
+        let progress = {
+            let mut guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session =
+                guard
+                    .get_mut(session_id)
+                    .ok_or_else(|| SessionError::SessionNotFound {
+                        session_id: session_id.to_owned(),
+                    })?;
+            for page_data in extracted_pages {
+                let _ = session.search_index.index_structured_page(page_data)?;
+            }
+            session.search_index.progress()
+        };
+
+        let _ = self.job_manager.mark_completed(job.job_id);
+        Ok(progress)
+    }
+
+    /// Queries the current progressive SQLite FTS5 indexing progress for `session_id`.
+    pub fn search_index_progress(
+        &self,
+        session_id: &str,
+    ) -> Result<SearchIndexProgress, SessionError> {
+        let guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        Ok(session.search_index.progress())
+    }
+
+    /// Runs a classic exact FTS5 search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
+    pub fn search_exact(
+        &self,
+        session_id: &str,
+        query: &str,
+    ) -> Result<SearchResponse, SessionError> {
+        let guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        Ok(session
+            .search_index
+            .search_exact(query, &session.label_catalog)?)
+    }
+
+    /// Applies an OS memory-pressure level (`Normal`, `Warning`, `Critical`) to the shared tile cache,
+    /// thumbnail cache, and active `DocumentActor` display-list caches (`ARCHITECTURE.md` §9).
     pub fn handle_memory_pressure(
         &self,
         level: MemoryPressureLevel,
@@ -253,6 +506,11 @@ impl SessionRegistry {
     /// Returns current `TileCacheStats`.
     pub fn tile_cache_stats(&self) -> Result<TileCacheStats, SessionError> {
         Ok(self.render_pipeline.cache_stats()?)
+    }
+
+    /// Returns current `ThumbnailCacheStats`.
+    pub fn thumbnail_cache_stats(&self) -> Result<ThumbnailCacheStats, SessionError> {
+        Ok(self.render_pipeline.thumbnail_cache_stats()?)
     }
 
     /// Closes an active `DocumentSession` and releases its underlying engine resources.

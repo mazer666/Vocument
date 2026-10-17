@@ -7,9 +7,13 @@ pub mod config;
 pub mod file_broker;
 pub mod identity;
 pub mod jobs;
+pub mod navigation;
 pub mod pdf_engine;
 pub mod render;
+pub mod search_index;
 pub mod session;
+pub mod text_selection;
+pub mod thumbnail_cache;
 pub mod tile_cache;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};

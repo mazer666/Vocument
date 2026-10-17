@@ -1,4 +1,4 @@
-//! Vocument-defined `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 18, `ROADMAP.md` M0.1–M0.2).
+//! Vocument-defined `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 17, 18, `ROADMAP.md` M0.1–M0.3).
 //!
 //! Initial production implementation uses MuPDF (`engines/pdf-mupdf`).
 //! No UI layer may reference MuPDF directly.
@@ -43,6 +43,50 @@ pub struct PdfPageGeometry {
     pub width_milli_pt: u32,
     /// Height in milli-points (e.g. A4 `842 pt` = `842_000`).
     pub height_milli_pt: u32,
+}
+
+/// Axis-aligned rectangle on a PDF page in milli-points (`1/1000` pt, origin at top-left of page).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfRectMilliPt {
+    pub x0_milli_pt: i32,
+    pub y0_milli_pt: i32,
+    pub x1_milli_pt: i32,
+    pub y1_milli_pt: i32,
+}
+
+impl PdfRectMilliPt {
+    /// Returns true if this rectangle intersects `other`.
+    pub fn intersects(&self, other: &Self) -> bool {
+        let a_min_x = self.x0_milli_pt.min(self.x1_milli_pt);
+        let a_max_x = self.x0_milli_pt.max(self.x1_milli_pt);
+        let a_min_y = self.y0_milli_pt.min(self.y1_milli_pt);
+        let a_max_y = self.y0_milli_pt.max(self.y1_milli_pt);
+
+        let b_min_x = other.x0_milli_pt.min(other.x1_milli_pt);
+        let b_max_x = other.x0_milli_pt.max(other.x1_milli_pt);
+        let b_min_y = other.y0_milli_pt.min(other.y1_milli_pt);
+        let b_max_y = other.y0_milli_pt.max(other.y1_milli_pt);
+
+        a_min_x <= b_max_x && a_max_x >= b_min_x && a_min_y <= b_max_y && a_max_y >= b_min_y
+    }
+}
+
+/// A single extracted text line on a PDF page with its bounding box and paragraph boundary flag (`ROADMAP.md` M0.3).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfTextLine {
+    pub bbox: PdfRectMilliPt,
+    pub text: String,
+    /// True if this line is the last line of its text block/paragraph.
+    pub ends_paragraph: bool,
+}
+
+/// Structured text and embedded page label extracted from a single PDF page (`ROADMAP.md` M0.3).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfPageStructuredText {
+    pub page_index: u32,
+    /// Embedded PDF logical page label (e.g. `"i"`, `"ii"`, `"1"`), if defined in `/PageLabels`.
+    pub embedded_page_label: Option<String>,
+    pub lines: Vec<PdfTextLine>,
 }
 
 /// Request to rasterize a rectangular tile of a page at a given zoom level (`ARCHITECTURE.md` §9).
@@ -97,6 +141,12 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
 
     /// Queries the point geometry of `page_index` (`0`-based).
     fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, PdfEngineError>;
+
+    /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).
+    fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError>;
+
+    /// Extracts structured text lines and bounding boxes for `page_index` (`0`-based) (`ROADMAP.md` M0.3).
+    fn extract_page_text(&self, page_index: u32) -> Result<PdfPageStructuredText, PdfEngineError>;
 
     /// Builds an immutable `PdfEngineDisplayList` for `page_index` (`0`-based).
     fn create_display_list(
