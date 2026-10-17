@@ -21,6 +21,13 @@ REQUIRED_FILES=(
   "THIRD_PARTY.md"
   "CHANGELOG.md"
   "VERSION"
+  "LICENSE"
+  "REUSE.toml"
+  "LICENSES/AGPL-3.0-or-later.txt"
+  "rust-toolchain.toml"
+  "deny.toml"
+  "Cargo.toml"
+  "Makefile"
   "project/project.yaml"
   "config/README.md"
   "config/app-defaults.toml"
@@ -33,7 +40,10 @@ REQUIRED_FILES=(
   "docs/features/FEATURE_TEMPLATE.md"
   "docs/acceptance/ACCEPTANCE_TEMPLATE.md"
   "docs/adr/ADR_TEMPLATE.md"
+  "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
+  "docs/adr/ADR-0002-central-configuration-sync.md"
   "docs/cr/CR_TEMPLATE.md"
+  "archive/baselines/0.1/MANIFEST.sha256"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -43,7 +53,7 @@ for f in "${REQUIRED_FILES[@]}"; do
   fi
 done
 
-echo "✓ All required baseline files exist."
+echo "✓ All required baseline, governance, and workspace files exist."
 
 # Verify GitHub Actions workflows never use GitHub-hosted runners
 if [[ -d ".github/workflows" ]]; then

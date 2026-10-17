@@ -1,0 +1,12 @@
+[package]
+name = "vocument-ocr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vocument-core = { path = "../../core/vocument-core" }
+
+[lints]
+workspace = true

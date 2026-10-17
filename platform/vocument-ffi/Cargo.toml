@@ -1,0 +1,15 @@
+[package]
+name = "vocument-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+vocument-core = { path = "../../core/vocument-core" }
+
+[lints]
+workspace = true

@@ -13,4 +13,9 @@ if [[ -f "Cargo.toml" ]]; then
   cargo test --workspace
 fi
 
+if [[ -f "apps/macos/Package.swift" ]] && command -v swift >/dev/null 2>&1; then
+  echo "==> Building macOS Swift package..."
+  swift build --package-path apps/macos
+fi
+
 echo "==> Local CI completed successfully."

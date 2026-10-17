@@ -1,0 +1,24 @@
+# Central Performance Budgets & Resource Limits (Baseline 0.1)
+# Used by JobManager, rendering caches, and QA benchmarks (QUALITY.md, PERF-001).
+
+[startup]
+app_start_target_ms = 1000
+app_start_max_ms = 1500
+first_page_render_target_ms = 300
+first_page_render_max_ms = 500
+
+[interaction]
+target_scroll_zoom_fps = 60
+indexed_search_first_result_target_ms = 150
+indexed_search_first_result_max_ms = 300
+
+[rendering_cache]
+macos_tile_cache_max_mb = 512
+android_tile_cache_max_mb = 192
+thumbnail_cache_max_mb = 128
+nearby_page_prefetch_radius = 2
+
+[jobs]
+max_concurrent_render_workers = 4
+max_concurrent_background_ocr_workers = 2
+yield_background_on_interaction = true
