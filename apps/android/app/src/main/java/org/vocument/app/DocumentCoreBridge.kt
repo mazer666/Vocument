@@ -11,6 +11,9 @@ import uniffi.vocument_ffi.FfiPageDescriptor
 import uniffi.vocument_ffi.FfiPageLabelRange
 import uniffi.vocument_ffi.FfiPdfPageGeometry
 import uniffi.vocument_ffi.FfiPdfRectMilliPt
+import uniffi.vocument_ffi.FfiRecoverableDocumentInfo
+import uniffi.vocument_ffi.FfiRecoveryAction
+import uniffi.vocument_ffi.FfiRecoveryActionResult
 import uniffi.vocument_ffi.FfiRenderedThumbnail
 import uniffi.vocument_ffi.FfiRenderedTile
 import uniffi.vocument_ffi.FfiSaveConflict
@@ -26,14 +29,17 @@ import uniffi.vocument_ffi.FfiTileRenderRequest
 import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
 import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
+import uniffi.vocument_ffi.documentCoreCheckDocumentRecovery
 import uniffi.vocument_ffi.documentCoreCheckExternalChanges
 import uniffi.vocument_ffi.documentCoreCloseSession
+import uniffi.vocument_ffi.documentCoreExecuteRecoveryAction
 import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
 import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
 import uniffi.vocument_ffi.documentCoreHandshake
 import uniffi.vocument_ffi.documentCoreIndexSearchBatch
+import uniffi.vocument_ffi.documentCoreMarkRecoveryCleanShutdown
 import uniffi.vocument_ffi.documentCoreOpenBrokeredFile
 import uniffi.vocument_ffi.documentCoreOpenMacosScopedFile
 import uniffi.vocument_ffi.documentCorePageDescriptors
@@ -52,6 +58,7 @@ import uniffi.vocument_ffi.documentCoreRotatePages
 import uniffi.vocument_ffi.documentCoreSaveSession
 import uniffi.vocument_ffi.documentCoreSaveSessionAs
 import uniffi.vocument_ffi.documentCoreSaveSessionCollisionFreeCopy
+import uniffi.vocument_ffi.documentCoreScanRecoverableDocuments
 import uniffi.vocument_ffi.documentCoreSearchExact
 import uniffi.vocument_ffi.documentCoreSearchIndexProgress
 import uniffi.vocument_ffi.documentCoreSelectPageText
@@ -360,6 +367,39 @@ class DocumentCoreBridge {
      */
     fun generateCollisionFreePath(basePath: String, suffix: String): String {
         return documentCoreGenerateCollisionFreePath(basePath, suffix)
+    }
+
+    /**
+     * Scans the recovery store and returns recoverable documents that experienced an unclean shutdown (`ROADMAP.md` M0.6).
+     */
+    fun scanRecoverableDocuments(): List<FfiRecoverableDocumentInfo> {
+        return documentCoreScanRecoverableDocuments()
+    }
+
+    /**
+     * Checks whether a specific document has a pending crash recovery container (`ROADMAP.md` M0.6).
+     */
+    fun checkDocumentRecovery(sourceToken: String): FfiRecoverableDocumentInfo? {
+        return documentCoreCheckDocumentRecovery(sourceToken)
+    }
+
+    /**
+     * Executes a recovery action (`RESTORE`, `PREVIEW`, `DISCARD`, `OPEN_AS_NEW`) on [documentId] (`RECOVERY-001`).
+     *
+     * **M0.6 Gate Invariant:** Disk file remains completely intact until explicit user save.
+     */
+    fun executeRecoveryAction(
+        documentId: String,
+        action: FfiRecoveryAction
+    ): FfiRecoveryActionResult {
+        return documentCoreExecuteRecoveryAction(documentId, action)
+    }
+
+    /**
+     * Marks a document's recovery container clean shutdown.
+     */
+    fun markRecoveryCleanShutdown(documentId: String) {
+        documentCoreMarkRecoveryCleanShutdown(documentId)
     }
 
     /**

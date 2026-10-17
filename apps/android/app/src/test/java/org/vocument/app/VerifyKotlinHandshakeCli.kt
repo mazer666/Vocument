@@ -3,6 +3,7 @@ package org.vocument.app
 import java.io.File
 import uniffi.vocument_ffi.FfiFileAccessOrigin
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
+import uniffi.vocument_ffi.FfiRecoveryAction
 import uniffi.vocument_ffi.FfiSaveConflictResolution
 import uniffi.vocument_ffi.FfiSaveOutcome
 import uniffi.vocument_ffi.FfiTileRenderRequest
@@ -461,5 +462,71 @@ fun main() {
         )
     } finally {
         m05TempDir.deleteRecursively()
+    }
+
+    // M0.6 verification: Recovery Container, Crash Detection, Restore Action, and Gate Invariant
+    val m06TempDir = File(System.getProperty("java.io.tmpdir"), "voc_kt_m06_${ProcessHandle.current().pid()}")
+    m06TempDir.mkdirs()
+    try {
+        val m06TestPdf = File(m06TempDir, "m06_rec_test.pdf")
+        val samplePdf = File("tests/corpus/m0_1_sample_two_pages.pdf")
+        val origBytes = samplePdf.readBytes()
+        m06TestPdf.writeBytes(origBytes)
+        val initialM06Bytes = m06TestPdf.readBytes()
+
+        val m06Session = bridge.openLocalDocument(m06TestPdf.absolutePath)
+        val docId = m06Session.documentId
+
+        // Mutate session:
+        bridge.rotatePages(m06Session.sessionId, listOf(0u), 90)
+
+        // Simulate crash: session dirty and active, check recovery before close/save
+        val recInfo = bridge.checkDocumentRecovery(m06TestPdf.absolutePath)
+        check(recInfo != null) {
+            "Expected recovery info to be detected for dirty unclosed document"
+        }
+        check(recInfo.documentId == docId) {
+            "Expected docId '$docId', got '${recInfo.documentId}'"
+        }
+        check(recInfo.uncommittedRevisions >= 1uL) {
+            "Expected uncommittedRevisions >= 1, got ${recInfo.uncommittedRevisions}"
+        }
+
+        // Scan all recoverable documents:
+        val allRec = bridge.scanRecoverableDocuments()
+        check(allRec.any { it.documentId == docId }) {
+            "Expected scanned recoverable documents to include '$docId'"
+        }
+
+        // M0.6 GATE VERIFICATION: Original disk file remains 100% byte-for-byte identical!
+        val diskDuringCrash = m06TestPdf.readBytes()
+        check(diskDuringCrash.contentEquals(initialM06Bytes)) {
+            "FATAL: M0.6 Gate breached! Original file was modified during crash or before user save."
+        }
+
+        // Execute Restore action:
+        val restoreResult = bridge.executeRecoveryAction(docId, FfiRecoveryAction.RESTORE)
+        check(restoreResult.action == FfiRecoveryAction.RESTORE) {
+            "Expected restore action result"
+        }
+        val restoredSnap = restoreResult.sessionSnapshot
+        check(restoredSnap != null) {
+            "Expected restored session snapshot"
+        }
+
+        // Verify disk file is STILL 100% untouched after Restore:
+        val diskAfterRestore = m06TestPdf.readBytes()
+        check(diskAfterRestore.contentEquals(initialM06Bytes)) {
+            "FATAL: M0.6 Gate breached! Original file was modified during recovery restore."
+        }
+
+        bridge.closeSession(m06Session.sessionId)
+        bridge.closeSession(restoredSnap.sessionId)
+        println(
+            "✓ Kotlin (Android M0.6) → RecoveryContainer → CrashDetection → " +
+                "RestoreAction → GateVerified(disk-untouched-until-save) verified"
+        )
+    } finally {
+        m06TempDir.deleteRecursively()
     }
 }

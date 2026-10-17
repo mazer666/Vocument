@@ -256,6 +256,33 @@ public struct DocumentCoreClient: Sendable {
         documentCoreGenerateCollisionFreePath(basePath: basePath, suffix: suffix)
     }
 
+    // MARK: - M0.6 Recovery APIs
+
+    /// Scans the recovery store and returns recoverable documents that experienced an unclean shutdown (`ROADMAP.md` M0.6).
+    public func scanRecoverableDocuments() throws -> [FfiRecoverableDocumentInfo] {
+        try documentCoreScanRecoverableDocuments()
+    }
+
+    /// Checks whether a specific document has a pending crash recovery container (`ROADMAP.md` M0.6).
+    public func checkDocumentRecovery(sourceToken: String) throws -> FfiRecoverableDocumentInfo? {
+        try documentCoreCheckDocumentRecovery(sourceToken: sourceToken)
+    }
+
+    /// Executes a recovery action (`.restore`, `.preview`, `.discard`, `.openAsNew`) on `documentId` (`RECOVERY-001`).
+    ///
+    /// **M0.6 Gate Invariant:** Disk file remains completely intact until explicit user save.
+    public func executeRecoveryAction(
+        documentId: String,
+        action: FfiRecoveryAction
+    ) throws -> FfiRecoveryActionResult {
+        try documentCoreExecuteRecoveryAction(documentId: documentId, action: action)
+    }
+
+    /// Marks a document's recovery container clean shutdown.
+    public func markRecoveryCleanShutdown(documentId: String) throws {
+        try documentCoreMarkRecoveryCleanShutdown(documentId: documentId)
+    }
+
     /// Converts an immutable `FfiRenderedTile` RGBA8 buffer into a native `CGImage` (`ARCHITECTURE.md` §10).
     public static func makeCGImage(from tile: FfiRenderedTile) -> CGImage? {
         makeCGImageFromRgba8(

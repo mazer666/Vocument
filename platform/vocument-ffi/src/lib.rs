@@ -5,6 +5,7 @@
 
 pub mod mutation_dto;
 pub mod navigation_search_dto;
+pub mod recovery_dto;
 pub mod render_dto;
 pub mod save_dto;
 pub mod session_dto;
@@ -29,6 +30,11 @@ pub use navigation_search_dto::{
     FfiPageDescriptor, FfiPageLabelRange, FfiPageLabelStyle, FfiPdfRectMilliPt,
     FfiRenderedThumbnail, FfiSearchHit, FfiSearchIndexProgress, FfiSearchResponse,
     FfiTextSelectionResult, FfiThumbnailCacheStats,
+};
+pub use recovery_dto::{
+    FfiRecoverableDocumentInfo, FfiRecoveryAction, FfiRecoveryActionResult,
+    document_core_check_document_recovery, document_core_execute_recovery_action,
+    document_core_mark_recovery_clean_shutdown, document_core_scan_recoverable_documents,
 };
 pub use render_dto::{
     FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
@@ -74,6 +80,8 @@ pub enum DocumentCoreError {
     TransactionFailure { details: String },
     #[error("save error: {details}")]
     SaveFailure { details: String },
+    #[error("recovery error: {details}")]
+    RecoveryFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }
@@ -106,10 +114,21 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::Save(save_err) => Self::SaveFailure {
                 details: save_err.to_string(),
             },
+            SessionError::Recovery(rec_err) => Self::RecoveryFailure {
+                details: rec_err.to_string(),
+            },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
             },
+        }
+    }
+}
+
+impl From<vocument_core::recovery::RecoveryError> for DocumentCoreError {
+    fn from(err: vocument_core::recovery::RecoveryError) -> Self {
+        Self::RecoveryFailure {
+            details: err.to_string(),
         }
     }
 }

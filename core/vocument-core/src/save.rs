@@ -293,14 +293,22 @@ impl SessionRegistry {
                 session_id: session_id.to_owned(),
             })?;
 
+        let doc_id = session.document_id.clone();
         let target_token = session.file_identity.source_token.clone();
-        SaveCoordinator::execute_safe_save(
+        let outcome = SaveCoordinator::execute_safe_save(
             session,
             self.file_broker.as_ref(),
             self.pdf_engine.as_ref(),
             &target_token,
             false,
-        )
+        )?;
+        if matches!(outcome, SaveResult::Success(_)) {
+            let _ = self
+                .recovery_store
+                .container_for(&doc_id)
+                .mark_clean_shutdown();
+        }
+        Ok(outcome)
     }
 
     /// 'Save As' of active `session_id` to `target_token` (`SAVE-002`).
@@ -319,13 +327,21 @@ impl SessionRegistry {
                 session_id: session_id.to_owned(),
             })?;
 
-        SaveCoordinator::execute_safe_save(
+        let doc_id = session.document_id.clone();
+        let outcome = SaveCoordinator::execute_safe_save(
             session,
             self.file_broker.as_ref(),
             self.pdf_engine.as_ref(),
             target_token,
             false,
-        )
+        )?;
+        if matches!(outcome, SaveResult::Success(_)) {
+            let _ = self
+                .recovery_store
+                .container_for(&doc_id)
+                .mark_clean_shutdown();
+        }
+        Ok(outcome)
     }
 
     /// Saves a collision-free safe copy of `session_id`, leaving original file untouched (`ARCHITECTURE.md` §16, `FILELOCK-004`).

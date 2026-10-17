@@ -71,6 +71,8 @@ impl SessionRegistry {
             .transaction_manager
             .execute_command(&actor, command)?;
         session.sync_from_transaction_manager();
+        drop(guard);
+        let _ = self.record_recovery_mutation(session_id);
         Ok(record)
     }
 
@@ -133,6 +135,8 @@ impl SessionRegistry {
         let actor = session.actor();
         let record = session.transaction_manager.undo(&actor)?;
         session.sync_from_transaction_manager();
+        drop(guard);
+        let _ = self.record_recovery_mutation(session_id);
         Ok(record)
     }
 
@@ -150,6 +154,8 @@ impl SessionRegistry {
         let actor = session.actor();
         let record = session.transaction_manager.redo(&actor)?;
         session.sync_from_transaction_manager();
+        drop(guard);
+        let _ = self.record_recovery_mutation(session_id);
         Ok(record)
     }
 

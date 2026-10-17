@@ -445,5 +445,63 @@ struct VocumentMacHandshakeCLI {
 
         try client.closeSession(sessionId: m05Session.sessionId)
         print("✓ Swift (macOS M0.5) → SafeSave → AtomicStaging → PostSaveValidation → ExternalConflictDetection → GateVerified(no-silent-overwrite) → CollisionFreeSafeCopy(\(safeCopySnap.savedRevision) rev) verified")
+
+        // M0.6 verification: Crash Recovery Container, Crash Detection, Restore / Preview / Discard / Open as New, and Gate Invariant
+        let m06TempDir = FileManager.default.temporaryDirectory.appendingPathComponent("voc_mac_m06_\(ProcessInfo.processInfo.processIdentifier)")
+        try FileManager.default.createDirectory(at: m06TempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: m06TempDir)
+        }
+        let m06TestPdf = m06TempDir.appendingPathComponent("m06_rec_test.pdf")
+        try origPdfBytes.write(to: m06TestPdf)
+        let initialM06Bytes = try Data(contentsOf: m06TestPdf)
+
+        let m06Session = try client.openScopedDocument(at: m06TestPdf)
+        let docId = m06Session.documentId
+
+        // Mutate session:
+        _ = try client.rotatePages(sessionId: m06Session.sessionId, pageIndices: [0], deltaDegrees: 90)
+
+        // Simulate crash: session is dirty and active, process crash simulated by inspecting recovery container before close/save
+        guard let recInfo = try client.checkDocumentRecovery(sourceToken: m06TestPdf.path) else {
+            fatalError("Expected recovery info to be detected for dirty unclosed document")
+        }
+        guard recInfo.documentId == docId else {
+            fatalError("Expected docId '\(docId)', got '\(recInfo.documentId)'")
+        }
+        guard recInfo.uncommittedRevisions >= 1 else {
+            fatalError("Expected uncommitted revisions >= 1, got \(recInfo.uncommittedRevisions)")
+        }
+
+        // Scan all recoverable documents:
+        let allRec = try client.scanRecoverableDocuments()
+        guard allRec.contains(where: { $0.documentId == docId }) else {
+            fatalError("Expected scanned recoverable documents to include '\(docId)'")
+        }
+
+        // M0.6 GATE VERIFICATION: Original disk file remains 100% byte-for-byte identical!
+        let diskDuringCrash = try Data(contentsOf: m06TestPdf)
+        guard diskDuringCrash == initialM06Bytes else {
+            fatalError("FATAL: M0.6 Gate breached! Original file was modified during crash or before user save.")
+        }
+
+        // Execute Restore action:
+        let restoreResult = try client.executeRecoveryAction(documentId: docId, action: .restore)
+        guard restoreResult.action == FfiRecoveryAction.restore else {
+            fatalError("Expected restore action result")
+        }
+        guard let restoredSnap = restoreResult.sessionSnapshot else {
+            fatalError("Expected restored session snapshot")
+        }
+
+        // Verify disk file is STILL 100% untouched after Restore:
+        let diskAfterRestore = try Data(contentsOf: m06TestPdf)
+        guard diskAfterRestore == initialM06Bytes else {
+            fatalError("FATAL: M0.6 Gate breached! Original file was modified during recovery restore.")
+        }
+
+        try client.closeSession(sessionId: m06Session.sessionId)
+        try client.closeSession(sessionId: restoredSnap.sessionId)
+        print("✓ Swift (macOS M0.6) → RecoveryContainer → CrashDetection → RestoreAction → GateVerified(disk-untouched-until-save) verified")
     }
 }

@@ -4,6 +4,17 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.6] - 2026-10-18
+
+### Added
+- Completed **M0.6 — Recovery** (`docs/acceptance/M0.6-ACCEPTANCE.md`, `ADR-0009`).
+- Implemented per-document crash recovery containers (`vocument_recovery/<document_id>/`) storing versioned `manifest.json`, `journal.json`, and `checkpoints/` with atomic writes and SHA-256 integrity verification (`core/vocument-core/src/recovery.rs`).
+- Integrated automatic mutation journaling with `session_mutations.rs` (`record_recovery_mutation`), capturing semantic operations and undo/redo without runtime overhead.
+- Implemented crash detection via active OS PID tracking and atomic `is_clean_shutdown` marker flag.
+- Implemented the 4-action recovery contract (`RecoveryAction` / `FfiRecoveryAction`: **Restore**, **Preview**, **Discard**, **Open as New**; `RECOVERY-001` Preset) and exposed it via UniFFI (`platform/vocument-ffi/src/recovery_dto.rs`).
+- Enforced the **M0.6 Gate Invariant** (*Original file on disk remains completely intact until explicit user save*), verified via sub-process destructive hard-kill test (`SIGKILL`), integration tests, and Swift/Kotlin handshakes.
+- Integrated native macOS UI sheets (`RecoveryPromptSheet` in `DocumentCanvasView.swift`, `VocumentMacApp.swift`) and Android bridge methods (`DocumentCoreBridge.kt`).
+
 ## [0.1.0-m0.5] - 2026-10-17
 
 ### Added

@@ -31,6 +31,7 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var currentPageHighlights: [FfiHighlightAnnotation] = []
     @Published var exportedJournalJsonPreview: String?
     @Published var activeConflict: FfiSaveConflict?
+    @Published var pendingRecovery: FfiRecoverableDocumentInfo?
     @Published var saveNotificationMessage: String?
     @Published var errorMessage: String?
 
@@ -63,7 +64,13 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         }
     }
 
-    func openDocument(at url: URL) {
+    func openDocument(at url: URL, bypassRecoveryCheck: Bool = false) {
+        if !bypassRecoveryCheck {
+            if let rec = try? coreClient.checkDocumentRecovery(sourceToken: url.path) {
+                pendingRecovery = rec
+                return
+            }
+        }
         do {
             if let existing = activeSession {
                 try? coreClient.closeSession(sessionId: existing.sessionId)
@@ -80,6 +87,37 @@ final class MacDocumentSessionCoordinator: ObservableObject {
             transactionHistory = try coreClient.transactionHistory(sessionId: session.sessionId)
             renderCurrentViewport()
             loadThumbnailsAndInitialSearchBatch(sessionId: session.sessionId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func executeRecovery(action: FfiRecoveryAction) {
+        guard let recovery = pendingRecovery else { return }
+        do {
+            let result = try coreClient.executeRecoveryAction(documentId: recovery.documentId, action: action)
+            pendingRecovery = nil
+            if let snap = result.sessionSnapshot {
+                if let existing = activeSession {
+                    try? coreClient.closeSession(sessionId: existing.sessionId)
+                }
+                activeSession = snap
+                currentPageIndex = 0
+                scaleMilli = 1000
+                thumbnailImages = [:]
+                searchHits = []
+                exportedJournalJsonPreview = nil
+                errorMessage = nil
+                pageDescriptors = (try? coreClient.pageDescriptors(sessionId: snap.sessionId)) ?? []
+                transactionHistory = try? coreClient.transactionHistory(sessionId: snap.sessionId)
+                renderCurrentViewport()
+                loadThumbnailsAndInitialSearchBatch(sessionId: snap.sessionId)
+                saveNotificationMessage = result.message
+            } else if action == .discard {
+                let url = URL(fileURLWithPath: recovery.sourceToken)
+                openDocument(at: url, bypassRecoveryCheck: true)
+                saveNotificationMessage = "Recovery discarded; opened original document from disk."
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

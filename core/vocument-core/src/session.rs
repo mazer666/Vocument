@@ -43,6 +43,8 @@ pub enum SessionError {
     Transaction(#[from] TransactionError),
     #[error(transparent)]
     Save(#[from] crate::save::SaveError),
+    #[error(transparent)]
+    Recovery(#[from] crate::recovery::RecoveryError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
     #[error("session registry lock poisoned")]
@@ -117,6 +119,7 @@ impl DocumentSession {
 pub struct SessionRegistry {
     pub(crate) pdf_engine: Box<dyn PdfEngine>,
     pub(crate) file_broker: Arc<dyn FileBroker>,
+    pub(crate) recovery_store: Arc<crate::recovery::RecoveryStore>,
     job_manager: JobManager,
     render_pipeline: RenderPipeline,
     next_session_number: AtomicU64,
@@ -132,32 +135,40 @@ impl SessionRegistry {
     }
 
     pub fn with_broker(pdf_engine: Box<dyn PdfEngine>, file_broker: Arc<dyn FileBroker>) -> Self {
-        let budgets = PerformanceBudgetsConfig::load_embedded().ok();
-        let tile_cache_bytes = budgets
+        Self::with_broker_and_recovery(
+            pdf_engine,
+            file_broker,
+            Arc::new(crate::recovery::RecoveryStore::default_app_store()),
+        )
+    }
+
+    pub fn with_broker_and_recovery(
+        pdf_engine: Box<dyn PdfEngine>,
+        file_broker: Arc<dyn FileBroker>,
+        recovery_store: Arc<crate::recovery::RecoveryStore>,
+    ) -> Self {
+        let b = PerformanceBudgetsConfig::load_embedded().ok();
+        let (tile_mb, thumb_mb, radius, yield_bg) = b
             .as_ref()
-            .map(|b| (b.rendering_cache.android_tile_cache_max_mb as usize) * 1024 * 1024)
-            .unwrap_or(192 * 1024 * 1024);
-        let thumbnail_cache_bytes = budgets
-            .as_ref()
-            .map(|b| (b.rendering_cache.thumbnail_cache_max_mb as usize) * 1024 * 1024)
-            .unwrap_or(64 * 1024 * 1024);
-        let prefetch_radius = budgets
-            .as_ref()
-            .map(|b| b.rendering_cache.nearby_page_prefetch_radius)
-            .unwrap_or(2);
-        let yield_bg = budgets
-            .as_ref()
-            .map(|b| b.jobs.yield_background_on_interaction)
-            .unwrap_or(true);
+            .map(|cfg| {
+                (
+                    cfg.rendering_cache.android_tile_cache_max_mb as usize,
+                    cfg.rendering_cache.thumbnail_cache_max_mb as usize,
+                    cfg.rendering_cache.nearby_page_prefetch_radius,
+                    cfg.jobs.yield_background_on_interaction,
+                )
+            })
+            .unwrap_or((192, 64, 2, true));
 
         Self {
             pdf_engine,
             file_broker,
+            recovery_store,
             job_manager: JobManager::new(yield_bg),
             render_pipeline: RenderPipeline::with_thumbnail_budget(
-                tile_cache_bytes,
-                thumbnail_cache_bytes,
-                prefetch_radius,
+                tile_mb * 1024 * 1024,
+                thumb_mb * 1024 * 1024,
+                radius,
             ),
             next_session_number: AtomicU64::new(1),
             sessions: Mutex::new(BTreeMap::new()),
@@ -170,6 +181,10 @@ impl SessionRegistry {
 
     pub fn pdf_engine(&self) -> &dyn PdfEngine {
         self.pdf_engine.as_ref()
+    }
+
+    pub fn recovery_store(&self) -> Arc<crate::recovery::RecoveryStore> {
+        Arc::clone(&self.recovery_store)
     }
 
     /// Opens a PDF through a `FileBroker` source token and registers a new `DocumentSession`.
@@ -234,11 +249,10 @@ impl SessionRegistry {
         Ok(snapshot)
     }
 
-    /// Retrieves an immutable snapshot of an existing `DocumentSession`.
-    pub fn session_snapshot(
-        &self,
-        session_id: &str,
-    ) -> Result<DocumentSessionSnapshot, SessionError> {
+    fn with_session<T, F>(&self, session_id: &str, f: F) -> Result<T, SessionError>
+    where
+        F: FnOnce(&DocumentSession) -> Result<T, SessionError>,
+    {
         let guard = self
             .sessions
             .lock()
@@ -248,7 +262,15 @@ impl SessionRegistry {
             .ok_or_else(|| SessionError::SessionNotFound {
                 session_id: session_id.to_owned(),
             })?;
-        Ok(session.snapshot())
+        f(session)
+    }
+
+    /// Retrieves an immutable snapshot of an existing `DocumentSession`.
+    pub fn session_snapshot(
+        &self,
+        session_id: &str,
+    ) -> Result<DocumentSessionSnapshot, SessionError> {
+        self.with_session(session_id, |s| Ok(s.snapshot()))
     }
 
     /// Queries the point geometry (`width_milli_pt`, `height_milli_pt`) of `page_index` for `session_id`.
@@ -263,16 +285,7 @@ impl SessionRegistry {
 
     /// Returns all `PageDescriptor` entries (`page_index`, `physical_page_number`, `logical_label`) for `session_id` (`PAGELABEL-002`).
     pub fn page_descriptors(&self, session_id: &str) -> Result<Vec<PageDescriptor>, SessionError> {
-        let guard = self
-            .sessions
-            .lock()
-            .map_err(|_| SessionError::RegistryPoisoned)?;
-        let session = guard
-            .get(session_id)
-            .ok_or_else(|| SessionError::SessionNotFound {
-                session_id: session_id.to_owned(),
-            })?;
-        Ok(session.label_catalog.all_descriptors())
+        self.with_session(session_id, |s| Ok(s.label_catalog.all_descriptors()))
     }
 
     /// Resolves a navigation target (`query`: logical label like `"ii"` or `"A-2"`, or physical page `"2"` / `"#2"`) (`PAGELABEL-003`).
@@ -281,16 +294,9 @@ impl SessionRegistry {
         session_id: &str,
         query: &str,
     ) -> Result<PageDescriptor, SessionError> {
-        let guard = self
-            .sessions
-            .lock()
-            .map_err(|_| SessionError::RegistryPoisoned)?;
-        let session = guard
-            .get(session_id)
-            .ok_or_else(|| SessionError::SessionNotFound {
-                session_id: session_id.to_owned(),
-            })?;
-        Ok(session.label_catalog.resolve_navigation_target(query)?)
+        self.with_session(session_id, |s| {
+            Ok(s.label_catalog.resolve_navigation_target(query)?)
+        })
     }
 
     /// Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
@@ -487,16 +493,7 @@ impl SessionRegistry {
         &self,
         session_id: &str,
     ) -> Result<SearchIndexProgress, SessionError> {
-        let guard = self
-            .sessions
-            .lock()
-            .map_err(|_| SessionError::RegistryPoisoned)?;
-        let session = guard
-            .get(session_id)
-            .ok_or_else(|| SessionError::SessionNotFound {
-                session_id: session_id.to_owned(),
-            })?;
-        Ok(session.search_index.progress())
+        self.with_session(session_id, |s| Ok(s.search_index.progress()))
     }
 
     /// Runs a classic exact FTS5 search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
@@ -505,18 +502,9 @@ impl SessionRegistry {
         session_id: &str,
         query: &str,
     ) -> Result<SearchResponse, SessionError> {
-        let guard = self
-            .sessions
-            .lock()
-            .map_err(|_| SessionError::RegistryPoisoned)?;
-        let session = guard
-            .get(session_id)
-            .ok_or_else(|| SessionError::SessionNotFound {
-                session_id: session_id.to_owned(),
-            })?;
-        Ok(session
-            .search_index
-            .search_exact(query, &session.label_catalog)?)
+        self.with_session(session_id, |s| {
+            Ok(s.search_index.search_exact(query, &s.label_catalog)?)
+        })
     }
 
     /// Applies an OS memory-pressure level (`Normal`, `Warning`, `Critical`) to the shared tile cache,
@@ -552,15 +540,21 @@ impl SessionRegistry {
 
     /// Closes an active `DocumentSession` and releases its underlying engine resources.
     pub fn close_session(&self, session_id: &str) -> Result<(), SessionError> {
-        let mut guard = self
-            .sessions
-            .lock()
-            .map_err(|_| SessionError::RegistryPoisoned)?;
-        if guard.remove(session_id).is_none() {
-            return Err(SessionError::SessionNotFound {
-                session_id: session_id.to_owned(),
-            });
-        }
+        let removed = {
+            let mut guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            guard
+                .remove(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?
+        };
+        let _ = self
+            .recovery_store
+            .container_for(&removed.document_id)
+            .mark_clean_shutdown();
         Ok(())
     }
 

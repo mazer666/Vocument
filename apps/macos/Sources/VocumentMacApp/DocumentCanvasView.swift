@@ -147,6 +147,9 @@ struct DocumentCanvasView: View {
         .sheet(item: $coordinator.activeConflict) { conflict in
             SaveConflictSheet(coordinator: coordinator, conflict: conflict)
         }
+        .sheet(item: $coordinator.pendingRecovery) { recovery in
+            RecoveryPromptSheet(coordinator: coordinator, recovery: recovery)
+        }
     }
 }
 
@@ -218,3 +221,77 @@ struct SaveConflictSheet: View {
 extension FfiSaveConflict: Identifiable {
     public var id: String { "\(sessionId)-\(targetToken)-\(observedExternalIdentity.sha256Hex)" }
 }
+
+/// Crash recovery dialog offering Restore, Preview, Discard, or Open as New (`ROADMAP.md` M0.6, `RECOVERY-001` Preset).
+struct RecoveryPromptSheet: View {
+    @ObservedObject var coordinator: MacDocumentSessionCoordinator
+    let recovery: FfiRecoverableDocumentInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Unsaved Changes Recovered")
+                        .font(.headline)
+                    Text("Vocument detected uncommitted edits after an unexpected shutdown.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Document:").font(.caption).bold()
+                Text(recovery.displayName).font(.caption).foregroundStyle(.primary)
+
+                Text("Location:").font(.caption).bold()
+                Text(recovery.sourceToken).font(.caption).foregroundStyle(.secondary)
+
+                Text("Uncommitted Revisions:").font(.caption).bold()
+                Text("\(recovery.uncommittedRevisions)").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(6)
+
+            Text("Original file on disk remains completely intact until you explicitly save.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            VStack(spacing: 8) {
+                Button("Restore Unsaved Changes (Recommended)") {
+                    coordinator.executeRecovery(action: .restore)
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+
+                Button("Preview Recovered Version") {
+                    coordinator.executeRecovery(action: .preview)
+                }
+                .frame(maxWidth: .infinity)
+
+                Button("Open Recovered Version as New Document") {
+                    coordinator.executeRecovery(action: .openAsNew)
+                }
+                .frame(maxWidth: .infinity)
+
+                Button("Discard Recovery & Open Original") {
+                    coordinator.executeRecovery(action: .discard)
+                }
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+    }
+}
+
+extension FfiRecoverableDocumentInfo: Identifiable {
+    public var id: String { documentId }
+}
+

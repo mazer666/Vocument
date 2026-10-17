@@ -45,6 +45,7 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.3-ACCEPTANCE.md"
   "docs/acceptance/M0.4-ACCEPTANCE.md"
   "docs/acceptance/M0.5-ACCEPTANCE.md"
+  "docs/acceptance/M0.6-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -54,9 +55,11 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0006-m0-3-navigation-thumbnails-selection-and-fts5-search.md"
   "docs/adr/ADR-0007-m0-4-transaction-manager-mutations-undo-redo-and-journal.md"
   "docs/adr/ADR-0008-m0-5-safe-save-atomic-staging-validation-and-conflict-handling.md"
+  "docs/adr/ADR-0009-m0-6-crash-recovery-containers-and-restore-actions.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
+  "platform/vocument-ffi/src/recovery_dto.rs"
   "scripts/generate-bindings.sh"
   "scripts/verify-kotlin-handshake.sh"
   "apps/macos/Package.swift"
@@ -133,5 +136,12 @@ if ! grep -q "gate_never_silently_overwrites_externally_changed_content" core/vo
   exit 1
 fi
 echo "✓ M0.5 Gate verified: Never silently overwrite externally changed content."
+
+# Enforce M0.6 Gate: Original file remains completely intact until explicit save (Hard-kill recovery verified)
+if ! grep -q "test_hard_kill_recovery_with_subprocess_sigkill" core/vocument-core/tests/recovery_tests.rs; then
+  echo "ERROR (M0.6 Gate): M0.6 destructive hard-kill test 'test_hard_kill_recovery_with_subprocess_sigkill' missing!" >&2
+  exit 1
+fi
+echo "✓ M0.6 Gate verified: Original file remains intact through hard-kill crash recovery until explicit save."
 
 echo "==> Repository validation passed."

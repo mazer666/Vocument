@@ -60,4 +60,4 @@ Specific technical challenges:
 
 - **Positive:** Impossible for incomplete saves, mid-write crashes, or external file modifications to corrupt original documents or silently overwrite external user edits.
 - **Positive:** Both macOS SwiftUI and Android Kotlin have native UI and handshake coverage verifying the M0.5 gate.
-- **Next Step:** Advance to **M0.6 — Forms & Annotations Foundations** (interactive forms, text fields, checkboxes, sticky notes).
+- **Next Step:** Advance to **M0.6 — Recovery** (per-document recovery container, periodic checkpoints, crash detection, Restore/Preview/Discard/Open as New).

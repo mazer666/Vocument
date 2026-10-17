@@ -1718,6 +1718,232 @@ public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) 
 
 
 /**
+ * Information about a recoverable document detected after an unclean shutdown (`ROADMAP.md` M0.6).
+ */
+public struct FfiRecoverableDocumentInfo {
+    public var documentId: String
+    public var sourceToken: String
+    public var displayName: String
+    public var uncommittedRevisions: UInt64
+    public var lastUpdatedUnixMs: UInt64
+    public var hasCheckpoint: Bool
+    public var hasJournal: Bool
+    public var originalFileExists: Bool
+    public var originalModifiedExternally: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(documentId: String, sourceToken: String, displayName: String, uncommittedRevisions: UInt64, lastUpdatedUnixMs: UInt64, hasCheckpoint: Bool, hasJournal: Bool, originalFileExists: Bool, originalModifiedExternally: Bool) {
+        self.documentId = documentId
+        self.sourceToken = sourceToken
+        self.displayName = displayName
+        self.uncommittedRevisions = uncommittedRevisions
+        self.lastUpdatedUnixMs = lastUpdatedUnixMs
+        self.hasCheckpoint = hasCheckpoint
+        self.hasJournal = hasJournal
+        self.originalFileExists = originalFileExists
+        self.originalModifiedExternally = originalModifiedExternally
+    }
+}
+
+#if compiler(>=6)
+extension FfiRecoverableDocumentInfo: Sendable {}
+#endif
+
+
+extension FfiRecoverableDocumentInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiRecoverableDocumentInfo, rhs: FfiRecoverableDocumentInfo) -> Bool {
+        if lhs.documentId != rhs.documentId {
+            return false
+        }
+        if lhs.sourceToken != rhs.sourceToken {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.uncommittedRevisions != rhs.uncommittedRevisions {
+            return false
+        }
+        if lhs.lastUpdatedUnixMs != rhs.lastUpdatedUnixMs {
+            return false
+        }
+        if lhs.hasCheckpoint != rhs.hasCheckpoint {
+            return false
+        }
+        if lhs.hasJournal != rhs.hasJournal {
+            return false
+        }
+        if lhs.originalFileExists != rhs.originalFileExists {
+            return false
+        }
+        if lhs.originalModifiedExternally != rhs.originalModifiedExternally {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(documentId)
+        hasher.combine(sourceToken)
+        hasher.combine(displayName)
+        hasher.combine(uncommittedRevisions)
+        hasher.combine(lastUpdatedUnixMs)
+        hasher.combine(hasCheckpoint)
+        hasher.combine(hasJournal)
+        hasher.combine(originalFileExists)
+        hasher.combine(originalModifiedExternally)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRecoverableDocumentInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRecoverableDocumentInfo {
+        return
+            try FfiRecoverableDocumentInfo(
+                documentId: FfiConverterString.read(from: &buf), 
+                sourceToken: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                uncommittedRevisions: FfiConverterUInt64.read(from: &buf), 
+                lastUpdatedUnixMs: FfiConverterUInt64.read(from: &buf), 
+                hasCheckpoint: FfiConverterBool.read(from: &buf), 
+                hasJournal: FfiConverterBool.read(from: &buf), 
+                originalFileExists: FfiConverterBool.read(from: &buf), 
+                originalModifiedExternally: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRecoverableDocumentInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.documentId, into: &buf)
+        FfiConverterString.write(value.sourceToken, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterUInt64.write(value.uncommittedRevisions, into: &buf)
+        FfiConverterUInt64.write(value.lastUpdatedUnixMs, into: &buf)
+        FfiConverterBool.write(value.hasCheckpoint, into: &buf)
+        FfiConverterBool.write(value.hasJournal, into: &buf)
+        FfiConverterBool.write(value.originalFileExists, into: &buf)
+        FfiConverterBool.write(value.originalModifiedExternally, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoverableDocumentInfo_lift(_ buf: RustBuffer) throws -> FfiRecoverableDocumentInfo {
+    return try FfiConverterTypeFfiRecoverableDocumentInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoverableDocumentInfo_lower(_ value: FfiRecoverableDocumentInfo) -> RustBuffer {
+    return FfiConverterTypeFfiRecoverableDocumentInfo.lower(value)
+}
+
+
+/**
+ * Outcome of executing a recovery action crossing UniFFI (`ROADMAP.md` M0.6).
+ */
+public struct FfiRecoveryActionResult {
+    public var documentId: String
+    public var action: FfiRecoveryAction
+    public var sessionSnapshot: FfiDocumentSessionSnapshot?
+    public var targetToken: String?
+    public var message: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(documentId: String, action: FfiRecoveryAction, sessionSnapshot: FfiDocumentSessionSnapshot?, targetToken: String?, message: String) {
+        self.documentId = documentId
+        self.action = action
+        self.sessionSnapshot = sessionSnapshot
+        self.targetToken = targetToken
+        self.message = message
+    }
+}
+
+#if compiler(>=6)
+extension FfiRecoveryActionResult: Sendable {}
+#endif
+
+
+extension FfiRecoveryActionResult: Equatable, Hashable {
+    public static func ==(lhs: FfiRecoveryActionResult, rhs: FfiRecoveryActionResult) -> Bool {
+        if lhs.documentId != rhs.documentId {
+            return false
+        }
+        if lhs.action != rhs.action {
+            return false
+        }
+        if lhs.sessionSnapshot != rhs.sessionSnapshot {
+            return false
+        }
+        if lhs.targetToken != rhs.targetToken {
+            return false
+        }
+        if lhs.message != rhs.message {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(documentId)
+        hasher.combine(action)
+        hasher.combine(sessionSnapshot)
+        hasher.combine(targetToken)
+        hasher.combine(message)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRecoveryActionResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRecoveryActionResult {
+        return
+            try FfiRecoveryActionResult(
+                documentId: FfiConverterString.read(from: &buf), 
+                action: FfiConverterTypeFfiRecoveryAction.read(from: &buf), 
+                sessionSnapshot: FfiConverterOptionTypeFfiDocumentSessionSnapshot.read(from: &buf), 
+                targetToken: FfiConverterOptionString.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRecoveryActionResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.documentId, into: &buf)
+        FfiConverterTypeFfiRecoveryAction.write(value.action, into: &buf)
+        FfiConverterOptionTypeFfiDocumentSessionSnapshot.write(value.sessionSnapshot, into: &buf)
+        FfiConverterOptionString.write(value.targetToken, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryActionResult_lift(_ buf: RustBuffer) throws -> FfiRecoveryActionResult {
+    return try FfiConverterTypeFfiRecoveryActionResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryActionResult_lower(_ value: FfiRecoveryActionResult) -> RustBuffer {
+    return FfiConverterTypeFfiRecoveryActionResult.lower(value)
+}
+
+
+/**
  * Rendered RGBA8 page thumbnail DTO (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
  */
 public struct FfiRenderedThumbnail {
@@ -3289,6 +3515,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case SaveFailure(details: String
     )
+    case RecoveryFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -3329,7 +3557,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 8: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .InternalFailure(
+        case 9: return .RecoveryFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 10: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -3383,8 +3614,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(9))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -3685,6 +3921,105 @@ extension FfiPageLabelStyle: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Recovery action choices crossing the UniFFI boundary (`ROADMAP.md` M0.6, `RECOVERY-001` Preset).
+ */
+
+public enum FfiRecoveryAction {
+    
+    /**
+     * Restores journal and checkpoints into active session; disk file remains untouched until explicit save.
+     */
+    case restore
+    /**
+     * Opens read-only preview session of uncommitted recovered state.
+     */
+    case preview
+    /**
+     * Discards recovery container; leaves disk file intact.
+     */
+    case discard
+    /**
+     * Opens recovered state as an unsaved new document; leaves original disk file intact.
+     */
+    case openAsNew
+}
+
+
+#if compiler(>=6)
+extension FfiRecoveryAction: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRecoveryAction: FfiConverterRustBuffer {
+    typealias SwiftType = FfiRecoveryAction
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRecoveryAction {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .restore
+        
+        case 2: return .preview
+        
+        case 3: return .discard
+        
+        case 4: return .openAsNew
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiRecoveryAction, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .restore:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .preview:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .discard:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .openAsNew:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryAction_lift(_ buf: RustBuffer) throws -> FfiRecoveryAction {
+    return try FfiConverterTypeFfiRecoveryAction.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryAction_lower(_ value: FfiRecoveryAction) -> RustBuffer {
+    return FfiConverterTypeFfiRecoveryAction.lower(value)
+}
+
+
+extension FfiRecoveryAction: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Conflict resolution choices crossing UniFFI (`ARCHITECTURE.md` §16, `FILELOCK-004`).
  */
 
@@ -3911,6 +4246,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = FfiDocumentSessionSnapshot?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiDocumentSessionSnapshot.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiDocumentSessionSnapshot.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiFileIdentity: FfiConverterRustBuffer {
     typealias SwiftType = FfiFileIdentity?
 
@@ -3951,6 +4310,30 @@ fileprivate struct FfiConverterOptionTypeFfiPdfRectMilliPt: FfiConverterRustBuff
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeFfiRecoverableDocumentInfo: FfiConverterRustBuffer {
+    typealias SwiftType = FfiRecoverableDocumentInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiRecoverableDocumentInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiRecoverableDocumentInfo.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -4133,6 +4516,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiRecoverableDocumentInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiRecoverableDocumentInfo]
+
+    public static func write(_ value: [FfiRecoverableDocumentInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiRecoverableDocumentInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiRecoverableDocumentInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiRecoverableDocumentInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiRecoverableDocumentInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer {
     typealias SwiftType = [FfiSearchHit]
 
@@ -4191,6 +4599,16 @@ public func documentCoreAddHighlightAnnotation(sessionId: String, annotation: Ff
 })
 }
 /**
+ * Checks if a specific document by source path or token has an active crash recovery container.
+ */
+public func documentCoreCheckDocumentRecovery(sourceToken: String)throws  -> FfiRecoverableDocumentInfo?  {
+    return try  FfiConverterOptionTypeFfiRecoverableDocumentInfo.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_check_document_recovery(
+        FfiConverterString.lower(sourceToken),$0
+    )
+})
+}
+/**
  * Inspects whether on-disk file for `session_id` was modified externally (`FILELOCK-002`).
  */
 public func documentCoreCheckExternalChanges(sessionId: String)throws  -> FfiExternalChangeCheckResult  {
@@ -4208,6 +4626,19 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
         FfiConverterString.lower(sessionId),$0
     )
 }
+}
+/**
+ * Executes a recovery action (`Restore`, `Preview`, `Discard`, `OpenAsNew`) on a recovered document.
+ *
+ * **M0.6 Gate Invariant:** Disk file remains 100% intact until explicit user save.
+ */
+public func documentCoreExecuteRecoveryAction(documentId: String, action: FfiRecoveryAction)throws  -> FfiRecoveryActionResult  {
+    return try  FfiConverterTypeFfiRecoveryActionResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(
+        FfiConverterString.lower(documentId),
+        FfiConverterTypeFfiRecoveryAction_lower(action),$0
+    )
+})
 }
 /**
  * Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12, `ROADMAP.md` M0.4).
@@ -4271,6 +4702,15 @@ public func documentCoreIndexSearchBatch(sessionId: String, preferredStartPage: 
         FfiConverterUInt32.lower(maxPages),$0
     )
 })
+}
+/**
+ * Marks a document's recovery container clean shutdown.
+ */
+public func documentCoreMarkRecoveryCleanShutdown(documentId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(
+        FfiConverterString.lower(documentId),$0
+    )
+}
 }
 /**
  * Opens a PDF document from a platform `FileBroker` descriptor (e.g. Android Storage Access Framework `content://` URI) (`ROADMAP.md` M0.1).
@@ -4468,6 +4908,15 @@ public func documentCoreSaveSessionCollisionFreeCopy(sessionId: String)throws  -
 })
 }
 /**
+ * Scans the recovery directory for documents that suffered an unclean shutdown with unsaved changes.
+ */
+public func documentCoreScanRecoverableDocuments()throws  -> [FfiRecoverableDocumentInfo]  {
+    return try  FfiConverterSequenceTypeFfiRecoverableDocumentInfo.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_scan_recoverable_documents($0
+    )
+})
+}
+/**
  * Executes a classic exact search against all currently indexed pages in `session_id` (`SEARCH-002`, `ROADMAP.md` M0.3 Gate).
  */
 public func documentCoreSearchExact(sessionId: String, query: String)throws  -> FfiSearchResponse  {
@@ -4569,10 +5018,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {
@@ -4591,6 +5046,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_index_search_batch() != 35695) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214) {
@@ -4645,6 +5103,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_save_session_collision_free_copy() != 20495) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_scan_recoverable_documents() != 48805) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506) {

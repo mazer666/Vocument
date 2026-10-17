@@ -27,6 +27,18 @@ impl DocumentId {
     }
 }
 
+impl std::fmt::Display for DocumentId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for DocumentId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Stable internal session identifier assigned per opened `DocumentSession` (`ARCHITECTURE.md` §6).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct SessionId(String);
@@ -41,6 +53,18 @@ impl SessionId {
     }
 
     pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for SessionId {
+    fn as_ref(&self) -> &str {
         &self.0
     }
 }

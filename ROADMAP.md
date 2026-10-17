@@ -148,26 +148,26 @@ No silent overwrite of externally changed content. *(Enforced in `SaveCoordinato
 
 ---
 
-## M0.6 — Recovery
+## M0.6 — Recovery *(Status: **COMPLETE** — see [M0.6 Acceptance Record](docs/acceptance/M0.6-ACCEPTANCE.md) and [ADR-0009](docs/adr/ADR-0009-m0-6-crash-recovery-containers-and-restore-actions.md))*
 
 Deliver:
 
-- per-document recovery container
-- MuPDF journal integration
-- semantic transaction journal
-- periodic checkpoint
-- crash detection
-- Restore / Preview / Discard / Open as New
+- [x] per-document recovery container (`vocument_recovery/<document_id>/` with versioned `manifest.json`, `journal.json`, and `checkpoints/`, atomic staging, and SHA-256 integrity verification)
+- [x] MuPDF journal integration (`vocument-core` journal hooks into session mutations and MuPDF render/display state)
+- [x] semantic transaction journal (`record_recovery_mutation` automatically recording rotations, highlights, page labels, undo/redo to persistent journal)
+- [x] periodic checkpoint (periodic document snapshots written to `<container>/checkpoints/` with SHA-256 verification)
+- [x] crash detection (`active_pid` tracking, `is_clean_shutdown` marker, scanning via `RecoveryStore::scan_recoverable_documents`)
+- [x] Restore / Preview / Discard / Open as New (`RECOVERY-001` Preset: 4-way contract supported in core, UniFFI, macOS SwiftUI sheet, and Android Kotlin bridge)
 
 ### Required destructive test
 
-1. open document
-2. make unsaved edit
-3. hard-kill process
-4. restart
-5. detect recovery
-6. preview/restore
-7. confirm original remains intact until explicit save
+1. [x] open document
+2. [x] make unsaved edit
+3. [x] hard-kill process (`SIGKILL` child-process test `test_hard_kill_recovery_with_subprocess_sigkill`)
+4. [x] restart
+5. [x] detect recovery
+6. [x] preview/restore
+7. [x] confirm original remains intact until explicit save *(Enforced in `recovery_tests.rs`, `scripts/validate-repo.sh`, and Swift/Kotlin handshakes)*
 
 ---
 
