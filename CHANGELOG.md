@@ -4,6 +4,15 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.2] - 2026-10-17
+
+### Added
+- Completed **M0.2 — Rendering** (`docs/acceptance/M0.2-ACCEPTANCE.md`, `ADR-0005`).
+- Implemented central `JobManager` (`core/vocument-core/src/jobs.rs`) with 7-tier `JobPriority` (`VisiblePageRender` ahead of `NearbyPagePrefetch`) and stale-prefetch cancellation.
+- Implemented adaptive `TileCache` (`core/vocument-core/src/tile_cache.rs`) with bounded byte capacity from `config/performance-budgets.toml`, LRU eviction, and OS memory-pressure handling (`Normal`, `Warning`, `Critical`).
+- Implemented serialized `DocumentActor` and `RenderPipeline` (`core/vocument-core/src/render.rs`) caching immutable `PdfEngineDisplayList` handles per `(revision, page_index)` and rasterizing RGBA8 tiles via MuPDF 1.28.5 (`engines/pdf-mupdf/csrc/mupdf_bridge.c`).
+- Exposed M0.2 rendering APIs over UniFFI (`platform/vocument-ffi`) and integrated native `DocumentCanvas` views on macOS (`apps/macos/Sources/VocumentMacApp/DocumentCanvasView.swift`) and Android (`apps/android/app/src/main/java/org/vocument/app/DocumentCanvas.kt`) with scroll, zoom (`50%`–`300%`), neighbouring-page prefetch, and system memory-pressure hooks.
+
 ## [0.1.0-m0.1] - 2026-10-17
 
 ### Added

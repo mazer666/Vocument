@@ -1,10 +1,15 @@
-//! MuPDF adapter behind Vocument's `PdfEngine` interface (`ARCHITECTURE.md` §18, `ROADMAP.md` M0.1).
+//! MuPDF adapter behind Vocument's `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 18, `ROADMAP.md` M0.1–M0.2).
 //!
 //! No UI layer may depend on this crate directly.
 
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_int, c_uchar};
-use vocument_core::pdf_engine::{PdfDocumentSummary, PdfEngine, PdfEngineDocument, PdfEngineError};
+use std::os::raw::{c_char, c_int, c_uchar, c_uint};
+use std::ptr::NonNull;
+use std::sync::Mutex;
+use vocument_core::pdf_engine::{
+    PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
+    PdfPageGeometry, PdfTileBitmap, PdfTileRenderRequest,
+};
 
 /// Identifier prefix of the PDF engine adapter.
 pub const ENGINE_NAME: &str = "mupdf";
@@ -27,12 +32,56 @@ struct RawMuPdfSummary {
     engine_version: [c_char; 64],
 }
 
+#[repr(C)]
+struct RawMuPdfPageGeometry {
+    status_code: c_int,
+    width_milli_pt: c_uint,
+    height_milli_pt: c_uint,
+    error_message: [c_char; 512],
+}
+
+#[repr(C)]
+struct RawMuPdfDisplayListHandle {
+    _opaque: [u8; 0],
+}
+
 unsafe extern "C" {
     fn vocument_mupdf_inspect_pdf_bytes(
         bytes: *const c_uchar,
         len: usize,
         out_summary: *mut RawMuPdfSummary,
     ) -> c_int;
+
+    fn vocument_mupdf_query_page_geometry(
+        bytes: *const c_uchar,
+        len: usize,
+        page_index: c_int,
+        out_geom: *mut RawMuPdfPageGeometry,
+    ) -> c_int;
+
+    fn vocument_mupdf_create_display_list(
+        bytes: *const c_uchar,
+        len: usize,
+        page_index: c_int,
+        out_handle: *mut *mut RawMuPdfDisplayListHandle,
+        err_buf: *mut c_char,
+        err_buf_len: usize,
+    ) -> c_int;
+
+    fn vocument_mupdf_render_tile_from_display_list(
+        handle: *mut RawMuPdfDisplayListHandle,
+        scale_milli: c_uint,
+        tile_x_px: c_uint,
+        tile_y_px: c_uint,
+        tile_width_px: c_uint,
+        tile_height_px: c_uint,
+        out_rgba_bytes: *mut c_uchar,
+        out_rgba_len: usize,
+        err_buf: *mut c_char,
+        err_buf_len: usize,
+    ) -> c_int;
+
+    fn vocument_mupdf_drop_display_list(handle: *mut RawMuPdfDisplayListHandle);
 }
 
 fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
@@ -42,16 +91,200 @@ fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
     if text.is_empty() { None } else { Some(text) }
 }
 
-/// Concrete MuPDF-backed `PdfEngineDocument` owned inside a `DocumentSession`.
+/// Safe wrapper around the C `vocument_mupdf_display_list_handle_t` pointer.
+struct OwnedDisplayListPtr(NonNull<RawMuPdfDisplayListHandle>);
+
+// SAFETY: Access to the display list's dedicated `fz_context` is serialized by the `Mutex` in `MuPdfDisplayListHandle`.
+unsafe impl Send for OwnedDisplayListPtr {}
+
+impl Drop for OwnedDisplayListPtr {
+    fn drop(&mut self) {
+        // SAFETY: `self.0` was allocated by `vocument_mupdf_create_display_list`.
+        unsafe {
+            vocument_mupdf_drop_display_list(self.0.as_ptr());
+        }
+    }
+}
+
+/// Concrete MuPDF-backed `PdfEngineDisplayList` (`ARCHITECTURE.md` §7, `ROADMAP.md` M0.2).
+pub struct MuPdfDisplayListHandle {
+    geometry: PdfPageGeometry,
+    raw_handle: Mutex<OwnedDisplayListPtr>,
+}
+
+impl std::fmt::Debug for MuPdfDisplayListHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MuPdfDisplayListHandle")
+            .field("geometry", &self.geometry)
+            .finish()
+    }
+}
+
+impl PdfEngineDisplayList for MuPdfDisplayListHandle {
+    fn page_geometry(&self) -> PdfPageGeometry {
+        self.geometry
+    }
+
+    fn render_tile(&self, request: PdfTileRenderRequest) -> Result<PdfTileBitmap, PdfEngineError> {
+        if request.tile_width_px == 0 || request.tile_height_px == 0 {
+            return Err(PdfEngineError::InvalidTileDimensions {
+                width: request.tile_width_px,
+                height: request.tile_height_px,
+            });
+        }
+
+        let byte_len = (request.tile_width_px as usize)
+            .saturating_mul(request.tile_height_px as usize)
+            .saturating_mul(4);
+        let mut rgba_bytes = vec![255u8; byte_len];
+        let mut err_buf = [0 as c_char; 512];
+
+        let guard = self
+            .raw_handle
+            .lock()
+            .map_err(|_| PdfEngineError::EngineFailure {
+                details: "display-list mutex poisoned".to_owned(),
+            })?;
+
+        // SAFETY: `guard.0` is a valid non-null handle and `rgba_bytes` has `byte_len` capacity.
+        let status = unsafe {
+            vocument_mupdf_render_tile_from_display_list(
+                guard.0.as_ptr(),
+                request.scale_milli,
+                request.tile_x_px,
+                request.tile_y_px,
+                request.tile_width_px,
+                request.tile_height_px,
+                rgba_bytes.as_mut_ptr(),
+                rgba_bytes.len(),
+                err_buf.as_mut_ptr(),
+                err_buf.len(),
+            )
+        };
+
+        if status != 0 {
+            let details = c_buf_to_optional_string(&err_buf)
+                .unwrap_or_else(|| "MuPDF failed to rasterize display-list tile".to_owned());
+            return Err(PdfEngineError::EngineFailure { details });
+        }
+
+        Ok(PdfTileBitmap {
+            width_px: request.tile_width_px,
+            height_px: request.tile_height_px,
+            stride_bytes: request.tile_width_px * 4,
+            rgba_bytes,
+        })
+    }
+}
+
+/// Concrete MuPDF-backed `PdfEngineDocument` owned inside a `DocumentActor`.
 #[derive(Debug)]
 pub struct MuPdfDocumentHandle {
     summary: PdfDocumentSummary,
-    _pdf_bytes: Vec<u8>,
+    pdf_bytes: Vec<u8>,
 }
 
 impl PdfEngineDocument for MuPdfDocumentHandle {
     fn summary(&self) -> &PdfDocumentSummary {
         &self.summary
+    }
+
+    fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, PdfEngineError> {
+        if page_index >= self.summary.page_count {
+            return Err(PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: self.summary.page_count,
+            });
+        }
+
+        let mut raw_geom = RawMuPdfPageGeometry {
+            status_code: 0,
+            width_milli_pt: 0,
+            height_milli_pt: 0,
+            error_message: [0; 512],
+        };
+
+        let page_idx_int =
+            c_int::try_from(page_index).map_err(|_| PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: self.summary.page_count,
+            })?;
+
+        // SAFETY: `self.pdf_bytes` is a valid buffer and `raw_geom` is stack-allocated.
+        let status = unsafe {
+            vocument_mupdf_query_page_geometry(
+                self.pdf_bytes.as_ptr(),
+                self.pdf_bytes.len(),
+                page_idx_int,
+                &raw mut raw_geom,
+            )
+        };
+
+        match status {
+            0 => Ok(PdfPageGeometry {
+                page_index,
+                width_milli_pt: raw_geom.width_milli_pt,
+                height_milli_pt: raw_geom.height_milli_pt,
+            }),
+            4 => Err(PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: self.summary.page_count,
+            }),
+            _ => {
+                let details = c_buf_to_optional_string(&raw_geom.error_message)
+                    .unwrap_or_else(|| "failed to query PDF page geometry".to_owned());
+                Err(PdfEngineError::EngineFailure { details })
+            }
+        }
+    }
+
+    fn create_display_list(
+        &self,
+        page_index: u32,
+    ) -> Result<Box<dyn PdfEngineDisplayList>, PdfEngineError> {
+        if page_index >= self.summary.page_count {
+            return Err(PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: self.summary.page_count,
+            });
+        }
+
+        let page_idx_int =
+            c_int::try_from(page_index).map_err(|_| PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: self.summary.page_count,
+            })?;
+
+        let mut raw_ptr: *mut RawMuPdfDisplayListHandle = std::ptr::null_mut();
+        let mut err_buf = [0 as c_char; 512];
+
+        // SAFETY: `self.pdf_bytes` is valid and `raw_ptr` receives the allocated display list handle on status 0.
+        let status = unsafe {
+            vocument_mupdf_create_display_list(
+                self.pdf_bytes.as_ptr(),
+                self.pdf_bytes.len(),
+                page_idx_int,
+                &raw mut raw_ptr,
+                err_buf.as_mut_ptr(),
+                err_buf.len(),
+            )
+        };
+
+        if status != 0 {
+            let details = c_buf_to_optional_string(&err_buf)
+                .unwrap_or_else(|| "MuPDF failed to create display list".to_owned());
+            return Err(PdfEngineError::EngineFailure { details });
+        }
+
+        let non_null = NonNull::new(raw_ptr).ok_or_else(|| PdfEngineError::EngineFailure {
+            details: "MuPDF returned null display list handle".to_owned(),
+        })?;
+
+        let geometry = self.page_geometry(page_index)?;
+        Ok(Box::new(MuPdfDisplayListHandle {
+            geometry,
+            raw_handle: Mutex::new(OwnedDisplayListPtr(non_null)),
+        }))
     }
 }
 
@@ -121,7 +354,7 @@ impl PdfEngine for MuPdfEngineAdapter {
 
                 Ok(Box::new(MuPdfDocumentHandle {
                     summary,
-                    _pdf_bytes: bytes.to_vec(),
+                    pdf_bytes: bytes.to_vec(),
                 }))
             }
             1 => Err(PdfEngineError::PasswordRequired),
@@ -203,6 +436,37 @@ mod tests {
         assert_eq!(summary.producer.as_deref(), Some("MuPDF Bridge Test"));
         assert!(!summary.needs_password);
         assert!(summary.engine_identifier.starts_with("mupdf-1."));
+    }
+
+    #[test]
+    fn mupdf_adapter_creates_display_list_and_renders_rgba8_tiles() {
+        let adapter = MuPdfEngineAdapter::new();
+        let bytes = sample_two_page_pdf_bytes();
+        let doc = adapter.open_pdf_bytes(&bytes).expect("open 2-page PDF");
+
+        let geom = doc.page_geometry(0).expect("page 0 geometry");
+        assert_eq!(geom.page_index, 0);
+        assert_eq!(geom.width_milli_pt, 595_000);
+        assert_eq!(geom.height_milli_pt, 842_000);
+
+        let dl = doc.create_display_list(0).expect("page 0 display list");
+        assert_eq!(dl.page_geometry(), geom);
+
+        let tile = dl
+            .render_tile(PdfTileRenderRequest {
+                page_index: 0,
+                scale_milli: 1000,
+                tile_x_px: 0,
+                tile_y_px: 0,
+                tile_width_px: 128,
+                tile_height_px: 128,
+            })
+            .expect("render 128x128 tile at 1.0x");
+
+        assert_eq!(tile.width_px, 128);
+        assert_eq!(tile.height_px, 128);
+        assert_eq!(tile.stride_bytes, 512);
+        assert_eq!(tile.rgba_bytes.len(), 128 * 128 * 4);
     }
 
     #[test]

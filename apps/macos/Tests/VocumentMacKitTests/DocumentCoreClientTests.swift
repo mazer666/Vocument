@@ -4,7 +4,7 @@ import VocumentFFI
 @testable import VocumentMacKit
 
 @Test
-func verifyMacPlatformUniFFIHandshakeAndPdfSession() throws {
+func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
     let client = DocumentCoreClient()
     let handshake = try client.performHandshake()
     #expect(handshake.baselineVersion == "0.1")
@@ -14,6 +14,9 @@ func verifyMacPlatformUniFFIHandshakeAndPdfSession() throws {
     #expect(handshake.targetFps == 60)
     #expect(handshake.defaultGermanVariant == "de-AT")
     #expect(handshake.builtInOcrLanguages == ["deu", "eng"])
+
+    let _ = try client.handleMemoryPressure(level: .critical)
+    let _ = try client.handleMemoryPressure(level: .normal)
 
     let sampleURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -28,5 +31,31 @@ func verifyMacPlatformUniFFIHandshakeAndPdfSession() throws {
     #expect(session.accessOrigin == .macOsScopedUrl)
     #expect(session.pdfSummary.pageCount == 2)
     #expect(session.pdfSummary.title == "Vocument M0.1 Sample Document")
+
+    let geo = try client.pageGeometry(sessionId: session.sessionId, pageIndex: 0)
+    #expect(geo.widthMilliPt == 595_000)
+    #expect(geo.heightMilliPt == 842_000)
+
+    let viewport = try client.renderViewportWithPrefetch(
+        sessionId: session.sessionId,
+        request: FfiTileRenderRequest(
+            pageIndex: 0,
+            scaleMilli: 1000,
+            tileXPx: 0,
+            tileYPx: 0,
+            tileWidthPx: 595,
+            tileHeightPx: 842
+        )
+    )
+    #expect(viewport.visibleTile.widthPx == 595)
+    #expect(viewport.visibleTile.heightPx == 842)
+    #expect(viewport.prefetchedPages == [1])
+    let cgImage = DocumentCoreClient.makeCGImage(from: viewport.visibleTile)
+    #expect(cgImage != nil)
+
+    let criticalStats = try client.handleMemoryPressure(level: .critical)
+    #expect(criticalStats.cachedTileCount == 0)
+    let _ = try client.handleMemoryPressure(level: .normal)
+
     try client.closeSession(sessionId: session.sessionId)
 }

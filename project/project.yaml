@@ -4,10 +4,11 @@ project:
   product_status: "m0-in-progress"
   current_milestone: "M0"
   current_milestone_name: "Foundation / Trustworthy Viewer"
-  current_submilestone: "M0.2"
+  current_submilestone: "M0.3"
   completed_submilestones:
     - "M0.0"
     - "M0.1"
+    - "M0.2"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

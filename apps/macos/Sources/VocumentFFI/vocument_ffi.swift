@@ -1120,6 +1120,531 @@ public func FfiConverterTypeFfiPdfDocumentSummary_lower(_ value: FfiPdfDocumentS
 
 
 /**
+ * Page geometry DTO returned across UniFFI (`ROADMAP.md` M0.2).
+ */
+public struct FfiPdfPageGeometry {
+    public var pageIndex: UInt32
+    public var widthMilliPt: UInt32
+    public var heightMilliPt: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, widthMilliPt: UInt32, heightMilliPt: UInt32) {
+        self.pageIndex = pageIndex
+        self.widthMilliPt = widthMilliPt
+        self.heightMilliPt = heightMilliPt
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfPageGeometry: Sendable {}
+#endif
+
+
+extension FfiPdfPageGeometry: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfPageGeometry, rhs: FfiPdfPageGeometry) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.widthMilliPt != rhs.widthMilliPt {
+            return false
+        }
+        if lhs.heightMilliPt != rhs.heightMilliPt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(widthMilliPt)
+        hasher.combine(heightMilliPt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfPageGeometry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfPageGeometry {
+        return
+            try FfiPdfPageGeometry(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                widthMilliPt: FfiConverterUInt32.read(from: &buf), 
+                heightMilliPt: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfPageGeometry, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.widthMilliPt, into: &buf)
+        FfiConverterUInt32.write(value.heightMilliPt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfPageGeometry_lift(_ buf: RustBuffer) throws -> FfiPdfPageGeometry {
+    return try FfiConverterTypeFfiPdfPageGeometry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfPageGeometry_lower(_ value: FfiPdfPageGeometry) -> RustBuffer {
+    return FfiConverterTypeFfiPdfPageGeometry.lower(value)
+}
+
+
+/**
+ * Immutable rendered RGBA8 tile bitmap DTO returned to Swift and Kotlin (`ARCHITECTURE.md` §10).
+ */
+public struct FfiRenderedTile {
+    public var documentId: String
+    public var revision: UInt64
+    public var pageIndex: UInt32
+    public var scaleMilli: UInt32
+    public var tileXPx: UInt32
+    public var tileYPx: UInt32
+    public var widthPx: UInt32
+    public var heightPx: UInt32
+    public var strideBytes: UInt32
+    public var rgbaBytes: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(documentId: String, revision: UInt64, pageIndex: UInt32, scaleMilli: UInt32, tileXPx: UInt32, tileYPx: UInt32, widthPx: UInt32, heightPx: UInt32, strideBytes: UInt32, rgbaBytes: Data) {
+        self.documentId = documentId
+        self.revision = revision
+        self.pageIndex = pageIndex
+        self.scaleMilli = scaleMilli
+        self.tileXPx = tileXPx
+        self.tileYPx = tileYPx
+        self.widthPx = widthPx
+        self.heightPx = heightPx
+        self.strideBytes = strideBytes
+        self.rgbaBytes = rgbaBytes
+    }
+}
+
+#if compiler(>=6)
+extension FfiRenderedTile: Sendable {}
+#endif
+
+
+extension FfiRenderedTile: Equatable, Hashable {
+    public static func ==(lhs: FfiRenderedTile, rhs: FfiRenderedTile) -> Bool {
+        if lhs.documentId != rhs.documentId {
+            return false
+        }
+        if lhs.revision != rhs.revision {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.scaleMilli != rhs.scaleMilli {
+            return false
+        }
+        if lhs.tileXPx != rhs.tileXPx {
+            return false
+        }
+        if lhs.tileYPx != rhs.tileYPx {
+            return false
+        }
+        if lhs.widthPx != rhs.widthPx {
+            return false
+        }
+        if lhs.heightPx != rhs.heightPx {
+            return false
+        }
+        if lhs.strideBytes != rhs.strideBytes {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(documentId)
+        hasher.combine(revision)
+        hasher.combine(pageIndex)
+        hasher.combine(scaleMilli)
+        hasher.combine(tileXPx)
+        hasher.combine(tileYPx)
+        hasher.combine(widthPx)
+        hasher.combine(heightPx)
+        hasher.combine(strideBytes)
+        hasher.combine(rgbaBytes)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRenderedTile: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRenderedTile {
+        return
+            try FfiRenderedTile(
+                documentId: FfiConverterString.read(from: &buf), 
+                revision: FfiConverterUInt64.read(from: &buf), 
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                scaleMilli: FfiConverterUInt32.read(from: &buf), 
+                tileXPx: FfiConverterUInt32.read(from: &buf), 
+                tileYPx: FfiConverterUInt32.read(from: &buf), 
+                widthPx: FfiConverterUInt32.read(from: &buf), 
+                heightPx: FfiConverterUInt32.read(from: &buf), 
+                strideBytes: FfiConverterUInt32.read(from: &buf), 
+                rgbaBytes: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRenderedTile, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.documentId, into: &buf)
+        FfiConverterUInt64.write(value.revision, into: &buf)
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.scaleMilli, into: &buf)
+        FfiConverterUInt32.write(value.tileXPx, into: &buf)
+        FfiConverterUInt32.write(value.tileYPx, into: &buf)
+        FfiConverterUInt32.write(value.widthPx, into: &buf)
+        FfiConverterUInt32.write(value.heightPx, into: &buf)
+        FfiConverterUInt32.write(value.strideBytes, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRenderedTile_lift(_ buf: RustBuffer) throws -> FfiRenderedTile {
+    return try FfiConverterTypeFfiRenderedTile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRenderedTile_lower(_ value: FfiRenderedTile) -> RustBuffer {
+    return FfiConverterTypeFfiRenderedTile.lower(value)
+}
+
+
+/**
+ * Telemetry snapshot of the shared adaptive `TileCache` (`ARCHITECTURE.md` §9).
+ */
+public struct FfiTileCacheStats {
+    public var configuredMaxBytes: UInt64
+    public var effectiveMaxBytes: UInt64
+    public var currentUsedBytes: UInt64
+    public var cachedTileCount: UInt32
+    public var hitCount: UInt64
+    public var missCount: UInt64
+    public var evictionCount: UInt64
+    public var pressureLevel: FfiMemoryPressureLevel
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(configuredMaxBytes: UInt64, effectiveMaxBytes: UInt64, currentUsedBytes: UInt64, cachedTileCount: UInt32, hitCount: UInt64, missCount: UInt64, evictionCount: UInt64, pressureLevel: FfiMemoryPressureLevel) {
+        self.configuredMaxBytes = configuredMaxBytes
+        self.effectiveMaxBytes = effectiveMaxBytes
+        self.currentUsedBytes = currentUsedBytes
+        self.cachedTileCount = cachedTileCount
+        self.hitCount = hitCount
+        self.missCount = missCount
+        self.evictionCount = evictionCount
+        self.pressureLevel = pressureLevel
+    }
+}
+
+#if compiler(>=6)
+extension FfiTileCacheStats: Sendable {}
+#endif
+
+
+extension FfiTileCacheStats: Equatable, Hashable {
+    public static func ==(lhs: FfiTileCacheStats, rhs: FfiTileCacheStats) -> Bool {
+        if lhs.configuredMaxBytes != rhs.configuredMaxBytes {
+            return false
+        }
+        if lhs.effectiveMaxBytes != rhs.effectiveMaxBytes {
+            return false
+        }
+        if lhs.currentUsedBytes != rhs.currentUsedBytes {
+            return false
+        }
+        if lhs.cachedTileCount != rhs.cachedTileCount {
+            return false
+        }
+        if lhs.hitCount != rhs.hitCount {
+            return false
+        }
+        if lhs.missCount != rhs.missCount {
+            return false
+        }
+        if lhs.evictionCount != rhs.evictionCount {
+            return false
+        }
+        if lhs.pressureLevel != rhs.pressureLevel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(configuredMaxBytes)
+        hasher.combine(effectiveMaxBytes)
+        hasher.combine(currentUsedBytes)
+        hasher.combine(cachedTileCount)
+        hasher.combine(hitCount)
+        hasher.combine(missCount)
+        hasher.combine(evictionCount)
+        hasher.combine(pressureLevel)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTileCacheStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTileCacheStats {
+        return
+            try FfiTileCacheStats(
+                configuredMaxBytes: FfiConverterUInt64.read(from: &buf), 
+                effectiveMaxBytes: FfiConverterUInt64.read(from: &buf), 
+                currentUsedBytes: FfiConverterUInt64.read(from: &buf), 
+                cachedTileCount: FfiConverterUInt32.read(from: &buf), 
+                hitCount: FfiConverterUInt64.read(from: &buf), 
+                missCount: FfiConverterUInt64.read(from: &buf), 
+                evictionCount: FfiConverterUInt64.read(from: &buf), 
+                pressureLevel: FfiConverterTypeFfiMemoryPressureLevel.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTileCacheStats, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.configuredMaxBytes, into: &buf)
+        FfiConverterUInt64.write(value.effectiveMaxBytes, into: &buf)
+        FfiConverterUInt64.write(value.currentUsedBytes, into: &buf)
+        FfiConverterUInt32.write(value.cachedTileCount, into: &buf)
+        FfiConverterUInt64.write(value.hitCount, into: &buf)
+        FfiConverterUInt64.write(value.missCount, into: &buf)
+        FfiConverterUInt64.write(value.evictionCount, into: &buf)
+        FfiConverterTypeFfiMemoryPressureLevel.write(value.pressureLevel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTileCacheStats_lift(_ buf: RustBuffer) throws -> FfiTileCacheStats {
+    return try FfiConverterTypeFfiTileCacheStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTileCacheStats_lower(_ value: FfiTileCacheStats) -> RustBuffer {
+    return FfiConverterTypeFfiTileCacheStats.lower(value)
+}
+
+
+/**
+ * Request parameters for rendering a page or tile at a quantized scale (`scale_milli = 1000` is 1.0x).
+ */
+public struct FfiTileRenderRequest {
+    public var pageIndex: UInt32
+    public var scaleMilli: UInt32
+    public var tileXPx: UInt32
+    public var tileYPx: UInt32
+    public var tileWidthPx: UInt32
+    public var tileHeightPx: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, scaleMilli: UInt32, tileXPx: UInt32, tileYPx: UInt32, tileWidthPx: UInt32, tileHeightPx: UInt32) {
+        self.pageIndex = pageIndex
+        self.scaleMilli = scaleMilli
+        self.tileXPx = tileXPx
+        self.tileYPx = tileYPx
+        self.tileWidthPx = tileWidthPx
+        self.tileHeightPx = tileHeightPx
+    }
+}
+
+#if compiler(>=6)
+extension FfiTileRenderRequest: Sendable {}
+#endif
+
+
+extension FfiTileRenderRequest: Equatable, Hashable {
+    public static func ==(lhs: FfiTileRenderRequest, rhs: FfiTileRenderRequest) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.scaleMilli != rhs.scaleMilli {
+            return false
+        }
+        if lhs.tileXPx != rhs.tileXPx {
+            return false
+        }
+        if lhs.tileYPx != rhs.tileYPx {
+            return false
+        }
+        if lhs.tileWidthPx != rhs.tileWidthPx {
+            return false
+        }
+        if lhs.tileHeightPx != rhs.tileHeightPx {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(scaleMilli)
+        hasher.combine(tileXPx)
+        hasher.combine(tileYPx)
+        hasher.combine(tileWidthPx)
+        hasher.combine(tileHeightPx)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTileRenderRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTileRenderRequest {
+        return
+            try FfiTileRenderRequest(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                scaleMilli: FfiConverterUInt32.read(from: &buf), 
+                tileXPx: FfiConverterUInt32.read(from: &buf), 
+                tileYPx: FfiConverterUInt32.read(from: &buf), 
+                tileWidthPx: FfiConverterUInt32.read(from: &buf), 
+                tileHeightPx: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTileRenderRequest, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.scaleMilli, into: &buf)
+        FfiConverterUInt32.write(value.tileXPx, into: &buf)
+        FfiConverterUInt32.write(value.tileYPx, into: &buf)
+        FfiConverterUInt32.write(value.tileWidthPx, into: &buf)
+        FfiConverterUInt32.write(value.tileHeightPx, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTileRenderRequest_lift(_ buf: RustBuffer) throws -> FfiTileRenderRequest {
+    return try FfiConverterTypeFfiTileRenderRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTileRenderRequest_lower(_ value: FfiTileRenderRequest) -> RustBuffer {
+    return FfiConverterTypeFfiTileRenderRequest.lower(value)
+}
+
+
+/**
+ * Combined result of rendering a visible viewport tile and prefetching neighbouring pages (`ROADMAP.md` M0.2).
+ */
+public struct FfiViewportRenderResult {
+    public var visibleTile: FfiRenderedTile
+    public var prefetchedPages: [UInt32]
+    public var cacheStats: FfiTileCacheStats
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(visibleTile: FfiRenderedTile, prefetchedPages: [UInt32], cacheStats: FfiTileCacheStats) {
+        self.visibleTile = visibleTile
+        self.prefetchedPages = prefetchedPages
+        self.cacheStats = cacheStats
+    }
+}
+
+#if compiler(>=6)
+extension FfiViewportRenderResult: Sendable {}
+#endif
+
+
+extension FfiViewportRenderResult: Equatable, Hashable {
+    public static func ==(lhs: FfiViewportRenderResult, rhs: FfiViewportRenderResult) -> Bool {
+        if lhs.visibleTile != rhs.visibleTile {
+            return false
+        }
+        if lhs.prefetchedPages != rhs.prefetchedPages {
+            return false
+        }
+        if lhs.cacheStats != rhs.cacheStats {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(visibleTile)
+        hasher.combine(prefetchedPages)
+        hasher.combine(cacheStats)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiViewportRenderResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiViewportRenderResult {
+        return
+            try FfiViewportRenderResult(
+                visibleTile: FfiConverterTypeFfiRenderedTile.read(from: &buf), 
+                prefetchedPages: FfiConverterSequenceUInt32.read(from: &buf), 
+                cacheStats: FfiConverterTypeFfiTileCacheStats.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiViewportRenderResult, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiRenderedTile.write(value.visibleTile, into: &buf)
+        FfiConverterSequenceUInt32.write(value.prefetchedPages, into: &buf)
+        FfiConverterTypeFfiTileCacheStats.write(value.cacheStats, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiViewportRenderResult_lift(_ buf: RustBuffer) throws -> FfiViewportRenderResult {
+    return try FfiConverterTypeFfiViewportRenderResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiViewportRenderResult_lower(_ value: FfiViewportRenderResult) -> RustBuffer {
+    return FfiConverterTypeFfiViewportRenderResult.lower(value)
+}
+
+
+/**
  * Error type crossing the UniFFI boundary from `DocumentCore`.
  */
 public enum DocumentCoreError: Swift.Error {
@@ -1323,6 +1848,86 @@ extension FfiFileAccessOrigin: Equatable, Hashable {}
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Platform memory pressure signal forwarded from macOS or Android into `DocumentCore` (`ARCHITECTURE.md` §9).
+ */
+
+public enum FfiMemoryPressureLevel {
+    
+    case normal
+    case warning
+    case critical
+}
+
+
+#if compiler(>=6)
+extension FfiMemoryPressureLevel: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiMemoryPressureLevel: FfiConverterRustBuffer {
+    typealias SwiftType = FfiMemoryPressureLevel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMemoryPressureLevel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .normal
+        
+        case 2: return .warning
+        
+        case 3: return .critical
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiMemoryPressureLevel, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .normal:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .warning:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .critical:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiMemoryPressureLevel_lift(_ buf: RustBuffer) throws -> FfiMemoryPressureLevel {
+    return try FfiConverterTypeFfiMemoryPressureLevel.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiMemoryPressureLevel_lower(_ value: FfiMemoryPressureLevel) -> RustBuffer {
+    return FfiConverterTypeFfiMemoryPressureLevel.lower(value)
+}
+
+
+extension FfiMemoryPressureLevel: Equatable, Hashable {}
+
+
+
+
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1374,6 +1979,31 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt32]
+
+    public static func write(_ value: [UInt32], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterUInt32.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt32] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UInt32]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterUInt32.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -1415,6 +2045,16 @@ public func documentCoreGetSessionSnapshot(sessionId: String)throws  -> FfiDocum
 })
 }
 /**
+ * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+ */
+public func documentCoreHandleMemoryPressure(level: FfiMemoryPressureLevel)throws  -> FfiTileCacheStats  {
+    return try  FfiConverterTypeFfiTileCacheStats_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(
+        FfiConverterTypeFfiMemoryPressureLevel_lower(level),$0
+    )
+})
+}
+/**
  * Performs the M0.0 `DocumentCore` bootstrap handshake for Swift and Kotlin callers.
  */
 public func documentCoreHandshake()throws  -> DocumentCoreHandshake  {
@@ -1443,6 +2083,48 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
     )
 })
 }
+/**
+ * Queries the unscaled geometry (points and rotation) of `page_index` via `DocumentActor` (`ROADMAP.md` M0.2).
+ */
+public func documentCorePageGeometry(sessionId: String, pageIndex: UInt32)throws  -> FfiPdfPageGeometry  {
+    return try  FfiConverterTypeFfiPdfPageGeometry_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_geometry(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Renders the requested visible viewport tile and schedules neighbouring-page prefetch (`ROADMAP.md` M0.2).
+ */
+public func documentCoreRenderViewportWithPrefetch(sessionId: String, request: FfiTileRenderRequest)throws  -> FfiViewportRenderResult  {
+    return try  FfiConverterTypeFfiViewportRenderResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiTileRenderRequest_lower(request),$0
+    )
+})
+}
+/**
+ * Renders a single visible page or tile via `DocumentActor` + adaptive `TileCache` (`ROADMAP.md` M0.2).
+ */
+public func documentCoreRenderVisibleTile(sessionId: String, request: FfiTileRenderRequest)throws  -> FfiRenderedTile  {
+    return try  FfiConverterTypeFfiRenderedTile_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiTileRenderRequest_lower(request),$0
+    )
+})
+}
+/**
+ * Returns current telemetry statistics of the shared adaptive `TileCache`.
+ */
+public func documentCoreTileCacheStats()throws  -> FfiTileCacheStats  {
+    return try  FfiConverterTypeFfiTileCacheStats_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats($0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -1465,6 +2147,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 15904) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1472,6 +2157,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch() != 51535) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732) {
         return InitializationResult.apiChecksumMismatch
     }
 

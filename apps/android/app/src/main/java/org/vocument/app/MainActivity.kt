@@ -1,5 +1,6 @@
 package org.vocument.app
 
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -30,11 +31,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
+import uniffi.vocument_ffi.FfiMemoryPressureLevel
+import uniffi.vocument_ffi.FfiViewportRenderResult
 
 /**
- * Native Android 13+ Activity using Jetpack Compose (`MOBILE-001`, `MOBILE-002`, `VIEW-001` Minimal Reader preset).
- * Opens PDFs via Android Storage Access Framework (`FileBroker`) and delegates all PDF session management
- * to the shared Rust `DocumentCore` over UniFFI (`ROADMAP.md` M0.1).
+ * Native Android 13+ Activity using Jetpack Compose (`MOBILE-001`, `MOBILE-002`, `BIGMOBILE-001`, `VIEW-001`).
+ * Opens PDFs via Android Storage Access Framework (`FileBroker`), renders tiles via `DocumentActor` +
+ * `TileCache`, and forwards Android `onTrimMemory` pressure signals to `DocumentCore` (`ROADMAP.md` M0.2).
  */
 class MainActivity : ComponentActivity() {
     private val coreBridge = DocumentCoreBridge()
@@ -48,6 +51,20 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val pressureLevel = when {
+            level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE ||
+                level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ->
+                FfiMemoryPressureLevel.CRITICAL
+            level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+                level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ->
+                FfiMemoryPressureLevel.WARNING
+            else -> FfiMemoryPressureLevel.NORMAL
+        }
+        runCatching { coreBridge.handleMemoryPressure(pressureLevel) }
+    }
 }
 
 @Composable
@@ -57,7 +74,28 @@ fun MinimalReaderSessionScreen(
 ) {
     val context = LocalContext.current
     var activeSession by remember { mutableStateOf<FfiDocumentSessionSnapshot?>(null) }
+    var currentPageIndex by remember { mutableStateOf(0u) }
+    var scaleMilli by remember { mutableStateOf(1000u) }
+    var viewportResult by remember { mutableStateOf<FfiViewportRenderResult?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun refreshViewport(
+        session: FfiDocumentSessionSnapshot,
+        pageIndex: UInt,
+        scale: UInt
+    ) {
+        runCatching {
+            val req = buildViewportRenderRequest(coreBridge, session.sessionId, pageIndex, scale)
+            coreBridge.renderViewportWithPrefetch(session.sessionId, req)
+        }.onSuccess { rendered ->
+            currentPageIndex = pageIndex
+            scaleMilli = scale
+            viewportResult = rendered
+            errorMessage = null
+        }.onFailure { err ->
+            errorMessage = err.message
+        }
+    }
 
     val openPdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -68,7 +106,7 @@ fun MinimalReaderSessionScreen(
                 openUriViaSafBroker(context, coreBridge, uri)
             }.onSuccess { snapshot ->
                 activeSession = snapshot
-                errorMessage = null
+                refreshViewport(snapshot, pageIndex = 0u, scale = 1000u)
             }.onFailure { err ->
                 errorMessage = err.message
             }
@@ -103,17 +141,17 @@ fun MinimalReaderSessionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp)
+                .padding(16.dp)
         ) {
             Text(
                 text = "Vocument",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineSmall
             )
             Text(
                 text = "Milestone ${handshake.milestone} — Baseline v${handshake.baselineVersion}",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodySmall
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = { openPdfLauncher.launch(arrayOf("application/pdf")) }) {
                 Text("Open PDF (SAF)…")
             }
@@ -123,15 +161,28 @@ fun MinimalReaderSessionScreen(
                 Text(text = msg, color = MaterialTheme.colorScheme.error)
             }
 
-            activeSession?.let { session ->
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Session ID: ${session.sessionId}")
-                Text("Document ID: ${session.documentId}")
-                Text("File: ${session.fileIdentity.displayName} (${session.fileIdentity.sizeBytes} B)")
-                Text("SHA-256: ${session.fileIdentity.sha256Hex}")
-                Text("Pages: ${session.pdfSummary.pageCount}")
-                Text("Title: ${session.pdfSummary.title ?: "—"}")
-                Text("Engine: ${session.pdfSummary.engineIdentifier}")
+            val session = activeSession
+            val currentViewport = viewportResult
+            if (session != null && currentViewport != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                DocumentCanvas(
+                    session = session,
+                    currentPageIndex = currentPageIndex,
+                    scaleMilli = scaleMilli,
+                    viewportResult = currentViewport,
+                    coreBridge = coreBridge,
+                    onPageChange = { nextPage -> refreshViewport(session, nextPage, scaleMilli) },
+                    onScaleChange = { nextScale -> refreshViewport(session, currentPageIndex, nextScale) },
+                    onMemoryPressure = { level ->
+                        runCatching {
+                            coreBridge.handleMemoryPressure(level)
+                            if (level == FfiMemoryPressureLevel.CRITICAL) {
+                                coreBridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
+                            }
+                            refreshViewport(session, currentPageIndex, scaleMilli)
+                        }
+                    }
+                )
             }
         }
     }

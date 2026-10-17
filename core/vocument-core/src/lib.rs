@@ -6,15 +6,18 @@
 pub mod config;
 pub mod file_broker;
 pub mod identity;
+pub mod jobs;
 pub mod pdf_engine;
+pub mod render;
 pub mod session;
+pub mod tile_cache;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};
 
 /// Version of the Vocument baseline and core library.
 pub const BASELINE_VERSION: &str = "0.1";
 
-/// Immutable runtime snapshot of the core bootstrap state, exposed across FFI in M0.0/M0.1.
+/// Immutable runtime snapshot of the core bootstrap state, exposed across FFI in M0.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreBootstrapSnapshot {
     pub baseline_version: String,

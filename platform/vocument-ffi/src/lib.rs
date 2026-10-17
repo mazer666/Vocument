@@ -1,7 +1,9 @@
-//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–6, `ROADMAP.md` M0.1).
+//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–10, `ROADMAP.md` M0.1–M0.2).
 //!
 //! Exposes only opaque session/document IDs and immutable DTO snapshots.
 //! Never exposes raw MuPDF pointers or internal Rust references.
+
+pub mod render_dto;
 
 use std::sync::OnceLock;
 use thiserror::Error;
@@ -13,6 +15,11 @@ use vocument_core::pdf_engine::{PdfDocumentSummary, PdfEngineError};
 use vocument_core::session::{DocumentSessionSnapshot, SessionError, SessionRegistry};
 use vocument_core::{CoreBootstrapSnapshot, bootstrap_core_snapshot};
 use vocument_pdf_mupdf::MuPdfEngineAdapter;
+
+pub use render_dto::{
+    FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
+    FfiTileRenderRequest, FfiViewportRenderResult,
+};
 
 uniffi::setup_scaffolding!("vocument_ffi");
 
@@ -50,9 +57,12 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::PdfEngine(PdfEngineError::InvalidPdf { details }) => {
                 Self::InvalidPdf { details }
             }
-            SessionError::PdfEngine(PdfEngineError::EngineFailure { details }) => {
-                Self::InternalFailure { details }
-            }
+            SessionError::PdfEngine(other) => Self::InternalFailure {
+                details: other.to_string(),
+            },
+            SessionError::RenderPipeline(rp) => Self::InternalFailure {
+                details: rp.to_string(),
+            },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
@@ -279,10 +289,57 @@ pub fn document_core_close_session(session_id: String) -> Result<(), DocumentCor
     Ok(())
 }
 
+/// Queries the unscaled geometry (points and rotation) of `page_index` via `DocumentActor` (`ROADMAP.md` M0.2).
+#[uniffi::export]
+pub fn document_core_page_geometry(
+    session_id: String,
+    page_index: u32,
+) -> Result<FfiPdfPageGeometry, DocumentCoreError> {
+    let geometry = session_registry().page_geometry(&session_id, page_index)?;
+    Ok(geometry.into())
+}
+
+/// Renders a single visible page or tile via `DocumentActor` + adaptive `TileCache` (`ROADMAP.md` M0.2).
+#[uniffi::export]
+pub fn document_core_render_visible_tile(
+    session_id: String,
+    request: FfiTileRenderRequest,
+) -> Result<FfiRenderedTile, DocumentCoreError> {
+    let tile = session_registry().render_visible_tile(&session_id, request.into())?;
+    Ok(tile.into())
+}
+
+/// Renders the requested visible viewport tile and schedules neighbouring-page prefetch (`ROADMAP.md` M0.2).
+#[uniffi::export]
+pub fn document_core_render_viewport_with_prefetch(
+    session_id: String,
+    request: FfiTileRenderRequest,
+) -> Result<FfiViewportRenderResult, DocumentCoreError> {
+    let result = session_registry().render_viewport_with_prefetch(&session_id, request.into())?;
+    Ok(result.into())
+}
+
+/// Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+#[uniffi::export]
+pub fn document_core_handle_memory_pressure(
+    level: FfiMemoryPressureLevel,
+) -> Result<FfiTileCacheStats, DocumentCoreError> {
+    let stats = session_registry().handle_memory_pressure(level.into())?;
+    Ok(stats.into())
+}
+
+/// Returns current telemetry statistics of the shared adaptive `TileCache`.
+#[uniffi::export]
+pub fn document_core_tile_cache_stats() -> Result<FfiTileCacheStats, DocumentCoreError> {
+    let stats = session_registry().tile_cache_stats()?;
+    Ok(stats.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use std::time::Instant;
 
     fn sample_corpus_pdf_path() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -363,5 +420,94 @@ mod tests {
             after_close,
             Err(DocumentCoreError::SessionNotFound { .. })
         ));
+    }
+
+    #[test]
+    fn ffi_renders_viewport_with_prefetch_zoom_cache_and_memory_pressure() {
+        let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Critical)
+            .expect("reset cache");
+        let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Normal)
+            .expect("restore normal cache budget");
+
+        let pdf_path = sample_corpus_pdf_path();
+        let start = Instant::now();
+        let snap = document_core_open_macos_scoped_file(pdf_path.to_string_lossy().into_owned())
+            .expect("open PDF session");
+
+        let geo =
+            document_core_page_geometry(snap.session_id.clone(), 0).expect("query page 0 geometry");
+        assert_eq!(geo.page_index, 0);
+        assert_eq!(geo.width_milli_pt, 595_000);
+        assert_eq!(geo.height_milli_pt, 842_000);
+
+        let viewport = document_core_render_viewport_with_prefetch(
+            snap.session_id.clone(),
+            FfiTileRenderRequest {
+                page_index: 0,
+                scale_milli: 1000,
+                tile_x_px: 0,
+                tile_y_px: 0,
+                tile_width_px: 595,
+                tile_height_px: 842,
+            },
+        )
+        .expect("render page 0 with prefetch");
+        let first_page_elapsed_ms = start.elapsed().as_millis();
+        // Budget check: normal PDF first-page render target is 300-500 ms (QUALITY.md §2)
+        assert!(
+            first_page_elapsed_ms < 300,
+            "first page open+render took {first_page_elapsed_ms} ms, exceeding 300 ms target"
+        );
+
+        assert_eq!(viewport.visible_tile.page_index, 0);
+        assert_eq!(viewport.visible_tile.width_px, 595);
+        assert_eq!(viewport.visible_tile.height_px, 842);
+        assert_eq!(viewport.visible_tile.rgba_bytes.len(), 595 * 842 * 4);
+        assert_eq!(viewport.prefetched_pages, vec![1]);
+        assert_eq!(viewport.cache_stats.cached_tile_count, 2);
+
+        // Repeat render of page 1 must hit the TileCache populated by prefetch
+        let hits_before = viewport.cache_stats.hit_count;
+        let page_1_tile = document_core_render_visible_tile(
+            snap.session_id.clone(),
+            FfiTileRenderRequest {
+                page_index: 1,
+                scale_milli: 1000,
+                tile_x_px: 0,
+                tile_y_px: 0,
+                tile_width_px: 595,
+                tile_height_px: 842,
+            },
+        )
+        .expect("render prefetched page 1");
+        assert_eq!(page_1_tile.page_index, 1);
+        let stats_after_hit = document_core_tile_cache_stats().expect("cache stats");
+        assert_eq!(stats_after_hit.hit_count, hits_before + 1);
+
+        // Render zoomed sub-tile at 200% (scale_milli = 2000)
+        let zoomed_tile = document_core_render_visible_tile(
+            snap.session_id.clone(),
+            FfiTileRenderRequest {
+                page_index: 0,
+                scale_milli: 2000,
+                tile_x_px: 0,
+                tile_y_px: 0,
+                tile_width_px: 256,
+                tile_height_px: 256,
+            },
+        )
+        .expect("render 200% zoomed sub-tile");
+        assert_eq!(zoomed_tile.width_px, 256);
+        assert_eq!(zoomed_tile.height_px, 256);
+        assert_eq!(zoomed_tile.scale_milli, 2000);
+
+        // Critical memory pressure purges cached tiles cleanly
+        let purged_stats = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Critical)
+            .expect("critical memory pressure");
+        assert_eq!(purged_stats.cached_tile_count, 0);
+        assert_eq!(purged_stats.current_used_bytes, 0);
+        let _ = document_core_handle_memory_pressure(FfiMemoryPressureLevel::Normal);
+
+        document_core_close_session(snap.session_id).expect("close session");
     }
 }

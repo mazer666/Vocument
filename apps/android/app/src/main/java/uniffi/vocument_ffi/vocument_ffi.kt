@@ -721,6 +721,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -740,11 +750,21 @@ internal interface IntegrityCheckingUniffiLib : Library {
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_geometry(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats(
 ): Short
 fun ffi_vocument_ffi_uniffi_contract_version(
 ): Int
@@ -795,11 +815,21 @@ internal interface UniffiLib : Library {
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_page_geometry(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_vocument_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -933,6 +963,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 15904.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -940,6 +973,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch() != 51535.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1479,6 +1524,261 @@ public object FfiConverterTypeFfiPdfDocumentSummary: FfiConverterRustBuffer<FfiP
 
 
 
+/**
+ * Page geometry DTO returned across UniFFI (`ROADMAP.md` M0.2).
+ */
+data class FfiPdfPageGeometry (
+    var `pageIndex`: kotlin.UInt, 
+    var `widthMilliPt`: kotlin.UInt, 
+    var `heightMilliPt`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfPageGeometry: FfiConverterRustBuffer<FfiPdfPageGeometry> {
+    override fun read(buf: ByteBuffer): FfiPdfPageGeometry {
+        return FfiPdfPageGeometry(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfPageGeometry) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`widthMilliPt`) +
+            FfiConverterUInt.allocationSize(value.`heightMilliPt`)
+    )
+
+    override fun write(value: FfiPdfPageGeometry, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`widthMilliPt`, buf)
+            FfiConverterUInt.write(value.`heightMilliPt`, buf)
+    }
+}
+
+
+
+/**
+ * Immutable rendered RGBA8 tile bitmap DTO returned to Swift and Kotlin (`ARCHITECTURE.md` §10).
+ */
+data class FfiRenderedTile (
+    var `documentId`: kotlin.String, 
+    var `revision`: kotlin.ULong, 
+    var `pageIndex`: kotlin.UInt, 
+    var `scaleMilli`: kotlin.UInt, 
+    var `tileXPx`: kotlin.UInt, 
+    var `tileYPx`: kotlin.UInt, 
+    var `widthPx`: kotlin.UInt, 
+    var `heightPx`: kotlin.UInt, 
+    var `strideBytes`: kotlin.UInt, 
+    var `rgbaBytes`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRenderedTile: FfiConverterRustBuffer<FfiRenderedTile> {
+    override fun read(buf: ByteBuffer): FfiRenderedTile {
+        return FfiRenderedTile(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiRenderedTile) = (
+            FfiConverterString.allocationSize(value.`documentId`) +
+            FfiConverterULong.allocationSize(value.`revision`) +
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`scaleMilli`) +
+            FfiConverterUInt.allocationSize(value.`tileXPx`) +
+            FfiConverterUInt.allocationSize(value.`tileYPx`) +
+            FfiConverterUInt.allocationSize(value.`widthPx`) +
+            FfiConverterUInt.allocationSize(value.`heightPx`) +
+            FfiConverterUInt.allocationSize(value.`strideBytes`) +
+            FfiConverterByteArray.allocationSize(value.`rgbaBytes`)
+    )
+
+    override fun write(value: FfiRenderedTile, buf: ByteBuffer) {
+            FfiConverterString.write(value.`documentId`, buf)
+            FfiConverterULong.write(value.`revision`, buf)
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`scaleMilli`, buf)
+            FfiConverterUInt.write(value.`tileXPx`, buf)
+            FfiConverterUInt.write(value.`tileYPx`, buf)
+            FfiConverterUInt.write(value.`widthPx`, buf)
+            FfiConverterUInt.write(value.`heightPx`, buf)
+            FfiConverterUInt.write(value.`strideBytes`, buf)
+            FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+    }
+}
+
+
+
+/**
+ * Telemetry snapshot of the shared adaptive `TileCache` (`ARCHITECTURE.md` §9).
+ */
+data class FfiTileCacheStats (
+    var `configuredMaxBytes`: kotlin.ULong, 
+    var `effectiveMaxBytes`: kotlin.ULong, 
+    var `currentUsedBytes`: kotlin.ULong, 
+    var `cachedTileCount`: kotlin.UInt, 
+    var `hitCount`: kotlin.ULong, 
+    var `missCount`: kotlin.ULong, 
+    var `evictionCount`: kotlin.ULong, 
+    var `pressureLevel`: FfiMemoryPressureLevel
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTileCacheStats: FfiConverterRustBuffer<FfiTileCacheStats> {
+    override fun read(buf: ByteBuffer): FfiTileCacheStats {
+        return FfiTileCacheStats(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeFfiMemoryPressureLevel.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTileCacheStats) = (
+            FfiConverterULong.allocationSize(value.`configuredMaxBytes`) +
+            FfiConverterULong.allocationSize(value.`effectiveMaxBytes`) +
+            FfiConverterULong.allocationSize(value.`currentUsedBytes`) +
+            FfiConverterUInt.allocationSize(value.`cachedTileCount`) +
+            FfiConverterULong.allocationSize(value.`hitCount`) +
+            FfiConverterULong.allocationSize(value.`missCount`) +
+            FfiConverterULong.allocationSize(value.`evictionCount`) +
+            FfiConverterTypeFfiMemoryPressureLevel.allocationSize(value.`pressureLevel`)
+    )
+
+    override fun write(value: FfiTileCacheStats, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`configuredMaxBytes`, buf)
+            FfiConverterULong.write(value.`effectiveMaxBytes`, buf)
+            FfiConverterULong.write(value.`currentUsedBytes`, buf)
+            FfiConverterUInt.write(value.`cachedTileCount`, buf)
+            FfiConverterULong.write(value.`hitCount`, buf)
+            FfiConverterULong.write(value.`missCount`, buf)
+            FfiConverterULong.write(value.`evictionCount`, buf)
+            FfiConverterTypeFfiMemoryPressureLevel.write(value.`pressureLevel`, buf)
+    }
+}
+
+
+
+/**
+ * Request parameters for rendering a page or tile at a quantized scale (`scale_milli = 1000` is 1.0x).
+ */
+data class FfiTileRenderRequest (
+    var `pageIndex`: kotlin.UInt, 
+    var `scaleMilli`: kotlin.UInt, 
+    var `tileXPx`: kotlin.UInt, 
+    var `tileYPx`: kotlin.UInt, 
+    var `tileWidthPx`: kotlin.UInt, 
+    var `tileHeightPx`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTileRenderRequest: FfiConverterRustBuffer<FfiTileRenderRequest> {
+    override fun read(buf: ByteBuffer): FfiTileRenderRequest {
+        return FfiTileRenderRequest(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTileRenderRequest) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`scaleMilli`) +
+            FfiConverterUInt.allocationSize(value.`tileXPx`) +
+            FfiConverterUInt.allocationSize(value.`tileYPx`) +
+            FfiConverterUInt.allocationSize(value.`tileWidthPx`) +
+            FfiConverterUInt.allocationSize(value.`tileHeightPx`)
+    )
+
+    override fun write(value: FfiTileRenderRequest, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`scaleMilli`, buf)
+            FfiConverterUInt.write(value.`tileXPx`, buf)
+            FfiConverterUInt.write(value.`tileYPx`, buf)
+            FfiConverterUInt.write(value.`tileWidthPx`, buf)
+            FfiConverterUInt.write(value.`tileHeightPx`, buf)
+    }
+}
+
+
+
+/**
+ * Combined result of rendering a visible viewport tile and prefetching neighbouring pages (`ROADMAP.md` M0.2).
+ */
+data class FfiViewportRenderResult (
+    var `visibleTile`: FfiRenderedTile, 
+    var `prefetchedPages`: List<kotlin.UInt>, 
+    var `cacheStats`: FfiTileCacheStats
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiViewportRenderResult: FfiConverterRustBuffer<FfiViewportRenderResult> {
+    override fun read(buf: ByteBuffer): FfiViewportRenderResult {
+        return FfiViewportRenderResult(
+            FfiConverterTypeFfiRenderedTile.read(buf),
+            FfiConverterSequenceUInt.read(buf),
+            FfiConverterTypeFfiTileCacheStats.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiViewportRenderResult) = (
+            FfiConverterTypeFfiRenderedTile.allocationSize(value.`visibleTile`) +
+            FfiConverterSequenceUInt.allocationSize(value.`prefetchedPages`) +
+            FfiConverterTypeFfiTileCacheStats.allocationSize(value.`cacheStats`)
+    )
+
+    override fun write(value: FfiViewportRenderResult, buf: ByteBuffer) {
+            FfiConverterTypeFfiRenderedTile.write(value.`visibleTile`, buf)
+            FfiConverterSequenceUInt.write(value.`prefetchedPages`, buf)
+            FfiConverterTypeFfiTileCacheStats.write(value.`cacheStats`, buf)
+    }
+}
+
+
+
 
 
 /**
@@ -1674,6 +1974,40 @@ public object FfiConverterTypeFfiFileAccessOrigin: FfiConverterRustBuffer<FfiFil
 
 
 
+/**
+ * Platform memory pressure signal forwarded from macOS or Android into `DocumentCore` (`ARCHITECTURE.md` §9).
+ */
+
+enum class FfiMemoryPressureLevel {
+    
+    NORMAL,
+    WARNING,
+    CRITICAL;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiMemoryPressureLevel: FfiConverterRustBuffer<FfiMemoryPressureLevel> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiMemoryPressureLevel.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiMemoryPressureLevel) = 4UL
+
+    override fun write(value: FfiMemoryPressureLevel, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -1742,6 +2076,34 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
+    override fun read(buf: ByteBuffer): List<kotlin.UInt> {
+        val len = buf.getInt()
+        return List<kotlin.UInt>(len) {
+            FfiConverterUInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.UInt>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterUInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.UInt>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterUInt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
     override fun read(buf: ByteBuffer): List<kotlin.String> {
         val len = buf.getInt()
@@ -1789,6 +2151,19 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     
 
         /**
+         * Applies a platform memory-pressure signal (`Normal`, `Warning`, `Critical`) to the adaptive `TileCache` (`ARCHITECTURE.md` §9).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreHandleMemoryPressure`(`level`: FfiMemoryPressureLevel): FfiTileCacheStats {
+            return FfiConverterTypeFfiTileCacheStats.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(
+        FfiConverterTypeFfiMemoryPressureLevel.lower(`level`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Performs the M0.0 `DocumentCore` bootstrap handshake for Swift and Kotlin callers.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreHandshake`(): DocumentCoreHandshake {
@@ -1822,6 +2197,58 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(`scopedPathOrUrl`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Queries the unscaled geometry (points and rotation) of `page_index` via `DocumentActor` (`ROADMAP.md` M0.2).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageGeometry`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiPdfPageGeometry {
+            return FfiConverterTypeFfiPdfPageGeometry.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_geometry(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders the requested visible viewport tile and schedules neighbouring-page prefetch (`ROADMAP.md` M0.2).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRenderViewportWithPrefetch`(`sessionId`: kotlin.String, `request`: FfiTileRenderRequest): FfiViewportRenderResult {
+            return FfiConverterTypeFfiViewportRenderResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiTileRenderRequest.lower(`request`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders a single visible page or tile via `DocumentActor` + adaptive `TileCache` (`ROADMAP.md` M0.2).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRenderVisibleTile`(`sessionId`: kotlin.String, `request`: FfiTileRenderRequest): FfiRenderedTile {
+            return FfiConverterTypeFfiRenderedTile.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiTileRenderRequest.lower(`request`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns current telemetry statistics of the shared adaptive `TileCache`.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreTileCacheStats`(): FfiTileCacheStats {
+            return FfiConverterTypeFfiTileCacheStats.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(
+        _status)
 }
     )
     }

@@ -1,4 +1,4 @@
-//! Vocument-defined `PdfEngine` interface (`ARCHITECTURE.md` §18, `ROADMAP.md` M0.1).
+//! Vocument-defined `PdfEngine` interface (`ARCHITECTURE.md` §§7, 9, 18, `ROADMAP.md` M0.1–M0.2).
 //!
 //! Initial production implementation uses MuPDF (`engines/pdf-mupdf`).
 //! No UI layer may reference MuPDF directly.
@@ -35,20 +35,74 @@ pub struct PdfDocumentSummary {
     pub engine_identifier: String,
 }
 
+/// Geometry of a single PDF page in PDF points (`1/72` inch, stored as milli-points for exact integer equality).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfPageGeometry {
+    pub page_index: u32,
+    /// Width in milli-points (e.g. A4 `595 pt` = `595_000`).
+    pub width_milli_pt: u32,
+    /// Height in milli-points (e.g. A4 `842 pt` = `842_000`).
+    pub height_milli_pt: u32,
+}
+
+/// Request to rasterize a rectangular tile of a page at a given zoom level (`ARCHITECTURE.md` §9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfTileRenderRequest {
+    pub page_index: u32,
+    /// Zoom factor in milli-units (`1000` = 1.0x / 72 DPI, `2000` = 2.0x / 144 DPI).
+    pub scale_milli: u32,
+    pub tile_x_px: u32,
+    pub tile_y_px: u32,
+    pub tile_width_px: u32,
+    pub tile_height_px: u32,
+}
+
+/// Raw RGBA8 bitmap output returned by `PdfEngineDisplayList::render_tile`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfTileBitmap {
+    pub width_px: u32,
+    pub height_px: u32,
+    pub stride_bytes: u32,
+    pub rgba_bytes: Vec<u8>,
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum PdfEngineError {
     #[error("document is encrypted and requires an open password")]
     PasswordRequired,
     #[error("invalid or corrupted PDF document: {details}")]
     InvalidPdf { details: String },
+    #[error("page index {page_index} is out of bounds (page count: {page_count})")]
+    PageOutOfBounds { page_index: u32, page_count: u32 },
+    #[error("invalid tile dimensions ({width}x{height})")]
+    InvalidTileDimensions { width: u32, height: u32 },
     #[error("PDF engine internal failure: {details}")]
     EngineFailure { details: String },
 }
 
-/// Handle to an opened engine-level PDF instance owned inside a `DocumentSession`.
+/// Immutable display-list representation of a parsed PDF page (`ARCHITECTURE.md` §7, `ROADMAP.md` M0.2).
+/// Created exclusively on the serialized `DocumentActor` and safe to replay concurrently on render workers.
+pub trait PdfEngineDisplayList: Send + Sync + std::fmt::Debug {
+    /// Returns the page geometry recorded when the display list was built.
+    fn page_geometry(&self) -> PdfPageGeometry;
+
+    /// Replays the immutable display list to rasterize a specific tile into an RGBA8 bitmap.
+    fn render_tile(&self, request: PdfTileRenderRequest) -> Result<PdfTileBitmap, PdfEngineError>;
+}
+
+/// Handle to an opened engine-level PDF instance owned inside a `DocumentActor`.
 pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// Returns the immutable summary (page count + basic metadata) of the opened PDF.
     fn summary(&self) -> &PdfDocumentSummary;
+
+    /// Queries the point geometry of `page_index` (`0`-based).
+    fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, PdfEngineError>;
+
+    /// Builds an immutable `PdfEngineDisplayList` for `page_index` (`0`-based).
+    fn create_display_list(
+        &self,
+        page_index: u32,
+    ) -> Result<Box<dyn PdfEngineDisplayList>, PdfEngineError>;
 }
 
 /// Vocument-owned PDF engine interface (`ARCHITECTURE.md` §18).

@@ -70,7 +70,7 @@ No UI layer accesses MuPDF directly (enforced automatically in `./scripts/valida
 
 ---
 
-## M0.2 — Rendering
+## M0.2 — Rendering *(COMPLETED — see [`docs/acceptance/M0.2-ACCEPTANCE.md`](docs/acceptance/M0.2-ACCEPTANCE.md))*
 
 Deliver:
 
@@ -87,8 +87,8 @@ Deliver:
 
 On reference hardware, aim for:
 
-- normal PDF first page visible within 300–500 ms after document load path is ready
-- 60 fps-oriented scroll/zoom behaviour
+- normal PDF first page visible within 300–500 ms after document load path is ready *(achieved: ~51 ms on macOS, ~56 ms on Kotlin/Android)*
+- 60 fps-oriented scroll/zoom behaviour *(achieved: <0.1 ms tile cache hits, <2 ms display-list sub-tile render)*
 - UI remains responsive for large documents
 
 Exact device-specific gates are refined during implementation.
