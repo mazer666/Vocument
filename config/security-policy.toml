@@ -1,0 +1,27 @@
+# Central Security & Privacy Policy Defaults (Baseline 0.1)
+# Enforced by NetworkBroker, FileBroker, PdfEngine, and DiagnosticsService.
+
+[network]
+default_policy = "deny_all"               # NET-001: strict offline by default
+allow_automatic_external_resources = false
+allow_silent_cloud_ai_fallback = false    # AI-007
+allow_silent_link_reputation_check = false # LINKSEC-003
+
+[documents]
+treat_all_inputs_as_untrusted = true      # SECARCH-001
+allow_automatic_pdf_javascript = false    # SECARCH-002
+allow_safe_form_calculations = true       # JS-001, FORMLOGIC-001
+allow_automatic_attachment_open = false   # SECARCH-003, ATTACH-001
+allow_automatic_multimedia_exec = false   # MEDIA-001
+require_reopen_redaction_verification = true # REDACT-002
+
+[package_limits]
+max_pdoc_archive_size_mb = 1024
+max_zip_compression_ratio = 100
+max_zip_entries = 50000
+
+[privacy_and_logging]
+enable_telemetry = false                  # LOG-001
+enable_automatic_crash_upload = false     # LOG-002
+redact_document_content_in_logs = true    # LOG-003
+use_opaque_recovery_container_ids = true  # ARCHITECTURE.md §12

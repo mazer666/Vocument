@@ -1,0 +1,41 @@
+# OS & Editor
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+*~
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+
+# macOS / Xcode / Swift
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace/xcuserdata/
+.swiftpm/
+.build/
+
+# Android / Gradle / Kotlin
+.gradle/
+local.properties
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Temporary & Recovery test artifacts
+tmp/
+*.tmp
+*.bak

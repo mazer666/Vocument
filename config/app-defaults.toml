@@ -1,0 +1,43 @@
+# Central Application Defaults (Baseline 0.1)
+# Source of truth for user-visible default behaviour.
+
+[interface]
+complexity_profile = "standard"       # simple | standard | expert (UI-005)
+density = "standard"                  # quiet | standard | compact (UI-006)
+theme = "system"                      # light | dark | system (UI-007)
+status_feedback = "subtle"            # subtle | ultra_quiet (UI-008)
+desktop_layout = "calm_hybrid"        # calm_hybrid | classic_ribbon (UI-002, UI-003)
+mobile_navigation = "compact_bottom"  # compact_bottom | persistent_large (MOBILE-002, MOBILE-003)
+
+[viewer]
+macos_default_mode = "comfort_reader" # VIEW-002
+mobile_default_mode = "minimal_reader"# VIEW-001
+show_physical_page_index = true       # PAGELABEL-002
+use_logical_page_labels = true        # PAGELABEL-001
+
+[search]
+default_mode = "exact"                # exact | fuzzy | semantic (SEARCH-002)
+progressive_indexing = true           # SEARCH-009
+
+[clipboard]
+default_copy_mode = "cleaned_plain_text" # CLIP-001, OCRCOPY-002
+auto_clear_clipboard = false             # CLIP-004, CLIP-005
+auto_clear_delay_seconds = 60
+
+[ocr]
+built_in_languages = ["deu", "eng"]   # OCR-002
+default_output_mode = "optimised_searchable_pdf" # OCR-008
+
+[editing]
+pdf_text_edit_default = "quick_edit"  # quick_edit | block_reflow (EDIT-004)
+incremental_save_default = false      # INCSAVE-001 (full safe rewrite by default)
+
+[recovery]
+autosave_interval_seconds = 15        # SAVE-003
+checkpoint_transaction_interval = 25
+retention_days = 30                   # RETENTION-001
+max_recovery_storage_mb = 2048        # UNDO-003
+
+[internationalisation]
+supported_locales = ["de-AT", "de-DE", "en-US", "en-GB"] # I18N-001, I18N-002
+default_german_variant = "de-AT"

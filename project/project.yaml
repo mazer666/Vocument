@@ -1,0 +1,39 @@
+project:
+  name: Vocument
+  baseline_version: "0.1"
+  product_status: "implementation-bootstrap"
+  current_milestone: "M0"
+  current_milestone_name: "Foundation / Trustworthy Viewer"
+  license: "AGPL-3.0"
+  contribution_model: "DCO"
+
+platforms:
+  phase_1:
+    macos:
+      minimum: "15"
+      architecture: "arm64"
+    android:
+      minimum_api_family: "Android 13+"
+      primary_abi: "arm64-v8a"
+
+architecture:
+  shared_core: "Rust"
+  macos_ui: "SwiftUI + AppKit"
+  android_ui: "Kotlin + Jetpack Compose"
+  native_bridge: "UniFFI"
+  pdf_engine: "MuPDF via PdfEngine adapter"
+  ocr_engine: "Tesseract via OcrProvider"
+  office_engine: "TBD via fidelity bake-off"
+
+milestones:
+  M0: "Foundation / Trustworthy Viewer"
+  M1: "Android Scan & OCR"
+  M2: "macOS Professional Review"
+  M3: "Page Workbench"
+  M4: "Authoring / FlowDocument / .pdoc / DOCX / ODT"
+
+documentation:
+  requirements_version: "0.1"
+  architecture_version: "0.1"
+  roadmap_version: "0.1"
+  quality_version: "0.1"
