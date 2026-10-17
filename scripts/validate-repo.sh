@@ -40,17 +40,21 @@ REQUIRED_FILES=(
   "docs/features/FEATURE_TEMPLATE.md"
   "docs/acceptance/ACCEPTANCE_TEMPLATE.md"
   "docs/acceptance/M0.0-ACCEPTANCE.md"
+  "docs/acceptance/M0.1-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
   "docs/adr/ADR-0003-uniffi-binding-generation-and-bridge-verification.md"
+  "docs/adr/ADR-0004-m0-1-filebroker-document-session-and-mupdf-adapter.md"
   "docs/cr/CR_TEMPLATE.md"
+  "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
   "scripts/generate-bindings.sh"
   "scripts/verify-kotlin-handshake.sh"
   "apps/macos/Package.swift"
   "apps/android/app/build.gradle.kts"
   "apps/android/app/src/main/AndroidManifest.xml"
+  "tests/corpus/m0_1_sample_two_pages.pdf"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -70,5 +74,36 @@ if [[ -d ".github/workflows" ]]; then
   fi
   echo "✓ Workflow runner policy verified (self-hosted only)."
 fi
+
+# Enforce CODE-001: Hand-written source file size limits (target <= 600 lines, hard max <= 900 lines)
+TARGET_MAX_LINES=600
+HARD_MAX_LINES=900
+
+while IFS= read -r -d '' src_file; do
+  line_count="$(wc -l < "$src_file" | tr -d ' ')"
+  if (( line_count > HARD_MAX_LINES )); then
+    echo "ERROR (CODE-001): Hand-written source file '$src_file' has $line_count lines (hard maximum is $HARD_MAX_LINES)." >&2
+    exit 1
+  elif (( line_count > TARGET_MAX_LINES )); then
+    echo "WARNING (CODE-001): Hand-written source file '$src_file' has $line_count lines (target is <= $TARGET_MAX_LINES; consider splitting)." >&2
+  fi
+done < <(find core engines formats platform apps scripts \
+  -type f \( -name "*.rs" -o -name "*.swift" -o -name "*.kt" -o -name "*.c" -o -name "*.h" -o -name "*.sh" \) \
+  -not -path "*/target/*" \
+  -not -path "*/.build/*" \
+  -not -path "*/build/*" \
+  -not -path "apps/macos/Sources/VocumentFFI/*" \
+  -not -path "apps/macos/Sources/VocumentFFIHeaders/*" \
+  -not -path "apps/android/app/src/main/java/uniffi/*" \
+  -print0)
+
+echo "✓ Source file size policy verified (CODE-001: target <= ${TARGET_MAX_LINES}, max <= ${HARD_MAX_LINES} lines)."
+
+# Enforce M0.1 Gate: No UI layer accesses MuPDF directly
+if grep -RInE 'mupdf|fz_' apps/macos/Sources/VocumentMacApp apps/macos/Sources/VocumentMacKit apps/android/app/src/main/java/org/vocument >/dev/null 2>&1; then
+  echo "ERROR (M0.1 Gate): Direct MuPDF reference detected in native UI layer!" >&2
+  exit 1
+fi
+echo "✓ M0.1 Gate verified: No UI layer accesses MuPDF directly."
 
 echo "==> Repository validation passed."

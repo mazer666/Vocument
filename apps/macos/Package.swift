@@ -36,7 +36,13 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags([
                     "-L../../target/debug",
-                    "-lvocument_ffi"
+                    "-lvocument_ffi",
+                    "-L/opt/homebrew/opt/mupdf/lib",
+                    "-lmupdf",
+                    "-Xlinker",
+                    "-rpath",
+                    "-Xlinker",
+                    "/opt/homebrew/opt/mupdf/lib"
                 ])
             ]
         ),

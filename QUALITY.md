@@ -35,7 +35,7 @@ Questions:
 - Are dependencies justified and pinned?
 - Is failure isolated?
 - Are migrations/versioning handled?
-- Is code understandable?
+- Is code understandable and within file-size limits (`CODE-001`: target $\le 600$ lines, max $900$ lines)?
 
 Evidence:
 

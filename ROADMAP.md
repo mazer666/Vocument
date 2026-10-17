@@ -53,7 +53,7 @@ A clean clone can be bootstrapped and built by following documented commands wit
 
 ---
 
-## M0.1 — FileBroker + MuPDF session
+## M0.1 — FileBroker + MuPDF session (Status: `done` — see [`docs/acceptance/M0.1-ACCEPTANCE.md`](docs/acceptance/M0.1-ACCEPTANCE.md))
 
 Deliver:
 
@@ -66,7 +66,7 @@ Deliver:
 
 ### Gate
 
-No UI layer accesses MuPDF directly.
+No UI layer accesses MuPDF directly (enforced automatically in `./scripts/validate-repo.sh`).
 
 ---
 

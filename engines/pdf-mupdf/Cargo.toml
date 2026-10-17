@@ -4,9 +4,19 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+build = "build.rs"
 
 [dependencies]
 vocument-core = { path = "../../core/vocument-core" }
+thiserror.workspace = true
 
-[lints]
-workspace = true
+[build-dependencies]
+cc.workspace = true
+
+[lints.rust]
+unsafe_code = "allow"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"

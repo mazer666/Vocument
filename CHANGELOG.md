@@ -4,6 +4,16 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.1] - 2026-10-17
+
+### Added
+- Completed **M0.1 — FileBroker + MuPDF session** (`docs/acceptance/M0.1-ACCEPTANCE.md`, `ADR-0004`).
+- Added `CODE-001` requirement (`docs/cr/CR-0001-source-file-size-limits.md`): hand-written source files target $\le 600$ lines with a hard maximum of $900$ lines, enforced in `config/performance-budgets.toml` and `scripts/validate-repo.sh`.
+- Implemented `FileIdentity` (SHA-256, size, mtime, OS inode/SAF document ID, external-modification comparison), `DocumentId`, and `SessionId` in `core/vocument-core/src/identity.rs`.
+- Implemented `FileBroker` and `ScopedLocalFileBroker` in `core/vocument-core/src/file_broker.rs`.
+- Implemented `PdfEngine` trait (`core/vocument-core/src/pdf_engine.rs`) and the production **MuPDF 1.28.5** adapter (`engines/pdf-mupdf`) with `fz_try`/`fz_catch` C bridge reading real PDF page counts and Info metadata.
+- Implemented `DocumentSession` and `SessionRegistry` in `core/vocument-core/src/session.rs` and exposed session lifecycle functions over UniFFI (`platform/vocument-ffi`) to both macOS (`apps/macos`) and Android (`apps/android`).
+
 ## [0.1.0-m0.0] - 2026-10-17
 
 ### Added

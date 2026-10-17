@@ -4,9 +4,10 @@ project:
   product_status: "m0-in-progress"
   current_milestone: "M0"
   current_milestone_name: "Foundation / Trustworthy Viewer"
-  current_submilestone: "M0.1"
+  current_submilestone: "M0.2"
   completed_submilestones:
     - "M0.0"
+    - "M0.1"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 
@@ -24,7 +25,7 @@ architecture:
   macos_ui: "SwiftUI + AppKit"
   android_ui: "Kotlin + Jetpack Compose"
   native_bridge: "UniFFI"
-  pdf_engine: "MuPDF via PdfEngine adapter"
+  pdf_engine: "MuPDF 1.28.5 via PdfEngine adapter"
   ocr_engine: "Tesseract via OcrProvider"
   office_engine: "TBD via fidelity bake-off"
 

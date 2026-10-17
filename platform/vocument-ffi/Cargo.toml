@@ -15,6 +15,7 @@ path = "src/bin/uniffi-bindgen.rs"
 
 [dependencies]
 vocument-core = { path = "../../core/vocument-core" }
+vocument-pdf-mupdf = { path = "../../engines/pdf-mupdf" }
 uniffi.workspace = true
 thiserror.workspace = true
 

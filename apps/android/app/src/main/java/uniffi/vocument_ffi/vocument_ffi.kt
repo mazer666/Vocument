@@ -713,6 +713,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -728,7 +736,15 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
+    fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
 ): Short
 fun ffi_vocument_ffi_uniffi_contract_version(
 ): Int
@@ -775,7 +791,15 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_vocument_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -903,7 +927,19 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1011,6 +1047,52 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 /**
  * @suppress
  */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
     override fun lift(value: Byte): Boolean {
         return value.toInt() != 0
@@ -1088,6 +1170,25 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
+/**
+ * @suppress
+ */
+public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
+    override fun read(buf: ByteBuffer): ByteArray {
+        val len = buf.getInt()
+        val byteArr = ByteArray(len)
+        buf.get(byteArr)
+        return byteArr
+    }
+    override fun allocationSize(value: ByteArray): ULong {
+        return 4UL + value.size.toULong()
+    }
+    override fun write(value: ByteArray, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        buf.put(value)
+    }
+}
+
 
 
 /**
@@ -1146,6 +1247,238 @@ public object FfiConverterTypeDocumentCoreHandshake: FfiConverterRustBuffer<Docu
 
 
 
+/**
+ * Platform-brokered file descriptor passed into `DocumentCore` (e.g. from Android Storage Access Framework or macOS `FileBroker`).
+ */
+data class FfiBrokeredFileDescriptor (
+    var `sourceToken`: kotlin.String, 
+    var `displayName`: kotlin.String, 
+    var `accessOrigin`: FfiFileAccessOrigin, 
+    var `osFileId`: kotlin.String?, 
+    var `modifiedUnixMs`: kotlin.Long?, 
+    var `bytes`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBrokeredFileDescriptor: FfiConverterRustBuffer<FfiBrokeredFileDescriptor> {
+    override fun read(buf: ByteBuffer): FfiBrokeredFileDescriptor {
+        return FfiBrokeredFileDescriptor(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiFileAccessOrigin.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBrokeredFileDescriptor) = (
+            FfiConverterString.allocationSize(value.`sourceToken`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterTypeFfiFileAccessOrigin.allocationSize(value.`accessOrigin`) +
+            FfiConverterOptionalString.allocationSize(value.`osFileId`) +
+            FfiConverterOptionalLong.allocationSize(value.`modifiedUnixMs`) +
+            FfiConverterByteArray.allocationSize(value.`bytes`)
+    )
+
+    override fun write(value: FfiBrokeredFileDescriptor, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sourceToken`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterTypeFfiFileAccessOrigin.write(value.`accessOrigin`, buf)
+            FfiConverterOptionalString.write(value.`osFileId`, buf)
+            FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
+            FfiConverterByteArray.write(value.`bytes`, buf)
+    }
+}
+
+
+
+/**
+ * Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
+ */
+data class FfiDocumentSessionSnapshot (
+    var `sessionId`: kotlin.String, 
+    var `documentId`: kotlin.String, 
+    var `revision`: kotlin.ULong, 
+    var `isDirty`: kotlin.Boolean, 
+    var `accessOrigin`: FfiFileAccessOrigin, 
+    var `fileIdentity`: FfiFileIdentity, 
+    var `pdfSummary`: FfiPdfDocumentSummary
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer<FfiDocumentSessionSnapshot> {
+    override fun read(buf: ByteBuffer): FfiDocumentSessionSnapshot {
+        return FfiDocumentSessionSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterTypeFfiFileAccessOrigin.read(buf),
+            FfiConverterTypeFfiFileIdentity.read(buf),
+            FfiConverterTypeFfiPdfDocumentSummary.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiDocumentSessionSnapshot) = (
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterString.allocationSize(value.`documentId`) +
+            FfiConverterULong.allocationSize(value.`revision`) +
+            FfiConverterBoolean.allocationSize(value.`isDirty`) +
+            FfiConverterTypeFfiFileAccessOrigin.allocationSize(value.`accessOrigin`) +
+            FfiConverterTypeFfiFileIdentity.allocationSize(value.`fileIdentity`) +
+            FfiConverterTypeFfiPdfDocumentSummary.allocationSize(value.`pdfSummary`)
+    )
+
+    override fun write(value: FfiDocumentSessionSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterString.write(value.`documentId`, buf)
+            FfiConverterULong.write(value.`revision`, buf)
+            FfiConverterBoolean.write(value.`isDirty`, buf)
+            FfiConverterTypeFfiFileAccessOrigin.write(value.`accessOrigin`, buf)
+            FfiConverterTypeFfiFileIdentity.write(value.`fileIdentity`, buf)
+            FfiConverterTypeFfiPdfDocumentSummary.write(value.`pdfSummary`, buf)
+    }
+}
+
+
+
+/**
+ * Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
+ */
+data class FfiFileIdentity (
+    var `sourceToken`: kotlin.String, 
+    var `displayName`: kotlin.String, 
+    var `osFileId`: kotlin.String?, 
+    var `sizeBytes`: kotlin.ULong, 
+    var `modifiedUnixMs`: kotlin.Long?, 
+    var `sha256Hex`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIdentity> {
+    override fun read(buf: ByteBuffer): FfiFileIdentity {
+        return FfiFileIdentity(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiFileIdentity) = (
+            FfiConverterString.allocationSize(value.`sourceToken`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterOptionalString.allocationSize(value.`osFileId`) +
+            FfiConverterULong.allocationSize(value.`sizeBytes`) +
+            FfiConverterOptionalLong.allocationSize(value.`modifiedUnixMs`) +
+            FfiConverterString.allocationSize(value.`sha256Hex`)
+    )
+
+    override fun write(value: FfiFileIdentity, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sourceToken`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterOptionalString.write(value.`osFileId`, buf)
+            FfiConverterULong.write(value.`sizeBytes`, buf)
+            FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
+            FfiConverterString.write(value.`sha256Hex`, buf)
+    }
+}
+
+
+
+/**
+ * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
+ */
+data class FfiPdfDocumentSummary (
+    var `pageCount`: kotlin.UInt, 
+    var `formatVersion`: kotlin.String?, 
+    var `title`: kotlin.String?, 
+    var `author`: kotlin.String?, 
+    var `subject`: kotlin.String?, 
+    var `keywords`: kotlin.String?, 
+    var `creator`: kotlin.String?, 
+    var `producer`: kotlin.String?, 
+    var `creationDate`: kotlin.String?, 
+    var `modificationDate`: kotlin.String?, 
+    var `needsPassword`: kotlin.Boolean, 
+    var `engineIdentifier`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfDocumentSummary: FfiConverterRustBuffer<FfiPdfDocumentSummary> {
+    override fun read(buf: ByteBuffer): FfiPdfDocumentSummary {
+        return FfiPdfDocumentSummary(
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfDocumentSummary) = (
+            FfiConverterUInt.allocationSize(value.`pageCount`) +
+            FfiConverterOptionalString.allocationSize(value.`formatVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`subject`) +
+            FfiConverterOptionalString.allocationSize(value.`keywords`) +
+            FfiConverterOptionalString.allocationSize(value.`creator`) +
+            FfiConverterOptionalString.allocationSize(value.`producer`) +
+            FfiConverterOptionalString.allocationSize(value.`creationDate`) +
+            FfiConverterOptionalString.allocationSize(value.`modificationDate`) +
+            FfiConverterBoolean.allocationSize(value.`needsPassword`) +
+            FfiConverterString.allocationSize(value.`engineIdentifier`)
+    )
+
+    override fun write(value: FfiPdfDocumentSummary, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageCount`, buf)
+            FfiConverterOptionalString.write(value.`formatVersion`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`subject`, buf)
+            FfiConverterOptionalString.write(value.`keywords`, buf)
+            FfiConverterOptionalString.write(value.`creator`, buf)
+            FfiConverterOptionalString.write(value.`producer`, buf)
+            FfiConverterOptionalString.write(value.`creationDate`, buf)
+            FfiConverterOptionalString.write(value.`modificationDate`, buf)
+            FfiConverterBoolean.write(value.`needsPassword`, buf)
+            FfiConverterString.write(value.`engineIdentifier`, buf)
+    }
+}
+
+
+
 
 
 /**
@@ -1154,6 +1487,44 @@ public object FfiConverterTypeDocumentCoreHandshake: FfiConverterRustBuffer<Docu
 sealed class DocumentCoreException: kotlin.Exception() {
     
     class ConfigurationException(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class FileBrokerFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class PasswordRequired(
+        ) : DocumentCoreException() {
+        override val message
+            get() = ""
+    }
+    
+    class InvalidPdf(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    class SessionNotFound(
+        
+        val `sessionId`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "sessionId=${ `sessionId` }"
+    }
+    
+    class InternalFailure(
         
         val `details`: kotlin.String
         ) : DocumentCoreException() {
@@ -1180,6 +1551,19 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             1 -> DocumentCoreException.ConfigurationException(
                 FfiConverterString.read(buf),
                 )
+            2 -> DocumentCoreException.FileBrokerFailure(
+                FfiConverterString.read(buf),
+                )
+            3 -> DocumentCoreException.PasswordRequired()
+            4 -> DocumentCoreException.InvalidPdf(
+                FfiConverterString.read(buf),
+                )
+            5 -> DocumentCoreException.SessionNotFound(
+                FfiConverterString.read(buf),
+                )
+            6 -> DocumentCoreException.InternalFailure(
+                FfiConverterString.read(buf),
+                )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
     }
@@ -1187,6 +1571,30 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
     override fun allocationSize(value: DocumentCoreException): ULong {
         return when(value) {
             is DocumentCoreException.ConfigurationException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.FileBrokerFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.PasswordRequired -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is DocumentCoreException.InvalidPdf -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.SessionNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`sessionId`)
+            )
+            is DocumentCoreException.InternalFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -1201,9 +1609,131 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
+            is DocumentCoreException.FileBrokerFailure -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.PasswordRequired -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DocumentCoreException.InvalidPdf -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.SessionNotFound -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`sessionId`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 
+}
+
+
+
+/**
+ * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
+ */
+
+enum class FfiFileAccessOrigin {
+    
+    MAC_OS_SCOPED_URL,
+    ANDROID_SAF_URI,
+    IN_MEMORY_BUFFER;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFileAccessOrigin: FfiConverterRustBuffer<FfiFileAccessOrigin> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiFileAccessOrigin.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiFileAccessOrigin) = 4UL
+
+    override fun write(value: FfiFileAccessOrigin, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
 }
 
 
@@ -1234,6 +1764,31 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 }
         /**
+         * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCloseSession`(`sessionId`: kotlin.String)
+        = 
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_close_session(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    
+    
+
+        /**
+         * Returns the current immutable `FfiDocumentSessionSnapshot` for an active `session_id`.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetSessionSnapshot`(`sessionId`: kotlin.String): FfiDocumentSessionSnapshot {
+            return FfiConverterTypeFfiDocumentSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Performs the M0.0 `DocumentCore` bootstrap handshake for Swift and Kotlin callers.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreHandshake`(): DocumentCoreHandshake {
@@ -1241,6 +1796,32 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_handshake(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Opens a PDF document from a platform `FileBroker` descriptor (e.g. Android Storage Access Framework `content://` URI) (`ROADMAP.md` M0.1).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOpenBrokeredFile`(`descriptor`: FfiBrokeredFileDescriptor): FfiDocumentSessionSnapshot {
+            return FfiConverterTypeFfiDocumentSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(
+        FfiConverterTypeFfiBrokeredFileDescriptor.lower(`descriptor`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Opens a PDF document from a macOS Finder / Open With security-scoped file path or URL via `ScopedLocalFileBroker` (`ROADMAP.md` M0.1).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOpenMacosScopedFile`(`scopedPathOrUrl`: kotlin.String): FfiDocumentSessionSnapshot {
+            return FfiConverterTypeFfiDocumentSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
+        FfiConverterString.lower(`scopedPathOrUrl`),_status)
 }
     )
     }

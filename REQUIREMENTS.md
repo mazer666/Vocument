@@ -1168,6 +1168,9 @@ Material requirement changes use Change Requests.
 ### REQ-003
 Agents may not silently alter accepted requirements.
 
+### CODE-001 — Source file size limits
+Hand-written source code files must remain small and understandable: target is up to 600 lines per file, and the hard maximum is 900 lines per file. Files approaching the target must be split into focused submodules (machine-generated bindings are excluded).
+
 ---
 
 # 44. Explicit non-goals/default exclusions

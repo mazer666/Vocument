@@ -4,13 +4,17 @@
 //! recovery contracts, and broker boundaries without any native UI dependencies.
 
 pub mod config;
+pub mod file_broker;
+pub mod identity;
+pub mod pdf_engine;
+pub mod session;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};
 
 /// Version of the Vocument baseline and core library.
 pub const BASELINE_VERSION: &str = "0.1";
 
-/// Immutable runtime snapshot of the core bootstrap state, exposed across FFI in M0.0.
+/// Immutable runtime snapshot of the core bootstrap state, exposed across FFI in M0.0/M0.1.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreBootstrapSnapshot {
     pub baseline_version: String,
@@ -22,7 +26,7 @@ pub struct CoreBootstrapSnapshot {
     pub built_in_ocr_languages: Vec<String>,
 }
 
-/// Validates embedded/central configuration and returns the M0.0 bootstrap snapshot.
+/// Validates embedded/central configuration and returns the M0 bootstrap snapshot.
 pub fn bootstrap_core_snapshot() -> Result<CoreBootstrapSnapshot, ConfigError> {
     let defaults = AppDefaultsConfig::load_embedded()?;
     let budgets = PerformanceBudgetsConfig::load_embedded()?;

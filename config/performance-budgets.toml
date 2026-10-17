@@ -22,3 +22,8 @@ nearby_page_prefetch_radius = 2
 max_concurrent_render_workers = 4
 max_concurrent_background_ocr_workers = 2
 yield_background_on_interaction = true
+
+[code_limits]
+target_max_lines_per_file = 600
+hard_max_lines_per_file = 900
+

@@ -24,6 +24,7 @@ Every agent must:
 12. prefer small understandable changes over giant refactors
 13. keep generated code generated; never hand-edit generated UniFFI bindings
 14. preserve user data first
+15. keep hand-written source files concise (`CODE-001`): target $\le 600$ lines per file, hard maximum $900$ lines per file
 
 ---
 

@@ -416,6 +416,38 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -475,6 +507,24 @@ fileprivate struct FfiConverterString: FfiConverter {
         let len = Int32(value.utf8.count)
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
     }
 }
 
@@ -594,6 +644,482 @@ public func FfiConverterTypeDocumentCoreHandshake_lower(_ value: DocumentCoreHan
 
 
 /**
+ * Platform-brokered file descriptor passed into `DocumentCore` (e.g. from Android Storage Access Framework or macOS `FileBroker`).
+ */
+public struct FfiBrokeredFileDescriptor {
+    public var sourceToken: String
+    public var displayName: String
+    public var accessOrigin: FfiFileAccessOrigin
+    public var osFileId: String?
+    public var modifiedUnixMs: Int64?
+    public var bytes: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceToken: String, displayName: String, accessOrigin: FfiFileAccessOrigin, osFileId: String?, modifiedUnixMs: Int64?, bytes: Data) {
+        self.sourceToken = sourceToken
+        self.displayName = displayName
+        self.accessOrigin = accessOrigin
+        self.osFileId = osFileId
+        self.modifiedUnixMs = modifiedUnixMs
+        self.bytes = bytes
+    }
+}
+
+#if compiler(>=6)
+extension FfiBrokeredFileDescriptor: Sendable {}
+#endif
+
+
+extension FfiBrokeredFileDescriptor: Equatable, Hashable {
+    public static func ==(lhs: FfiBrokeredFileDescriptor, rhs: FfiBrokeredFileDescriptor) -> Bool {
+        if lhs.sourceToken != rhs.sourceToken {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.accessOrigin != rhs.accessOrigin {
+            return false
+        }
+        if lhs.osFileId != rhs.osFileId {
+            return false
+        }
+        if lhs.modifiedUnixMs != rhs.modifiedUnixMs {
+            return false
+        }
+        if lhs.bytes != rhs.bytes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sourceToken)
+        hasher.combine(displayName)
+        hasher.combine(accessOrigin)
+        hasher.combine(osFileId)
+        hasher.combine(modifiedUnixMs)
+        hasher.combine(bytes)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiBrokeredFileDescriptor: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBrokeredFileDescriptor {
+        return
+            try FfiBrokeredFileDescriptor(
+                sourceToken: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                accessOrigin: FfiConverterTypeFfiFileAccessOrigin.read(from: &buf), 
+                osFileId: FfiConverterOptionString.read(from: &buf), 
+                modifiedUnixMs: FfiConverterOptionInt64.read(from: &buf), 
+                bytes: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiBrokeredFileDescriptor, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceToken, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterTypeFfiFileAccessOrigin.write(value.accessOrigin, into: &buf)
+        FfiConverterOptionString.write(value.osFileId, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedUnixMs, into: &buf)
+        FfiConverterData.write(value.bytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBrokeredFileDescriptor_lift(_ buf: RustBuffer) throws -> FfiBrokeredFileDescriptor {
+    return try FfiConverterTypeFfiBrokeredFileDescriptor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBrokeredFileDescriptor_lower(_ value: FfiBrokeredFileDescriptor) -> RustBuffer {
+    return FfiConverterTypeFfiBrokeredFileDescriptor.lower(value)
+}
+
+
+/**
+ * Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
+ */
+public struct FfiDocumentSessionSnapshot {
+    public var sessionId: String
+    public var documentId: String
+    public var revision: UInt64
+    public var isDirty: Bool
+    public var accessOrigin: FfiFileAccessOrigin
+    public var fileIdentity: FfiFileIdentity
+    public var pdfSummary: FfiPdfDocumentSummary
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, documentId: String, revision: UInt64, isDirty: Bool, accessOrigin: FfiFileAccessOrigin, fileIdentity: FfiFileIdentity, pdfSummary: FfiPdfDocumentSummary) {
+        self.sessionId = sessionId
+        self.documentId = documentId
+        self.revision = revision
+        self.isDirty = isDirty
+        self.accessOrigin = accessOrigin
+        self.fileIdentity = fileIdentity
+        self.pdfSummary = pdfSummary
+    }
+}
+
+#if compiler(>=6)
+extension FfiDocumentSessionSnapshot: Sendable {}
+#endif
+
+
+extension FfiDocumentSessionSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiDocumentSessionSnapshot, rhs: FfiDocumentSessionSnapshot) -> Bool {
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.documentId != rhs.documentId {
+            return false
+        }
+        if lhs.revision != rhs.revision {
+            return false
+        }
+        if lhs.isDirty != rhs.isDirty {
+            return false
+        }
+        if lhs.accessOrigin != rhs.accessOrigin {
+            return false
+        }
+        if lhs.fileIdentity != rhs.fileIdentity {
+            return false
+        }
+        if lhs.pdfSummary != rhs.pdfSummary {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sessionId)
+        hasher.combine(documentId)
+        hasher.combine(revision)
+        hasher.combine(isDirty)
+        hasher.combine(accessOrigin)
+        hasher.combine(fileIdentity)
+        hasher.combine(pdfSummary)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDocumentSessionSnapshot {
+        return
+            try FfiDocumentSessionSnapshot(
+                sessionId: FfiConverterString.read(from: &buf), 
+                documentId: FfiConverterString.read(from: &buf), 
+                revision: FfiConverterUInt64.read(from: &buf), 
+                isDirty: FfiConverterBool.read(from: &buf), 
+                accessOrigin: FfiConverterTypeFfiFileAccessOrigin.read(from: &buf), 
+                fileIdentity: FfiConverterTypeFfiFileIdentity.read(from: &buf), 
+                pdfSummary: FfiConverterTypeFfiPdfDocumentSummary.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiDocumentSessionSnapshot, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.documentId, into: &buf)
+        FfiConverterUInt64.write(value.revision, into: &buf)
+        FfiConverterBool.write(value.isDirty, into: &buf)
+        FfiConverterTypeFfiFileAccessOrigin.write(value.accessOrigin, into: &buf)
+        FfiConverterTypeFfiFileIdentity.write(value.fileIdentity, into: &buf)
+        FfiConverterTypeFfiPdfDocumentSummary.write(value.pdfSummary, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDocumentSessionSnapshot_lift(_ buf: RustBuffer) throws -> FfiDocumentSessionSnapshot {
+    return try FfiConverterTypeFfiDocumentSessionSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDocumentSessionSnapshot_lower(_ value: FfiDocumentSessionSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiDocumentSessionSnapshot.lower(value)
+}
+
+
+/**
+ * Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
+ */
+public struct FfiFileIdentity {
+    public var sourceToken: String
+    public var displayName: String
+    public var osFileId: String?
+    public var sizeBytes: UInt64
+    public var modifiedUnixMs: Int64?
+    public var sha256Hex: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceToken: String, displayName: String, osFileId: String?, sizeBytes: UInt64, modifiedUnixMs: Int64?, sha256Hex: String) {
+        self.sourceToken = sourceToken
+        self.displayName = displayName
+        self.osFileId = osFileId
+        self.sizeBytes = sizeBytes
+        self.modifiedUnixMs = modifiedUnixMs
+        self.sha256Hex = sha256Hex
+    }
+}
+
+#if compiler(>=6)
+extension FfiFileIdentity: Sendable {}
+#endif
+
+
+extension FfiFileIdentity: Equatable, Hashable {
+    public static func ==(lhs: FfiFileIdentity, rhs: FfiFileIdentity) -> Bool {
+        if lhs.sourceToken != rhs.sourceToken {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.osFileId != rhs.osFileId {
+            return false
+        }
+        if lhs.sizeBytes != rhs.sizeBytes {
+            return false
+        }
+        if lhs.modifiedUnixMs != rhs.modifiedUnixMs {
+            return false
+        }
+        if lhs.sha256Hex != rhs.sha256Hex {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sourceToken)
+        hasher.combine(displayName)
+        hasher.combine(osFileId)
+        hasher.combine(sizeBytes)
+        hasher.combine(modifiedUnixMs)
+        hasher.combine(sha256Hex)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFileIdentity {
+        return
+            try FfiFileIdentity(
+                sourceToken: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                osFileId: FfiConverterOptionString.read(from: &buf), 
+                sizeBytes: FfiConverterUInt64.read(from: &buf), 
+                modifiedUnixMs: FfiConverterOptionInt64.read(from: &buf), 
+                sha256Hex: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiFileIdentity, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceToken, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterOptionString.write(value.osFileId, into: &buf)
+        FfiConverterUInt64.write(value.sizeBytes, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedUnixMs, into: &buf)
+        FfiConverterString.write(value.sha256Hex, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFileIdentity_lift(_ buf: RustBuffer) throws -> FfiFileIdentity {
+    return try FfiConverterTypeFfiFileIdentity.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFileIdentity_lower(_ value: FfiFileIdentity) -> RustBuffer {
+    return FfiConverterTypeFfiFileIdentity.lower(value)
+}
+
+
+/**
+ * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
+ */
+public struct FfiPdfDocumentSummary {
+    public var pageCount: UInt32
+    public var formatVersion: String?
+    public var title: String?
+    public var author: String?
+    public var subject: String?
+    public var keywords: String?
+    public var creator: String?
+    public var producer: String?
+    public var creationDate: String?
+    public var modificationDate: String?
+    public var needsPassword: Bool
+    public var engineIdentifier: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageCount: UInt32, formatVersion: String?, title: String?, author: String?, subject: String?, keywords: String?, creator: String?, producer: String?, creationDate: String?, modificationDate: String?, needsPassword: Bool, engineIdentifier: String) {
+        self.pageCount = pageCount
+        self.formatVersion = formatVersion
+        self.title = title
+        self.author = author
+        self.subject = subject
+        self.keywords = keywords
+        self.creator = creator
+        self.producer = producer
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
+        self.needsPassword = needsPassword
+        self.engineIdentifier = engineIdentifier
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfDocumentSummary: Sendable {}
+#endif
+
+
+extension FfiPdfDocumentSummary: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfDocumentSummary, rhs: FfiPdfDocumentSummary) -> Bool {
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.formatVersion != rhs.formatVersion {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.keywords != rhs.keywords {
+            return false
+        }
+        if lhs.creator != rhs.creator {
+            return false
+        }
+        if lhs.producer != rhs.producer {
+            return false
+        }
+        if lhs.creationDate != rhs.creationDate {
+            return false
+        }
+        if lhs.modificationDate != rhs.modificationDate {
+            return false
+        }
+        if lhs.needsPassword != rhs.needsPassword {
+            return false
+        }
+        if lhs.engineIdentifier != rhs.engineIdentifier {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageCount)
+        hasher.combine(formatVersion)
+        hasher.combine(title)
+        hasher.combine(author)
+        hasher.combine(subject)
+        hasher.combine(keywords)
+        hasher.combine(creator)
+        hasher.combine(producer)
+        hasher.combine(creationDate)
+        hasher.combine(modificationDate)
+        hasher.combine(needsPassword)
+        hasher.combine(engineIdentifier)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfDocumentSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfDocumentSummary {
+        return
+            try FfiPdfDocumentSummary(
+                pageCount: FfiConverterUInt32.read(from: &buf), 
+                formatVersion: FfiConverterOptionString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                subject: FfiConverterOptionString.read(from: &buf), 
+                keywords: FfiConverterOptionString.read(from: &buf), 
+                creator: FfiConverterOptionString.read(from: &buf), 
+                producer: FfiConverterOptionString.read(from: &buf), 
+                creationDate: FfiConverterOptionString.read(from: &buf), 
+                modificationDate: FfiConverterOptionString.read(from: &buf), 
+                needsPassword: FfiConverterBool.read(from: &buf), 
+                engineIdentifier: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfDocumentSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.formatVersion, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.subject, into: &buf)
+        FfiConverterOptionString.write(value.keywords, into: &buf)
+        FfiConverterOptionString.write(value.creator, into: &buf)
+        FfiConverterOptionString.write(value.producer, into: &buf)
+        FfiConverterOptionString.write(value.creationDate, into: &buf)
+        FfiConverterOptionString.write(value.modificationDate, into: &buf)
+        FfiConverterBool.write(value.needsPassword, into: &buf)
+        FfiConverterString.write(value.engineIdentifier, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfDocumentSummary_lift(_ buf: RustBuffer) throws -> FfiPdfDocumentSummary {
+    return try FfiConverterTypeFfiPdfDocumentSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfDocumentSummary_lower(_ value: FfiPdfDocumentSummary) -> RustBuffer {
+    return FfiConverterTypeFfiPdfDocumentSummary.lower(value)
+}
+
+
+/**
  * Error type crossing the UniFFI boundary from `DocumentCore`.
  */
 public enum DocumentCoreError: Swift.Error {
@@ -601,6 +1127,15 @@ public enum DocumentCoreError: Swift.Error {
     
     
     case ConfigurationError(details: String
+    )
+    case FileBrokerFailure(details: String
+    )
+    case PasswordRequired
+    case InvalidPdf(details: String
+    )
+    case SessionNotFound(sessionId: String
+    )
+    case InternalFailure(details: String
     )
 }
 
@@ -621,6 +1156,19 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 1: return .ConfigurationError(
             details: try FfiConverterString.read(from: &buf)
             )
+        case 2: return .FileBrokerFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .PasswordRequired
+        case 4: return .InvalidPdf(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 5: return .SessionNotFound(
+            sessionId: try FfiConverterString.read(from: &buf)
+            )
+        case 6: return .InternalFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -635,6 +1183,30 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         
         case let .ConfigurationError(details):
             writeInt(&buf, Int32(1))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .FileBrokerFailure(details):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case .PasswordRequired:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .InvalidPdf(details):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .SessionNotFound(sessionId):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(sessionId, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(6))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -671,6 +1243,134 @@ extension DocumentCoreError: Foundation.LocalizedError {
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
+ */
+
+public enum FfiFileAccessOrigin {
+    
+    case macOsScopedUrl
+    case androidSafUri
+    case inMemoryBuffer
+}
+
+
+#if compiler(>=6)
+extension FfiFileAccessOrigin: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiFileAccessOrigin: FfiConverterRustBuffer {
+    typealias SwiftType = FfiFileAccessOrigin
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFileAccessOrigin {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .macOsScopedUrl
+        
+        case 2: return .androidSafUri
+        
+        case 3: return .inMemoryBuffer
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiFileAccessOrigin, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .macOsScopedUrl:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .androidSafUri:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .inMemoryBuffer:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFileAccessOrigin_lift(_ buf: RustBuffer) throws -> FfiFileAccessOrigin {
+    return try FfiConverterTypeFfiFileAccessOrigin.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFileAccessOrigin_lower(_ value: FfiFileAccessOrigin) -> RustBuffer {
+    return FfiConverterTypeFfiFileAccessOrigin.lower(value)
+}
+
+
+extension FfiFileAccessOrigin: Equatable, Hashable {}
+
+
+
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
+    typealias SwiftType = String?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -696,11 +1396,50 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     }
 }
 /**
+ * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
+ */
+public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_close_session(
+        FfiConverterString.lower(sessionId),$0
+    )
+}
+}
+/**
+ * Returns the current immutable `FfiDocumentSessionSnapshot` for an active `session_id`.
+ */
+public func documentCoreGetSessionSnapshot(sessionId: String)throws  -> FfiDocumentSessionSnapshot  {
+    return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
  * Performs the M0.0 `DocumentCore` bootstrap handshake for Swift and Kotlin callers.
  */
 public func documentCoreHandshake()throws  -> DocumentCoreHandshake  {
     return try  FfiConverterTypeDocumentCoreHandshake_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_handshake($0
+    )
+})
+}
+/**
+ * Opens a PDF document from a platform `FileBroker` descriptor (e.g. Android Storage Access Framework `content://` URI) (`ROADMAP.md` M0.1).
+ */
+public func documentCoreOpenBrokeredFile(descriptor: FfiBrokeredFileDescriptor)throws  -> FfiDocumentSessionSnapshot  {
+    return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(
+        FfiConverterTypeFfiBrokeredFileDescriptor_lower(descriptor),$0
+    )
+})
+}
+/**
+ * Opens a PDF document from a macOS Finder / Open With security-scoped file path or URL via `ScopedLocalFileBroker` (`ROADMAP.md` M0.1).
+ */
+public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> FfiDocumentSessionSnapshot  {
+    return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
+        FfiConverterString.lower(scopedPathOrUrl),$0
     )
 })
 }
@@ -720,7 +1459,19 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_handshake() != 41922) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
         return InitializationResult.apiChecksumMismatch
     }
 

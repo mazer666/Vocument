@@ -96,6 +96,13 @@ pub struct PerformanceBudgetsConfig {
     pub interaction: InteractionBudgets,
     pub rendering_cache: RenderingCacheBudgets,
     pub jobs: JobBudgets,
+    pub code_limits: CodeLimitsBudgets,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CodeLimitsBudgets {
+    pub target_max_lines_per_file: usize,
+    pub hard_max_lines_per_file: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -229,6 +236,8 @@ mod tests {
         assert_eq!(budgets.interaction.target_scroll_zoom_fps, 60);
         assert!(budgets.startup.first_page_render_target_ms <= 500);
         assert!(budgets.jobs.yield_background_on_interaction);
+        assert_eq!(budgets.code_limits.target_max_lines_per_file, 600);
+        assert_eq!(budgets.code_limits.hard_max_lines_per_file, 900);
     }
 
     #[test]
