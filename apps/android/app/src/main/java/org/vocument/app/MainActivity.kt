@@ -173,8 +173,8 @@ fun MinimalReaderSessionScreen(
             val currentViewport = viewportResult
             if (session != null && currentViewport != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (activeTab == 1) {
-                    NavigationAndSearchPanel(
+                when (activeTab) {
+                    1 -> NavigationAndSearchPanel(
                         sessionId = session.sessionId,
                         currentPageIndex = currentPageIndex,
                         descriptors = pageDescriptors,
@@ -191,8 +191,19 @@ fun MinimalReaderSessionScreen(
                         },
                         onError = { err -> errorMessage = err }
                     )
-                } else {
-                    DocumentCanvas(
+                    2 -> MutationToolsPanel(
+                        sessionId = session.sessionId,
+                        currentPageIndex = currentPageIndex,
+                        coreBridge = coreBridge,
+                        onMutationApplied = {
+                            activeSession = runCatching {
+                                coreBridge.getSessionSnapshot(session.sessionId)
+                            }.getOrDefault(session)
+                            refreshViewport(session, currentPageIndex, scaleMilli)
+                        },
+                        onError = { err -> errorMessage = err }
+                    )
+                    else -> DocumentCanvas(
                         session = session,
                         currentPageIndex = currentPageIndex,
                         scaleMilli = scaleMilli,

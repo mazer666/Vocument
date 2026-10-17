@@ -275,4 +275,99 @@ fun main() {
             "ThumbnailCache(${thumb0.widthPx}x${thumb0.heightPx}) → CleanedCopy(OCRCOPY-002) → " +
             "SQLite FTS5 Search verified: partial_hits=${partialSearch.hits.size} (1/4 indexed), search_ms=$formattedSearchMs"
     )
+
+    // M0.4 verification: Highlight Annotation, Page Rotation, Semantic Transaction Commands, Undo/Redo, and Persistent Transaction Journal
+    val m04Session = bridge.openSafDocument(
+        safUriString = "content://com.android.providers.downloads.documents/document/m0_4_sample",
+        displayName = m03File.name,
+        safDocumentId = "downloads:m0_4_sample",
+        lastModifiedUnixMs = m03File.lastModified(),
+        bytes = m03File.readBytes()
+    )
+    val initialHist = bridge.transactionHistory(m04Session.sessionId)
+    check(!initialHist.isDirty && !initialHist.canUndo && initialHist.currentRevision == 1uL) {
+        "Expected clean initial transaction history at revision 1"
+    }
+
+    val selPage0 = bridge.selectPageText(m04Session.sessionId, 0u, null)
+    val firstRect = selPage0.highlightRects.first()
+
+    val histAfterHighlight = bridge.addHighlightAnnotation(
+        m04Session.sessionId,
+        uniffi.vocument_ffi.FfiHighlightAnnotation(
+            annotationId = "annot_kotlin_cli_001",
+            pageIndex = 0u,
+            rect = firstRect,
+            colorR = 255u,
+            colorG = 230u,
+            colorB = 80u,
+            opacityMilli = 450u,
+            author = "Vocument Android CLI",
+            contents = "M0.4 Kotlin highlight annotation"
+        )
+    )
+    check(histAfterHighlight.isDirty && histAfterHighlight.canUndo && histAfterHighlight.undoCount == 1u) {
+        "Expected dirty session with 1 undo item after addHighlightAnnotation"
+    }
+    check(histAfterHighlight.undoDescription == "Add highlight annotation on page #1") {
+        "Unexpected undoDescription: ${histAfterHighlight.undoDescription}"
+    }
+
+    val page0Highlights = bridge.pageHighlightAnnotations(m04Session.sessionId, 0u)
+    check(page0Highlights.size == 1 && page0Highlights[0].annotationId == "annot_kotlin_cli_001") {
+        "Expected 1 highlight annotation on page 0"
+    }
+
+    val histAfterRotate = bridge.rotatePages(m04Session.sessionId, listOf(0u), 90)
+    check(histAfterRotate.undoCount == 2u && histAfterRotate.undoDescription == "Rotate page #1 by +90°") {
+        "Expected 2 undo items after page rotation"
+    }
+    val rotDegrees = bridge.pageRotationDegrees(m04Session.sessionId, 0u)
+    val rotGeo = bridge.pageGeometry(m04Session.sessionId, 0u)
+    check(rotDegrees == 90u && rotGeo.widthMilliPt == 842_000u && rotGeo.heightMilliPt == 595_000u) {
+        "Expected rotated page 0 geometry 842000x595000 at 90°, got ${rotGeo.widthMilliPt}x${rotGeo.heightMilliPt} at ${rotDegrees}°"
+    }
+
+    val histAfterUndo = bridge.undo(m04Session.sessionId)
+    check(histAfterUndo.canRedo && histAfterUndo.undoCount == 1u) {
+        "Expected canRedo == true and undoCount == 1 after undo"
+    }
+    check(bridge.pageRotationDegrees(m04Session.sessionId, 0u) == 0u) {
+        "Expected rotation 0° after undo"
+    }
+
+    val histAfterRedo = bridge.redo(m04Session.sessionId)
+    check(!histAfterRedo.canRedo && histAfterRedo.undoCount == 2u) {
+        "Expected canRedo == false and undoCount == 2 after redo"
+    }
+
+    val journalJson = bridge.exportTransactionJournalJson(m04Session.sessionId)
+    check(journalJson.contains("\"schema_version\": 1") && journalJson.contains("annot_kotlin_cli_001")) {
+        "Expected exported persistent transaction journal JSON to contain schema_version 1 and annotation ID"
+    }
+
+    val replaySession = bridge.openSafDocument(
+        safUriString = "content://com.android.providers.downloads.documents/document/m0_4_replay",
+        displayName = m03File.name,
+        safDocumentId = "downloads:m0_4_replay",
+        lastModifiedUnixMs = m03File.lastModified(),
+        bytes = m03File.readBytes()
+    )
+    val replayedHist = bridge.restoreTransactionJournalJson(replaySession.sessionId, journalJson)
+    check(replayedHist.isDirty && replayedHist.undoCount == 2u) {
+        "Expected replayed session to restore 2 committed transactions"
+    }
+    val replayedRot = bridge.pageRotationDegrees(replaySession.sessionId, 0u)
+    val replayedAnnots = bridge.pageHighlightAnnotations(replaySession.sessionId, 0u)
+    check(replayedRot == 90u && replayedAnnots.size == 1) {
+        "Expected replayed session to have rotation 90° and 1 highlight annotation"
+    }
+
+    bridge.closeSession(m04Session.sessionId)
+    bridge.closeSession(replaySession.sessionId)
+    println(
+        "✓ Kotlin (Android M0.4) → TransactionManager → HighlightAnnotation(${replayedAnnots[0].annotationId}) → " +
+            "RotatePages(+90° → ${rotGeo.widthMilliPt / 1000u}x${rotGeo.heightMilliPt / 1000u}pt) → Undo/Redo → " +
+            "PersistentTransactionJournal(replay=${replayedHist.undoCount} tx) verified"
+    )
 }

@@ -20,6 +20,7 @@ use crate::search_index::{
 use crate::text_selection::{TextSelectionResult, select_all_page_text, select_page_text_in_rect};
 use crate::thumbnail_cache::{RenderedThumbnail, ThumbnailCacheStats};
 use crate::tile_cache::{MemoryPressureLevel, RenderedTile, TileCacheStats};
+use crate::transactions::{TransactionError, TransactionManager};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -38,6 +39,8 @@ pub enum SessionError {
     Navigation(#[from] PageNavigationError),
     #[error(transparent)]
     SearchIndex(#[from] SearchIndexError),
+    #[error(transparent)]
+    Transaction(#[from] TransactionError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
     #[error("session registry lock poisoned")]
@@ -56,19 +59,20 @@ pub struct DocumentSessionSnapshot {
     pub pdf_summary: PdfDocumentSummary,
 }
 
-/// Application-owned live state for one opened document (`ARCHITECTURE.md` §§6–7, 17).
+/// Application-owned live state for one opened document (`ARCHITECTURE.md` §§6–7, 11, 17).
 #[derive(Debug)]
 pub struct DocumentSession {
-    session_id: SessionId,
-    document_id: DocumentId,
-    revision: u64,
-    is_dirty: bool,
-    access_origin: FileAccessOrigin,
-    file_identity: FileIdentity,
-    pdf_summary: PdfDocumentSummary,
-    actor: Arc<DocumentActor>,
-    label_catalog: PageLabelCatalog,
-    search_index: SessionSearchIndex,
+    pub(crate) session_id: SessionId,
+    pub(crate) document_id: DocumentId,
+    pub(crate) revision: u64,
+    pub(crate) is_dirty: bool,
+    pub(crate) access_origin: FileAccessOrigin,
+    pub(crate) file_identity: FileIdentity,
+    pub(crate) pdf_summary: PdfDocumentSummary,
+    pub(crate) actor: Arc<DocumentActor>,
+    pub(crate) label_catalog: PageLabelCatalog,
+    pub(crate) search_index: SessionSearchIndex,
+    pub(crate) transaction_manager: TransactionManager,
 }
 
 impl DocumentSession {
@@ -91,6 +95,11 @@ impl DocumentSession {
     pub fn compare_external_identity(&self, observed: &FileIdentity) -> FileIdentityComparison {
         self.file_identity.compare_with(observed)
     }
+
+    pub(crate) fn sync_from_transaction_manager(&mut self) {
+        self.revision = self.transaction_manager.current_revision();
+        self.is_dirty = self.transaction_manager.is_dirty();
+    }
 }
 
 /// Thread-safe registry owning active `DocumentSession` instances, central `JobManager`,
@@ -101,7 +110,7 @@ pub struct SessionRegistry {
     job_manager: JobManager,
     render_pipeline: RenderPipeline,
     next_session_number: AtomicU64,
-    sessions: Mutex<BTreeMap<String, DocumentSession>>,
+    pub(crate) sessions: Mutex<BTreeMap<String, DocumentSession>>,
 }
 
 impl SessionRegistry {
@@ -170,6 +179,7 @@ impl SessionRegistry {
 
         let label_catalog = PageLabelCatalog::new(pdf_summary.page_count, embedded_labels);
         let search_index = SessionSearchIndex::new(pdf_summary.page_count)?;
+        let transaction_manager = TransactionManager::new(document_id.clone(), &brokered.bytes);
         let actor = Arc::new(DocumentActor::new(engine_document));
 
         let counter = self.next_session_number.fetch_add(1, Ordering::Relaxed);
@@ -186,6 +196,7 @@ impl SessionRegistry {
             actor,
             label_catalog,
             search_index,
+            transaction_manager,
         };
 
         let snapshot = session.snapshot();

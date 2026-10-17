@@ -145,6 +145,84 @@ public struct DocumentCoreClient: Sendable {
         try documentCoreSearchExact(sessionId: sessionId, query: query)
     }
 
+    /// Queries the current rotation angle (`0`, `90`, `180`, `270`) of `pageIndex` (`ROTATE-001`, `ROADMAP.md` M0.4).
+    public func pageRotationDegrees(sessionId: String, pageIndex: UInt32) throws -> UInt32 {
+        try documentCorePageRotationDegrees(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
+    /// Lists all standard PDF `/Highlight` annotations on `pageIndex` (`ANNOT-001`, `INTEROP-002`).
+    public func pageHighlightAnnotations(
+        sessionId: String,
+        pageIndex: UInt32
+    ) throws -> [FfiHighlightAnnotation] {
+        try documentCorePageHighlightAnnotations(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
+    /// Rotates one or more pages by `deltaDegrees` (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
+    public func rotatePages(
+        sessionId: String,
+        pageIndices: [UInt32],
+        deltaDegrees: Int32
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreRotatePages(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            deltaDegrees: deltaDegrees
+        )
+    }
+
+    /// Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
+    public func addHighlightAnnotation(
+        sessionId: String,
+        annotation: FfiHighlightAnnotation
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreAddHighlightAnnotation(sessionId: sessionId, annotation: annotation)
+    }
+
+    /// Removes a standard PDF `/Highlight` annotation by `annotationId` via `TransactionManager` (`ANNOT-001`).
+    public func removeHighlightAnnotation(
+        sessionId: String,
+        pageIndex: UInt32,
+        annotationId: String
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreRemoveHighlightAnnotation(
+            sessionId: sessionId,
+            pageIndex: pageIndex,
+            annotationId: annotationId
+        )
+    }
+
+    /// Undoes the last committed transaction on `sessionId` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+    public func undo(sessionId: String) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreUndo(sessionId: sessionId)
+    }
+
+    /// Redoes the last undone transaction on `sessionId` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+    public func redo(sessionId: String) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreRedo(sessionId: sessionId)
+    }
+
+    /// Queries the live Undo/Redo and transaction history state for `sessionId` (`UNDO-001`, `UNDO-002`).
+    public func transactionHistory(sessionId: String) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreTransactionHistory(sessionId: sessionId)
+    }
+
+    /// Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12).
+    public func exportTransactionJournalJson(sessionId: String) throws -> String {
+        try documentCoreExportTransactionJournalJson(sessionId: sessionId)
+    }
+
+    /// Restores and replays a `PersistentTransactionJournal` JSON payload onto `sessionId` (`UNDO-001`).
+    public func restoreTransactionJournalJson(
+        sessionId: String,
+        journalJson: String
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreRestoreTransactionJournalJson(
+            sessionId: sessionId,
+            journalJson: journalJson
+        )
+    }
+
     /// Converts an immutable `FfiRenderedTile` RGBA8 buffer into a native `CGImage` (`ARCHITECTURE.md` §10).
     public static func makeCGImage(from tile: FfiRenderedTile) -> CGImage? {
         makeCGImageFromRgba8(

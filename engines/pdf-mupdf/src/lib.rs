@@ -2,6 +2,7 @@
 //!
 //! No UI layer may depend on this crate directly.
 
+pub mod mutate;
 pub mod text_extract;
 
 use std::ffi::CStr;
@@ -10,7 +11,8 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfPageGeometry, PdfPageStructuredText, PdfTileBitmap, PdfTileRenderRequest,
+    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTileBitmap,
+    PdfTileRenderRequest,
 };
 
 /// Identifier prefix of the PDF engine adapter.
@@ -191,6 +193,10 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         &self.summary
     }
 
+    fn current_pdf_bytes(&self) -> &[u8] {
+        &self.pdf_bytes
+    }
+
     fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, PdfEngineError> {
         if page_index >= self.summary.page_count {
             return Err(PdfEngineError::PageOutOfBounds {
@@ -238,6 +244,17 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
                 Err(PdfEngineError::EngineFailure { details })
             }
         }
+    }
+
+    fn page_rotation_degrees(&self, page_index: u32) -> Result<u32, PdfEngineError> {
+        mutate::query_page_rotation_degrees(&self.pdf_bytes, self.summary.page_count, page_index)
+    }
+
+    fn page_highlight_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfHighlightAnnotation>, PdfEngineError> {
+        mutate::query_page_highlights(&self.pdf_bytes, self.summary.page_count, page_index)
     }
 
     fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError> {
@@ -303,6 +320,49 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
             geometry,
             raw_handle: Mutex::new(OwnedDisplayListPtr(non_null)),
         }))
+    }
+
+    fn rotate_pages(
+        &mut self,
+        page_indices: &[u32],
+        delta_degrees: i32,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = mutate::rotate_pages_in_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_indices,
+            delta_degrees,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
+
+    fn add_highlight_annotation(
+        &mut self,
+        annotation: &PdfHighlightAnnotation,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = mutate::add_highlight_annotation_to_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            annotation,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
+
+    fn remove_highlight_annotation(
+        &mut self,
+        page_index: u32,
+        annotation_id: &str,
+    ) -> Result<(PdfHighlightAnnotation, Vec<u8>), PdfEngineError> {
+        let (removed, updated) = mutate::remove_highlight_annotation_from_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+            annotation_id,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok((removed, updated))
     }
 }
 

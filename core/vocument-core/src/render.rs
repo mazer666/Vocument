@@ -10,8 +10,8 @@
 
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
-    PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError, PdfPageGeometry,
-    PdfPageStructuredText, PdfTileRenderRequest,
+    PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
+    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTileRenderRequest,
 };
 use crate::thumbnail_cache::{
     RenderedThumbnail, ThumbnailCache, ThumbnailCacheStats, ThumbnailKey,
@@ -70,6 +70,15 @@ impl DocumentActor {
         Ok(guard.summary().clone())
     }
 
+    /// Returns a copy of the current in-memory PDF bytes under serialized actor access (`ROADMAP.md` M0.4).
+    pub fn current_pdf_bytes(&self) -> Result<Vec<u8>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.current_pdf_bytes().to_vec())
+    }
+
     /// Queries the geometry of `page_index` (`0`-based) under serialized actor access.
     pub fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, RenderPipelineError> {
         let guard = self
@@ -77,6 +86,27 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.page_geometry(page_index)?)
+    }
+
+    /// Queries the rotation (`0`, `90`, `180`, or `270` degrees) of `page_index` (`ROTATE-001`).
+    pub fn page_rotation_degrees(&self, page_index: u32) -> Result<u32, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.page_rotation_degrees(page_index)?)
+    }
+
+    /// Queries all standard PDF `/Highlight` annotations on `page_index` (`ANNOT-001`, `INTEROP-002`).
+    pub fn page_highlight_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfHighlightAnnotation>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.page_highlight_annotations(page_index)?)
     }
 
     /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).
@@ -98,6 +128,23 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.extract_page_text(page_index)?)
+    }
+
+    /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:
+    /// *"Mutation never bypasses TransactionManager"*).
+    pub(crate) fn apply_engine_mutation_for_transaction_manager<F, R>(
+        &self,
+        f: F,
+    ) -> Result<R, RenderPipelineError>
+    where
+        F: FnOnce(&mut dyn PdfEngineDocument) -> Result<R, PdfEngineError>,
+    {
+        let mut guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        let out = f(guard.as_mut())?;
+        Ok(out)
     }
 
     /// Obtains an immutable `Arc<dyn PdfEngineDisplayList>` for `(revision, page_index)`.

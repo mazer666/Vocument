@@ -96,6 +96,38 @@ class DocumentCoreBridgeTest {
         assertEquals(1, searchResponse.hits.size)
         assertEquals(2u, searchResponse.hits[0].pageIndex)
 
+        val histAfterHighlight = bridge.addHighlightAnnotation(
+            m03Session.sessionId,
+            uniffi.vocument_ffi.FfiHighlightAnnotation(
+                annotationId = "annot_junit_001",
+                pageIndex = 0u,
+                rect = selection.highlightRects.first(),
+                colorR = 255u,
+                colorG = 230u,
+                colorB = 80u,
+                opacityMilli = 450u,
+                author = "JUnit",
+                contents = "M0.4 test highlight"
+            )
+        )
+        assertTrue(histAfterHighlight.isDirty)
+        assertEquals(1u, histAfterHighlight.undoCount)
+
+        val histAfterRot = bridge.rotatePages(m03Session.sessionId, listOf(0u), 90)
+        assertEquals(2u, histAfterRot.undoCount)
+        assertEquals(90u, bridge.pageRotationDegrees(m03Session.sessionId, 0u))
+
+        val histUndo = bridge.undo(m03Session.sessionId)
+        assertTrue(histUndo.canRedo)
+        assertEquals(0u, bridge.pageRotationDegrees(m03Session.sessionId, 0u))
+
+        val histRedo = bridge.redo(m03Session.sessionId)
+        assertFalse(histRedo.canRedo)
+        assertEquals(90u, bridge.pageRotationDegrees(m03Session.sessionId, 0u))
+
+        val journalJson = bridge.exportTransactionJournalJson(m03Session.sessionId)
+        assertTrue(journalJson.contains("\"schema_version\": 1"))
+
         bridge.closeSession(m03Session.sessionId)
     }
 }

@@ -266,5 +266,101 @@ struct VocumentMacHandshakeCLI {
         try client.closeSession(sessionId: m03Session.sessionId)
         let formattedSearchMs = String(format: "%.2f", searchMs)
         print("✓ Swift (macOS M0.3) → PageLabels(\(labels.joined(separator: ","))) → ThumbnailCache(\(thumb0.widthPx)x\(thumb0.heightPx)) → CleanedCopy(OCRCOPY-002) → SQLite FTS5 Search verified: partial_hits=\(partialSearch.hits.count) (1/4 indexed), search_ms=\(formattedSearchMs)")
+
+        // M0.4 verification: Highlight Annotation, Page Rotation, Semantic Transaction Commands, Undo/Redo, and Persistent Transaction Journal
+        let m04Session = try client.openScopedDocument(at: m03PdfURL)
+        let initialHist = try client.transactionHistory(sessionId: m04Session.sessionId)
+        guard !initialHist.isDirty && !initialHist.canUndo && initialHist.currentRevision == 1 else {
+            fatalError("Expected clean initial transaction history at revision 1")
+        }
+
+        let selPage0 = try client.selectPageText(
+            sessionId: m04Session.sessionId,
+            pageIndex: 0,
+            selectionRect: nil
+        )
+        guard let firstRect = selPage0.highlightRects.first else {
+            fatalError("Expected at least one highlight rect on page 0")
+        }
+
+        let histAfterHighlight = try client.addHighlightAnnotation(
+            sessionId: m04Session.sessionId,
+            annotation: FfiHighlightAnnotation(
+                annotationId: "annot_mac_cli_001",
+                pageIndex: 0,
+                rect: firstRect,
+                colorR: 255,
+                colorG: 230,
+                colorB: 80,
+                opacityMilli: 450,
+                author: "Vocument macOS CLI",
+                contents: "M0.4 highlight annotation"
+            )
+        )
+        guard histAfterHighlight.isDirty && histAfterHighlight.canUndo && histAfterHighlight.undoCount == 1 else {
+            fatalError("Expected dirty session with 1 undo item after addHighlightAnnotation")
+        }
+        guard histAfterHighlight.undoDescription == "Add highlight annotation on page #1" else {
+            fatalError("Unexpected undoDescription: \(String(describing: histAfterHighlight.undoDescription))")
+        }
+
+        let page0Highlights = try client.pageHighlightAnnotations(
+            sessionId: m04Session.sessionId,
+            pageIndex: 0
+        )
+        guard page0Highlights.count == 1 && page0Highlights[0].annotationId == "annot_mac_cli_001" else {
+            fatalError("Expected 1 highlight annotation on page 0")
+        }
+
+        let histAfterRotate = try client.rotatePages(
+            sessionId: m04Session.sessionId,
+            pageIndices: [0],
+            deltaDegrees: 90
+        )
+        guard histAfterRotate.undoCount == 2 && histAfterRotate.undoDescription == "Rotate page #1 by +90°" else {
+            fatalError("Expected 2 undo items after page rotation")
+        }
+        let rotDegrees = try client.pageRotationDegrees(sessionId: m04Session.sessionId, pageIndex: 0)
+        let rotGeometry = try client.pageGeometry(sessionId: m04Session.sessionId, pageIndex: 0)
+        guard rotDegrees == 90 && rotGeometry.widthMilliPt == 842_000 && rotGeometry.heightMilliPt == 595_000 else {
+            fatalError("Expected rotated page 0 geometry 842000x595000 at 90°, got \(rotGeometry.widthMilliPt)x\(rotGeometry.heightMilliPt) at \(rotDegrees)°")
+        }
+
+        let histAfterUndo = try client.undo(sessionId: m04Session.sessionId)
+        guard histAfterUndo.canRedo && histAfterUndo.undoCount == 1 else {
+            fatalError("Expected canRedo == true and undoCount == 1 after undo")
+        }
+        let rotAfterUndo = try client.pageRotationDegrees(sessionId: m04Session.sessionId, pageIndex: 0)
+        guard rotAfterUndo == 0 else {
+            fatalError("Expected rotation 0° after undo, got \(rotAfterUndo)°")
+        }
+
+        let histAfterRedo = try client.redo(sessionId: m04Session.sessionId)
+        guard !histAfterRedo.canRedo && histAfterRedo.undoCount == 2 else {
+            fatalError("Expected canRedo == false and undoCount == 2 after redo")
+        }
+
+        let journalJson = try client.exportTransactionJournalJson(sessionId: m04Session.sessionId)
+        guard journalJson.contains("\"schema_version\": 1") && journalJson.contains("annot_mac_cli_001") else {
+            fatalError("Expected exported persistent transaction journal JSON to contain schema_version 1 and annotation ID")
+        }
+
+        let replaySession = try client.openScopedDocument(at: m03PdfURL)
+        let replayedHist = try client.restoreTransactionJournalJson(
+            sessionId: replaySession.sessionId,
+            journalJson: journalJson
+        )
+        guard replayedHist.isDirty && replayedHist.undoCount == 2 else {
+            fatalError("Expected replayed session to restore 2 committed transactions")
+        }
+        let replayedRot = try client.pageRotationDegrees(sessionId: replaySession.sessionId, pageIndex: 0)
+        let replayedAnnots = try client.pageHighlightAnnotations(sessionId: replaySession.sessionId, pageIndex: 0)
+        guard replayedRot == 90 && replayedAnnots.count == 1 else {
+            fatalError("Expected replayed session to have rotation 90° and 1 highlight annotation")
+        }
+
+        try client.closeSession(sessionId: m04Session.sessionId)
+        try client.closeSession(sessionId: replaySession.sessionId)
+        print("✓ Swift (macOS M0.4) → TransactionManager → HighlightAnnotation(\(replayedAnnots[0].annotationId)) → RotatePages(+90° → \(rotGeometry.widthMilliPt / 1000)x\(rotGeometry.heightMilliPt / 1000)pt) → Undo/Redo → PersistentTransactionJournal(replay=\(replayedHist.undoCount) tx) verified")
     }
 }

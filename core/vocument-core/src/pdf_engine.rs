@@ -110,6 +110,25 @@ pub struct PdfTileBitmap {
     pub rgba_bytes: Vec<u8>,
 }
 
+/// Standard PDF highlight annotation model (`ROADMAP.md` M0.4, `ANNOT-001`, `INTEROP-002`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfHighlightAnnotation {
+    /// Stable annotation identifier stored in the PDF `/NM` key (e.g. `"annot_0001_..."`).
+    pub annotation_id: String,
+    /// `0`-based physical page index.
+    pub page_index: u32,
+    /// Bounding rectangle in page milli-points (`1/1000` pt).
+    pub rect: PdfRectMilliPt,
+    /// RGB highlight color (`[R, G, B]`, `0..=255`; default jurist yellow is `[255, 230, 80]`).
+    pub color_rgb: [u8; 3],
+    /// Opacity in milli-units (`0..=1000`, where `450` = `0.45`).
+    pub opacity_milli: u32,
+    /// Optional reviewer/author label (`/T`).
+    pub author: Option<String>,
+    /// Optional comment/note attached to the highlight (`/Contents`).
+    pub contents: Option<String>,
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum PdfEngineError {
     #[error("document is encrypted and requires an open password")]
@@ -120,6 +139,13 @@ pub enum PdfEngineError {
     PageOutOfBounds { page_index: u32, page_count: u32 },
     #[error("invalid tile dimensions ({width}x{height})")]
     InvalidTileDimensions { width: u32, height: u32 },
+    #[error("invalid rotation angle {degrees} degrees (must be a multiple of 90)")]
+    InvalidRotationAngle { degrees: i32 },
+    #[error("annotation '{annotation_id}' not found on page {page_index}")]
+    AnnotationNotFound {
+        page_index: u32,
+        annotation_id: String,
+    },
     #[error("PDF engine internal failure: {details}")]
     EngineFailure { details: String },
 }
@@ -139,8 +165,20 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// Returns the immutable summary (page count + basic metadata) of the opened PDF.
     fn summary(&self) -> &PdfDocumentSummary;
 
+    /// Returns the current in-memory PDF byte buffer reflecting all committed mutations (`ROADMAP.md` M0.4).
+    fn current_pdf_bytes(&self) -> &[u8];
+
     /// Queries the point geometry of `page_index` (`0`-based).
     fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, PdfEngineError>;
+
+    /// Queries the current page rotation (`0`, `90`, `180`, or `270` degrees) of `page_index` (`ROTATE-001`).
+    fn page_rotation_degrees(&self, page_index: u32) -> Result<u32, PdfEngineError>;
+
+    /// Queries all standard `/Highlight` annotations on `page_index` (`ANNOT-001`, `INTEROP-002`).
+    fn page_highlight_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfHighlightAnnotation>, PdfEngineError>;
 
     /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).
     fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError>;
@@ -153,6 +191,29 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         &self,
         page_index: u32,
     ) -> Result<Box<dyn PdfEngineDisplayList>, PdfEngineError>;
+
+    /// Rotates the given `0`-based `page_indices` by `delta_degrees` (multiple of 90) in the PDF page tree (`ROTATE-001`, `INTEROP-002`).
+    /// Must only be invoked through `TransactionManager` (`ROADMAP.md` M0.4 Gate).
+    fn rotate_pages(
+        &mut self,
+        page_indices: &[u32],
+        delta_degrees: i32,
+    ) -> Result<Vec<u8>, PdfEngineError>;
+
+    /// Adds a standard PDF `/Highlight` annotation to `annotation.page_index` (`ANNOT-001`, `INTEROP-002`).
+    /// Must only be invoked through `TransactionManager` (`ROADMAP.md` M0.4 Gate).
+    fn add_highlight_annotation(
+        &mut self,
+        annotation: &PdfHighlightAnnotation,
+    ) -> Result<Vec<u8>, PdfEngineError>;
+
+    /// Removes the highlight annotation identified by `annotation_id` from `page_index`, returning the removed snapshot (`ANNOT-001`).
+    /// Must only be invoked through `TransactionManager` (`ROADMAP.md` M0.4 Gate).
+    fn remove_highlight_annotation(
+        &mut self,
+        page_index: u32,
+        annotation_id: &str,
+    ) -> Result<(PdfHighlightAnnotation, Vec<u8>), PdfEngineError>;
 }
 
 /// Vocument-owned PDF engine interface (`ARCHITECTURE.md` §18).

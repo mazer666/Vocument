@@ -400,6 +400,22 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -979,6 +995,135 @@ public func FfiConverterTypeFfiFileIdentity_lift(_ buf: RustBuffer) throws -> Ff
 #endif
 public func FfiConverterTypeFfiFileIdentity_lower(_ value: FfiFileIdentity) -> RustBuffer {
     return FfiConverterTypeFfiFileIdentity.lower(value)
+}
+
+
+/**
+ * Standard PDF `/Highlight` annotation DTO crossing the UniFFI boundary (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4).
+ */
+public struct FfiHighlightAnnotation {
+    public var annotationId: String
+    public var pageIndex: UInt32
+    public var rect: FfiPdfRectMilliPt
+    public var colorR: UInt8
+    public var colorG: UInt8
+    public var colorB: UInt8
+    public var opacityMilli: UInt32
+    public var author: String?
+    public var contents: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(annotationId: String, pageIndex: UInt32, rect: FfiPdfRectMilliPt, colorR: UInt8, colorG: UInt8, colorB: UInt8, opacityMilli: UInt32, author: String?, contents: String?) {
+        self.annotationId = annotationId
+        self.pageIndex = pageIndex
+        self.rect = rect
+        self.colorR = colorR
+        self.colorG = colorG
+        self.colorB = colorB
+        self.opacityMilli = opacityMilli
+        self.author = author
+        self.contents = contents
+    }
+}
+
+#if compiler(>=6)
+extension FfiHighlightAnnotation: Sendable {}
+#endif
+
+
+extension FfiHighlightAnnotation: Equatable, Hashable {
+    public static func ==(lhs: FfiHighlightAnnotation, rhs: FfiHighlightAnnotation) -> Bool {
+        if lhs.annotationId != rhs.annotationId {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        if lhs.colorR != rhs.colorR {
+            return false
+        }
+        if lhs.colorG != rhs.colorG {
+            return false
+        }
+        if lhs.colorB != rhs.colorB {
+            return false
+        }
+        if lhs.opacityMilli != rhs.opacityMilli {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.contents != rhs.contents {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(annotationId)
+        hasher.combine(pageIndex)
+        hasher.combine(rect)
+        hasher.combine(colorR)
+        hasher.combine(colorG)
+        hasher.combine(colorB)
+        hasher.combine(opacityMilli)
+        hasher.combine(author)
+        hasher.combine(contents)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiHighlightAnnotation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiHighlightAnnotation {
+        return
+            try FfiHighlightAnnotation(
+                annotationId: FfiConverterString.read(from: &buf), 
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                rect: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                colorR: FfiConverterUInt8.read(from: &buf), 
+                colorG: FfiConverterUInt8.read(from: &buf), 
+                colorB: FfiConverterUInt8.read(from: &buf), 
+                opacityMilli: FfiConverterUInt32.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                contents: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiHighlightAnnotation, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.annotationId, into: &buf)
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
+        FfiConverterUInt8.write(value.colorR, into: &buf)
+        FfiConverterUInt8.write(value.colorG, into: &buf)
+        FfiConverterUInt8.write(value.colorB, into: &buf)
+        FfiConverterUInt32.write(value.opacityMilli, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.contents, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiHighlightAnnotation_lift(_ buf: RustBuffer) throws -> FfiHighlightAnnotation {
+    return try FfiConverterTypeFfiHighlightAnnotation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiHighlightAnnotation_lower(_ value: FfiHighlightAnnotation) -> RustBuffer {
+    return FfiConverterTypeFfiHighlightAnnotation.lower(value)
 }
 
 
@@ -2453,6 +2598,296 @@ public func FfiConverterTypeFfiTileRenderRequest_lower(_ value: FfiTileRenderReq
 
 
 /**
+ * Live Undo/Redo and transaction history state snapshot exposed across UniFFI (`UNDO-001`, `UNDO-002`, `UNDO-004`, `ROADMAP.md` M0.4).
+ */
+public struct FfiTransactionHistorySnapshot {
+    public var currentRevision: UInt64
+    public var savedRevision: UInt64
+    public var isDirty: Bool
+    public var canUndo: Bool
+    public var canRedo: Bool
+    public var undoDescription: String?
+    public var redoDescription: String?
+    public var undoCount: UInt32
+    public var redoCount: UInt32
+    public var committedRecords: [FfiTransactionRecord]
+    public var redoRecords: [FfiTransactionRecord]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(currentRevision: UInt64, savedRevision: UInt64, isDirty: Bool, canUndo: Bool, canRedo: Bool, undoDescription: String?, redoDescription: String?, undoCount: UInt32, redoCount: UInt32, committedRecords: [FfiTransactionRecord], redoRecords: [FfiTransactionRecord]) {
+        self.currentRevision = currentRevision
+        self.savedRevision = savedRevision
+        self.isDirty = isDirty
+        self.canUndo = canUndo
+        self.canRedo = canRedo
+        self.undoDescription = undoDescription
+        self.redoDescription = redoDescription
+        self.undoCount = undoCount
+        self.redoCount = redoCount
+        self.committedRecords = committedRecords
+        self.redoRecords = redoRecords
+    }
+}
+
+#if compiler(>=6)
+extension FfiTransactionHistorySnapshot: Sendable {}
+#endif
+
+
+extension FfiTransactionHistorySnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiTransactionHistorySnapshot, rhs: FfiTransactionHistorySnapshot) -> Bool {
+        if lhs.currentRevision != rhs.currentRevision {
+            return false
+        }
+        if lhs.savedRevision != rhs.savedRevision {
+            return false
+        }
+        if lhs.isDirty != rhs.isDirty {
+            return false
+        }
+        if lhs.canUndo != rhs.canUndo {
+            return false
+        }
+        if lhs.canRedo != rhs.canRedo {
+            return false
+        }
+        if lhs.undoDescription != rhs.undoDescription {
+            return false
+        }
+        if lhs.redoDescription != rhs.redoDescription {
+            return false
+        }
+        if lhs.undoCount != rhs.undoCount {
+            return false
+        }
+        if lhs.redoCount != rhs.redoCount {
+            return false
+        }
+        if lhs.committedRecords != rhs.committedRecords {
+            return false
+        }
+        if lhs.redoRecords != rhs.redoRecords {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(currentRevision)
+        hasher.combine(savedRevision)
+        hasher.combine(isDirty)
+        hasher.combine(canUndo)
+        hasher.combine(canRedo)
+        hasher.combine(undoDescription)
+        hasher.combine(redoDescription)
+        hasher.combine(undoCount)
+        hasher.combine(redoCount)
+        hasher.combine(committedRecords)
+        hasher.combine(redoRecords)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTransactionHistorySnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTransactionHistorySnapshot {
+        return
+            try FfiTransactionHistorySnapshot(
+                currentRevision: FfiConverterUInt64.read(from: &buf), 
+                savedRevision: FfiConverterUInt64.read(from: &buf), 
+                isDirty: FfiConverterBool.read(from: &buf), 
+                canUndo: FfiConverterBool.read(from: &buf), 
+                canRedo: FfiConverterBool.read(from: &buf), 
+                undoDescription: FfiConverterOptionString.read(from: &buf), 
+                redoDescription: FfiConverterOptionString.read(from: &buf), 
+                undoCount: FfiConverterUInt32.read(from: &buf), 
+                redoCount: FfiConverterUInt32.read(from: &buf), 
+                committedRecords: FfiConverterSequenceTypeFfiTransactionRecord.read(from: &buf), 
+                redoRecords: FfiConverterSequenceTypeFfiTransactionRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTransactionHistorySnapshot, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.currentRevision, into: &buf)
+        FfiConverterUInt64.write(value.savedRevision, into: &buf)
+        FfiConverterBool.write(value.isDirty, into: &buf)
+        FfiConverterBool.write(value.canUndo, into: &buf)
+        FfiConverterBool.write(value.canRedo, into: &buf)
+        FfiConverterOptionString.write(value.undoDescription, into: &buf)
+        FfiConverterOptionString.write(value.redoDescription, into: &buf)
+        FfiConverterUInt32.write(value.undoCount, into: &buf)
+        FfiConverterUInt32.write(value.redoCount, into: &buf)
+        FfiConverterSequenceTypeFfiTransactionRecord.write(value.committedRecords, into: &buf)
+        FfiConverterSequenceTypeFfiTransactionRecord.write(value.redoRecords, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTransactionHistorySnapshot_lift(_ buf: RustBuffer) throws -> FfiTransactionHistorySnapshot {
+    return try FfiConverterTypeFfiTransactionHistorySnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTransactionHistorySnapshot_lower(_ value: FfiTransactionHistorySnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiTransactionHistorySnapshot.lower(value)
+}
+
+
+/**
+ * Immutable transaction record DTO exposed across UniFFI (`ARCHITECTURE.md` §11, `UNDO-004`).
+ */
+public struct FfiTransactionRecord {
+    public var transactionId: String
+    public var sequenceNumber: UInt64
+    public var revisionBefore: UInt64
+    public var revisionAfter: UInt64
+    public var timestampUnixMs: UInt64
+    public var description: String
+    public var affectedPages: [UInt32]
+    public var affectedObjects: [String]
+    public var beforePdfSha256: String
+    public var afterPdfSha256: String
+    public var recordChecksumSha256: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(transactionId: String, sequenceNumber: UInt64, revisionBefore: UInt64, revisionAfter: UInt64, timestampUnixMs: UInt64, description: String, affectedPages: [UInt32], affectedObjects: [String], beforePdfSha256: String, afterPdfSha256: String, recordChecksumSha256: String) {
+        self.transactionId = transactionId
+        self.sequenceNumber = sequenceNumber
+        self.revisionBefore = revisionBefore
+        self.revisionAfter = revisionAfter
+        self.timestampUnixMs = timestampUnixMs
+        self.description = description
+        self.affectedPages = affectedPages
+        self.affectedObjects = affectedObjects
+        self.beforePdfSha256 = beforePdfSha256
+        self.afterPdfSha256 = afterPdfSha256
+        self.recordChecksumSha256 = recordChecksumSha256
+    }
+}
+
+#if compiler(>=6)
+extension FfiTransactionRecord: Sendable {}
+#endif
+
+
+extension FfiTransactionRecord: Equatable, Hashable {
+    public static func ==(lhs: FfiTransactionRecord, rhs: FfiTransactionRecord) -> Bool {
+        if lhs.transactionId != rhs.transactionId {
+            return false
+        }
+        if lhs.sequenceNumber != rhs.sequenceNumber {
+            return false
+        }
+        if lhs.revisionBefore != rhs.revisionBefore {
+            return false
+        }
+        if lhs.revisionAfter != rhs.revisionAfter {
+            return false
+        }
+        if lhs.timestampUnixMs != rhs.timestampUnixMs {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        if lhs.affectedPages != rhs.affectedPages {
+            return false
+        }
+        if lhs.affectedObjects != rhs.affectedObjects {
+            return false
+        }
+        if lhs.beforePdfSha256 != rhs.beforePdfSha256 {
+            return false
+        }
+        if lhs.afterPdfSha256 != rhs.afterPdfSha256 {
+            return false
+        }
+        if lhs.recordChecksumSha256 != rhs.recordChecksumSha256 {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(transactionId)
+        hasher.combine(sequenceNumber)
+        hasher.combine(revisionBefore)
+        hasher.combine(revisionAfter)
+        hasher.combine(timestampUnixMs)
+        hasher.combine(description)
+        hasher.combine(affectedPages)
+        hasher.combine(affectedObjects)
+        hasher.combine(beforePdfSha256)
+        hasher.combine(afterPdfSha256)
+        hasher.combine(recordChecksumSha256)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTransactionRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTransactionRecord {
+        return
+            try FfiTransactionRecord(
+                transactionId: FfiConverterString.read(from: &buf), 
+                sequenceNumber: FfiConverterUInt64.read(from: &buf), 
+                revisionBefore: FfiConverterUInt64.read(from: &buf), 
+                revisionAfter: FfiConverterUInt64.read(from: &buf), 
+                timestampUnixMs: FfiConverterUInt64.read(from: &buf), 
+                description: FfiConverterString.read(from: &buf), 
+                affectedPages: FfiConverterSequenceUInt32.read(from: &buf), 
+                affectedObjects: FfiConverterSequenceString.read(from: &buf), 
+                beforePdfSha256: FfiConverterString.read(from: &buf), 
+                afterPdfSha256: FfiConverterString.read(from: &buf), 
+                recordChecksumSha256: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTransactionRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.transactionId, into: &buf)
+        FfiConverterUInt64.write(value.sequenceNumber, into: &buf)
+        FfiConverterUInt64.write(value.revisionBefore, into: &buf)
+        FfiConverterUInt64.write(value.revisionAfter, into: &buf)
+        FfiConverterUInt64.write(value.timestampUnixMs, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterSequenceUInt32.write(value.affectedPages, into: &buf)
+        FfiConverterSequenceString.write(value.affectedObjects, into: &buf)
+        FfiConverterString.write(value.beforePdfSha256, into: &buf)
+        FfiConverterString.write(value.afterPdfSha256, into: &buf)
+        FfiConverterString.write(value.recordChecksumSha256, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTransactionRecord_lift(_ buf: RustBuffer) throws -> FfiTransactionRecord {
+    return try FfiConverterTypeFfiTransactionRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTransactionRecord_lower(_ value: FfiTransactionRecord) -> RustBuffer {
+    return FfiConverterTypeFfiTransactionRecord.lower(value)
+}
+
+
+/**
  * Combined result of rendering a visible viewport tile and prefetching neighbouring pages (`ROADMAP.md` M0.2).
  */
 public struct FfiViewportRenderResult {
@@ -2551,6 +2986,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case NavigationFailure(details: String
     )
+    case TransactionFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -2585,7 +3022,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 6: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .InternalFailure(
+        case 7: return .TransactionFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 8: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -2629,8 +3069,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(7))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -3053,6 +3498,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiHighlightAnnotation]
+
+    public static func write(_ value: [FfiHighlightAnnotation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiHighlightAnnotation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiHighlightAnnotation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiHighlightAnnotation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiHighlightAnnotation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer {
     typealias SwiftType = [FfiPageDescriptor]
 
@@ -3149,6 +3619,42 @@ fileprivate struct FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer 
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiTransactionRecord]
+
+    public static func write(_ value: [FfiTransactionRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiTransactionRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiTransactionRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiTransactionRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiTransactionRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+/**
+ * Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
+ */
+public func documentCoreAddHighlightAnnotation(sessionId: String, annotation: FfiHighlightAnnotation)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiHighlightAnnotation_lower(annotation),$0
+    )
+})
+}
 /**
  * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
  */
@@ -3157,6 +3663,16 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
         FfiConverterString.lower(sessionId),$0
     )
 }
+}
+/**
+ * Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12, `ROADMAP.md` M0.4).
+ */
+public func documentCoreExportTransactionJournalJson(sessionId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
 }
 /**
  * Returns the current immutable `FfiDocumentSessionSnapshot` for an active `session_id`.
@@ -3242,6 +3758,50 @@ public func documentCorePageGeometry(sessionId: String, pageIndex: UInt32)throws
 })
 }
 /**
+ * Lists all standard PDF `/Highlight` annotations on `page_index` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4).
+ */
+public func documentCorePageHighlightAnnotations(sessionId: String, pageIndex: UInt32)throws  -> [FfiHighlightAnnotation]  {
+    return try  FfiConverterSequenceTypeFfiHighlightAnnotation.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_highlight_annotations(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Queries the current rotation angle (`0`, `90`, `180`, `270`) of `page_index` (`ROTATE-001`, `ROADMAP.md` M0.4).
+ */
+public func documentCorePageRotationDegrees(sessionId: String, pageIndex: UInt32)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Redoes the last undone transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+ */
+public func documentCoreRedo(sessionId: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_redo(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Removes a standard PDF `/Highlight` annotation by `annotation_id` via `TransactionManager` (`ANNOT-001`, `ROADMAP.md` M0.4 Gate).
+ */
+public func documentCoreRemoveHighlightAnnotation(sessionId: String, pageIndex: UInt32, annotationId: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_remove_highlight_annotation(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterString.lower(annotationId),$0
+    )
+})
+}
+/**
  * Renders a low-resolution page thumbnail fitted to `max_dimension_px` via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`).
  */
 public func documentCoreRenderPageThumbnail(sessionId: String, pageIndex: UInt32, maxDimensionPx: UInt32)throws  -> FfiRenderedThumbnail  {
@@ -3283,6 +3843,29 @@ public func documentCoreResolvePageNavigation(sessionId: String, query: String)t
     uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(
         FfiConverterString.lower(sessionId),
         FfiConverterString.lower(query),$0
+    )
+})
+}
+/**
+ * Restores and replays a `PersistentTransactionJournal` JSON onto a freshly opened session (`ARCHITECTURE.md` §§11–12, `UNDO-001`).
+ */
+public func documentCoreRestoreTransactionJournalJson(sessionId: String, journalJson: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(
+        FfiConverterString.lower(sessionId),
+        FfiConverterString.lower(journalJson),$0
+    )
+})
+}
+/**
+ * Rotates one or more pages by `delta_degrees` (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
+ */
+public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], deltaDegrees: Int32)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_rotate_pages(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterInt32.lower(deltaDegrees),$0
     )
 })
 }
@@ -3349,6 +3932,26 @@ public func documentCoreTileCacheStats()throws  -> FfiTileCacheStats  {
     )
 })
 }
+/**
+ * Returns the current `FfiTransactionHistorySnapshot` for `session_id` (`UNDO-001`, `UNDO-002`).
+ */
+public func documentCoreTransactionHistory(sessionId: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_transaction_history(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Undoes the last committed transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+ */
+public func documentCoreUndo(sessionId: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_undo(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -3365,7 +3968,13 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
@@ -3392,6 +4001,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_highlight_annotations() != 44463) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation() != 2506) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail() != 43380) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3402,6 +4023,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506) {
@@ -3420,6 +4047,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_transaction_history() != 65458) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_undo() != 39567) {
         return InitializationResult.apiChecksumMismatch
     }
 

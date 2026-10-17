@@ -3,6 +3,7 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-changed=csrc/mupdf_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_text_bridge.c");
+    println!("cargo:rerun-if-changed=csrc/mupdf_mutate_bridge.c");
     println!("cargo:rerun-if-env-changed=MUPDF_DIR");
 
     let mupdf_prefix = std::env::var("MUPDF_DIR")
@@ -15,6 +16,7 @@ fn main() {
     cc::Build::new()
         .file("csrc/mupdf_bridge.c")
         .file("csrc/mupdf_text_bridge.c")
+        .file("csrc/mupdf_mutate_bridge.c")
         .include(&include_dir)
         .warnings(true)
         .compile("vocument_mupdf_bridge");

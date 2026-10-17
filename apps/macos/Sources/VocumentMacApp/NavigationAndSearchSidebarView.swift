@@ -99,8 +99,36 @@ struct NavigationAndSearchSidebarView: View {
                         Text(preview)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .lineLimit(4)
+                            .lineLimit(3)
                     }
+                }
+                .padding(4)
+            }
+
+            GroupBox("M0.4 Highlights & Journal") {
+                VStack(alignment: .leading, spacing: 6) {
+                    if coordinator.currentPageHighlights.isEmpty {
+                        Text("No highlights on this page.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(coordinator.currentPageHighlights, id: \.annotationId) { annot in
+                            HStack {
+                                Text(annot.contents ?? annot.annotationId)
+                                    .font(.caption2)
+                                    .lineLimit(1)
+                                Spacer()
+                                Button("Remove") {
+                                    coordinator.removeHighlight(annotationId: annot.annotationId)
+                                }
+                                .font(.caption2)
+                            }
+                        }
+                    }
+                    Button("Copy Persistent Journal JSON") {
+                        coordinator.exportPersistentJournalToClipboard()
+                    }
+                    .font(.caption2)
                 }
                 .padding(4)
             }

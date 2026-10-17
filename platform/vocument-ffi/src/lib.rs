@@ -1,8 +1,9 @@
-//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–10, 17, `ROADMAP.md` M0.0–M0.3).
+//! Thin UniFFI transport boundary (`DocumentCore` API) between `vocument-core` and native UI (`ARCHITECTURE.md` §§5–12, 17, `ROADMAP.md` M0.0–M0.4).
 //!
 //! Exposes only opaque session/document IDs and immutable DTO snapshots.
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
+pub mod mutation_dto;
 pub mod navigation_search_dto;
 pub mod render_dto;
 pub mod session_dto;
@@ -15,6 +16,14 @@ use vocument_core::pdf_engine::PdfEngineError;
 use vocument_core::session::{SessionError, SessionRegistry};
 use vocument_pdf_mupdf::MuPdfEngineAdapter;
 
+pub use mutation_dto::{
+    FfiHighlightAnnotation, FfiTransactionHistorySnapshot, FfiTransactionRecord,
+    document_core_add_highlight_annotation, document_core_export_transaction_journal_json,
+    document_core_page_highlight_annotations, document_core_page_rotation_degrees,
+    document_core_redo, document_core_remove_highlight_annotation,
+    document_core_restore_transaction_journal_json, document_core_rotate_pages,
+    document_core_transaction_history, document_core_undo,
+};
 pub use navigation_search_dto::{
     FfiPageDescriptor, FfiPageLabelRange, FfiPageLabelStyle, FfiPdfRectMilliPt,
     FfiRenderedThumbnail, FfiSearchHit, FfiSearchIndexProgress, FfiSearchResponse,
@@ -33,7 +42,7 @@ uniffi::setup_scaffolding!("vocument_ffi");
 
 static GLOBAL_SESSION_REGISTRY: OnceLock<SessionRegistry> = OnceLock::new();
 
-fn session_registry() -> &'static SessionRegistry {
+pub(crate) fn session_registry() -> &'static SessionRegistry {
     GLOBAL_SESSION_REGISTRY
         .get_or_init(|| SessionRegistry::new(Box::new(MuPdfEngineAdapter::new())))
 }
@@ -53,6 +62,8 @@ pub enum DocumentCoreError {
     SessionNotFound { session_id: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
+    #[error("transaction error: {details}")]
+    TransactionFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }
@@ -78,6 +89,9 @@ impl From<SessionError> for DocumentCoreError {
             },
             SessionError::SearchIndex(si) => Self::InternalFailure {
                 details: si.to_string(),
+            },
+            SessionError::Transaction(tx) => Self::TransactionFailure {
+                details: tx.to_string(),
             },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::RegistryPoisoned => Self::InternalFailure {

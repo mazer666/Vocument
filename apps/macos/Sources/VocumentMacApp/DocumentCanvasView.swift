@@ -41,6 +41,36 @@ struct DocumentCanvasView: View {
                 }
                 .disabled(coordinator.scaleMilli >= 3000)
 
+                Divider().frame(height: 18)
+
+                Button("↺ −90°") {
+                    coordinator.rotateCurrentPage(deltaDegrees: -90)
+                }
+                Button("↻ +90°") {
+                    coordinator.rotateCurrentPage(deltaDegrees: 90)
+                }
+                Text("Rot: \(coordinator.currentPageRotationDegrees)°")
+                    .font(.caption)
+                    .monospacedDigit()
+
+                Button("Highlight Line") {
+                    coordinator.highlightFirstLineOnCurrentPage()
+                }
+
+                Divider().frame(height: 18)
+
+                Button("Undo") {
+                    coordinator.performUndo()
+                }
+                .disabled(!(coordinator.transactionHistory?.canUndo ?? false))
+                .help(coordinator.transactionHistory?.undoDescription ?? "Nothing to undo")
+
+                Button("Redo") {
+                    coordinator.performRedo()
+                }
+                .disabled(!(coordinator.transactionHistory?.canRedo ?? false))
+                .help(coordinator.transactionHistory?.redoDescription ?? "Nothing to redo")
+
                 Spacer()
 
                 Menu("Memory Pressure") {
@@ -54,6 +84,14 @@ struct DocumentCanvasView: View {
                         coordinator.applyMemoryPressure(.critical)
                     }
                 }
+            }
+
+            if let hist = coordinator.transactionHistory {
+                Text(
+                    "Revision \(hist.currentRevision) (\(hist.isDirty ? "Modified • Unsaved" : "Clean")) • Undo stack: \(hist.undoCount) (\(hist.undoDescription ?? "none")) • Redo stack: \(hist.redoCount) (\(hist.redoDescription ?? "none"))"
+                )
+                .font(.caption)
+                .foregroundStyle(hist.isDirty ? Color.orange : Color.secondary)
             }
 
             if let stats = coordinator.cacheStats {

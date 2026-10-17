@@ -26,6 +26,10 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var searchHits: [FfiSearchHit] = []
     @Published var searchProgress: FfiSearchIndexProgress?
     @Published var selectedTextPreview: String?
+    @Published var transactionHistory: FfiTransactionHistorySnapshot?
+    @Published var currentPageRotationDegrees: UInt32 = 0
+    @Published var currentPageHighlights: [FfiHighlightAnnotation] = []
+    @Published var exportedJournalJsonPreview: String?
     @Published var errorMessage: String?
 
     init() {
@@ -68,8 +72,10 @@ final class MacDocumentSessionCoordinator: ObservableObject {
             scaleMilli = 1000
             thumbnailImages = [:]
             searchHits = []
+            exportedJournalJsonPreview = nil
             errorMessage = nil
             pageDescriptors = try coreClient.pageDescriptors(sessionId: session.sessionId)
+            transactionHistory = try coreClient.transactionHistory(sessionId: session.sessionId)
             renderCurrentViewport()
             loadThumbnailsAndInitialSearchBatch(sessionId: session.sessionId)
         } catch {
@@ -155,6 +161,121 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         }
     }
 
+    func rotateCurrentPage(deltaDegrees: Int32) {
+        guard let session = activeSession else { return }
+        do {
+            let history = try coreClient.rotatePages(
+                sessionId: session.sessionId,
+                pageIndices: [currentPageIndex],
+                deltaDegrees: deltaDegrees
+            )
+            refreshAfterMutation(sessionId: session.sessionId, history: history)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func highlightFirstLineOnCurrentPage() {
+        guard let session = activeSession else { return }
+        do {
+            let sel = try coreClient.selectPageText(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                selectionRect: nil
+            )
+            let rect = sel.highlightRects.first ?? FfiPdfRectMilliPt(
+                x0MilliPt: 72_000,
+                y0MilliPt: 700_000,
+                x1MilliPt: 360_000,
+                y1MilliPt: 724_000
+            )
+            let nextSeq = (transactionHistory?.currentRevision ?? 1)
+            let annotation = FfiHighlightAnnotation(
+                annotationId: "annot_mac_\(currentPageIndex)_\(nextSeq)",
+                pageIndex: currentPageIndex,
+                rect: rect,
+                colorR: 255,
+                colorG: 230,
+                colorB: 80,
+                opacityMilli: 450,
+                author: "Vocument macOS",
+                contents: "Highlighted on page #\(currentPageIndex + 1)"
+            )
+            let history = try coreClient.addHighlightAnnotation(
+                sessionId: session.sessionId,
+                annotation: annotation
+            )
+            refreshAfterMutation(sessionId: session.sessionId, history: history)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removeHighlight(annotationId: String) {
+        guard let session = activeSession else { return }
+        do {
+            let history = try coreClient.removeHighlightAnnotation(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                annotationId: annotationId
+            )
+            refreshAfterMutation(sessionId: session.sessionId, history: history)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func performUndo() {
+        guard let session = activeSession else { return }
+        do {
+            let history = try coreClient.undo(sessionId: session.sessionId)
+            refreshAfterMutation(sessionId: session.sessionId, history: history)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func performRedo() {
+        guard let session = activeSession else { return }
+        do {
+            let history = try coreClient.redo(sessionId: session.sessionId)
+            refreshAfterMutation(sessionId: session.sessionId, history: history)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func exportPersistentJournalToClipboard() {
+        guard let session = activeSession else { return }
+        do {
+            let json = try coreClient.exportTransactionJournalJson(sessionId: session.sessionId)
+            exportedJournalJsonPreview = json
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(json, forType: .string)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshAfterMutation(
+        sessionId: String,
+        history: FfiTransactionHistorySnapshot
+    ) {
+        transactionHistory = history
+        activeSession = try? coreClient.sessionSnapshot(sessionId: sessionId)
+        if let thumb = try? coreClient.renderPageThumbnail(
+            sessionId: sessionId,
+            pageIndex: currentPageIndex,
+            maxDimensionPx: 140
+        ),
+           let cgImg = DocumentCoreClient.makeCGImage(from: thumb) {
+            thumbnailImages[currentPageIndex] = cgImg
+        }
+        renderCurrentViewport()
+    }
+
     func adjustZoom(deltaMilli: Int) {
         let next = max(500, min(3000, Int(scaleMilli) + deltaMilli))
         guard UInt32(next) != scaleMilli else { return }
@@ -183,6 +304,14 @@ final class MacDocumentSessionCoordinator: ObservableObject {
                 sessionId: session.sessionId,
                 pageIndex: currentPageIndex
             )
+            currentPageRotationDegrees = (try? coreClient.pageRotationDegrees(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex
+            )) ?? 0
+            currentPageHighlights = (try? coreClient.pageHighlightAnnotations(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex
+            )) ?? []
             let scaledWidth = max(
                 1,
                 UInt32((UInt64(geometry.widthMilliPt) * UInt64(scaleMilli)) / 1_000_000)

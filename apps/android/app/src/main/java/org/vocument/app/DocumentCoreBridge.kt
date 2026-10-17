@@ -4,6 +4,7 @@ import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiBrokeredFileDescriptor
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiFileAccessOrigin
+import uniffi.vocument_ffi.FfiHighlightAnnotation
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiPageDescriptor
 import uniffi.vocument_ffi.FfiPageLabelRange
@@ -17,8 +18,11 @@ import uniffi.vocument_ffi.FfiTextSelectionResult
 import uniffi.vocument_ffi.FfiThumbnailCacheStats
 import uniffi.vocument_ffi.FfiTileCacheStats
 import uniffi.vocument_ffi.FfiTileRenderRequest
+import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
+import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
 import uniffi.vocument_ffi.documentCoreCloseSession
+import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
 import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
 import uniffi.vocument_ffi.documentCoreHandshake
@@ -26,19 +30,27 @@ import uniffi.vocument_ffi.documentCoreIndexSearchBatch
 import uniffi.vocument_ffi.documentCoreOpenBrokeredFile
 import uniffi.vocument_ffi.documentCorePageDescriptors
 import uniffi.vocument_ffi.documentCorePageGeometry
+import uniffi.vocument_ffi.documentCorePageHighlightAnnotations
+import uniffi.vocument_ffi.documentCorePageRotationDegrees
+import uniffi.vocument_ffi.documentCoreRedo
+import uniffi.vocument_ffi.documentCoreRemoveHighlightAnnotation
 import uniffi.vocument_ffi.documentCoreRenderPageThumbnail
 import uniffi.vocument_ffi.documentCoreRenderViewportWithPrefetch
 import uniffi.vocument_ffi.documentCoreRenderVisibleTile
 import uniffi.vocument_ffi.documentCoreResolvePageNavigation
+import uniffi.vocument_ffi.documentCoreRestoreTransactionJournalJson
+import uniffi.vocument_ffi.documentCoreRotatePages
 import uniffi.vocument_ffi.documentCoreSearchExact
 import uniffi.vocument_ffi.documentCoreSearchIndexProgress
 import uniffi.vocument_ffi.documentCoreSelectPageText
 import uniffi.vocument_ffi.documentCoreSetPageLabelRanges
 import uniffi.vocument_ffi.documentCoreThumbnailCacheStats
 import uniffi.vocument_ffi.documentCoreTileCacheStats
+import uniffi.vocument_ffi.documentCoreTransactionHistory
+import uniffi.vocument_ffi.documentCoreUndo
 
 /**
- * Thin Kotlin client wrapping the generated UniFFI `DocumentCore` bindings (`ARCHITECTURE.md` §§3–10, §15, §17).
+ * Thin Kotlin client wrapping the generated UniFFI `DocumentCore` bindings (`ARCHITECTURE.md` §§3–12, §15, §17).
  * Never duplicates configuration defaults or accesses MuPDF directly; all document state lives in `vocument-core`.
  */
 class DocumentCoreBridge {
@@ -197,6 +209,93 @@ class DocumentCoreBridge {
         query: String
     ): FfiSearchResponse {
         return documentCoreSearchExact(sessionId, query)
+    }
+
+    /**
+     * Queries the current rotation angle (`0`, `90`, `180`, `270`) of [pageIndex] (`ROTATE-001`, `ROADMAP.md` M0.4).
+     */
+    fun pageRotationDegrees(sessionId: String, pageIndex: UInt): UInt {
+        return documentCorePageRotationDegrees(sessionId, pageIndex)
+    }
+
+    /**
+     * Lists all standard PDF `/Highlight` annotations on [pageIndex] (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4).
+     */
+    fun pageHighlightAnnotations(
+        sessionId: String,
+        pageIndex: UInt
+    ): List<FfiHighlightAnnotation> {
+        return documentCorePageHighlightAnnotations(sessionId, pageIndex)
+    }
+
+    /**
+     * Rotates one or more pages by [deltaDegrees] (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
+     */
+    fun rotatePages(
+        sessionId: String,
+        pageIndices: List<UInt>,
+        deltaDegrees: Int
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreRotatePages(sessionId, pageIndices, deltaDegrees)
+    }
+
+    /**
+     * Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
+     */
+    fun addHighlightAnnotation(
+        sessionId: String,
+        annotation: FfiHighlightAnnotation
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreAddHighlightAnnotation(sessionId, annotation)
+    }
+
+    /**
+     * Removes a standard PDF `/Highlight` annotation by [annotationId] via `TransactionManager` (`ANNOT-001`).
+     */
+    fun removeHighlightAnnotation(
+        sessionId: String,
+        pageIndex: UInt,
+        annotationId: String
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreRemoveHighlightAnnotation(sessionId, pageIndex, annotationId)
+    }
+
+    /**
+     * Undoes the last committed transaction on [sessionId] via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+     */
+    fun undo(sessionId: String): FfiTransactionHistorySnapshot {
+        return documentCoreUndo(sessionId)
+    }
+
+    /**
+     * Redoes the last undone transaction on [sessionId] via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+     */
+    fun redo(sessionId: String): FfiTransactionHistorySnapshot {
+        return documentCoreRedo(sessionId)
+    }
+
+    /**
+     * Queries the live Undo/Redo and transaction history state for [sessionId] (`UNDO-001`, `UNDO-002`).
+     */
+    fun transactionHistory(sessionId: String): FfiTransactionHistorySnapshot {
+        return documentCoreTransactionHistory(sessionId)
+    }
+
+    /**
+     * Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12).
+     */
+    fun exportTransactionJournalJson(sessionId: String): String {
+        return documentCoreExportTransactionJournalJson(sessionId)
+    }
+
+    /**
+     * Restores and replays a `PersistentTransactionJournal` JSON payload onto [sessionId] (`UNDO-001`).
+     */
+    fun restoreTransactionJournalJson(
+        sessionId: String,
+        journalJson: String
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreRestoreTransactionJournalJson(sessionId, journalJson)
     }
 
     /**

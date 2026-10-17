@@ -749,6 +749,26 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -764,7 +784,11 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+    fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
 ): Short
@@ -782,6 +806,14 @@ fun uniffi_vocument_ffi_checksum_func_document_core_page_descriptors(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_geometry(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_highlight_annotations(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_redo(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch(
@@ -789,6 +821,10 @@ fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetc
 fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_search_exact(
 ): Short
@@ -801,6 +837,10 @@ fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
 fun uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_transaction_history(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_undo(
 ): Short
 fun ffi_vocument_ffi_uniffi_contract_version(
 ): Int
@@ -847,8 +887,12 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -865,6 +909,14 @@ fun uniffi_vocument_ffi_fn_func_document_core_page_descriptors(`sessionId`: Rust
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_geometry(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_page_highlight_annotations(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun uniffi_vocument_ffi_fn_func_document_core_redo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_remove_highlight_annotation(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`annotationId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_page_thumbnail(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`maxDimensionPx`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -872,6 +924,10 @@ fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`ses
 fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(`sessionId`: RustBuffer.ByValue,`journalJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_search_exact(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -884,6 +940,10 @@ fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_transaction_history(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_undo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_vocument_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1011,7 +1071,13 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
@@ -1038,6 +1104,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_geometry() != 27166.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_highlight_annotations() != 44463.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation() != 2506.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail() != 43380.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1048,6 +1126,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_search_exact() != 60506.toShort()) {
@@ -1066,6 +1150,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats() != 46732.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_transaction_history() != 65458.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_undo() != 39567.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1146,6 +1236,29 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
  * @suppress
  * */
 object NoPointer
+
+/**
+ * @suppress
+ */
+public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+    override fun lift(value: Byte): UByte {
+        return value.toUByte()
+    }
+
+    override fun read(buf: ByteBuffer): UByte {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: UByte): Byte {
+        return value.toByte()
+    }
+
+    override fun allocationSize(value: UByte) = 1UL
+
+    override fun write(value: UByte, buf: ByteBuffer) {
+        buf.put(value.toByte())
+    }
+}
 
 /**
  * @suppress
@@ -1548,6 +1661,69 @@ public object FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIde
             FfiConverterULong.write(value.`sizeBytes`, buf)
             FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
             FfiConverterString.write(value.`sha256Hex`, buf)
+    }
+}
+
+
+
+/**
+ * Standard PDF `/Highlight` annotation DTO crossing the UniFFI boundary (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4).
+ */
+data class FfiHighlightAnnotation (
+    var `annotationId`: kotlin.String, 
+    var `pageIndex`: kotlin.UInt, 
+    var `rect`: FfiPdfRectMilliPt, 
+    var `colorR`: kotlin.UByte, 
+    var `colorG`: kotlin.UByte, 
+    var `colorB`: kotlin.UByte, 
+    var `opacityMilli`: kotlin.UInt, 
+    var `author`: kotlin.String?, 
+    var `contents`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiHighlightAnnotation: FfiConverterRustBuffer<FfiHighlightAnnotation> {
+    override fun read(buf: ByteBuffer): FfiHighlightAnnotation {
+        return FfiHighlightAnnotation(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiHighlightAnnotation) = (
+            FfiConverterString.allocationSize(value.`annotationId`) +
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`rect`) +
+            FfiConverterUByte.allocationSize(value.`colorR`) +
+            FfiConverterUByte.allocationSize(value.`colorG`) +
+            FfiConverterUByte.allocationSize(value.`colorB`) +
+            FfiConverterUInt.allocationSize(value.`opacityMilli`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`contents`)
+    )
+
+    override fun write(value: FfiHighlightAnnotation, buf: ByteBuffer) {
+            FfiConverterString.write(value.`annotationId`, buf)
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+            FfiConverterUByte.write(value.`colorR`, buf)
+            FfiConverterUByte.write(value.`colorG`, buf)
+            FfiConverterUByte.write(value.`colorB`, buf)
+            FfiConverterUInt.write(value.`opacityMilli`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`contents`, buf)
     }
 }
 
@@ -2268,6 +2444,148 @@ public object FfiConverterTypeFfiTileRenderRequest: FfiConverterRustBuffer<FfiTi
 
 
 /**
+ * Live Undo/Redo and transaction history state snapshot exposed across UniFFI (`UNDO-001`, `UNDO-002`, `UNDO-004`, `ROADMAP.md` M0.4).
+ */
+data class FfiTransactionHistorySnapshot (
+    var `currentRevision`: kotlin.ULong, 
+    var `savedRevision`: kotlin.ULong, 
+    var `isDirty`: kotlin.Boolean, 
+    var `canUndo`: kotlin.Boolean, 
+    var `canRedo`: kotlin.Boolean, 
+    var `undoDescription`: kotlin.String?, 
+    var `redoDescription`: kotlin.String?, 
+    var `undoCount`: kotlin.UInt, 
+    var `redoCount`: kotlin.UInt, 
+    var `committedRecords`: List<FfiTransactionRecord>, 
+    var `redoRecords`: List<FfiTransactionRecord>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTransactionHistorySnapshot: FfiConverterRustBuffer<FfiTransactionHistorySnapshot> {
+    override fun read(buf: ByteBuffer): FfiTransactionHistorySnapshot {
+        return FfiTransactionHistorySnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeFfiTransactionRecord.read(buf),
+            FfiConverterSequenceTypeFfiTransactionRecord.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTransactionHistorySnapshot) = (
+            FfiConverterULong.allocationSize(value.`currentRevision`) +
+            FfiConverterULong.allocationSize(value.`savedRevision`) +
+            FfiConverterBoolean.allocationSize(value.`isDirty`) +
+            FfiConverterBoolean.allocationSize(value.`canUndo`) +
+            FfiConverterBoolean.allocationSize(value.`canRedo`) +
+            FfiConverterOptionalString.allocationSize(value.`undoDescription`) +
+            FfiConverterOptionalString.allocationSize(value.`redoDescription`) +
+            FfiConverterUInt.allocationSize(value.`undoCount`) +
+            FfiConverterUInt.allocationSize(value.`redoCount`) +
+            FfiConverterSequenceTypeFfiTransactionRecord.allocationSize(value.`committedRecords`) +
+            FfiConverterSequenceTypeFfiTransactionRecord.allocationSize(value.`redoRecords`)
+    )
+
+    override fun write(value: FfiTransactionHistorySnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`currentRevision`, buf)
+            FfiConverterULong.write(value.`savedRevision`, buf)
+            FfiConverterBoolean.write(value.`isDirty`, buf)
+            FfiConverterBoolean.write(value.`canUndo`, buf)
+            FfiConverterBoolean.write(value.`canRedo`, buf)
+            FfiConverterOptionalString.write(value.`undoDescription`, buf)
+            FfiConverterOptionalString.write(value.`redoDescription`, buf)
+            FfiConverterUInt.write(value.`undoCount`, buf)
+            FfiConverterUInt.write(value.`redoCount`, buf)
+            FfiConverterSequenceTypeFfiTransactionRecord.write(value.`committedRecords`, buf)
+            FfiConverterSequenceTypeFfiTransactionRecord.write(value.`redoRecords`, buf)
+    }
+}
+
+
+
+/**
+ * Immutable transaction record DTO exposed across UniFFI (`ARCHITECTURE.md` §11, `UNDO-004`).
+ */
+data class FfiTransactionRecord (
+    var `transactionId`: kotlin.String, 
+    var `sequenceNumber`: kotlin.ULong, 
+    var `revisionBefore`: kotlin.ULong, 
+    var `revisionAfter`: kotlin.ULong, 
+    var `timestampUnixMs`: kotlin.ULong, 
+    var `description`: kotlin.String, 
+    var `affectedPages`: List<kotlin.UInt>, 
+    var `affectedObjects`: List<kotlin.String>, 
+    var `beforePdfSha256`: kotlin.String, 
+    var `afterPdfSha256`: kotlin.String, 
+    var `recordChecksumSha256`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTransactionRecord: FfiConverterRustBuffer<FfiTransactionRecord> {
+    override fun read(buf: ByteBuffer): FfiTransactionRecord {
+        return FfiTransactionRecord(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceUInt.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTransactionRecord) = (
+            FfiConverterString.allocationSize(value.`transactionId`) +
+            FfiConverterULong.allocationSize(value.`sequenceNumber`) +
+            FfiConverterULong.allocationSize(value.`revisionBefore`) +
+            FfiConverterULong.allocationSize(value.`revisionAfter`) +
+            FfiConverterULong.allocationSize(value.`timestampUnixMs`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterSequenceUInt.allocationSize(value.`affectedPages`) +
+            FfiConverterSequenceString.allocationSize(value.`affectedObjects`) +
+            FfiConverterString.allocationSize(value.`beforePdfSha256`) +
+            FfiConverterString.allocationSize(value.`afterPdfSha256`) +
+            FfiConverterString.allocationSize(value.`recordChecksumSha256`)
+    )
+
+    override fun write(value: FfiTransactionRecord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`transactionId`, buf)
+            FfiConverterULong.write(value.`sequenceNumber`, buf)
+            FfiConverterULong.write(value.`revisionBefore`, buf)
+            FfiConverterULong.write(value.`revisionAfter`, buf)
+            FfiConverterULong.write(value.`timestampUnixMs`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterSequenceUInt.write(value.`affectedPages`, buf)
+            FfiConverterSequenceString.write(value.`affectedObjects`, buf)
+            FfiConverterString.write(value.`beforePdfSha256`, buf)
+            FfiConverterString.write(value.`afterPdfSha256`, buf)
+            FfiConverterString.write(value.`recordChecksumSha256`, buf)
+    }
+}
+
+
+
+/**
  * Combined result of rendering a visible viewport tile and prefetching neighbouring pages (`ROADMAP.md` M0.2).
  */
 data class FfiViewportRenderResult (
@@ -2359,6 +2677,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    class TransactionFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class InternalFailure(
         
         val `details`: kotlin.String
@@ -2399,7 +2725,10 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             6 -> DocumentCoreException.NavigationFailure(
                 FfiConverterString.read(buf),
                 )
-            7 -> DocumentCoreException.InternalFailure(
+            7 -> DocumentCoreException.TransactionFailure(
+                FfiConverterString.read(buf),
+                )
+            8 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -2433,6 +2762,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`sessionId`)
             )
             is DocumentCoreException.NavigationFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.TransactionFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -2476,8 +2810,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.TransactionFailure -> {
                 buf.putInt(7)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(8)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -2749,6 +3088,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer<List<FfiHighlightAnnotation>> {
+    override fun read(buf: ByteBuffer): List<FfiHighlightAnnotation> {
+        val len = buf.getInt()
+        return List<FfiHighlightAnnotation>(len) {
+            FfiConverterTypeFfiHighlightAnnotation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiHighlightAnnotation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiHighlightAnnotation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiHighlightAnnotation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiHighlightAnnotation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer<List<FfiPageDescriptor>> {
     override fun read(buf: ByteBuffer): List<FfiPageDescriptor> {
         val len = buf.getInt()
@@ -2854,6 +3221,47 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuffer<List<FfiTransactionRecord>> {
+    override fun read(buf: ByteBuffer): List<FfiTransactionRecord> {
+        val len = buf.getInt()
+        return List<FfiTransactionRecord>(len) {
+            FfiConverterTypeFfiTransactionRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiTransactionRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiTransactionRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiTransactionRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiTransactionRecord.write(it, buf)
+        }
+    }
+}
+        /**
+         * Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreAddHighlightAnnotation`(`sessionId`: kotlin.String, `annotation`: FfiHighlightAnnotation): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiHighlightAnnotation.lower(`annotation`),_status)
+}
+    )
+    }
+    
+
         /**
          * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
          */
@@ -2864,6 +3272,19 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
         FfiConverterString.lower(`sessionId`),_status)
 }
     
+    
+
+        /**
+         * Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12, `ROADMAP.md` M0.4).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreExportTransactionJournalJson`(`sessionId`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
     
 
         /**
@@ -2972,6 +3393,58 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
     
 
         /**
+         * Lists all standard PDF `/Highlight` annotations on `page_index` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageHighlightAnnotations`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): List<FfiHighlightAnnotation> {
+            return FfiConverterSequenceTypeFfiHighlightAnnotation.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_highlight_annotations(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Queries the current rotation angle (`0`, `90`, `180`, `270`) of `page_index` (`ROTATE-001`, `ROADMAP.md` M0.4).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageRotationDegrees`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Redoes the last undone transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRedo`(`sessionId`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_redo(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Removes a standard PDF `/Highlight` annotation by `annotation_id` via `TransactionManager` (`ANNOT-001`, `ROADMAP.md` M0.4 Gate).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRemoveHighlightAnnotation`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `annotationId`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_remove_highlight_annotation(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterString.lower(`annotationId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Renders a low-resolution page thumbnail fitted to `max_dimension_px` via the separate `ThumbnailCache` (`PAGEVIEW-001`, `PAGEVIEW-002`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRenderPageThumbnail`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `maxDimensionPx`: kotlin.UInt): FfiRenderedThumbnail {
@@ -3018,6 +3491,32 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(
         FfiConverterString.lower(`sessionId`),FfiConverterString.lower(`query`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Restores and replays a `PersistentTransactionJournal` JSON onto a freshly opened session (`ARCHITECTURE.md` §§11–12, `UNDO-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRestoreTransactionJournalJson`(`sessionId`: kotlin.String, `journalJson`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(
+        FfiConverterString.lower(`sessionId`),FfiConverterString.lower(`journalJson`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rotates one or more pages by `delta_degrees` (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRotatePages`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `deltaDegrees`: kotlin.Int): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_rotate_pages(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`deltaDegrees`),_status)
 }
     )
     }
@@ -3097,6 +3596,32 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the current `FfiTransactionHistorySnapshot` for `session_id` (`UNDO-001`, `UNDO-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreTransactionHistory`(`sessionId`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_transaction_history(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Undoes the last committed transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreUndo`(`sessionId`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_undo(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

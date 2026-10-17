@@ -12,9 +12,11 @@ pub mod pdf_engine;
 pub mod render;
 pub mod search_index;
 pub mod session;
+pub mod session_mutations;
 pub mod text_selection;
 pub mod thumbnail_cache;
 pub mod tile_cache;
+pub mod transactions;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};
 

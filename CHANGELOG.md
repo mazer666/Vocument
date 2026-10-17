@@ -4,6 +4,15 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.4] - 2026-10-17
+
+### Added
+- Completed **M0.4 — First mutations** (`docs/acceptance/M0.4-ACCEPTANCE.md`, `ADR-0007`).
+- Implemented MuPDF 1.28.5 standard PDF `/Highlight` annotations (`PDF_ANNOT_HIGHLIGHT`, `/QuadPoints`, `/C`, `/CA`, `/NM`, `/T`, `/Contents`) and `/Rotate` page rotation (`+90°`, `-90°`, `180°`) with in-memory PDF rewrite (`engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c`, `engines/pdf-mupdf/src/mutate.rs`).
+- Implemented `TransactionManager`, semantic `TransactionCommand` (`RotatePages`, `AddHighlightAnnotation`, `RemoveHighlightAnnotation`) with human-readable descriptions (`UNDO-004`), Undo/Redo stack (`UNDO-001`, `UNDO-002`), and SHA-256 checksum-verified `PersistentTransactionJournal` v1 with deterministic session replay (`core/vocument-core/src/transactions.rs`, `core/vocument-core/src/session_mutations.rs`).
+- Enforced the **M0.4 Gate** (`Mutation never bypasses TransactionManager`) via `pub(crate)` visibility on `DocumentActor::apply_engine_mutation_for_transaction_manager` and automated CI verification in `scripts/validate-repo.sh`.
+- Exposed M0.4 mutation, Undo/Redo, and transaction journal APIs over UniFFI (`platform/vocument-ffi/src/mutation_dto.rs`) and integrated native controls on macOS (`DocumentCoreClient.swift`, `DocumentCanvasView.swift`, `NavigationAndSearchSidebarView.swift`) and Android (`DocumentCoreBridge.kt`, `MutationToolsPanel.kt`, `MainActivity.kt`).
+
 ## [0.1.0-m0.3] - 2026-10-17
 
 ### Added
