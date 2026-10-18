@@ -276,22 +276,29 @@ Deliver:
 
 ### Gate
 
-2D background illumination modeling normalizes paper background to $\ge 245$, cancels uneven cast shadows and paper fold creases ($> 80\%$ attenuation), provides distinct `DocumentAuto`, `HighContrastBw`, and `PreservePhoto` profiles, and demonstrates quantitative visual regression metrics ($\ge 90\%$ background uniformity, $\ge 80\%$ contrast ratio) across native Rust and Android test suites. *(Verified via `cargo test -p vocument-imaging`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
+2D background illumination modeling normalizes paper background to $\ge 245$, cancels uneven cast shadows and paper fold creases ($> 80\%$ attenuation), provides distinct `DocumentAuto`, `HighContrastBw`, and `PreservePhoto` profiles, and demonstrates quantitative visual regression metrics ($\ge 90\%$ background uniformity, $\ge 80\%$ contrast ratio, $\ge 80\%$ shadow attenuation) across native Rust and Android test suites. *(Verified via `cargo test -p vocument-imaging`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
 
 ---
 
-## M1.3 — Tesseract OCR & Text Layer Generation *(Next)*
+## M1.3 — Tesseract OCR & Text Layer Generation *(Status: **COMPLETE** — see [M1.3 Acceptance Record](docs/acceptance/M1.3-ACCEPTANCE.md) and [ADR-0014](docs/adr/ADR-0014-m1-3-tesseract-ocr-and-text-layer-generation.md))*
 
 Deliver:
 
-- embedded offline Tesseract engine integration via `OcrProvider` (deu, eng)
-- word and character bounding box generation (`hOCR` / box text)
-- multi-language detection (German legal variants, English)
-- OCR confidence score per page
+- [x] embedded offline Tesseract engine integration via `OcrProvider` (deu, eng)
+- [x] word and character bounding box generation in pixel and normalized coordinates (`hOCR` / box text)
+- [x] multi-language detection (German legal variants `de-AT`/`de-DE`, English, and bilingual documents)
+- [x] OCR confidence scores per page, per word, and per character glyph
+- [x] realistic scan and OCR test corpus (`tests/corpus/ocr/`) with ground truth and automated verification
+- [x] direct pipeline integration with M1.2 cleaned scan pages (`DocumentAuto`, `HighContrastBw`)
+- [x] UniFFI exposure and Android/macOS bridge integration (`document_core_ocr_frame`, `document_core_ocr_clean_scan_frame`, `document_core_ocr_scan_session_page`, `document_core_detect_text_language`)
+
+### Gate
+
+Tesseract operates completely offline through `OcrProvider` without cloud or network calls, extracts word and character bounding boxes with confidence scores, correctly detects German (including Austrian legal terms) and English documents, achieves $\ge 95\%$ keyword recognition on the realistic test corpus, and integrates seamlessly with M1.2 clean scan pages. *(Verified via `cargo test -p vocument-ocr`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
 
 ---
 
-## M1.4 — Searchable PDF Synthesis & Session Ingestion
+## M1.4 — Searchable PDF Synthesis & Session Ingestion *(Next)*
 
 Deliver:
 

@@ -205,9 +205,9 @@ class ScanCaptureBridgeTest {
         assertEquals("Enhanced height must match", 128u, autoEnhanced.height)
 
         val autoMetrics = bridge.evaluateCleanupQuality(frame, autoEnhanced)
-        assertTrue("Background uniformity should be >= 0.85 (got ${autoMetrics.backgroundUniformity})", autoMetrics.backgroundUniformity >= 0.85f)
+        assertTrue("Background uniformity should be >= 0.90 (got ${autoMetrics.backgroundUniformity})", autoMetrics.backgroundUniformity >= 0.90f)
         assertTrue("Contrast ratio should be >= 0.80 (got ${autoMetrics.contrastRatio})", autoMetrics.contrastRatio >= 0.80f)
-        assertTrue("Shadow attenuation should be >= 0.75 (got ${autoMetrics.shadowAttenuation})", autoMetrics.shadowAttenuation >= 0.75f)
+        assertTrue("Shadow attenuation should be >= 0.80 (got ${autoMetrics.shadowAttenuation})", autoMetrics.shadowAttenuation >= 0.80f)
 
         // 2. HighContrastBw profile:
         val bwEnhanced = bridge.enhanceScanFrame(frame, FfiScanCleanupProfile.HIGH_CONTRAST_BW)
@@ -227,6 +227,28 @@ class ScanCaptureBridgeTest {
         val warpedPage = bridge.getWarpedScanPage(sessionId, page.pageIndex)
         assertEquals("Retrieved enhanced frame width must match warped width", warpedPage.width, retrievedEnhanced.width)
         assertTrue("Retrieved enhanced frame width must be positive", retrievedEnhanced.width > 0u)
+
+        // 5. M1.3 OCR on session page:
+        val ocrResult = bridge.ocrScanSessionPage(sessionId, page.pageIndex, listOf("deu", "eng"))
+        assertNotNull("OCR result must be produced", ocrResult)
+        assertTrue("Frame width must match", ocrResult.frameWidth > 0u)
+        assertTrue("Frame height must match", ocrResult.frameHeight > 0u)
         bridge.closeScanSession(sessionId)
+    }
+
+    @Test
+    fun testLanguageDetectionAndOcrPipeline() {
+        val deuText = "Vereinbarung über Vertraulichkeit und Geschäftsgeheimnisse gemäß ABGB. Erfüllungsort ist Wien, Österreich."
+        val detectedDeu = bridge.detectTextLanguage(deuText)
+        assertEquals("Primary language must be German", "deu", detectedDeu)
+
+        val engText = "Mutual Non-Disclosure Agreement. Each receiving party shall protect proprietary information."
+        val detectedEng = bridge.detectTextLanguage(engText)
+        assertEquals("Primary language must be English", "eng", detectedEng)
+
+        val frame = createSyntheticShadowedDocumentFrame(width = 100u, height = 100u)
+        val ocrRes = bridge.ocrCleanScanFrame(frame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("eng"), true)
+        assertNotNull("OCR on cleaned frame should return result", ocrRes)
+        assertTrue("OCR result frame dimensions must be valid", ocrRes.frameWidth == 100u && ocrRes.frameHeight == 100u)
     }
 }

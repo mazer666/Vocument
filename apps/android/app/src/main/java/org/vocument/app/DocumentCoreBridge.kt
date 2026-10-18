@@ -1,96 +1,6 @@
 package org.vocument.app
 
-import uniffi.vocument_ffi.DocumentCoreHandshake
-import uniffi.vocument_ffi.FfiBrokeredFileDescriptor
-import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
-import uniffi.vocument_ffi.FfiFileAccessOrigin
-import uniffi.vocument_ffi.FfiExternalChangeCheckResult
-import uniffi.vocument_ffi.FfiHighlightAnnotation
-import uniffi.vocument_ffi.FfiInteropReport
-import uniffi.vocument_ffi.FfiMemoryPressureLevel
-import uniffi.vocument_ffi.FfiPageDescriptor
-import uniffi.vocument_ffi.FfiPageLabelRange
-import uniffi.vocument_ffi.FfiPdfPageGeometry
-import uniffi.vocument_ffi.FfiPdfRectMilliPt
-import uniffi.vocument_ffi.FfiRecoverableDocumentInfo
-import uniffi.vocument_ffi.FfiRecoveryAction
-import uniffi.vocument_ffi.FfiRecoveryActionResult
-import uniffi.vocument_ffi.FfiRenderedThumbnail
-import uniffi.vocument_ffi.FfiRenderedTile
-import uniffi.vocument_ffi.FfiSaveConflict
-import uniffi.vocument_ffi.FfiSaveConflictResolution
-import uniffi.vocument_ffi.FfiSaveOutcome
-import uniffi.vocument_ffi.FfiSaveSuccessSnapshot
-import uniffi.vocument_ffi.FfiCapturedScanPage
-import uniffi.vocument_ffi.FfiDeskewResult
-import uniffi.vocument_ffi.FfiPoint2D
-import uniffi.vocument_ffi.FfiQuadCorners
-import uniffi.vocument_ffi.FfiScanCleanupProfile
-import uniffi.vocument_ffi.FfiScanFrame
-import uniffi.vocument_ffi.FfiScanPixelFormat
-import uniffi.vocument_ffi.FfiScanSessionSnapshot
-import uniffi.vocument_ffi.FfiSearchIndexProgress
-import uniffi.vocument_ffi.FfiSearchResponse
-import uniffi.vocument_ffi.FfiTextSelectionResult
-import uniffi.vocument_ffi.FfiThumbnailCacheStats
-import uniffi.vocument_ffi.FfiTileCacheStats
-import uniffi.vocument_ffi.FfiTileRenderRequest
-import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
-import uniffi.vocument_ffi.FfiViewportRenderResult
-import uniffi.vocument_ffi.FfiCleanupQualityMetrics
-import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
-import uniffi.vocument_ffi.documentCoreAppendScanPage
-import uniffi.vocument_ffi.documentCoreAutoOrientFrame
-import uniffi.vocument_ffi.documentCoreCheckDocumentRecovery
-import uniffi.vocument_ffi.documentCoreCheckExternalChanges
-import uniffi.vocument_ffi.documentCoreCloseScanSession
-import uniffi.vocument_ffi.documentCoreCloseSession
-import uniffi.vocument_ffi.documentCoreDeskewFrame
-import uniffi.vocument_ffi.documentCoreDetectDocumentEdges
-import uniffi.vocument_ffi.documentCoreEnhanceScanFrame
-import uniffi.vocument_ffi.documentCoreEvaluateCleanupQuality
-import uniffi.vocument_ffi.documentCoreExecuteRecoveryAction
-import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
-import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
-import uniffi.vocument_ffi.documentCoreGetEnhancedScanPage
-import uniffi.vocument_ffi.documentCoreGetScanSession
-import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
-import uniffi.vocument_ffi.documentCoreGetWarpedScanPage
-import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
-import uniffi.vocument_ffi.documentCoreHandshake
-import uniffi.vocument_ffi.documentCoreIndexSearchBatch
-import uniffi.vocument_ffi.documentCoreMarkRecoveryCleanShutdown
-import uniffi.vocument_ffi.documentCoreOpenBrokeredFile
-import uniffi.vocument_ffi.documentCoreOpenMacosScopedFile
-import uniffi.vocument_ffi.documentCorePageDescriptors
-import uniffi.vocument_ffi.documentCoreRunInteropGateSuite
-import uniffi.vocument_ffi.documentCorePageGeometry
-import uniffi.vocument_ffi.documentCorePageHighlightAnnotations
-import uniffi.vocument_ffi.documentCorePageRotationDegrees
-import uniffi.vocument_ffi.documentCoreRedo
-import uniffi.vocument_ffi.documentCoreRemoveHighlightAnnotation
-import uniffi.vocument_ffi.documentCoreRenderPageThumbnail
-import uniffi.vocument_ffi.documentCoreRenderViewportWithPrefetch
-import uniffi.vocument_ffi.documentCoreRenderVisibleTile
-import uniffi.vocument_ffi.documentCoreResolvePageNavigation
-import uniffi.vocument_ffi.documentCoreResolveSaveConflict
-import uniffi.vocument_ffi.documentCoreRestoreTransactionJournalJson
-import uniffi.vocument_ffi.documentCoreRotateFrame
-import uniffi.vocument_ffi.documentCoreRotatePages
-import uniffi.vocument_ffi.documentCoreSaveSession
-import uniffi.vocument_ffi.documentCoreSaveSessionAs
-import uniffi.vocument_ffi.documentCoreSaveSessionCollisionFreeCopy
-import uniffi.vocument_ffi.documentCoreScanRecoverableDocuments
-import uniffi.vocument_ffi.documentCoreSearchExact
-import uniffi.vocument_ffi.documentCoreSearchIndexProgress
-import uniffi.vocument_ffi.documentCoreSelectPageText
-import uniffi.vocument_ffi.documentCoreSetPageLabelRanges
-import uniffi.vocument_ffi.documentCoreStartScanSession
-import uniffi.vocument_ffi.documentCoreThumbnailCacheStats
-import uniffi.vocument_ffi.documentCoreTileCacheStats
-import uniffi.vocument_ffi.documentCoreTransactionHistory
-import uniffi.vocument_ffi.documentCoreUndo
-import uniffi.vocument_ffi.documentCoreWarpPerspective
+import uniffi.vocument_ffi.*
 
 /**
  * Thin Kotlin client wrapping the generated UniFFI `DocumentCore` bindings (`ARCHITECTURE.md` §§3–12, §15, §17).
@@ -531,6 +441,48 @@ class DocumentCoreBridge {
      */
     fun evaluateCleanupQuality(original: FfiScanFrame, enhanced: FfiScanFrame): FfiCleanupQualityMetrics {
         return documentCoreEvaluateCleanupQuality(original, enhanced)
+    }
+
+    /**
+     * Executes optical character recognition on a raw input scan frame (`OCR-001`, `OCR-002`).
+     */
+    fun ocrFrame(
+        frame: FfiScanFrame,
+        languages: List<String> = listOf("deu", "eng"),
+        detectLanguage: Boolean = true
+    ): FfiOcrPageResult {
+        return documentCoreOcrFrame(frame, languages, detectLanguage)
+    }
+
+    /**
+     * Executes optical character recognition on a scan frame pre-processed through the
+     * M1.2 intelligent scan cleanup and enhancement pipeline (`SCAN-004`).
+     */
+    fun ocrCleanScanFrame(
+        frame: FfiScanFrame,
+        profile: FfiScanCleanupProfile = FfiScanCleanupProfile.DOCUMENT_AUTO,
+        languages: List<String> = listOf("deu", "eng"),
+        detectLanguage: Boolean = true
+    ): FfiOcrPageResult {
+        return documentCoreOcrCleanScanFrame(frame, profile, languages, detectLanguage)
+    }
+
+    /**
+     * Executes optical character recognition on an enhanced scan page in an active scanning session (`SCAN-006`).
+     */
+    fun ocrScanSessionPage(
+        sessionId: String,
+        pageIndex: UInt,
+        languages: List<String> = listOf("deu", "eng")
+    ): FfiOcrPageResult {
+        return documentCoreOcrScanSessionPage(sessionId, pageIndex, languages)
+    }
+
+    /**
+     * Detects primary language of a text snippet using German legal and English lexical heuristics (`OCR-002`).
+     */
+    fun detectTextLanguage(text: String): String {
+        return documentCoreDetectTextLanguage(text)
     }
 
     /**

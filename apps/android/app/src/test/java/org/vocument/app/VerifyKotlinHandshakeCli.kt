@@ -579,4 +579,16 @@ fun main() {
             "Cleanup(DocumentAuto) → Uniformity(${(metrics.backgroundUniformity * 100).toInt()}%) → " +
             "Contrast(${(metrics.contrastRatio * 100).toInt()}%) → GateVerified"
     )
+
+    // M1.3 verification: Offline Tesseract OCR, Bounding Boxes & Multi-Language Detection
+    val deuSnippet = "Vereinbarung über Vertraulichkeit gemäß ABGB. Erfüllungsort ist Wien, Österreich."
+    val detectedDeu = bridge.detectTextLanguage(deuSnippet)
+    check(detectedDeu == "deu") { "M1.3 language detection failed for German: $detectedDeu" }
+    val ocrPageRes = bridge.ocrCleanScanFrame(testFrame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu", "eng"), true)
+    check(ocrPageRes.frameWidth == 100u) { "M1.3 OCR frame width invalid" }
+    println(
+        "✓ Kotlin (Android M1.3) → OfflineTesseract → LangDetection($detectedDeu) → " +
+            "BoundingBoxes(words=${ocrPageRes.words.size}, lines=${ocrPageRes.lines.size}) → " +
+            "MeanConf(${ocrPageRes.meanConfidence.toInt()}%) → GateVerified"
+    )
 }

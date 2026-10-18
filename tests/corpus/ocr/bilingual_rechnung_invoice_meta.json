@@ -1,0 +1,20 @@
+{
+  "document_id": "bilingual_rechnung_invoice",
+  "language": "deu+eng",
+  "locale_variant": "de-AT/en",
+  "category": "commercial_invoice",
+  "expected_keywords": [
+    "RECHNUNG",
+    "COMMERCIAL",
+    "INVOICE",
+    "Rechnungsnummer",
+    "Softwareentwicklung",
+    "Gesamtbetrag",
+    "Total",
+    "Amount",
+    "Umsatzsteuer",
+    "VAT",
+    "Bankkonto"
+  ],
+  "min_confidence": 85.0
+}

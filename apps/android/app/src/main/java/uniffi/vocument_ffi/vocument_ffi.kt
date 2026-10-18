@@ -817,6 +817,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -850,6 +858,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_detect_text_language(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_evaluate_cleanup_quality(
@@ -875,6 +885,12 @@ fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_ocr_frame(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_ocr_scan_session_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
@@ -1001,6 +1017,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.B
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_detect_text_language(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_evaluate_cleanup_quality(`original`: RustBuffer.ByValue,`enhanced`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1027,6 +1045,12 @@ fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: Ru
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_ocr_frame(`frame`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_ocr_scan_session_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`languages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1242,6 +1266,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_text_language() != 868.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1279,6 +1306,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame() != 9529.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_ocr_frame() != 65447.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_ocr_scan_session_page() != 16623.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file() != 23214.toShort()) {
@@ -1749,6 +1785,49 @@ public object FfiConverterTypeDocumentCoreHandshake: FfiConverterRustBuffer<Docu
 
 
 /**
+ * 2D bounding box representing spatial text extents.
+ */
+data class FfiBoundingBox (
+    var `x0`: kotlin.Float, 
+    var `y0`: kotlin.Float, 
+    var `x1`: kotlin.Float, 
+    var `y1`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBoundingBox: FfiConverterRustBuffer<FfiBoundingBox> {
+    override fun read(buf: ByteBuffer): FfiBoundingBox {
+        return FfiBoundingBox(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBoundingBox) = (
+            FfiConverterFloat.allocationSize(value.`x0`) +
+            FfiConverterFloat.allocationSize(value.`y0`) +
+            FfiConverterFloat.allocationSize(value.`x1`) +
+            FfiConverterFloat.allocationSize(value.`y1`)
+    )
+
+    override fun write(value: FfiBoundingBox, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`x0`, buf)
+            FfiConverterFloat.write(value.`y0`, buf)
+            FfiConverterFloat.write(value.`x1`, buf)
+            FfiConverterFloat.write(value.`y1`, buf)
+    }
+}
+
+
+
+/**
  * Platform-brokered file descriptor passed into `DocumentCore` (e.g. from Android Storage Access Framework or macOS `FileBroker`).
  */
 data class FfiBrokeredFileDescriptor (
@@ -2210,6 +2289,210 @@ public object FfiConverterTypeFfiInteropReport: FfiConverterRustBuffer<FfiIntero
             FfiConverterString.write(value.`pdfXchangeStatus`, buf)
             FfiConverterString.write(value.`firefoxStatus`, buf)
             FfiConverterString.write(value.`summary`, buf)
+    }
+}
+
+
+
+/**
+ * A recognized single character glyph with spatial bounding box and confidence score.
+ */
+data class FfiOcrCharacter (
+    var `text`: kotlin.String, 
+    var `bbox`: FfiBoundingBox, 
+    var `confidence`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOcrCharacter: FfiConverterRustBuffer<FfiOcrCharacter> {
+    override fun read(buf: ByteBuffer): FfiOcrCharacter {
+        return FfiOcrCharacter(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiBoundingBox.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOcrCharacter) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeFfiBoundingBox.allocationSize(value.`bbox`) +
+            FfiConverterFloat.allocationSize(value.`confidence`)
+    )
+
+    override fun write(value: FfiOcrCharacter, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeFfiBoundingBox.write(value.`bbox`, buf)
+            FfiConverterFloat.write(value.`confidence`, buf)
+    }
+}
+
+
+
+/**
+ * A typographical text line composed of words.
+ */
+data class FfiOcrLine (
+    var `text`: kotlin.String, 
+    var `bbox`: FfiBoundingBox, 
+    var `confidence`: kotlin.Float, 
+    var `words`: List<FfiOcrWord>, 
+    var `lineIndex`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOcrLine: FfiConverterRustBuffer<FfiOcrLine> {
+    override fun read(buf: ByteBuffer): FfiOcrLine {
+        return FfiOcrLine(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiBoundingBox.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterSequenceTypeFfiOcrWord.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOcrLine) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeFfiBoundingBox.allocationSize(value.`bbox`) +
+            FfiConverterFloat.allocationSize(value.`confidence`) +
+            FfiConverterSequenceTypeFfiOcrWord.allocationSize(value.`words`) +
+            FfiConverterUInt.allocationSize(value.`lineIndex`)
+    )
+
+    override fun write(value: FfiOcrLine, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeFfiBoundingBox.write(value.`bbox`, buf)
+            FfiConverterFloat.write(value.`confidence`, buf)
+            FfiConverterSequenceTypeFfiOcrWord.write(value.`words`, buf)
+            FfiConverterUInt.write(value.`lineIndex`, buf)
+    }
+}
+
+
+
+/**
+ * Complete OCR result snapshot for a processed document scan page.
+ */
+data class FfiOcrPageResult (
+    var `pageIndex`: kotlin.UInt, 
+    var `fullText`: kotlin.String, 
+    var `words`: List<FfiOcrWord>, 
+    var `lines`: List<FfiOcrLine>, 
+    var `meanConfidence`: kotlin.Float, 
+    var `detectedLanguage`: kotlin.String, 
+    var `hocrOutput`: kotlin.String?, 
+    var `frameWidth`: kotlin.UInt, 
+    var `frameHeight`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOcrPageResult: FfiConverterRustBuffer<FfiOcrPageResult> {
+    override fun read(buf: ByteBuffer): FfiOcrPageResult {
+        return FfiOcrPageResult(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiOcrWord.read(buf),
+            FfiConverterSequenceTypeFfiOcrLine.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOcrPageResult) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterString.allocationSize(value.`fullText`) +
+            FfiConverterSequenceTypeFfiOcrWord.allocationSize(value.`words`) +
+            FfiConverterSequenceTypeFfiOcrLine.allocationSize(value.`lines`) +
+            FfiConverterFloat.allocationSize(value.`meanConfidence`) +
+            FfiConverterString.allocationSize(value.`detectedLanguage`) +
+            FfiConverterOptionalString.allocationSize(value.`hocrOutput`) +
+            FfiConverterUInt.allocationSize(value.`frameWidth`) +
+            FfiConverterUInt.allocationSize(value.`frameHeight`)
+    )
+
+    override fun write(value: FfiOcrPageResult, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterString.write(value.`fullText`, buf)
+            FfiConverterSequenceTypeFfiOcrWord.write(value.`words`, buf)
+            FfiConverterSequenceTypeFfiOcrLine.write(value.`lines`, buf)
+            FfiConverterFloat.write(value.`meanConfidence`, buf)
+            FfiConverterString.write(value.`detectedLanguage`, buf)
+            FfiConverterOptionalString.write(value.`hocrOutput`, buf)
+            FfiConverterUInt.write(value.`frameWidth`, buf)
+            FfiConverterUInt.write(value.`frameHeight`, buf)
+    }
+}
+
+
+
+/**
+ * A recognized word composed of character glyphs and spatial bounding box.
+ */
+data class FfiOcrWord (
+    var `text`: kotlin.String, 
+    var `bbox`: FfiBoundingBox, 
+    var `confidence`: kotlin.Float, 
+    var `characters`: List<FfiOcrCharacter>, 
+    var `blockIndex`: kotlin.UInt, 
+    var `lineIndex`: kotlin.UInt, 
+    var `wordIndex`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOcrWord: FfiConverterRustBuffer<FfiOcrWord> {
+    override fun read(buf: ByteBuffer): FfiOcrWord {
+        return FfiOcrWord(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiBoundingBox.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterSequenceTypeFfiOcrCharacter.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOcrWord) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeFfiBoundingBox.allocationSize(value.`bbox`) +
+            FfiConverterFloat.allocationSize(value.`confidence`) +
+            FfiConverterSequenceTypeFfiOcrCharacter.allocationSize(value.`characters`) +
+            FfiConverterUInt.allocationSize(value.`blockIndex`) +
+            FfiConverterUInt.allocationSize(value.`lineIndex`) +
+            FfiConverterUInt.allocationSize(value.`wordIndex`)
+    )
+
+    override fun write(value: FfiOcrWord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeFfiBoundingBox.write(value.`bbox`, buf)
+            FfiConverterFloat.write(value.`confidence`, buf)
+            FfiConverterSequenceTypeFfiOcrCharacter.write(value.`characters`, buf)
+            FfiConverterUInt.write(value.`blockIndex`, buf)
+            FfiConverterUInt.write(value.`lineIndex`, buf)
+            FfiConverterUInt.write(value.`wordIndex`, buf)
     }
 }
 
@@ -4554,6 +4837,90 @@ public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBu
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiOcrCharacter: FfiConverterRustBuffer<List<FfiOcrCharacter>> {
+    override fun read(buf: ByteBuffer): List<FfiOcrCharacter> {
+        val len = buf.getInt()
+        return List<FfiOcrCharacter>(len) {
+            FfiConverterTypeFfiOcrCharacter.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiOcrCharacter>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiOcrCharacter.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiOcrCharacter>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiOcrCharacter.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiOcrLine: FfiConverterRustBuffer<List<FfiOcrLine>> {
+    override fun read(buf: ByteBuffer): List<FfiOcrLine> {
+        val len = buf.getInt()
+        return List<FfiOcrLine>(len) {
+            FfiConverterTypeFfiOcrLine.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiOcrLine>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiOcrLine.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiOcrLine>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiOcrLine.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiOcrWord: FfiConverterRustBuffer<List<FfiOcrWord>> {
+    override fun read(buf: ByteBuffer): List<FfiOcrWord> {
+        val len = buf.getInt()
+        return List<FfiOcrWord>(len) {
+            FfiConverterTypeFfiOcrWord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiOcrWord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiOcrWord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiOcrWord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiOcrWord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer<List<FfiPageDescriptor>> {
     override fun read(buf: ByteBuffer): List<FfiPageDescriptor> {
         val len = buf.getInt()
@@ -4831,6 +5198,18 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Automatically detects primary language of a text snippet.
+         */ fun `documentCoreDetectTextLanguage`(`text`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_detect_text_language(
+        FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Enhances an ingested scan frame according to the selected cleanup profile (`SCAN-004`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreEnhanceScanFrame`(`frame`: FfiScanFrame, `profile`: FfiScanCleanupProfile): FfiScanFrame {
@@ -4998,6 +5377,46 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         FfiConverterString.lower(`documentId`),_status)
 }
     
+    
+
+        /**
+         * Executes optical character recognition on a scan frame pre-processed through the
+         * M1.2 intelligent scan cleanup and enhancement pipeline.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOcrCleanScanFrame`(`frame`: FfiScanFrame, `profile`: FfiScanCleanupProfile, `languages`: List<kotlin.String>, `detectLanguage`: kotlin.Boolean): FfiOcrPageResult {
+            return FfiConverterTypeFfiOcrPageResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterTypeFfiScanCleanupProfile.lower(`profile`),FfiConverterSequenceString.lower(`languages`),FfiConverterBoolean.lower(`detectLanguage`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes optical character recognition on a raw input scan frame.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOcrFrame`(`frame`: FfiScanFrame, `languages`: List<kotlin.String>, `detectLanguage`: kotlin.Boolean): FfiOcrPageResult {
+            return FfiConverterTypeFfiOcrPageResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ocr_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterSequenceString.lower(`languages`),FfiConverterBoolean.lower(`detectLanguage`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes optical character recognition on a captured scan page within an active session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOcrScanSessionPage`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `languages`: List<kotlin.String>): FfiOcrPageResult {
+            return FfiConverterTypeFfiOcrPageResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ocr_scan_session_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterSequenceString.lower(`languages`),_status)
+}
+    )
+    }
     
 
         /**

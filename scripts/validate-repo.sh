@@ -51,6 +51,7 @@ REQUIRED_FILES=(
   "docs/acceptance/M1.0-ACCEPTANCE.md"
   "docs/acceptance/M1.1-ACCEPTANCE.md"
   "docs/acceptance/M1.2-ACCEPTANCE.md"
+  "docs/acceptance/M1.3-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -65,6 +66,7 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0011-m1-0-android-runtime-foundation-and-scan-capture-pipeline.md"
   "docs/adr/ADR-0012-m1-1-perspective-correction-deskew-and-adaptive-rotation.md"
   "docs/adr/ADR-0013-m1-2-intelligent-scan-cleanup-and-enhancement.md"
+  "docs/adr/ADR-0014-m1-3-tesseract-ocr-and-text-layer-generation.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
@@ -72,6 +74,18 @@ REQUIRED_FILES=(
   "engines/imaging/src/perspective.rs"
   "engines/imaging/src/cleanup.rs"
   "engines/imaging/src/lib.rs"
+  "engines/ocr/src/provider.rs"
+  "engines/ocr/src/models.rs"
+  "engines/ocr/src/tesseract.rs"
+  "engines/ocr/src/language.rs"
+  "engines/ocr/src/corpus.rs"
+  "engines/ocr/src/lib.rs"
+  "engines/ocr/csrc/tesseract_bridge.c"
+  "engines/ocr/csrc/tesseract_stub_bridge.c"
+  "platform/vocument-ffi/src/ocr_dto.rs"
+  "tests/corpus/ocr/deu_vertrag_vertraulichkeit.pdf"
+  "tests/corpus/ocr/eng_mutual_nda.pdf"
+  "tests/corpus/ocr/bilingual_rechnung_invoice.pdf"
   "apps/android/app/src/main/java/org/vocument/app/CameraPreviewView.kt"
   "platform/vocument-ffi/src/recovery_dto.rs"
   "platform/vocument-ffi/src/interop_dto.rs"
@@ -215,5 +229,20 @@ if ! grep -q "document_core_evaluate_cleanup_quality" platform/vocument-ffi/src/
   exit 1
 fi
 echo "✓ M1.2 Gate verified: Intelligent scan cleanup, shadow/crease reduction & enhancement verified."
+
+# Enforce M1.3 Gate: Offline Tesseract OCR, typographical hierarchy & realistic corpus verified
+if ! grep -q "testLanguageDetectionAndOcrPipeline" apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt; then
+  echo "ERROR (M1.3 Gate): M1.3 OCR bridge test missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_ocr_frame" platform/vocument-ffi/src/ocr_dto.rs; then
+  echo "ERROR (M1.3 Gate): M1.3 document_core_ocr_frame export missing!" >&2
+  exit 1
+fi
+if ! grep -q "pub trait OcrProvider" engines/ocr/src/provider.rs; then
+  echo "ERROR (M1.3 Gate): M1.3 OcrProvider trait missing!" >&2
+  exit 1
+fi
+echo "✓ M1.3 Gate verified: Offline Tesseract OCR, typographical hierarchy & realistic corpus verified."
 
 echo "==> Repository validation passed."

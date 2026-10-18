@@ -1,0 +1,14 @@
+RECHNUNG / COMMERCIAL INVOICE
+
+Rechnungsnummer / Invoice Number: RE-2026-7712
+Datum / Date: 18. Oktober 2026
+UID-Nummer / VAT Identification: ATU78945612
+
+1. Software Engineering Services / Softwareentwicklung: 2.000,00 EUR
+2. Document Engine Integration / Dokumenten-Architektur: 1.500,00 EUR
+
+Zwischensumme / Subtotal: 3.500,00 EUR
+20% Umsatzsteuer / 20% VAT: 700,00 EUR
+Gesamtbetrag / Total Invoice Amount: 4.200,00 EUR
+
+Zahlbar innerhalb von 14 Tagen ohne Abzug auf das angegebene Bankkonto.

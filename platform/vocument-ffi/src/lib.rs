@@ -6,6 +6,7 @@
 pub mod interop_dto;
 pub mod mutation_dto;
 pub mod navigation_search_dto;
+pub mod ocr_dto;
 pub mod recovery_dto;
 pub mod render_dto;
 pub mod save_dto;
@@ -33,6 +34,11 @@ pub use navigation_search_dto::{
     FfiPageDescriptor, FfiPageLabelRange, FfiPageLabelStyle, FfiPdfRectMilliPt,
     FfiRenderedThumbnail, FfiSearchHit, FfiSearchIndexProgress, FfiSearchResponse,
     FfiTextSelectionResult, FfiThumbnailCacheStats,
+};
+pub use ocr_dto::{
+    FfiBoundingBox, FfiOcrCharacter, FfiOcrLine, FfiOcrPageResult, FfiOcrWord,
+    document_core_detect_text_language, document_core_ocr_clean_scan_frame,
+    document_core_ocr_frame, document_core_ocr_scan_session_page,
 };
 pub use recovery_dto::{
     FfiRecoverableDocumentInfo, FfiRecoveryAction, FfiRecoveryActionResult,

@@ -1,0 +1,21 @@
+{
+  "document_id": "eng_mutual_nda",
+  "language": "eng",
+  "locale_variant": "en-US",
+  "category": "nda_agreement",
+  "expected_keywords": [
+    "MUTUAL",
+    "NON-DISCLOSURE",
+    "CONFIDENTIALITY",
+    "AGREEMENT",
+    "Section",
+    "Purpose",
+    "Proprietary",
+    "Standard",
+    "Obligations",
+    "Governing",
+    "Law",
+    "Jurisdiction"
+  ],
+  "min_confidence": 85.0
+}

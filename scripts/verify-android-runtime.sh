@@ -25,7 +25,7 @@ if [[ -d "${ANDROID_HOME}/ndk" ]]; then
     export AR_aarch64_linux_android="${TOOLCHAIN}/bin/llvm-ar"
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${TOOLCHAIN}/bin/aarch64-linux-android34-clang"
     export PATH="$HOME/.cargo/bin:$PATH"
-    if [[ ! -f "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]] || [[ "$REPO_ROOT/platform/vocument-ffi/src/scan_dto.rs" -nt "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]]; then
+    if [[ ! -f "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]] || [[ "$REPO_ROOT/platform/vocument-ffi/src/scan_dto.rs" -nt "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]] || [[ "$REPO_ROOT/platform/vocument-ffi/src/ocr_dto.rs" -nt "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]]; then
       echo "==> Building native Android libvocument_ffi.so for aarch64-linux-android..."
       cargo build -p vocument-ffi --target aarch64-linux-android
       mkdir -p "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
