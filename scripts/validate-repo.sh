@@ -49,6 +49,7 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.7-ACCEPTANCE.md"
   "docs/acceptance/M0-ACCEPTANCE.md"
   "docs/acceptance/M1.0-ACCEPTANCE.md"
+  "docs/acceptance/M1.1-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -61,10 +62,14 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0009-m0-6-crash-recovery-containers-and-restore-actions.md"
   "docs/adr/ADR-0010-m0-7-interoperability-gate-and-foreign-viewer-verification.md"
   "docs/adr/ADR-0011-m1-0-android-runtime-foundation-and-scan-capture-pipeline.md"
+  "docs/adr/ADR-0012-m1-1-perspective-correction-deskew-and-adaptive-rotation.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
+  "engines/imaging/src/geometry.rs"
+  "engines/imaging/src/perspective.rs"
   "engines/imaging/src/lib.rs"
+  "apps/android/app/src/main/java/org/vocument/app/CameraPreviewView.kt"
   "platform/vocument-ffi/src/recovery_dto.rs"
   "platform/vocument-ffi/src/interop_dto.rs"
   "platform/vocument-ffi/src/scan_dto.rs"
@@ -177,5 +182,20 @@ if ! grep -q "document_core_detect_document_edges" platform/vocument-ffi/src/sca
   exit 1
 fi
 echo "✓ M1.0 Gate verified: Real Android runtime & Scan-Capture pipeline verified."
+
+# Enforce M1.1 Gate: Perspective correction, deskew & adaptive rotation verified
+if ! grep -q "testPerspectiveCorrectionWarpsQuadIntoRectangularFrame" apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt; then
+  echo "ERROR (M1.1 Gate): M1.1 perspective correction bridge test missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_warp_perspective" platform/vocument-ffi/src/scan_dto.rs; then
+  echo "ERROR (M1.1 Gate): M1.1 document_core_warp_perspective export missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_deskew_frame" platform/vocument-ffi/src/scan_dto.rs; then
+  echo "ERROR (M1.1 Gate): M1.1 document_core_deskew_frame export missing!" >&2
+  exit 1
+fi
+echo "✓ M1.1 Gate verified: Perspective correction, deskew & adaptive rotation verified."
 
 echo "==> Repository validation passed."

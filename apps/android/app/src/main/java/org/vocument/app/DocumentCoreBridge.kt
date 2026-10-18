@@ -22,6 +22,7 @@ import uniffi.vocument_ffi.FfiSaveConflictResolution
 import uniffi.vocument_ffi.FfiSaveOutcome
 import uniffi.vocument_ffi.FfiSaveSuccessSnapshot
 import uniffi.vocument_ffi.FfiCapturedScanPage
+import uniffi.vocument_ffi.FfiDeskewResult
 import uniffi.vocument_ffi.FfiPoint2D
 import uniffi.vocument_ffi.FfiQuadCorners
 import uniffi.vocument_ffi.FfiScanCleanupProfile
@@ -38,16 +39,19 @@ import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
 import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
 import uniffi.vocument_ffi.documentCoreAppendScanPage
+import uniffi.vocument_ffi.documentCoreAutoOrientFrame
 import uniffi.vocument_ffi.documentCoreCheckDocumentRecovery
 import uniffi.vocument_ffi.documentCoreCheckExternalChanges
 import uniffi.vocument_ffi.documentCoreCloseScanSession
 import uniffi.vocument_ffi.documentCoreCloseSession
+import uniffi.vocument_ffi.documentCoreDeskewFrame
 import uniffi.vocument_ffi.documentCoreDetectDocumentEdges
 import uniffi.vocument_ffi.documentCoreExecuteRecoveryAction
 import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
 import uniffi.vocument_ffi.documentCoreGetScanSession
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
+import uniffi.vocument_ffi.documentCoreGetWarpedScanPage
 import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
 import uniffi.vocument_ffi.documentCoreHandshake
 import uniffi.vocument_ffi.documentCoreIndexSearchBatch
@@ -67,6 +71,7 @@ import uniffi.vocument_ffi.documentCoreRenderVisibleTile
 import uniffi.vocument_ffi.documentCoreResolvePageNavigation
 import uniffi.vocument_ffi.documentCoreResolveSaveConflict
 import uniffi.vocument_ffi.documentCoreRestoreTransactionJournalJson
+import uniffi.vocument_ffi.documentCoreRotateFrame
 import uniffi.vocument_ffi.documentCoreRotatePages
 import uniffi.vocument_ffi.documentCoreSaveSession
 import uniffi.vocument_ffi.documentCoreSaveSessionAs
@@ -81,6 +86,7 @@ import uniffi.vocument_ffi.documentCoreThumbnailCacheStats
 import uniffi.vocument_ffi.documentCoreTileCacheStats
 import uniffi.vocument_ffi.documentCoreTransactionHistory
 import uniffi.vocument_ffi.documentCoreUndo
+import uniffi.vocument_ffi.documentCoreWarpPerspective
 
 /**
  * Thin Kotlin client wrapping the generated UniFFI `DocumentCore` bindings (`ARCHITECTURE.md` §§3–12, §15, §17).
@@ -461,6 +467,45 @@ class DocumentCoreBridge {
      */
     fun closeScanSession(sessionId: String) {
         documentCoreCloseScanSession(sessionId)
+    }
+
+    /**
+     * Rectifies a perspective-distorted document quadrilateral into an upright rectangular scan frame (`SCAN-003`).
+     */
+    fun warpPerspective(
+        frame: FfiScanFrame,
+        corners: FfiQuadCorners,
+        targetAspectRatio: Float? = null
+    ): FfiScanFrame {
+        return documentCoreWarpPerspective(frame, corners, targetAspectRatio)
+    }
+
+    /**
+     * Estimates document baseline skew angle and deskews the frame (`SCAN-004`, `SCAN-005`).
+     */
+    fun deskewFrame(frame: FfiScanFrame): FfiDeskewResult {
+        return documentCoreDeskewFrame(frame)
+    }
+
+    /**
+     * Rotates a scan frame by multiples of 90 degrees clockwise (0, 90, 180, 270) (`SCAN-004`).
+     */
+    fun rotateFrame(frame: FfiScanFrame, clockwiseSteps: UInt): FfiScanFrame {
+        return documentCoreRotateFrame(frame, clockwiseSteps)
+    }
+
+    /**
+     * Automatically orients a scan frame into upright portrait based on aspect ratio (`SCAN-004`).
+     */
+    fun autoOrientFrame(frame: FfiScanFrame, preferPortrait: Boolean = true): FfiScanFrame {
+        return documentCoreAutoOrientFrame(frame, preferPortrait)
+    }
+
+    /**
+     * Retrieves the rectified warped scan page image from an active scanning session (`SCAN-003`, `SCAN-006`).
+     */
+    fun getWarpedScanPage(sessionId: String, pageIndex: UInt): FfiScanFrame {
+        return documentCoreGetWarpedScanPage(sessionId, pageIndex)
     }
 
     /**

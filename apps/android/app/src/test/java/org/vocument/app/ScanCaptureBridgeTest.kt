@@ -120,6 +120,40 @@ class ScanCaptureBridgeTest {
         assertEquals(2, sessionSnap.pages.size)
         assertTrue("Session must be active", sessionSnap.isActive)
 
+        // M1.1: Verify warped page retrieval from session
+        val warpedPage0 = bridge.getWarpedScanPage(sessionId, 0u)
+        assertTrue("Warped page must have non-zero width", warpedPage0.width > 0u)
+        assertTrue("Warped page must have non-zero height", warpedPage0.height > 0u)
+
         bridge.closeScanSession(sessionId)
+    }
+
+    @Test
+    fun testPerspectiveCorrectionWarpsQuadIntoRectangularFrame() {
+        val frame = createSyntheticDocumentFrame(width = 100u, height = 100u)
+        val corners = bridge.detectDocumentEdges(frame)
+        assertNotNull("Must detect corners", corners)
+
+        val warped = bridge.warpPerspective(frame, corners!!)
+        assertTrue("Warped width must be in expected range (~60px)", warped.width in 55u..65u)
+        assertTrue("Warped height must be in expected range (~60px)", warped.height in 55u..65u)
+        assertEquals("Warped format should remain RGBA8", FfiScanPixelFormat.RGBA8, warped.format)
+    }
+
+    @Test
+    fun testDeskewAndAdaptiveRotation() {
+        val frame = createSyntheticDocumentFrame(width = 80u, height = 60u)
+        val deskew = bridge.deskewFrame(frame)
+        assertTrue("Deskew angle must be within ±15 degrees", kotlin.math.abs(deskew.skewAngleDegrees) <= 15.0f)
+
+        val rotated90 = bridge.rotateFrame(frame, 1u)
+        assertEquals("Rotated frame width must equal source height", 60u, rotated90.width)
+        assertEquals("Rotated frame height must equal source width", 80u, rotated90.height)
+        assertEquals("Orientation degrees must be 90", 90u, rotated90.orientationDegrees)
+
+        // Landscape frame auto-oriented to portrait:
+        val oriented = bridge.autoOrientFrame(frame, preferPortrait = true)
+        assertEquals("Auto-oriented width must be 60", 60u, oriented.width)
+        assertEquals("Auto-oriented height must be 80", 80u, oriented.height)
     }
 }

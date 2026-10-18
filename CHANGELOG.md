@@ -4,12 +4,30 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m1.1] - 2026-10-18
+
+### Added
+- Completed **M1.1 — Perspective Correction, Deskew & Adaptive Rotation** (`docs/acceptance/M1.1-ACCEPTANCE.md`, `ADR-0012`).
+- Modularized shared imaging engine (`CODE-001` adherence): separated geometric calculations into `engines/imaging/src/geometry.rs` (155 lines), projective warping and rotation into `engines/imaging/src/perspective.rs` (505 lines), keeping `engines/imaging/src/lib.rs` (511 lines) well below 600 lines.
+- Implemented Heckbert 3x3 projective homography mapping from normalized destination unit square `[0, 1]^2` to arbitrary convex quadrilateral corners (`SCAN-003`).
+- Implemented bilinear interpolation resampling across multi-format raw pixel arrays (`Rgb8`, `Rgba8`, `Gray8`, `Nv21`, `Yuv420`) with dynamic aspect-ratio support.
+- Implemented automated text baseline deskew estimation (`deskew_frame`): multi-angle horizontal line luminance variance search across $[-8.0^\circ, +8.0^\circ]$ with sub-pixel rotational bilinear resampling (`rotate_frame_fine`, `SCAN-004`, `SCAN-005`).
+- Implemented discrete 90° clockwise rotation (`rotate_frame_90`) and automatic portrait orientation normalization (`auto_orient_frame`).
+- Integrated session-level rectified frame caching in `ScanCaptureSession::append_page` and exposed on-demand retrieval via `document_core_get_warped_scan_page`.
+- Exposed M1.1 APIs across UniFFI (`platform/vocument-ffi/src/scan_dto.rs`, 409 lines): `document_core_warp_perspective`, `document_core_deskew_frame`, `document_core_rotate_frame`, `document_core_auto_orient_frame`, `document_core_get_warped_scan_page`.
+- Added Kotlin wrapper methods in `DocumentCoreBridge.kt` (539 lines) and integrated live rectification and deskew status feedback into `ScanCaptureScreen.kt` (404 lines).
+- Added comprehensive unit tests in Rust (`perspective::tests`) and Android Gradle (`ScanCaptureBridgeTest.kt`), verifying perspective warping, deskew estimation, 90° rotation, and session warped page retrieval.
+- Enforced M1.1 Gate validation in `scripts/validate-repo.sh`.
+
 ## [0.1.0-m1.0] - 2026-10-18
 
 ### Added
 - Completed **M1.0 — Real Android Runtime Foundation & Camera Scan-Capture Pipeline** (`docs/acceptance/M1.0-ACCEPTANCE.md`, `ADR-0011`).
 - Established genuine Android runtime test harness: Gradle 9.8.1 wrapper (`apps/android/gradlew`), Android SDK 35, Build-Tools 35.0.0, and automated APK assembly in `scripts/verify-android-runtime.sh`.
-- Assembled real debug APK (`app-debug.apk`, 23 MB) and verified package metadata and manifest permissions via `apkanalyzer`: `org.vocument.app`, `android.permission.CAMERA` enabled, strictly zero network permissions (`NET-001`, strict offline-first).
+- Integrated CameraX 1.4.1 live preview (`CameraPreviewView.kt`, 154 lines) with real-time `ImageAnalysis` (RGBA8888, throttled frame extraction) providing genuine camera feed to shared Rust `ImagingEngine`.
+- Cross-compiled native `libvocument_ffi.so` for `aarch64-linux-android` (Android NDK 29 Clang) and packaged into `apps/android/app/src/main/jniLibs/arm64-v8a/` (142 MB debug APK).
+- Verified package metadata and manifest permissions via `apkanalyzer`: `org.vocument.app`, `android.permission.CAMERA` enabled, strictly zero network permissions (`NET-001`, strict offline-first).
+- Executed authentic Android 14 emulator runtime verification (`emulator-5554` / `test_avd`): streamed APK install, granted `CAMERA`, launched `MainActivity` (cold start 257 ms, PID 3044), switched to Scan tab, performed live frame capture into Rust session, and inspected UI dump confirming session creation and zero fatal exceptions.
 - Implemented shared Rust `ImagingEngine` (`vocument-imaging`): raw camera frame ingestion (`Rgb8`, `Rgba8`, `Gray8`, `Nv21`, `Yuv420`), real-time document edge detection, geometric quadrilateral validation (`QuadCorners`, `Point2D`), and thread-safe multi-page scan session registry (`ScanCaptureSessionRegistry`).
 - Exposed scan capture pipeline across UniFFI boundary (`platform/vocument-ffi/src/scan_dto.rs`): `document_core_detect_document_edges`, `document_core_start_scan_session`, `document_core_append_scan_page`, `document_core_get_scan_session`, `document_core_close_scan_session`.
 - Implemented native Android Jetpack Compose UI (`ScanCaptureScreen.kt`): live camera viewfinder with real-time dynamic quadrilateral overlay (confidence color-coding), multi-page thumbnail reel, and enhancement profile selector (`DocumentAuto`, `PreservePhoto`, `HighContrastBw`).

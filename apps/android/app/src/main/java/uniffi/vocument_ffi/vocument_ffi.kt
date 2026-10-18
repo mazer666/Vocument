@@ -801,6 +801,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -820,6 +830,8 @@ internal interface IntegrityCheckingUniffiLib : Library {
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
@@ -827,6 +839,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
 fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
@@ -839,6 +853,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path
 fun uniffi_vocument_ffi_checksum_func_document_core_get_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_warped_scan_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure(
 ): Short
@@ -876,6 +892,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_resolve_save_conflict(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_rotate_frame(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite(
@@ -905,6 +923,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats(
 fun uniffi_vocument_ffi_checksum_func_document_core_transaction_history(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_undo(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_warp_perspective(
 ): Short
 fun ffi_vocument_ffi_uniffi_contract_version(
 ): Int
@@ -955,6 +975,8 @@ internal interface UniffiLib : Library {
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: RustBuffer.ByValue,`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_auto_orient_frame(`frame`: RustBuffer.ByValue,`preferPortrait`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_document_recovery(`sourceToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -963,6 +985,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: Ru
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(`documentId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -974,6 +998,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`base
 fun uniffi_vocument_ffi_fn_func_document_core_get_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_warped_scan_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_handle_memory_pressure(`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1011,6 +1037,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_resolve_save_conflict(`sessionId`:
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(`sessionId`: RustBuffer.ByValue,`journalJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_rotate_frame(`frame`: RustBuffer.ByValue,`clockwiseSteps`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(uniffi_out_err: UniffiRustCallStatus, 
@@ -1040,6 +1068,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_tile_cache_stats(uniffi_out_err: U
 fun uniffi_vocument_ffi_fn_func_document_core_transaction_history(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_undo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_warp_perspective(`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`targetAspectRatio`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_vocument_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1173,6 +1203,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1183,6 +1216,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448.toShort()) {
@@ -1201,6 +1237,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_warped_scan_page() != 28519.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 11251.toShort()) {
@@ -1257,6 +1296,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_frame() != 24957.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1300,6 +1342,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_undo() != 39567.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_warp_perspective() != 55445.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1777,6 +1822,45 @@ public object FfiConverterTypeFfiCapturedScanPage: FfiConverterRustBuffer<FfiCap
             FfiConverterUInt.write(value.`frameHeight`, buf)
             FfiConverterULong.write(value.`rawBytesLen`, buf)
             FfiConverterULong.write(value.`capturedUnixMs`, buf)
+    }
+}
+
+
+
+/**
+ * Result of deskewing and orientation correction crossing UniFFI boundary.
+ */
+data class FfiDeskewResult (
+    var `frame`: FfiScanFrame, 
+    var `skewAngleDegrees`: kotlin.Float, 
+    var `rotationDegrees`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDeskewResult: FfiConverterRustBuffer<FfiDeskewResult> {
+    override fun read(buf: ByteBuffer): FfiDeskewResult {
+        return FfiDeskewResult(
+            FfiConverterTypeFfiScanFrame.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiDeskewResult) = (
+            FfiConverterTypeFfiScanFrame.allocationSize(value.`frame`) +
+            FfiConverterFloat.allocationSize(value.`skewAngleDegrees`) +
+            FfiConverterUInt.allocationSize(value.`rotationDegrees`)
+    )
+
+    override fun write(value: FfiDeskewResult, buf: ByteBuffer) {
+            FfiConverterTypeFfiScanFrame.write(value.`frame`, buf)
+            FfiConverterFloat.write(value.`skewAngleDegrees`, buf)
+            FfiConverterUInt.write(value.`rotationDegrees`, buf)
     }
 }
 
@@ -4000,6 +4084,38 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
+    override fun read(buf: ByteBuffer): kotlin.Float? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterFloat.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Float?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterFloat.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -4556,6 +4672,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Automatically aligns a scan frame into upright portrait based on aspect ratio and orientation hints (`SCAN-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreAutoOrientFrame`(`frame`: FfiScanFrame, `preferPortrait`: kotlin.Boolean): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_auto_orient_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterBoolean.lower(`preferPortrait`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Checks if a specific document by source path or token has an active crash recovery container.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCheckDocumentRecovery`(`sourceToken`: kotlin.String): FfiRecoverableDocumentInfo? {
@@ -4603,6 +4732,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         FfiConverterString.lower(`sessionId`),_status)
 }
     
+    
+
+        /**
+         * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDeskewFrame`(`frame`: FfiScanFrame): FfiDeskewResult {
+            return FfiConverterTypeFfiDeskewResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_deskew_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),_status)
+}
+    )
+    }
     
 
         /**
@@ -4679,6 +4821,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Retrieves the rectified warped scan page image from an active scanning session (`SCAN-003`, `SCAN-006`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetWarpedScanPage`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_warped_scan_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
 }
     )
     }
@@ -4919,6 +5074,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Rotates a scan frame by multiples of 90 degrees clockwise (0, 90, 180, 270) (`SCAN-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRotateFrame`(`frame`: FfiScanFrame, `clockwiseSteps`: kotlin.UInt): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_rotate_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterUInt.lower(`clockwiseSteps`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Rotates one or more pages by `delta_degrees` (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRotatePages`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `deltaDegrees`: kotlin.Int): FfiTransactionHistorySnapshot {
@@ -5108,6 +5276,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_undo(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Warps a convex document quadrilateral from an input camera frame into a rectified rectangular frame (`SCAN-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreWarpPerspective`(`frame`: FfiScanFrame, `corners`: FfiQuadCorners, `targetAspectRatio`: kotlin.Float?): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_warp_perspective(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterTypeFfiQuadCorners.lower(`corners`),FfiConverterOptionalFloat.lower(`targetAspectRatio`),_status)
 }
     )
     }

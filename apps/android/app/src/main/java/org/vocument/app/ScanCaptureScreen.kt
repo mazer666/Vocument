@@ -1,24 +1,24 @@
 package org.vocument.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -36,9 +36,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import uniffi.vocument_ffi.FfiCapturedScanPage
-import uniffi.vocument_ffi.FfiPoint2D
 import uniffi.vocument_ffi.FfiQuadCorners
 import uniffi.vocument_ffi.FfiScanCleanupProfile
 import uniffi.vocument_ffi.FfiScanFrame
@@ -54,11 +55,25 @@ fun ScanCaptureScreen(
     coreBridge: DocumentCoreBridge,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+    }
+
     var activeSessionId by remember { mutableStateOf<String?>(null) }
     var capturedPages by remember { mutableStateOf<List<FfiCapturedScanPage>>(emptyList()) }
+    var latestLiveFrame by remember { mutableStateOf<FfiScanFrame?>(null) }
     var detectedCorners by remember { mutableStateOf<FfiQuadCorners?>(null) }
     var selectedProfile by remember { mutableStateOf(FfiScanCleanupProfile.DOCUMENT_AUTO) }
-    var statusMessage by remember { mutableStateOf("Ready to scan") }
+    var statusMessage by remember { mutableStateOf(if (hasCameraPermission) "Camera active: point at document" else "Camera permission required") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun ensureActiveSession(): String {
@@ -70,58 +85,54 @@ fun ScanCaptureScreen(
         return newId
     }
 
-    fun handleSimulateFrameCapture() {
+    fun handleCaptureCurrentFrame(frameToCapture: FfiScanFrame) {
         runCatching {
             val sessionId = ensureActiveSession()
-            // Create a synthetic high-contrast document test frame: 120x160 RGBA8
-            val width = 120u
-            val height = 160u
-            val totalBytes = (width * height * 4u).toInt()
-            val pixels = ByteArray(totalBytes) { 35.toByte() }
-
-            // Draw a bright document rectangle in the center (x: 20..100, y: 25..135)
-            for (y in 25 until 135) {
-                for (x in 20 until 100) {
-                    val idx = (y * 120 + x) * 4
-                    pixels[idx] = 245.toByte()
-                    pixels[idx + 1] = 245.toByte()
-                    pixels[idx + 2] = 245.toByte()
-                    pixels[idx + 3] = 255.toByte()
-                }
-            }
-
-            val frame = FfiScanFrame(
-                width = width,
-                height = height,
-                stride = width,
-                format = FfiScanPixelFormat.RGBA8,
-                orientationDegrees = 0u,
-                pixels = pixels,
-                timestampMs = System.currentTimeMillis().toULong(),
-                deviceAngleDegrees = 2.5f,
-                brightnessHint = 0.85f,
-                isSteady = true
-            )
-
-            // Detect edges via Rust ImagingEngine
-            val corners = coreBridge.detectDocumentEdges(frame)
-            detectedCorners = corners
-
-            // Append captured page to session
+            val corners = coreBridge.detectDocumentEdges(frameToCapture)
             val page = coreBridge.appendScanPage(
                 sessionId = sessionId,
-                frame = frame,
+                frame = frameToCapture,
                 corners = corners,
                 profile = selectedProfile
             )
-
             val session = coreBridge.getScanSession(sessionId)
             capturedPages = session.pages
-            statusMessage = "Captured page #${page.pageIndex + 1u} (${width}x${height}px, conf=${corners?.confidenceMilli ?: 0}‰)"
+            val warped = runCatching { coreBridge.getWarpedScanPage(sessionId, page.pageIndex) }.getOrNull()
+            val deskew = warped?.let { runCatching { coreBridge.deskewFrame(it) }.getOrNull() }
+            val deskewInfo = if (deskew != null) ", skew=${deskew.skewAngleDegrees}°" else ""
+            statusMessage = "Page #${page.pageIndex + 1u} rectified (${warped?.width ?: frameToCapture.width}x${warped?.height ?: frameToCapture.height}px$deskewInfo)"
             errorMessage = null
         }.onFailure { err ->
             errorMessage = "Scan error: ${err.message}"
         }
+    }
+
+    fun createSyntheticDocumentFrame(): FfiScanFrame {
+        val width = 120u
+        val height = 160u
+        val totalBytes = (width * height * 4u).toInt()
+        val pixels = ByteArray(totalBytes) { 35.toByte() }
+        for (y in 25 until 135) {
+            for (x in 20 until 100) {
+                val idx = (y * 120 + x) * 4
+                pixels[idx] = 245.toByte()
+                pixels[idx + 1] = 245.toByte()
+                pixels[idx + 2] = 245.toByte()
+                pixels[idx + 3] = 255.toByte()
+            }
+        }
+        return FfiScanFrame(
+            width = width,
+            height = height,
+            stride = width,
+            format = FfiScanPixelFormat.RGBA8,
+            orientationDegrees = 0u,
+            pixels = pixels,
+            timestampMs = System.currentTimeMillis().toULong(),
+            deviceAngleDegrees = 2.0f,
+            brightnessHint = 0.85f,
+            isSteady = true
+        )
     }
 
     fun handleCloseSession() {
@@ -152,7 +163,7 @@ fun ScanCaptureScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = if (activeSessionId != null) "Session: ${activeSessionId?.take(12)}…" else "No active session",
+                    text = if (activeSessionId != null) "Session: ${activeSessionId?.take(12)}…" else "Ready",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -172,7 +183,7 @@ fun ScanCaptureScreen(
             }
         }
 
-        // Viewfinder Preview with Edge Detection Polygon Overlay
+        // Viewfinder Preview with Live Camera or Permission Prompt
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,7 +195,35 @@ fun ScanCaptureScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                // Viewfinder canvas
+                if (hasCameraPermission) {
+                    CameraPreviewView(
+                        modifier = Modifier.fillMaxSize(),
+                        onFrameAnalyzed = { liveFrame ->
+                            latestLiveFrame = liveFrame
+                            val corners = runCatching { coreBridge.detectDocumentEdges(liveFrame) }.getOrNull()
+                            detectedCorners = corners
+                            if (corners != null && corners.confidenceMilli >= 650u) {
+                                statusMessage = "Document detected (${corners.confidenceMilli}‰) — steady"
+                            }
+                        }
+                    )
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Camera access required for live scanning",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                            Text("Grant Camera Permission")
+                        }
+                    }
+                }
+
+                // Overlay with dynamic quadrilateral corners
                 ViewfinderOverlay(
                     corners = detectedCorners,
                     modifier = Modifier.fillMaxSize()
@@ -263,10 +302,13 @@ fun ScanCaptureScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                onClick = { handleSimulateFrameCapture() },
+                onClick = {
+                    val frame = latestLiveFrame ?: createSyntheticDocumentFrame()
+                    handleCaptureCurrentFrame(frame)
+                },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Capture Frame")
+                Text(if (latestLiveFrame != null) "Capture Page" else "Capture / Simulate Page")
             }
             if (activeSessionId != null) {
                 OutlinedButton(
@@ -288,7 +330,6 @@ fun ViewfinderOverlay(
         val canvasWidth = size.width
         val canvasHeight = size.height
 
-        // Draw camera crosshairs / guides
         val guideColor = Color.White.copy(alpha = 0.3f)
         drawLine(
             color = guideColor,
@@ -303,7 +344,6 @@ fun ViewfinderOverlay(
             strokeWidth = 1f
         )
 
-        // Draw detected document quadrilateral outline
         if (corners != null) {
             val p1 = Offset(corners.topLeft.x * canvasWidth, corners.topLeft.y * canvasHeight)
             val p2 = Offset(corners.topRight.x * canvasWidth, corners.topRight.y * canvasHeight)
@@ -324,22 +364,17 @@ fun ViewfinderOverlay(
                 Color(0xFFFFD600) // Moderate confidence: Amber
             }
 
-            // Fill polygon with semi-transparent tint
             drawPath(
                 path = polyPath,
                 color = quadColor.copy(alpha = 0.2f)
             )
-
-            // Draw polygon stroke
             drawPath(
                 path = polyPath,
                 color = quadColor,
                 style = Stroke(width = 3.dp.toPx())
             )
 
-            // Draw corner anchor circles
-            val cornerPoints = listOf(p1, p2, p3, p4)
-            for (cp in cornerPoints) {
+            for (cp in listOf(p1, p2, p3, p4)) {
                 drawCircle(color = Color.White, radius = 6.dp.toPx(), center = cp)
                 drawCircle(color = quadColor, radius = 4.dp.toPx(), center = cp)
             }
@@ -352,7 +387,7 @@ fun CapturedPageThumbnail(page: FfiCapturedScanPage) {
     Card(
         modifier = Modifier
             .width(64.dp)
-            .aspectRatio(0.707f), // A4 ratio
+            .aspectRatio(0.707f),
         shape = RoundedCornerShape(6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {

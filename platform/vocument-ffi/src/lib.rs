@@ -51,10 +51,12 @@ pub use save_dto::{
     document_core_save_session_collision_free_copy,
 };
 pub use scan_dto::{
-    FfiCapturedScanPage, FfiPoint2D, FfiQuadCorners, FfiScanCleanupProfile, FfiScanFrame,
-    FfiScanPixelFormat, FfiScanSessionSnapshot, document_core_append_scan_page,
-    document_core_close_scan_session, document_core_detect_document_edges,
-    document_core_get_scan_session, document_core_start_scan_session,
+    FfiCapturedScanPage, FfiDeskewResult, FfiPoint2D, FfiQuadCorners, FfiScanCleanupProfile,
+    FfiScanFrame, FfiScanPixelFormat, FfiScanSessionSnapshot, document_core_append_scan_page,
+    document_core_auto_orient_frame, document_core_close_scan_session, document_core_deskew_frame,
+    document_core_detect_document_edges, document_core_get_scan_session,
+    document_core_get_warped_scan_page, document_core_rotate_frame,
+    document_core_start_scan_session, document_core_warp_perspective,
 };
 pub use session_dto::{
     DocumentCoreHandshake, FfiBrokeredFileDescriptor, FfiDocumentSessionSnapshot,

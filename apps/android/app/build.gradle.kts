@@ -42,6 +42,12 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("net.java.dev.jna:jna:5.15.0@aar")
 
+    val cameraVersion = "1.4.1"
+    implementation("androidx.camera:camera-core:$cameraVersion")
+    implementation("androidx.camera:camera-camera2:$cameraVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraVersion")
+    implementation("androidx.camera:camera-view:$cameraVersion")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("net.java.dev.jna:jna:5.15.0")
 }

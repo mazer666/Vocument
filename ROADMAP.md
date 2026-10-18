@@ -245,18 +245,24 @@ Real Android debug APK builds, manifest permissions are verified offline-first w
 
 ---
 
-## M1.1 — Perspective Correction, Deskew & Adaptive Rotation *(Next)*
+## M1.1 — Perspective Correction, Deskew & Adaptive Rotation *(Status: **COMPLETE** — see [M1.1 Acceptance Record](docs/acceptance/M1.1-ACCEPTANCE.md) and [ADR-0012](docs/adr/ADR-0012-m1-1-perspective-correction-deskew-and-adaptive-rotation.md))*
 
 Deliver:
 
-- 4-point homography / perspective warp in shared `ImagingEngine`
-- document orientation analysis (0°, 90°, 180°, 270°)
-- automated deskew for tilted scan pages
-- manual corner adjustment handles in `ScanCaptureScreen`
+- [x] 4-point homography / perspective warp in shared `ImagingEngine` (`vocument-imaging/src/perspective.rs`, Heckbert projective mapping)
+- [x] document orientation analysis (0°, 90°, 180°, 270°) and discrete 90° rotation (`rotate_frame_90`, `auto_orient_frame`)
+- [x] automated deskew for tilted scan pages (`deskew_frame`, multi-angle line luminance variance search and bilinear rotation resampling)
+- [x] session-level warped frame caching and retrieval (`document_core_get_warped_scan_page`)
+- [x] corner adjustment handles and real-time rectification status in `ScanCaptureScreen`
+- [x] automated unit and bridge tests in Rust and Android Gradle (`ScanCaptureBridgeTest.kt`)
+
+### Gate
+
+Arbitrary convex camera quadrilateral is rectified into an upright planar rectangular frame via shared Rust homography, baseline skew is detected and leveled, discrete 90° orientation is normalized, and rectified scan pages are verified across the UniFFI boundary on both desktop and Android emulator targets. *(Verified via `scripts/verify-android-runtime.sh` and `scripts/local-ci.sh`.)*
 
 ---
 
-## M1.2 — Intelligent Scan Cleanup & Enhancement
+## M1.2 — Intelligent Scan Cleanup & Enhancement *(Next)*
 
 Deliver:
 

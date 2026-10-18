@@ -910,6 +910,87 @@ public func FfiConverterTypeFfiCapturedScanPage_lower(_ value: FfiCapturedScanPa
 
 
 /**
+ * Result of deskewing and orientation correction crossing UniFFI boundary.
+ */
+public struct FfiDeskewResult {
+    public var frame: FfiScanFrame
+    public var skewAngleDegrees: Float
+    public var rotationDegrees: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(frame: FfiScanFrame, skewAngleDegrees: Float, rotationDegrees: UInt32) {
+        self.frame = frame
+        self.skewAngleDegrees = skewAngleDegrees
+        self.rotationDegrees = rotationDegrees
+    }
+}
+
+#if compiler(>=6)
+extension FfiDeskewResult: Sendable {}
+#endif
+
+
+extension FfiDeskewResult: Equatable, Hashable {
+    public static func ==(lhs: FfiDeskewResult, rhs: FfiDeskewResult) -> Bool {
+        if lhs.frame != rhs.frame {
+            return false
+        }
+        if lhs.skewAngleDegrees != rhs.skewAngleDegrees {
+            return false
+        }
+        if lhs.rotationDegrees != rhs.rotationDegrees {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(frame)
+        hasher.combine(skewAngleDegrees)
+        hasher.combine(rotationDegrees)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDeskewResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDeskewResult {
+        return
+            try FfiDeskewResult(
+                frame: FfiConverterTypeFfiScanFrame.read(from: &buf), 
+                skewAngleDegrees: FfiConverterFloat.read(from: &buf), 
+                rotationDegrees: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiDeskewResult, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiScanFrame.write(value.frame, into: &buf)
+        FfiConverterFloat.write(value.skewAngleDegrees, into: &buf)
+        FfiConverterUInt32.write(value.rotationDegrees, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDeskewResult_lift(_ buf: RustBuffer) throws -> FfiDeskewResult {
+    return try FfiConverterTypeFfiDeskewResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDeskewResult_lower(_ value: FfiDeskewResult) -> RustBuffer {
+    return FfiConverterTypeFfiDeskewResult.lower(value)
+}
+
+
+/**
  * Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
  */
 public struct FfiDocumentSessionSnapshot {
@@ -5060,6 +5141,30 @@ fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionFloat: FfiConverterRustBuffer {
+    typealias SwiftType = Float?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterFloat.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterFloat.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -5523,6 +5628,17 @@ public func documentCoreAppendScanPage(sessionId: String, frame: FfiScanFrame, c
 })
 }
 /**
+ * Automatically aligns a scan frame into upright portrait based on aspect ratio and orientation hints (`SCAN-004`).
+ */
+public func documentCoreAutoOrientFrame(frame: FfiScanFrame, preferPortrait: Bool)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_auto_orient_frame(
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterBool.lower(preferPortrait),$0
+    )
+})
+}
+/**
  * Checks if a specific document by source path or token has an active crash recovery container.
  */
 public func documentCoreCheckDocumentRecovery(sourceToken: String)throws  -> FfiRecoverableDocumentInfo?  {
@@ -5559,6 +5675,16 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
         FfiConverterString.lower(sessionId),$0
     )
 }
+}
+/**
+ * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
+ */
+public func documentCoreDeskewFrame(frame: FfiScanFrame)throws  -> FfiDeskewResult  {
+    return try  FfiConverterTypeFfiDeskewResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_deskew_frame(
+        FfiConverterTypeFfiScanFrame_lower(frame),$0
+    )
+})
 }
 /**
  * Detects document edges and corner coordinates in real time from a live camera frame (`SCAN-001`, `SCAN-004`).
@@ -5621,6 +5747,17 @@ public func documentCoreGetSessionSnapshot(sessionId: String)throws  -> FfiDocum
     return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(
         FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Retrieves the rectified warped scan page image from an active scanning session (`SCAN-003`, `SCAN-006`).
+ */
+public func documentCoreGetWarpedScanPage(sessionId: String, pageIndex: UInt32)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_warped_scan_page(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
     )
 })
 }
@@ -5818,6 +5955,17 @@ public func documentCoreRestoreTransactionJournalJson(sessionId: String, journal
 })
 }
 /**
+ * Rotates a scan frame by multiples of 90 degrees clockwise (0, 90, 180, 270) (`SCAN-004`).
+ */
+public func documentCoreRotateFrame(frame: FfiScanFrame, clockwiseSteps: UInt32)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_rotate_frame(
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterUInt32.lower(clockwiseSteps),$0
+    )
+})
+}
+/**
  * Rotates one or more pages by `delta_degrees` (`+90`, `-90`, `180`) via `TransactionManager` (`ROTATE-001`, `PAGE-001`, `ROADMAP.md` M0.4 Gate).
  */
 public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], deltaDegrees: Int32)throws  -> FfiTransactionHistorySnapshot  {
@@ -5970,6 +6118,18 @@ public func documentCoreUndo(sessionId: String)throws  -> FfiTransactionHistoryS
     )
 })
 }
+/**
+ * Warps a convex document quadrilateral from an input camera frame into a rectified rectangular frame (`SCAN-003`).
+ */
+public func documentCoreWarpPerspective(frame: FfiScanFrame, corners: FfiQuadCorners, targetAspectRatio: Float?)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_warp_perspective(
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterTypeFfiQuadCorners_lower(corners),
+        FfiConverterOptionFloat.lower(targetAspectRatio),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -5992,6 +6152,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -6002,6 +6165,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448) {
@@ -6020,6 +6186,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_warped_scan_page() != 28519) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_handle_memory_pressure() != 11251) {
@@ -6076,6 +6245,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json() != 25479) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_rotate_frame() != 24957) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -6119,6 +6291,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_undo() != 39567) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_warp_perspective() != 55445) {
         return InitializationResult.apiChecksumMismatch
     }
 

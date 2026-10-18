@@ -1,9 +1,7 @@
-//! UniFFI DTOs and exported functions for M1.0 Scan-Capture Pipeline and Live Edge Detection (`ROADMAP.md` M1.0, `ARCHITECTURE.md` §21, `REQUIREMENTS.md` §8).
-
 use vocument_imaging::{
-    CapturedScanPage, PixelFormat, Point2D, QuadCorners, ScanCaptureSession,
+    CapturedScanPage, DeskewResult, PixelFormat, Point2D, QuadCorners, ScanCaptureSession,
     ScanCaptureSessionRegistry, ScanCleanupProfile, ScanFrame, ScanFrameMetadata,
-    detect_document_edges,
+    auto_orient_frame, deskew_frame, detect_document_edges, rotate_frame_90, warp_perspective,
 };
 
 use crate::DocumentCoreError;
@@ -157,6 +155,23 @@ impl From<FfiScanFrame> for ScanFrame {
     }
 }
 
+impl From<ScanFrame> for FfiScanFrame {
+    fn from(f: ScanFrame) -> Self {
+        Self {
+            width: f.width,
+            height: f.height,
+            stride: f.stride,
+            format: f.format.into(),
+            orientation_degrees: f.orientation_degrees,
+            pixels: f.pixels,
+            timestamp_ms: f.metadata.timestamp_ms,
+            device_angle_degrees: f.metadata.device_angle_degrees,
+            brightness_hint: f.metadata.brightness_hint,
+            is_steady: f.metadata.is_steady,
+        }
+    }
+}
+
 /// A single captured scan page stored in a scanning session.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct FfiCapturedScanPage {
@@ -259,6 +274,80 @@ pub fn document_core_close_scan_session(session_id: String) -> Result<(), Docume
     Ok(())
 }
 
+/// Result of deskewing and orientation correction crossing UniFFI boundary.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct FfiDeskewResult {
+    pub frame: FfiScanFrame,
+    pub skew_angle_degrees: f32,
+    pub rotation_degrees: u32,
+}
+
+impl From<DeskewResult> for FfiDeskewResult {
+    fn from(r: DeskewResult) -> Self {
+        Self {
+            frame: r.frame.into(),
+            skew_angle_degrees: r.skew_angle_degrees,
+            rotation_degrees: r.rotation_degrees,
+        }
+    }
+}
+
+/// Warps a convex document quadrilateral from an input camera frame into a rectified rectangular frame (`SCAN-003`).
+#[uniffi::export]
+pub fn document_core_warp_perspective(
+    frame: FfiScanFrame,
+    corners: FfiQuadCorners,
+    target_aspect_ratio: Option<f32>,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let internal_frame: ScanFrame = frame.into();
+    let internal_corners: QuadCorners = corners.into();
+    let warped = warp_perspective(&internal_frame, &internal_corners, target_aspect_ratio)?;
+    Ok(warped.into())
+}
+
+/// Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
+#[uniffi::export]
+pub fn document_core_deskew_frame(
+    frame: FfiScanFrame,
+) -> Result<FfiDeskewResult, DocumentCoreError> {
+    let internal_frame: ScanFrame = frame.into();
+    let res = deskew_frame(&internal_frame)?;
+    Ok(res.into())
+}
+
+/// Rotates a scan frame by multiples of 90 degrees clockwise (0, 90, 180, 270) (`SCAN-004`).
+#[uniffi::export]
+pub fn document_core_rotate_frame(
+    frame: FfiScanFrame,
+    clockwise_steps: u32,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let internal_frame: ScanFrame = frame.into();
+    let rotated = rotate_frame_90(&internal_frame, clockwise_steps)?;
+    Ok(rotated.into())
+}
+
+/// Automatically aligns a scan frame into upright portrait based on aspect ratio and orientation hints (`SCAN-004`).
+#[uniffi::export]
+pub fn document_core_auto_orient_frame(
+    frame: FfiScanFrame,
+    prefer_portrait: bool,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let internal_frame: ScanFrame = frame.into();
+    let oriented = auto_orient_frame(&internal_frame, prefer_portrait)?;
+    Ok(oriented.into())
+}
+
+/// Retrieves the rectified warped scan page image from an active scanning session (`SCAN-003`, `SCAN-006`).
+#[uniffi::export]
+pub fn document_core_get_warped_scan_page(
+    session_id: String,
+    page_index: u32,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let frame =
+        ScanCaptureSessionRegistry::global().get_warped_page(&session_id, page_index as usize)?;
+    Ok(frame.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,10 +382,23 @@ mod tests {
         let corners = detected.expect("detected document corners");
         assert!(corners.confidence_milli > 0);
 
+        let warped = document_core_warp_perspective(frame.clone(), corners, None).expect("warp");
+        assert!(warped.width > 0 && warped.height > 0);
+
+        let deskewed = document_core_deskew_frame(warped).expect("deskew");
+        assert!(deskewed.skew_angle_degrees.abs() <= 15.0);
+
+        let rotated = document_core_rotate_frame(frame.clone(), 1).expect("rotate");
+        assert_eq!(rotated.orientation_degrees, 90);
+
         let session_id = document_core_start_scan_session();
         let page = document_core_append_scan_page(session_id.clone(), frame, Some(corners), None)
             .expect("append page");
         assert_eq!(page.page_index, 0);
+
+        let warped_page =
+            document_core_get_warped_scan_page(session_id.clone(), 0).expect("get warped page");
+        assert!(warped_page.width > 0);
 
         let snap = document_core_get_scan_session(session_id.clone()).expect("get snap");
         assert_eq!(snap.page_count, 1);

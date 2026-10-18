@@ -43,20 +43,23 @@ To establish a solid, production-grade basis for M1, submilestone **M1.0** defin
 
 3. **Real Android Runtime Test Harness (`scripts/verify-android-runtime.sh`):**
    - Configured `apps/android/gradlew` with Gradle 9.8.1 and Android Gradle Plugin 8.8.2.
+   - Cross-compiled native `libvocument_ffi.so` for `aarch64-linux-android` (via Android NDK 29 Clang) and packaged into `apps/android/app/src/main/jniLibs/arm64-v8a/`.
    - Wired Gradle unit tests (`:app:testDebugUnitTest`) with `jna.library.path` pointing to `$REPO_ROOT/target/debug` and JVM arg `--enable-native-access=ALL-UNNAMED`.
-   - Built real debug APK: `apps/android/app/build/outputs/apk/debug/app-debug.apk` (23 MB).
+   - Built real debug APK: `apps/android/app/build/outputs/apk/debug/app-debug.apk` (142 MB with native ARM64 `.so`).
    - Validated APK metadata via `apkanalyzer`:
      - Package: `org.vocument.app`, version code `1`, version name `0.1.0`.
      - Declared permissions: `android.permission.CAMERA` present.
      - Strict offline-first invariant: `android.permission.INTERNET` strictly absent (`NET-001`).
+   - Executed authentic on-device/emulator runtime test on Android 14 `test_avd`: streamed APK install, granted `CAMERA`, launched `MainActivity` (cold start 257 ms, PID 3044), switched to Scan tab, performed live capture into Rust session, and inspected UI dump confirming session creation and zero crashes.
    - Wired `scripts/verify-android-runtime.sh` directly into `scripts/local-ci.sh`.
 
-4. **Android Native Compose UI Integration (`ScanCaptureScreen.kt`):**
+4. **Android Native Compose UI & CameraX Integration (`CameraPreviewView.kt`, `ScanCaptureScreen.kt`):**
+   - Implemented `CameraPreviewView.kt` (154 lines $\le 600$): CameraX 1.4.1 `PreviewView` bound to lifecycle, `ImageAnalysis` set to `OUTPUT_IMAGE_FORMAT_RGBA_8888` at `STRATEGY_KEEP_ONLY_LATEST`, throttled live extraction of RGBA `FfiScanFrame`.
    - Implemented `ScanCaptureScreen` Jetpack Compose view:
      - Live camera viewfinder canvas with dynamic quadrilateral edge detection overlay (switching to vibrant green `#00E676` when confidence $\ge 650$‰).
      - Multi-page reel displaying captured page thumbnails and count badge.
      - Mode selection chips for `DocumentAuto`, `PreservePhoto`, `HighContrastBw`.
-     - Frame simulation and camera capture hooks.
+     - Frame capture storing live camera frames into Rust session.
    - Integrated as the 4th tab ("Scan (M1)") in `MainActivity.kt`.
    - Added Android unit test `ScanCaptureBridgeTest.kt` verifying edge detection and multi-page scan session lifecycle.
 
