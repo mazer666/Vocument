@@ -448,3 +448,5 @@ These are intentionally not scheduled before core maturity:
 A milestone scope may change only through a documented Change Request if it affects accepted product requirements or release gates.
 
 A coding agent must not silently move an unfinished item into a later milestone just to make a milestone “green”.
+
+Furthermore, no milestone or feature deliverable may be declared complete or accepted on the basis of stubs, dummy returns, or mock bridges (`QA-003`, `CR-0002`). Acceptance strictly requires authentic, fully integrated native/embedded implementations with real runtime verification.

@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added Kotlin bridge methods in `DocumentCoreBridge.kt` (516 lines) and verified in `ScanCaptureBridgeTest.kt` (277 lines) and `VerifyKotlinHandshakeCli.kt` (598 lines).
 - Verified real OCR on Android runtime (`emulator-5554`) and desktop Kotlin handshake CLI.
 - Enforced M1.3 Gate validation in `scripts/validate-repo.sh`.
+- Added **CR-0002 (`QA-003`)**: Formally instituted the strict prohibition of stubs, mock simulations, or dummy return values for any feature or milestone acceptance (`docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md`, `REQUIREMENTS.md` §43, `AGENTS.md` §§1, 5, 6, `QUALITY.md` §2, `ROADMAP.md`).
 
 ## [0.1.0-m1.2] - 2026-10-18
 

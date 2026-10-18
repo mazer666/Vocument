@@ -25,6 +25,7 @@ Every agent must:
 13. keep generated code generated; never hand-edit generated UniFFI bindings
 14. preserve user data first
 15. keep hand-written source files concise (`CODE-001`): target $\le 600$ lines per file, hard maximum $900$ lines per file
+16. never implement, accept, or claim completion for any functionality based solely on stubs, dummy return values, or synthetic mock simulations (`QA-003`, `CR-0002`): acceptance strictly requires genuine native/embedded implementations with real execution
 
 ---
 
@@ -400,7 +401,7 @@ One agent may fill several roles in a small project, but the **review perspectiv
 
 An agent may say “done” only when:
 
-- implementation is complete
+- implementation is complete with real native/embedded code (stubs or mocks never satisfy acceptance — `QA-003`)
 - tests are present/passing
 - relevant acceptance criteria are demonstrated
 - docs are current
@@ -426,6 +427,8 @@ Agents must not:
 - add telemetry
 - add cloud calls as fallback
 - change licence headers casually
+- implement or submit stubs, dummy returns, or mock bridges as accepted functionality (`QA-003`, `CR-0002`)
+- declare a milestone or feature accepted when underlying functionality is only stubbed
 
 ---
 

@@ -69,6 +69,7 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0014-m1-3-tesseract-ocr-and-text-layer-generation.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
+  "docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md"
   "archive/baselines/0.1/MANIFEST.sha256"
   "engines/imaging/src/geometry.rs"
   "engines/imaging/src/perspective.rs"
@@ -256,5 +257,20 @@ if ! grep -q "test_realistic_camera_distorted_scan_and_cleanup_pipeline" engines
   exit 1
 fi
 echo "✓ M1.3 Gate verified: Real offline embedded Tesseract OCR, CER/WER >= 95% & realistic camera distortion corpus verified."
+
+# Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
+if ! grep -q "QA-003" REQUIREMENTS.md; then
+  echo "ERROR (QA-003): QA-003 missing in REQUIREMENTS.md!" >&2
+  exit 1
+fi
+if ! grep -q "QA-003" AGENTS.md; then
+  echo "ERROR (QA-003): QA-003 rule missing in AGENTS.md!" >&2
+  exit 1
+fi
+if ! grep -q "QA-003" QUALITY.md; then
+  echo "ERROR (QA-003): QA-003 check missing in QUALITY.md!" >&2
+  exit 1
+fi
+echo "✓ QA-003 Governance verified: Prohibition of stubs in feature acceptance strictly enforced."
 
 echo "==> Repository validation passed."

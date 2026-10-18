@@ -1159,6 +1159,9 @@ Unit/integration/UI/visual-regression/reference-PDF/roundtrip/OCR/search/redacti
 ### QA-002 — Later torture lab
 Fuzzing, malformed/malicious PDFs, random operation chains, crash/power loss, low memory, extreme documents, performance regressions.
 
+### QA-003 — Prohibition of stubs in feature acceptance (CR-0002)
+No functionality, engine adapter, provider, or platform workflow presented for milestone or feature acceptance may be implemented solely as a stub, dummy return value, synthetic placeholder, or mock bridge. Acceptance gates, test suites, and CI pipelines must execute real, fully integrated native/embedded implementations with real assets, realistic corpora, and authentic platform runtimes. If a platform or engine does not yet have its genuine implementation ready, that scope cannot be accepted or declared green; it must remain open or be explicitly descoped via a formal Change Request.
+
 ### REQ-001
 Requirements use stable IDs.
 

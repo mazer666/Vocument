@@ -36,11 +36,13 @@ Questions:
 - Is failure isolated?
 - Are migrations/versioning handled?
 - Is code understandable and within file-size limits (`CODE-001`: target $\le 600$ lines, max $900$ lines)?
+- Is the functionality implemented with authentic native/embedded logic rather than a stub or mock simulation (`QA-003`, `CR-0002`)?
 
 Evidence:
 
 - architecture review
-- tests
+- tests (executing authentic native engines and realistic assets)
+- real runtime verification on target platform/device (no mock bridges)
 - static analysis/lint
 - dependency review
 
