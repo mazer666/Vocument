@@ -4,6 +4,19 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m1.0] - 2026-10-18
+
+### Added
+- Completed **M1.0 — Real Android Runtime Foundation & Camera Scan-Capture Pipeline** (`docs/acceptance/M1.0-ACCEPTANCE.md`, `ADR-0011`).
+- Established genuine Android runtime test harness: Gradle 9.8.1 wrapper (`apps/android/gradlew`), Android SDK 35, Build-Tools 35.0.0, and automated APK assembly in `scripts/verify-android-runtime.sh`.
+- Assembled real debug APK (`app-debug.apk`, 23 MB) and verified package metadata and manifest permissions via `apkanalyzer`: `org.vocument.app`, `android.permission.CAMERA` enabled, strictly zero network permissions (`NET-001`, strict offline-first).
+- Implemented shared Rust `ImagingEngine` (`vocument-imaging`): raw camera frame ingestion (`Rgb8`, `Rgba8`, `Gray8`, `Nv21`, `Yuv420`), real-time document edge detection, geometric quadrilateral validation (`QuadCorners`, `Point2D`), and thread-safe multi-page scan session registry (`ScanCaptureSessionRegistry`).
+- Exposed scan capture pipeline across UniFFI boundary (`platform/vocument-ffi/src/scan_dto.rs`): `document_core_detect_document_edges`, `document_core_start_scan_session`, `document_core_append_scan_page`, `document_core_get_scan_session`, `document_core_close_scan_session`.
+- Implemented native Android Jetpack Compose UI (`ScanCaptureScreen.kt`): live camera viewfinder with real-time dynamic quadrilateral overlay (confidence color-coding), multi-page thumbnail reel, and enhancement profile selector (`DocumentAuto`, `PreservePhoto`, `HighContrastBw`).
+- Added automated Android Gradle unit test `ScanCaptureBridgeTest.kt` verifying live edge detection and multi-page session lifecycle.
+- Integrated `verify-android-runtime.sh` directly into `scripts/local-ci.sh`.
+- Reconciled M0 documentation inconsistencies: corrected first-page latency requirement in `M0-ACCEPTANCE.md` and `ROADMAP.md` back to central configuration (target $\le 300$ ms, maximum 500 ms) and documented automated Apple Preview verification (`osascript` open/close + CoreGraphics/Quartz `sips`).
+
 ## [0.1.0-m0.7] - 2026-10-18
 
 ### Added

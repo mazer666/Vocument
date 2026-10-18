@@ -45,3 +45,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("net.java.dev.jna:jna:5.15.0")
 }
+
+tasks.withType<Test> {
+    val repoRoot = rootProject.projectDir.parentFile.parentFile
+    val targetDebug = File(repoRoot, "target/debug").absolutePath
+    systemProperty("jna.library.path", targetDebug)
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}

@@ -465,7 +465,7 @@ fun main() {
     }
 
     // M0.6 verification: Recovery Container, Crash Detection, Restore Action, and Gate Invariant
-    val m06TempDir = File(System.getProperty("java.io.tmpdir"), "voc_kt_m06_${ProcessHandle.current().pid()}")
+    val m06TempDir = File(System.getProperty("java.io.tmpdir"), "voc_kt_m06_${System.currentTimeMillis()}")
     m06TempDir.mkdirs()
     try {
         val m06TestPdf = File(m06TempDir, "m06_rec_test.pdf")

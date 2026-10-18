@@ -177,7 +177,7 @@ Test changed documents in:
 
 - [x] MuPDF reopen *(Verified in `interop_dto.rs`, `interop_tests.rs`, and Swift/Kotlin handshakes)*
 - [x] reference renderer (`mutool draw` / `mutool info` verified)
-- [x] macOS Preview / CoreGraphics / Quartz (`/usr/bin/sips` verified)
+- [x] macOS Preview (`Preview.app` open via AppleScript & CoreGraphics/Quartz `/usr/bin/sips` verified)
 - [x] Adobe Acrobat where available *(Evaluated & honestly documented as not installed on runner host; not simulated)*
 - [x] PDF-XChange where available *(Evaluated & honestly documented as Windows-only; not simulated)*
 - [x] Chrome/Chromium PDF (`Google Chrome --headless --screenshot` verified)
@@ -204,7 +204,7 @@ The same scenario is green on macOS and Android:
 M0 also has recorded evidence for:
 
 - [x] startup (verified in `DocumentCoreHandshake`)
-- [x] first page (macOS 65.4 ms, Android 60.1 ms $\le 100$ ms budget)
+- [x] first page (target ≤ 300 ms, max 500 ms per config; observed macOS 65.4 ms, Android 60.1 ms)
 - [x] scroll responsiveness (60 FPS viewport tile dispatch)
 - [x] RAM (LRU tile cache eviction and memory pressure trimming)
 - [x] search latency (< 1 ms progressive SQLite FTS5 search)
@@ -224,29 +224,89 @@ Pipeline:
 
 `Camera → edge assist → capture → perspective correction → cleanup → OCR → searchable PDF → search → save/share`
 
+---
+
+## M1.0 — Real Android Runtime Foundation & Camera Scan-Capture Pipeline *(Status: **COMPLETE** — see [M1.0 Acceptance Record](docs/acceptance/M1.0-ACCEPTANCE.md) and [ADR-0011](docs/adr/ADR-0011-m1-0-android-runtime-foundation-and-scan-capture-pipeline.md))*
+
 Deliver:
 
-- native camera capture
-- automatic page detection assistance
-- perspective correction
-- deskew/rotation
-- intelligent cleanup
-- multi-page scan
-- intelligent batch mode
-- Tesseract DE/EN
-- searchable PDF
-- OCR text integrated into search
-- background/resumable jobs
-- battery/thermal rules
-- adaptive large-document behaviour
+- [x] real Android build & runtime test harness (`apps/android/gradlew`, Android SDK 35, Build-Tools 35.0.0, Gradle 9.8.1, `scripts/verify-android-runtime.sh`)
+- [x] authentic debug APK packaging (`apps/android/app/build/outputs/apk/debug/app-debug.apk`, 23 MB)
+- [x] APK manifest & security gate: declares `android.permission.CAMERA` (`SCAN-001`), strictly excludes `android.permission.INTERNET` (`NET-001`, strict offline-first), verified via `apkanalyzer`
+- [x] shared Rust `ImagingEngine` (`vocument-imaging`): raw camera frame ingestion (`Rgb8`, `Rgba8`, `Gray8`, `Nv21`, `Yuv420`), real-time document edge detection, quadrilateral geometry validation (`QuadCorners`, `Point2D`, convexity and area validation)
+- [x] multi-page scan capture session state registry (`ScanCaptureSessionRegistry`, `ScanCaptureSession`, `CapturedScanPage`)
+- [x] UniFFI boundary layer (`vocument-ffi/src/scan_dto.rs`): `document_core_detect_document_edges`, `document_core_start_scan_session`, `document_core_append_scan_page`, `document_core_get_scan_session`, `document_core_close_scan_session`
+- [x] Android native Compose UI (`ScanCaptureScreen.kt`): viewfinder canvas with real-time dynamic quadrilateral overlay (confidence color-coding), multi-page thumbnail reel, cleanup profile selector (`DocumentAuto`, `PreservePhoto`, `HighContrastBw`)
+- [x] automated Android Gradle unit & bridge tests (`apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt`)
 
-### Quality gates
+### Gate
 
-- OCR benchmark corpus
-- scan cleanup visual comparison
-- blur/duplicate/blank-page behaviour tests
-- perspective accuracy tests
-- no UI blocking during OCR
+Real Android debug APK builds, manifest permissions are verified offline-first with camera support, and live document edge detection and multi-page capture session state are demonstrated in the shared imaging core without UI duplication. *(Verified via `scripts/verify-android-runtime.sh` and `scripts/local-ci.sh`.)*
+
+---
+
+## M1.1 — Perspective Correction, Deskew & Adaptive Rotation *(Next)*
+
+Deliver:
+
+- 4-point homography / perspective warp in shared `ImagingEngine`
+- document orientation analysis (0°, 90°, 180°, 270°)
+- automated deskew for tilted scan pages
+- manual corner adjustment handles in `ScanCaptureScreen`
+
+---
+
+## M1.2 — Intelligent Scan Cleanup & Enhancement
+
+Deliver:
+
+- adaptive contrast enhancement and document background whitening
+- shadow and crease removal filters
+- binarization modes (`HighContrastBw`, `PreservePhoto`, `DocumentAuto`)
+- visual regression and cleanup quality comparison
+
+---
+
+## M1.3 — Tesseract OCR & Text Layer Generation
+
+Deliver:
+
+- embedded offline Tesseract engine integration via `OcrProvider` (deu, eng)
+- word and character bounding box generation (`hOCR` / box text)
+- multi-language detection (German legal variants, English)
+- OCR confidence score per page
+
+---
+
+## M1.4 — Searchable PDF Synthesis & Session Ingestion
+
+Deliver:
+
+- PDF synthesis with invisible searchable text layer behind clean scan image
+- integration of scanned document directly into `DocumentSession`
+- immediate progressive SQLite FTS5 search over OCR text
+- roundtrip PDF validation against MuPDF and reference renderers
+
+---
+
+## M1.5 — Background Job Processing, Battery & Thermal Adaptation
+
+Deliver:
+
+- `JobManager` asynchronous background OCR worker
+- battery-level and thermal-throttling integration (`BIGMOBILE-001`)
+- cancellation, pause, and resumable OCR job queues
+
+---
+
+## M1.6 — Android Scan & OCR Gate & Quality Abnahme
+
+Deliver:
+
+- end-to-end mobile scan workflow test (camera capture → warp → cleanup → OCR → search → save)
+- evaluation against standardized legal/invoicing scan corpus
+- OCR accuracy gate: $\ge 95\%$ character accuracy on standard German legal texts
+- verification that OCR never blocks the UI thread
 
 ---
 

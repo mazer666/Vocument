@@ -29,9 +29,7 @@ if [[ -f "apps/macos/Package.swift" ]] && command -v swift >/dev/null 2>&1; then
   swift run --package-path apps/macos vocument-mac-handshake
 fi
 
-if command -v kotlinc >/dev/null 2>&1; then
-  echo "==> Building and running Android Kotlin → UniFFI → Rust handshake..."
-  ./scripts/verify-kotlin-handshake.sh
-fi
+echo "==> Running real Android runtime & scan-capture verification (Gradle assembleDebug, apkanalyzer, unit tests, and Kotlin handshake)..."
+./scripts/verify-android-runtime.sh
 
 echo "==> Local CI completed successfully."

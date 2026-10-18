@@ -41,12 +41,12 @@ The product establishes:
 | Milestone Gate | Requirement / Invariant | Verification Mechanism | Status |
 |---|---|---|---|
 | **M0.1 Gate** | No UI layer accesses MuPDF directly; all access via `FileBroker` and `DocumentSession`. | Automated grep check in `scripts/validate-repo.sh` preventing `mupdf` or `fz_` symbols in `apps/`. | **PASSED** |
-| **M0.2 Gate** | First page render $\le 100$ ms; 60 FPS viewport tile dispatch; LRU cache memory pressure trimming. | Automated benchmark in Swift CLI (65.4 ms) and Kotlin CLI (60.1 ms); `tile_cache::tests`. | **PASSED** |
+| **M0.2 Gate** | First page render target $\le 300$ ms (max 500 ms; `PERF-001`); 60 FPS viewport tile dispatch; LRU cache memory pressure trimming. | Automated benchmark in Swift CLI (65.4 ms) and Kotlin CLI (60.1 ms) well within budget; `tile_cache::tests`. | **PASSED** |
 | **M0.3 Gate** | SQLite FTS5 search returns partial hits before full document indexing completes; text copy cleans hyphens. | Automated test in `search_index::tests`, Swift handshake, and Kotlin handshake. | **PASSED** |
 | **M0.4 Gate** | Document mutations never bypass `TransactionManager`; every mutation is reversible via Undo/Redo. | Automated grep check in `scripts/validate-repo.sh`; unit tests in `session_mutations::tests`. | **PASSED** |
 | **M0.5 Gate** | Never silently overwrite externally changed content; atomic staging; collision-free safe copy. | Automated test `gate_never_silently_overwrites_externally_changed_content`; conflict resolution test suite. | **PASSED** |
 | **M0.6 Gate** | Original file on disk remains completely intact until explicit user save; hard-kill recovery verified. | Destructive `SIGKILL` test `test_hard_kill_recovery_with_subprocess_sigkill`; crash container inspection. | **PASSED** |
-| **M0.7 Gate** | Full M0 workflow passes from open to foreign viewer reopen; MuPDF, CoreGraphics, PDFium verified. | `document_core_run_interop_gate_suite()`; `interop_tests.rs`; Swift & Kotlin handshake CLIs. | **PASSED** |
+| **M0.7 Gate** | Full M0 workflow passes from open to foreign viewer reopen; MuPDF, Apple Preview / CoreGraphics, Chromium PDFium verified. | `document_core_run_interop_gate_suite()`; `interop_tests.rs`; Swift & Kotlin handshake CLIs; AppleScript Preview automation. | **PASSED** |
 
 ---
 

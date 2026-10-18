@@ -48,6 +48,7 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.6-ACCEPTANCE.md"
   "docs/acceptance/M0.7-ACCEPTANCE.md"
   "docs/acceptance/M0-ACCEPTANCE.md"
+  "docs/acceptance/M1.0-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -59,14 +60,18 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0008-m0-5-safe-save-atomic-staging-validation-and-conflict-handling.md"
   "docs/adr/ADR-0009-m0-6-crash-recovery-containers-and-restore-actions.md"
   "docs/adr/ADR-0010-m0-7-interoperability-gate-and-foreign-viewer-verification.md"
+  "docs/adr/ADR-0011-m1-0-android-runtime-foundation-and-scan-capture-pipeline.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
+  "engines/imaging/src/lib.rs"
   "platform/vocument-ffi/src/recovery_dto.rs"
   "platform/vocument-ffi/src/interop_dto.rs"
+  "platform/vocument-ffi/src/scan_dto.rs"
   "core/vocument-core/tests/interop_tests.rs"
   "scripts/generate-bindings.sh"
   "scripts/verify-kotlin-handshake.sh"
+  "scripts/verify-android-runtime.sh"
   "apps/macos/Package.swift"
   "apps/macos/Sources/VocumentMacApp/DocumentCanvasView.swift"
   "apps/macos/Sources/VocumentMacApp/NavigationAndSearchSidebarView.swift"
@@ -74,6 +79,8 @@ REQUIRED_FILES=(
   "apps/android/app/src/main/AndroidManifest.xml"
   "apps/android/app/src/main/java/org/vocument/app/DocumentCanvas.kt"
   "apps/android/app/src/main/java/org/vocument/app/NavigationAndSearchPanel.kt"
+  "apps/android/app/src/main/java/org/vocument/app/ScanCaptureScreen.kt"
+  "apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt"
   "tests/corpus/m0_1_sample_two_pages.pdf"
   "tests/corpus/m0_3_navigation_and_search.pdf"
 )
@@ -159,5 +166,16 @@ if ! grep -q "document_core_run_interop_gate_suite" platform/vocument-ffi/src/in
   exit 1
 fi
 echo "✓ M0.7 Gate verified: Full M0 workflow and foreign viewer interoperability verified."
+
+# Enforce M1.0 Gate: Real Android runtime & Scan-Capture pipeline verified
+if ! grep -q "testMultiPageScanSessionLifecycle" apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt; then
+  echo "ERROR (M1.0 Gate): M1.0 scan capture bridge test missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_detect_document_edges" platform/vocument-ffi/src/scan_dto.rs; then
+  echo "ERROR (M1.0 Gate): M1.0 document_core_detect_document_edges export missing!" >&2
+  exit 1
+fi
+echo "✓ M1.0 Gate verified: Real Android runtime & Scan-Capture pipeline verified."
 
 echo "==> Repository validation passed."

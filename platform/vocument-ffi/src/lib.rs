@@ -9,6 +9,7 @@ pub mod navigation_search_dto;
 pub mod recovery_dto;
 pub mod render_dto;
 pub mod save_dto;
+pub mod scan_dto;
 pub mod session_dto;
 
 use std::sync::OnceLock;
@@ -49,6 +50,12 @@ pub use save_dto::{
     document_core_save_session, document_core_save_session_as,
     document_core_save_session_collision_free_copy,
 };
+pub use scan_dto::{
+    FfiCapturedScanPage, FfiPoint2D, FfiQuadCorners, FfiScanCleanupProfile, FfiScanFrame,
+    FfiScanPixelFormat, FfiScanSessionSnapshot, document_core_append_scan_page,
+    document_core_close_scan_session, document_core_detect_document_edges,
+    document_core_get_scan_session, document_core_start_scan_session,
+};
 pub use session_dto::{
     DocumentCoreHandshake, FfiBrokeredFileDescriptor, FfiDocumentSessionSnapshot,
     FfiFileAccessOrigin, FfiFileIdentity, FfiPdfDocumentSummary,
@@ -84,6 +91,8 @@ pub enum DocumentCoreError {
     SaveFailure { details: String },
     #[error("recovery error: {details}")]
     RecoveryFailure { details: String },
+    #[error("imaging error: {details}")]
+    ImagingFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }
@@ -123,6 +132,14 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
             },
+        }
+    }
+}
+
+impl From<vocument_imaging::ImagingError> for DocumentCoreError {
+    fn from(err: vocument_imaging::ImagingError) -> Self {
+        Self::ImagingFailure {
+            details: err.to_string(),
         }
     }
 }

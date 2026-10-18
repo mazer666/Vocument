@@ -142,6 +142,12 @@ fun MinimalReaderSessionScreen(
                     icon = {},
                     label = { Text("Tools") }
                 )
+                NavigationBarItem(
+                    selected = activeTab == 3,
+                    onClick = { activeTab = 3 },
+                    icon = {},
+                    label = { Text("Scan (M1)") }
+                )
             }
         }
     ) { innerPadding ->
@@ -169,58 +175,63 @@ fun MinimalReaderSessionScreen(
                 Text(text = msg, color = MaterialTheme.colorScheme.error)
             }
 
-            val session = activeSession
-            val currentViewport = viewportResult
-            if (session != null && currentViewport != null) {
+            if (activeTab == 3) {
                 Spacer(modifier = Modifier.height(8.dp))
-                when (activeTab) {
-                    1 -> NavigationAndSearchPanel(
-                        sessionId = session.sessionId,
-                        currentPageIndex = currentPageIndex,
-                        descriptors = pageDescriptors,
-                        indexProgress = indexProgress,
-                        coreBridge = coreBridge,
-                        onSelectPage = { targetPage ->
-                            refreshViewport(session, targetPage, scaleMilli)
-                            activeTab = 0
-                        },
-                        onIndexNextBatch = {
-                            indexProgress = runCatching {
-                                coreBridge.indexSearchBatch(session.sessionId, currentPageIndex, 2u)
-                            }.getOrNull()
-                        },
-                        onError = { err -> errorMessage = err }
-                    )
-                    2 -> MutationToolsPanel(
-                        sessionId = session.sessionId,
-                        currentPageIndex = currentPageIndex,
-                        coreBridge = coreBridge,
-                        onMutationApplied = {
-                            activeSession = runCatching {
-                                coreBridge.getSessionSnapshot(session.sessionId)
-                            }.getOrDefault(session)
-                            refreshViewport(session, currentPageIndex, scaleMilli)
-                        },
-                        onError = { err -> errorMessage = err }
-                    )
-                    else -> DocumentCanvas(
-                        session = session,
-                        currentPageIndex = currentPageIndex,
-                        scaleMilli = scaleMilli,
-                        viewportResult = currentViewport,
-                        coreBridge = coreBridge,
-                        onPageChange = { nextPage -> refreshViewport(session, nextPage, scaleMilli) },
-                        onScaleChange = { nextScale -> refreshViewport(session, currentPageIndex, nextScale) },
-                        onMemoryPressure = { level ->
-                            runCatching {
-                                coreBridge.handleMemoryPressure(level)
-                                if (level == FfiMemoryPressureLevel.CRITICAL) {
-                                    coreBridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
-                                }
+                ScanCaptureScreen(coreBridge = coreBridge)
+            } else {
+                val session = activeSession
+                val currentViewport = viewportResult
+                if (session != null && currentViewport != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    when (activeTab) {
+                        1 -> NavigationAndSearchPanel(
+                            sessionId = session.sessionId,
+                            currentPageIndex = currentPageIndex,
+                            descriptors = pageDescriptors,
+                            indexProgress = indexProgress,
+                            coreBridge = coreBridge,
+                            onSelectPage = { targetPage ->
+                                refreshViewport(session, targetPage, scaleMilli)
+                                activeTab = 0
+                            },
+                            onIndexNextBatch = {
+                                indexProgress = runCatching {
+                                    coreBridge.indexSearchBatch(session.sessionId, currentPageIndex, 2u)
+                                }.getOrNull()
+                            },
+                            onError = { err -> errorMessage = err }
+                        )
+                        2 -> MutationToolsPanel(
+                            sessionId = session.sessionId,
+                            currentPageIndex = currentPageIndex,
+                            coreBridge = coreBridge,
+                            onMutationApplied = {
+                                activeSession = runCatching {
+                                    coreBridge.getSessionSnapshot(session.sessionId)
+                                }.getOrDefault(session)
                                 refreshViewport(session, currentPageIndex, scaleMilli)
+                            },
+                            onError = { err -> errorMessage = err }
+                        )
+                        else -> DocumentCanvas(
+                            session = session,
+                            currentPageIndex = currentPageIndex,
+                            scaleMilli = scaleMilli,
+                            viewportResult = currentViewport,
+                            coreBridge = coreBridge,
+                            onPageChange = { nextPage -> refreshViewport(session, nextPage, scaleMilli) },
+                            onScaleChange = { nextScale -> refreshViewport(session, currentPageIndex, nextScale) },
+                            onMemoryPressure = { level ->
+                                runCatching {
+                                    coreBridge.handleMemoryPressure(level)
+                                    if (level == FfiMemoryPressureLevel.CRITICAL) {
+                                        coreBridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
+                                    }
+                                    refreshViewport(session, currentPageIndex, scaleMilli)
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }

@@ -26,7 +26,11 @@ class DocumentCoreBridgeTest {
         bridge.handleMemoryPressure(FfiMemoryPressureLevel.CRITICAL)
         bridge.handleMemoryPressure(FfiMemoryPressureLevel.NORMAL)
 
-        val sampleFile = File("../../tests/corpus/m0_1_sample_two_pages.pdf")
+        val sampleFile = listOf(
+            File("../../../tests/corpus/m0_1_sample_two_pages.pdf"),
+            File("../../tests/corpus/m0_1_sample_two_pages.pdf"),
+            File("tests/corpus/m0_1_sample_two_pages.pdf")
+        ).firstOrNull { it.exists() } ?: error("m0_1_sample_two_pages.pdf not found")
         val session = bridge.openSafDocument(
             safUriString = "content://com.android.providers.downloads.documents/document/m0_1_test",
             displayName = sampleFile.name,
@@ -67,7 +71,11 @@ class DocumentCoreBridgeTest {
 
         bridge.closeSession(session.sessionId)
 
-        val m03File = File("../../tests/corpus/m0_3_navigation_and_search.pdf")
+        val m03File = listOf(
+            File("../../../tests/corpus/m0_3_navigation_and_search.pdf"),
+            File("../../tests/corpus/m0_3_navigation_and_search.pdf"),
+            File("tests/corpus/m0_3_navigation_and_search.pdf")
+        ).firstOrNull { it.exists() } ?: error("m0_3_navigation_and_search.pdf not found")
         val m03Session = bridge.openSafDocument(
             safUriString = "content://com.android.providers.downloads.documents/document/m0_3_test",
             displayName = m03File.name,

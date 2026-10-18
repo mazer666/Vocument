@@ -898,6 +898,7 @@ dependencies = [
  "thiserror",
  "uniffi",
  "vocument-core",
+ "vocument-imaging",
  "vocument-pdf-mupdf",
 ]
 
@@ -905,6 +906,9 @@ dependencies = [
 name = "vocument-imaging"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
  "vocument-core",
 ]
 

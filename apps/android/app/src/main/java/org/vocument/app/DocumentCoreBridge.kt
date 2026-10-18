@@ -21,6 +21,13 @@ import uniffi.vocument_ffi.FfiSaveConflict
 import uniffi.vocument_ffi.FfiSaveConflictResolution
 import uniffi.vocument_ffi.FfiSaveOutcome
 import uniffi.vocument_ffi.FfiSaveSuccessSnapshot
+import uniffi.vocument_ffi.FfiCapturedScanPage
+import uniffi.vocument_ffi.FfiPoint2D
+import uniffi.vocument_ffi.FfiQuadCorners
+import uniffi.vocument_ffi.FfiScanCleanupProfile
+import uniffi.vocument_ffi.FfiScanFrame
+import uniffi.vocument_ffi.FfiScanPixelFormat
+import uniffi.vocument_ffi.FfiScanSessionSnapshot
 import uniffi.vocument_ffi.FfiSearchIndexProgress
 import uniffi.vocument_ffi.FfiSearchResponse
 import uniffi.vocument_ffi.FfiTextSelectionResult
@@ -30,12 +37,16 @@ import uniffi.vocument_ffi.FfiTileRenderRequest
 import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
 import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
+import uniffi.vocument_ffi.documentCoreAppendScanPage
 import uniffi.vocument_ffi.documentCoreCheckDocumentRecovery
 import uniffi.vocument_ffi.documentCoreCheckExternalChanges
+import uniffi.vocument_ffi.documentCoreCloseScanSession
 import uniffi.vocument_ffi.documentCoreCloseSession
+import uniffi.vocument_ffi.documentCoreDetectDocumentEdges
 import uniffi.vocument_ffi.documentCoreExecuteRecoveryAction
 import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
+import uniffi.vocument_ffi.documentCoreGetScanSession
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
 import uniffi.vocument_ffi.documentCoreHandleMemoryPressure
 import uniffi.vocument_ffi.documentCoreHandshake
@@ -65,6 +76,7 @@ import uniffi.vocument_ffi.documentCoreSearchExact
 import uniffi.vocument_ffi.documentCoreSearchIndexProgress
 import uniffi.vocument_ffi.documentCoreSelectPageText
 import uniffi.vocument_ffi.documentCoreSetPageLabelRanges
+import uniffi.vocument_ffi.documentCoreStartScanSession
 import uniffi.vocument_ffi.documentCoreThumbnailCacheStats
 import uniffi.vocument_ffi.documentCoreTileCacheStats
 import uniffi.vocument_ffi.documentCoreTransactionHistory
@@ -409,6 +421,46 @@ class DocumentCoreBridge {
      */
     fun runInteropGateSuite(): FfiInteropReport {
         return documentCoreRunInteropGateSuite()
+    }
+
+    /**
+     * Detects document edges and corner coordinates in real time from a live camera frame (`SCAN-001`, `SCAN-004`).
+     */
+    fun detectDocumentEdges(frame: FfiScanFrame): FfiQuadCorners? {
+        return documentCoreDetectDocumentEdges(frame)
+    }
+
+    /**
+     * Starts a new multi-page scan capture session (`SCAN-006`).
+     */
+    fun startScanSession(): String {
+        return documentCoreStartScanSession()
+    }
+
+    /**
+     * Appends a captured camera scan frame to an active scanning session (`SCAN-006`).
+     */
+    fun appendScanPage(
+        sessionId: String,
+        frame: FfiScanFrame,
+        corners: FfiQuadCorners? = null,
+        profile: FfiScanCleanupProfile? = null
+    ): FfiCapturedScanPage {
+        return documentCoreAppendScanPage(sessionId, frame, corners, profile)
+    }
+
+    /**
+     * Queries the current snapshot of an active scanning session.
+     */
+    fun getScanSession(sessionId: String): FfiScanSessionSnapshot {
+        return documentCoreGetScanSession(sessionId)
+    }
+
+    /**
+     * Closes and releases an active scanning session.
+     */
+    fun closeScanSession(sessionId: String) {
+        documentCoreCloseScanSession(sessionId)
     }
 
     /**

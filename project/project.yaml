@@ -4,7 +4,7 @@ project:
   product_status: "m0-complete"
   current_milestone: "M1"
   current_milestone_name: "Android Scan & OCR"
-  current_submilestone: "M1.0"
+  current_submilestone: "M1.1"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -16,6 +16,7 @@ project:
     - "M0.5"
     - "M0.6"
     - "M0.7"
+    - "M1.0"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

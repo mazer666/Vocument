@@ -791,6 +791,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -808,17 +818,25 @@ internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
     fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot(
 ): Short
@@ -878,6 +896,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_start_scan_session(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_tile_cache_stats(
@@ -933,17 +953,25 @@ internal interface UniffiLib : Library {
     // FFI functions
     fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: RustBuffer.ByValue,`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_document_recovery(`sourceToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(`documentId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_session_snapshot(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1002,6 +1030,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_search_index_progress(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`selectionRect`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_start_scan_session(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1140,13 +1170,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722.toShort()) {
@@ -1156,6 +1195,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057.toShort()) {
@@ -1243,6 +1285,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229.toShort()) {
@@ -1454,6 +1499,29 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 /**
  * @suppress
  */
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
+    }
+
+    override fun lower(value: Float): Float {
+        return value
+    }
+
+    override fun allocationSize(value: Float) = 4UL
+
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
     override fun lift(value: Byte): Boolean {
         return value.toInt() != 0
@@ -1654,6 +1722,61 @@ public object FfiConverterTypeFfiBrokeredFileDescriptor: FfiConverterRustBuffer<
             FfiConverterOptionalString.write(value.`osFileId`, buf)
             FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
             FfiConverterByteArray.write(value.`bytes`, buf)
+    }
+}
+
+
+
+/**
+ * A single captured scan page stored in a scanning session.
+ */
+data class FfiCapturedScanPage (
+    var `pageId`: kotlin.String, 
+    var `pageIndex`: kotlin.UInt, 
+    var `corners`: FfiQuadCorners, 
+    var `frameWidth`: kotlin.UInt, 
+    var `frameHeight`: kotlin.UInt, 
+    var `rawBytesLen`: kotlin.ULong, 
+    var `capturedUnixMs`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCapturedScanPage: FfiConverterRustBuffer<FfiCapturedScanPage> {
+    override fun read(buf: ByteBuffer): FfiCapturedScanPage {
+        return FfiCapturedScanPage(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiQuadCorners.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCapturedScanPage) = (
+            FfiConverterString.allocationSize(value.`pageId`) +
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterTypeFfiQuadCorners.allocationSize(value.`corners`) +
+            FfiConverterUInt.allocationSize(value.`frameWidth`) +
+            FfiConverterUInt.allocationSize(value.`frameHeight`) +
+            FfiConverterULong.allocationSize(value.`rawBytesLen`) +
+            FfiConverterULong.allocationSize(value.`capturedUnixMs`)
+    )
+
+    override fun write(value: FfiCapturedScanPage, buf: ByteBuffer) {
+            FfiConverterString.write(value.`pageId`, buf)
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterTypeFfiQuadCorners.write(value.`corners`, buf)
+            FfiConverterUInt.write(value.`frameWidth`, buf)
+            FfiConverterUInt.write(value.`frameHeight`, buf)
+            FfiConverterULong.write(value.`rawBytesLen`, buf)
+            FfiConverterULong.write(value.`capturedUnixMs`, buf)
     }
 }
 
@@ -2178,6 +2301,88 @@ public object FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRe
 
 
 /**
+ * 2D point in normalized coordinates `[0.0, 1.0]`.
+ */
+data class FfiPoint2D (
+    var `x`: kotlin.Float, 
+    var `y`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPoint2D: FfiConverterRustBuffer<FfiPoint2D> {
+    override fun read(buf: ByteBuffer): FfiPoint2D {
+        return FfiPoint2D(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPoint2D) = (
+            FfiConverterFloat.allocationSize(value.`x`) +
+            FfiConverterFloat.allocationSize(value.`y`)
+    )
+
+    override fun write(value: FfiPoint2D, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`x`, buf)
+            FfiConverterFloat.write(value.`y`, buf)
+    }
+}
+
+
+
+/**
+ * Quadrilateral corner coordinates defining a document outline in normalized coordinates `[0.0, 1.0]`.
+ */
+data class FfiQuadCorners (
+    var `topLeft`: FfiPoint2D, 
+    var `topRight`: FfiPoint2D, 
+    var `bottomRight`: FfiPoint2D, 
+    var `bottomLeft`: FfiPoint2D, 
+    var `confidenceMilli`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiQuadCorners: FfiConverterRustBuffer<FfiQuadCorners> {
+    override fun read(buf: ByteBuffer): FfiQuadCorners {
+        return FfiQuadCorners(
+            FfiConverterTypeFfiPoint2D.read(buf),
+            FfiConverterTypeFfiPoint2D.read(buf),
+            FfiConverterTypeFfiPoint2D.read(buf),
+            FfiConverterTypeFfiPoint2D.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiQuadCorners) = (
+            FfiConverterTypeFfiPoint2D.allocationSize(value.`topLeft`) +
+            FfiConverterTypeFfiPoint2D.allocationSize(value.`topRight`) +
+            FfiConverterTypeFfiPoint2D.allocationSize(value.`bottomRight`) +
+            FfiConverterTypeFfiPoint2D.allocationSize(value.`bottomLeft`) +
+            FfiConverterUInt.allocationSize(value.`confidenceMilli`)
+    )
+
+    override fun write(value: FfiQuadCorners, buf: ByteBuffer) {
+            FfiConverterTypeFfiPoint2D.write(value.`topLeft`, buf)
+            FfiConverterTypeFfiPoint2D.write(value.`topRight`, buf)
+            FfiConverterTypeFfiPoint2D.write(value.`bottomRight`, buf)
+            FfiConverterTypeFfiPoint2D.write(value.`bottomLeft`, buf)
+            FfiConverterUInt.write(value.`confidenceMilli`, buf)
+    }
+}
+
+
+
+/**
  * Information about a recoverable document detected after an unclean shutdown (`ROADMAP.md` M0.6).
  */
 data class FfiRecoverableDocumentInfo (
@@ -2514,6 +2719,116 @@ public object FfiConverterTypeFfiSaveSuccessSnapshot: FfiConverterRustBuffer<Ffi
             FfiConverterTypeFfiFileIdentity.write(value.`newFileIdentity`, buf)
             FfiConverterULong.write(value.`savedRevision`, buf)
             FfiConverterULong.write(value.`bytesWritten`, buf)
+    }
+}
+
+
+
+/**
+ * Raw camera scan frame crossing UniFFI boundary.
+ */
+data class FfiScanFrame (
+    var `width`: kotlin.UInt, 
+    var `height`: kotlin.UInt, 
+    var `stride`: kotlin.UInt, 
+    var `format`: FfiScanPixelFormat, 
+    var `orientationDegrees`: kotlin.UInt, 
+    var `pixels`: kotlin.ByteArray, 
+    var `timestampMs`: kotlin.ULong, 
+    var `deviceAngleDegrees`: kotlin.Float, 
+    var `brightnessHint`: kotlin.Float, 
+    var `isSteady`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiScanFrame: FfiConverterRustBuffer<FfiScanFrame> {
+    override fun read(buf: ByteBuffer): FfiScanFrame {
+        return FfiScanFrame(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiScanPixelFormat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiScanFrame) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterUInt.allocationSize(value.`stride`) +
+            FfiConverterTypeFfiScanPixelFormat.allocationSize(value.`format`) +
+            FfiConverterUInt.allocationSize(value.`orientationDegrees`) +
+            FfiConverterByteArray.allocationSize(value.`pixels`) +
+            FfiConverterULong.allocationSize(value.`timestampMs`) +
+            FfiConverterFloat.allocationSize(value.`deviceAngleDegrees`) +
+            FfiConverterFloat.allocationSize(value.`brightnessHint`) +
+            FfiConverterBoolean.allocationSize(value.`isSteady`)
+    )
+
+    override fun write(value: FfiScanFrame, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterUInt.write(value.`stride`, buf)
+            FfiConverterTypeFfiScanPixelFormat.write(value.`format`, buf)
+            FfiConverterUInt.write(value.`orientationDegrees`, buf)
+            FfiConverterByteArray.write(value.`pixels`, buf)
+            FfiConverterULong.write(value.`timestampMs`, buf)
+            FfiConverterFloat.write(value.`deviceAngleDegrees`, buf)
+            FfiConverterFloat.write(value.`brightnessHint`, buf)
+            FfiConverterBoolean.write(value.`isSteady`, buf)
+    }
+}
+
+
+
+/**
+ * Snapshot of an active scanning session.
+ */
+data class FfiScanSessionSnapshot (
+    var `sessionId`: kotlin.String, 
+    var `pageCount`: kotlin.UInt, 
+    var `pages`: List<FfiCapturedScanPage>, 
+    var `isActive`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiScanSessionSnapshot: FfiConverterRustBuffer<FfiScanSessionSnapshot> {
+    override fun read(buf: ByteBuffer): FfiScanSessionSnapshot {
+        return FfiScanSessionSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeFfiCapturedScanPage.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiScanSessionSnapshot) = (
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterUInt.allocationSize(value.`pageCount`) +
+            FfiConverterSequenceTypeFfiCapturedScanPage.allocationSize(value.`pages`) +
+            FfiConverterBoolean.allocationSize(value.`isActive`)
+    )
+
+    override fun write(value: FfiScanSessionSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterUInt.write(value.`pageCount`, buf)
+            FfiConverterSequenceTypeFfiCapturedScanPage.write(value.`pages`, buf)
+            FfiConverterBoolean.write(value.`isActive`, buf)
     }
 }
 
@@ -3118,6 +3433,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    class ImagingFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class InternalFailure(
         
         val `details`: kotlin.String
@@ -3167,7 +3490,10 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             9 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            10 -> DocumentCoreException.InternalFailure(
+            10 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            11 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -3216,6 +3542,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.RecoveryFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.ImagingFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -3274,8 +3605,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(10)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(11)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -3558,6 +3894,76 @@ public object FfiConverterTypeFfiSaveOutcome : FfiConverterRustBuffer<FfiSaveOut
 
 
 
+/**
+ * Cleanup and enhancement profile for captured scan pages (`SCAN-002`, `SCAN-003`).
+ */
+
+enum class FfiScanCleanupProfile {
+    
+    DOCUMENT_AUTO,
+    PRESERVE_PHOTO,
+    HIGH_CONTRAST_BW;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiScanCleanupProfile: FfiConverterRustBuffer<FfiScanCleanupProfile> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiScanCleanupProfile.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiScanCleanupProfile) = 4UL
+
+    override fun write(value: FfiScanCleanupProfile, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Pixel format of ingested raw camera scan frames crossing UniFFI boundary.
+ */
+
+enum class FfiScanPixelFormat {
+    
+    RGB8,
+    RGBA8,
+    GRAY8,
+    NV21,
+    YUV420;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiScanPixelFormat: FfiConverterRustBuffer<FfiScanPixelFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiScanPixelFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiScanPixelFormat) = 4UL
+
+    override fun write(value: FfiScanPixelFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -3722,6 +4128,38 @@ public object FfiConverterOptionalTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiQuadCorners: FfiConverterRustBuffer<FfiQuadCorners?> {
+    override fun read(buf: ByteBuffer): FfiQuadCorners? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiQuadCorners.read(buf)
+    }
+
+    override fun allocationSize(value: FfiQuadCorners?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiQuadCorners.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiQuadCorners?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiQuadCorners.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiRecoverableDocumentInfo: FfiConverterRustBuffer<FfiRecoverableDocumentInfo?> {
     override fun read(buf: ByteBuffer): FfiRecoverableDocumentInfo? {
         if (buf.get().toInt() == 0) {
@@ -3786,6 +4224,38 @@ public object FfiConverterOptionalTypeFfiSaveSuccessSnapshot: FfiConverterRustBu
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiScanCleanupProfile: FfiConverterRustBuffer<FfiScanCleanupProfile?> {
+    override fun read(buf: ByteBuffer): FfiScanCleanupProfile? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiScanCleanupProfile.read(buf)
+    }
+
+    override fun allocationSize(value: FfiScanCleanupProfile?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiScanCleanupProfile.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiScanCleanupProfile?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiScanCleanupProfile.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -3832,6 +4302,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer<List<FfiCapturedScanPage>> {
+    override fun read(buf: ByteBuffer): List<FfiCapturedScanPage> {
+        val len = buf.getInt()
+        return List<FfiCapturedScanPage>(len) {
+            FfiConverterTypeFfiCapturedScanPage.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCapturedScanPage>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCapturedScanPage.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCapturedScanPage>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCapturedScanPage.write(it, buf)
         }
     }
 }
@@ -4045,6 +4543,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Appends a captured camera scan frame to an active scanning session (`SCAN-006`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreAppendScanPage`(`sessionId`: kotlin.String, `frame`: FfiScanFrame, `corners`: FfiQuadCorners?, `cleanupProfile`: FfiScanCleanupProfile?): FfiCapturedScanPage {
+            return FfiConverterTypeFfiCapturedScanPage.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_append_scan_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterOptionalTypeFfiQuadCorners.lower(`corners`),FfiConverterOptionalTypeFfiScanCleanupProfile.lower(`cleanupProfile`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Checks if a specific document by source path or token has an active crash recovery container.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCheckDocumentRecovery`(`sourceToken`: kotlin.String): FfiRecoverableDocumentInfo? {
@@ -4071,6 +4582,18 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Closes and releases an active scanning session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCloseScanSession`(`sessionId`: kotlin.String)
+        = 
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_close_scan_session(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    
+    
+
+        /**
          * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCloseSession`(`sessionId`: kotlin.String)
@@ -4080,6 +4603,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         FfiConverterString.lower(`sessionId`),_status)
 }
     
+    
+
+        /**
+         * Detects document edges and corner coordinates in real time from a live camera frame (`SCAN-001`, `SCAN-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDetectDocumentEdges`(`frame`: FfiScanFrame): FfiQuadCorners? {
+            return FfiConverterOptionalTypeFfiQuadCorners.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),_status)
+}
+    )
+    }
     
 
         /**
@@ -4117,6 +4653,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(`basePath`),FfiConverterString.lower(`suffix`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Queries the current state of a scanning session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetScanSession`(`sessionId`: kotlin.String): FfiScanSessionSnapshot {
+            return FfiConverterTypeFfiScanSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_scan_session(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }
@@ -4495,6 +5044,18 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceTypeFfiPageLabelRange.lower(`ranges`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Starts a new multi-page scan capture session (`SCAN-006`).
+         */ fun `documentCoreStartScanSession`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_start_scan_session(
+        _status)
 }
     )
     }

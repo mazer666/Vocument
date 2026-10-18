@@ -480,6 +480,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
+    typealias FfiType = Float
+    typealias SwiftType = Float
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
+        return try lift(readFloat(&buf))
+    }
+
+    public static func write(_ value: Float, into buf: inout [UInt8]) {
+        writeFloat(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -777,6 +793,119 @@ public func FfiConverterTypeFfiBrokeredFileDescriptor_lift(_ buf: RustBuffer) th
 #endif
 public func FfiConverterTypeFfiBrokeredFileDescriptor_lower(_ value: FfiBrokeredFileDescriptor) -> RustBuffer {
     return FfiConverterTypeFfiBrokeredFileDescriptor.lower(value)
+}
+
+
+/**
+ * A single captured scan page stored in a scanning session.
+ */
+public struct FfiCapturedScanPage {
+    public var pageId: String
+    public var pageIndex: UInt32
+    public var corners: FfiQuadCorners
+    public var frameWidth: UInt32
+    public var frameHeight: UInt32
+    public var rawBytesLen: UInt64
+    public var capturedUnixMs: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageId: String, pageIndex: UInt32, corners: FfiQuadCorners, frameWidth: UInt32, frameHeight: UInt32, rawBytesLen: UInt64, capturedUnixMs: UInt64) {
+        self.pageId = pageId
+        self.pageIndex = pageIndex
+        self.corners = corners
+        self.frameWidth = frameWidth
+        self.frameHeight = frameHeight
+        self.rawBytesLen = rawBytesLen
+        self.capturedUnixMs = capturedUnixMs
+    }
+}
+
+#if compiler(>=6)
+extension FfiCapturedScanPage: Sendable {}
+#endif
+
+
+extension FfiCapturedScanPage: Equatable, Hashable {
+    public static func ==(lhs: FfiCapturedScanPage, rhs: FfiCapturedScanPage) -> Bool {
+        if lhs.pageId != rhs.pageId {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.corners != rhs.corners {
+            return false
+        }
+        if lhs.frameWidth != rhs.frameWidth {
+            return false
+        }
+        if lhs.frameHeight != rhs.frameHeight {
+            return false
+        }
+        if lhs.rawBytesLen != rhs.rawBytesLen {
+            return false
+        }
+        if lhs.capturedUnixMs != rhs.capturedUnixMs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageId)
+        hasher.combine(pageIndex)
+        hasher.combine(corners)
+        hasher.combine(frameWidth)
+        hasher.combine(frameHeight)
+        hasher.combine(rawBytesLen)
+        hasher.combine(capturedUnixMs)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiCapturedScanPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCapturedScanPage {
+        return
+            try FfiCapturedScanPage(
+                pageId: FfiConverterString.read(from: &buf), 
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                corners: FfiConverterTypeFfiQuadCorners.read(from: &buf), 
+                frameWidth: FfiConverterUInt32.read(from: &buf), 
+                frameHeight: FfiConverterUInt32.read(from: &buf), 
+                rawBytesLen: FfiConverterUInt64.read(from: &buf), 
+                capturedUnixMs: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiCapturedScanPage, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.pageId, into: &buf)
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterTypeFfiQuadCorners.write(value.corners, into: &buf)
+        FfiConverterUInt32.write(value.frameWidth, into: &buf)
+        FfiConverterUInt32.write(value.frameHeight, into: &buf)
+        FfiConverterUInt64.write(value.rawBytesLen, into: &buf)
+        FfiConverterUInt64.write(value.capturedUnixMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCapturedScanPage_lift(_ buf: RustBuffer) throws -> FfiCapturedScanPage {
+    return try FfiConverterTypeFfiCapturedScanPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCapturedScanPage_lower(_ value: FfiCapturedScanPage) -> RustBuffer {
+    return FfiConverterTypeFfiCapturedScanPage.lower(value)
 }
 
 
@@ -1847,6 +1976,176 @@ public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) 
 
 
 /**
+ * 2D point in normalized coordinates `[0.0, 1.0]`.
+ */
+public struct FfiPoint2D {
+    public var x: Float
+    public var y: Float
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(x: Float, y: Float) {
+        self.x = x
+        self.y = y
+    }
+}
+
+#if compiler(>=6)
+extension FfiPoint2D: Sendable {}
+#endif
+
+
+extension FfiPoint2D: Equatable, Hashable {
+    public static func ==(lhs: FfiPoint2D, rhs: FfiPoint2D) -> Bool {
+        if lhs.x != rhs.x {
+            return false
+        }
+        if lhs.y != rhs.y {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPoint2D: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPoint2D {
+        return
+            try FfiPoint2D(
+                x: FfiConverterFloat.read(from: &buf), 
+                y: FfiConverterFloat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPoint2D, into buf: inout [UInt8]) {
+        FfiConverterFloat.write(value.x, into: &buf)
+        FfiConverterFloat.write(value.y, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPoint2D_lift(_ buf: RustBuffer) throws -> FfiPoint2D {
+    return try FfiConverterTypeFfiPoint2D.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPoint2D_lower(_ value: FfiPoint2D) -> RustBuffer {
+    return FfiConverterTypeFfiPoint2D.lower(value)
+}
+
+
+/**
+ * Quadrilateral corner coordinates defining a document outline in normalized coordinates `[0.0, 1.0]`.
+ */
+public struct FfiQuadCorners {
+    public var topLeft: FfiPoint2D
+    public var topRight: FfiPoint2D
+    public var bottomRight: FfiPoint2D
+    public var bottomLeft: FfiPoint2D
+    public var confidenceMilli: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(topLeft: FfiPoint2D, topRight: FfiPoint2D, bottomRight: FfiPoint2D, bottomLeft: FfiPoint2D, confidenceMilli: UInt32) {
+        self.topLeft = topLeft
+        self.topRight = topRight
+        self.bottomRight = bottomRight
+        self.bottomLeft = bottomLeft
+        self.confidenceMilli = confidenceMilli
+    }
+}
+
+#if compiler(>=6)
+extension FfiQuadCorners: Sendable {}
+#endif
+
+
+extension FfiQuadCorners: Equatable, Hashable {
+    public static func ==(lhs: FfiQuadCorners, rhs: FfiQuadCorners) -> Bool {
+        if lhs.topLeft != rhs.topLeft {
+            return false
+        }
+        if lhs.topRight != rhs.topRight {
+            return false
+        }
+        if lhs.bottomRight != rhs.bottomRight {
+            return false
+        }
+        if lhs.bottomLeft != rhs.bottomLeft {
+            return false
+        }
+        if lhs.confidenceMilli != rhs.confidenceMilli {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(topLeft)
+        hasher.combine(topRight)
+        hasher.combine(bottomRight)
+        hasher.combine(bottomLeft)
+        hasher.combine(confidenceMilli)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiQuadCorners: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiQuadCorners {
+        return
+            try FfiQuadCorners(
+                topLeft: FfiConverterTypeFfiPoint2D.read(from: &buf), 
+                topRight: FfiConverterTypeFfiPoint2D.read(from: &buf), 
+                bottomRight: FfiConverterTypeFfiPoint2D.read(from: &buf), 
+                bottomLeft: FfiConverterTypeFfiPoint2D.read(from: &buf), 
+                confidenceMilli: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiQuadCorners, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiPoint2D.write(value.topLeft, into: &buf)
+        FfiConverterTypeFfiPoint2D.write(value.topRight, into: &buf)
+        FfiConverterTypeFfiPoint2D.write(value.bottomRight, into: &buf)
+        FfiConverterTypeFfiPoint2D.write(value.bottomLeft, into: &buf)
+        FfiConverterUInt32.write(value.confidenceMilli, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiQuadCorners_lift(_ buf: RustBuffer) throws -> FfiQuadCorners {
+    return try FfiConverterTypeFfiQuadCorners.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiQuadCorners_lower(_ value: FfiQuadCorners) -> RustBuffer {
+    return FfiConverterTypeFfiQuadCorners.lower(value)
+}
+
+
+/**
  * Information about a recoverable document detected after an unclean shutdown (`ROADMAP.md` M0.6).
  */
 public struct FfiRecoverableDocumentInfo {
@@ -2545,6 +2844,232 @@ public func FfiConverterTypeFfiSaveSuccessSnapshot_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeFfiSaveSuccessSnapshot_lower(_ value: FfiSaveSuccessSnapshot) -> RustBuffer {
     return FfiConverterTypeFfiSaveSuccessSnapshot.lower(value)
+}
+
+
+/**
+ * Raw camera scan frame crossing UniFFI boundary.
+ */
+public struct FfiScanFrame {
+    public var width: UInt32
+    public var height: UInt32
+    public var stride: UInt32
+    public var format: FfiScanPixelFormat
+    public var orientationDegrees: UInt32
+    public var pixels: Data
+    public var timestampMs: UInt64
+    public var deviceAngleDegrees: Float
+    public var brightnessHint: Float
+    public var isSteady: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(width: UInt32, height: UInt32, stride: UInt32, format: FfiScanPixelFormat, orientationDegrees: UInt32, pixels: Data, timestampMs: UInt64, deviceAngleDegrees: Float, brightnessHint: Float, isSteady: Bool) {
+        self.width = width
+        self.height = height
+        self.stride = stride
+        self.format = format
+        self.orientationDegrees = orientationDegrees
+        self.pixels = pixels
+        self.timestampMs = timestampMs
+        self.deviceAngleDegrees = deviceAngleDegrees
+        self.brightnessHint = brightnessHint
+        self.isSteady = isSteady
+    }
+}
+
+#if compiler(>=6)
+extension FfiScanFrame: Sendable {}
+#endif
+
+
+extension FfiScanFrame: Equatable, Hashable {
+    public static func ==(lhs: FfiScanFrame, rhs: FfiScanFrame) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.stride != rhs.stride {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.orientationDegrees != rhs.orientationDegrees {
+            return false
+        }
+        if lhs.pixels != rhs.pixels {
+            return false
+        }
+        if lhs.timestampMs != rhs.timestampMs {
+            return false
+        }
+        if lhs.deviceAngleDegrees != rhs.deviceAngleDegrees {
+            return false
+        }
+        if lhs.brightnessHint != rhs.brightnessHint {
+            return false
+        }
+        if lhs.isSteady != rhs.isSteady {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(stride)
+        hasher.combine(format)
+        hasher.combine(orientationDegrees)
+        hasher.combine(pixels)
+        hasher.combine(timestampMs)
+        hasher.combine(deviceAngleDegrees)
+        hasher.combine(brightnessHint)
+        hasher.combine(isSteady)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiScanFrame: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiScanFrame {
+        return
+            try FfiScanFrame(
+                width: FfiConverterUInt32.read(from: &buf), 
+                height: FfiConverterUInt32.read(from: &buf), 
+                stride: FfiConverterUInt32.read(from: &buf), 
+                format: FfiConverterTypeFfiScanPixelFormat.read(from: &buf), 
+                orientationDegrees: FfiConverterUInt32.read(from: &buf), 
+                pixels: FfiConverterData.read(from: &buf), 
+                timestampMs: FfiConverterUInt64.read(from: &buf), 
+                deviceAngleDegrees: FfiConverterFloat.read(from: &buf), 
+                brightnessHint: FfiConverterFloat.read(from: &buf), 
+                isSteady: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiScanFrame, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterUInt32.write(value.stride, into: &buf)
+        FfiConverterTypeFfiScanPixelFormat.write(value.format, into: &buf)
+        FfiConverterUInt32.write(value.orientationDegrees, into: &buf)
+        FfiConverterData.write(value.pixels, into: &buf)
+        FfiConverterUInt64.write(value.timestampMs, into: &buf)
+        FfiConverterFloat.write(value.deviceAngleDegrees, into: &buf)
+        FfiConverterFloat.write(value.brightnessHint, into: &buf)
+        FfiConverterBool.write(value.isSteady, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanFrame_lift(_ buf: RustBuffer) throws -> FfiScanFrame {
+    return try FfiConverterTypeFfiScanFrame.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanFrame_lower(_ value: FfiScanFrame) -> RustBuffer {
+    return FfiConverterTypeFfiScanFrame.lower(value)
+}
+
+
+/**
+ * Snapshot of an active scanning session.
+ */
+public struct FfiScanSessionSnapshot {
+    public var sessionId: String
+    public var pageCount: UInt32
+    public var pages: [FfiCapturedScanPage]
+    public var isActive: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, pageCount: UInt32, pages: [FfiCapturedScanPage], isActive: Bool) {
+        self.sessionId = sessionId
+        self.pageCount = pageCount
+        self.pages = pages
+        self.isActive = isActive
+    }
+}
+
+#if compiler(>=6)
+extension FfiScanSessionSnapshot: Sendable {}
+#endif
+
+
+extension FfiScanSessionSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiScanSessionSnapshot, rhs: FfiScanSessionSnapshot) -> Bool {
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.pages != rhs.pages {
+            return false
+        }
+        if lhs.isActive != rhs.isActive {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sessionId)
+        hasher.combine(pageCount)
+        hasher.combine(pages)
+        hasher.combine(isActive)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiScanSessionSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiScanSessionSnapshot {
+        return
+            try FfiScanSessionSnapshot(
+                sessionId: FfiConverterString.read(from: &buf), 
+                pageCount: FfiConverterUInt32.read(from: &buf), 
+                pages: FfiConverterSequenceTypeFfiCapturedScanPage.read(from: &buf), 
+                isActive: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiScanSessionSnapshot, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterSequenceTypeFfiCapturedScanPage.write(value.pages, into: &buf)
+        FfiConverterBool.write(value.isActive, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanSessionSnapshot_lift(_ buf: RustBuffer) throws -> FfiScanSessionSnapshot {
+    return try FfiConverterTypeFfiScanSessionSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanSessionSnapshot_lower(_ value: FfiScanSessionSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiScanSessionSnapshot.lower(value)
 }
 
 
@@ -3646,6 +4171,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case RecoveryFailure(details: String
     )
+    case ImagingFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -3689,7 +4216,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 9: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .InternalFailure(
+        case 10: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 11: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -3748,8 +4278,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(10))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(11))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -4324,6 +4859,180 @@ extension FfiSaveOutcome: Equatable, Hashable {}
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Cleanup and enhancement profile for captured scan pages (`SCAN-002`, `SCAN-003`).
+ */
+
+public enum FfiScanCleanupProfile {
+    
+    case documentAuto
+    case preservePhoto
+    case highContrastBw
+}
+
+
+#if compiler(>=6)
+extension FfiScanCleanupProfile: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiScanCleanupProfile: FfiConverterRustBuffer {
+    typealias SwiftType = FfiScanCleanupProfile
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiScanCleanupProfile {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .documentAuto
+        
+        case 2: return .preservePhoto
+        
+        case 3: return .highContrastBw
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiScanCleanupProfile, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .documentAuto:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .preservePhoto:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .highContrastBw:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanCleanupProfile_lift(_ buf: RustBuffer) throws -> FfiScanCleanupProfile {
+    return try FfiConverterTypeFfiScanCleanupProfile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanCleanupProfile_lower(_ value: FfiScanCleanupProfile) -> RustBuffer {
+    return FfiConverterTypeFfiScanCleanupProfile.lower(value)
+}
+
+
+extension FfiScanCleanupProfile: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Pixel format of ingested raw camera scan frames crossing UniFFI boundary.
+ */
+
+public enum FfiScanPixelFormat {
+    
+    case rgb8
+    case rgba8
+    case gray8
+    case nv21
+    case yuv420
+}
+
+
+#if compiler(>=6)
+extension FfiScanPixelFormat: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiScanPixelFormat: FfiConverterRustBuffer {
+    typealias SwiftType = FfiScanPixelFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiScanPixelFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .rgb8
+        
+        case 2: return .rgba8
+        
+        case 3: return .gray8
+        
+        case 4: return .nv21
+        
+        case 5: return .yuv420
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiScanPixelFormat, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .rgb8:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .rgba8:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .gray8:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .nv21:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .yuv420:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanPixelFormat_lift(_ buf: RustBuffer) throws -> FfiScanPixelFormat {
+    return try FfiConverterTypeFfiScanPixelFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiScanPixelFormat_lower(_ value: FfiScanPixelFormat) -> RustBuffer {
+    return FfiConverterTypeFfiScanPixelFormat.lower(value)
+}
+
+
+extension FfiScanPixelFormat: Equatable, Hashable {}
+
+
+
+
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -4447,6 +5156,30 @@ fileprivate struct FfiConverterOptionTypeFfiPdfRectMilliPt: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiQuadCorners: FfiConverterRustBuffer {
+    typealias SwiftType = FfiQuadCorners?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiQuadCorners.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiQuadCorners.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiRecoverableDocumentInfo: FfiConverterRustBuffer {
     typealias SwiftType = FfiRecoverableDocumentInfo?
 
@@ -4487,6 +5220,30 @@ fileprivate struct FfiConverterOptionTypeFfiSaveSuccessSnapshot: FfiConverterRus
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFfiSaveSuccessSnapshot.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeFfiScanCleanupProfile: FfiConverterRustBuffer {
+    typealias SwiftType = FfiScanCleanupProfile?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiScanCleanupProfile.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiScanCleanupProfile.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -4537,6 +5294,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiCapturedScanPage]
+
+    public static func write(_ value: [FfiCapturedScanPage], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiCapturedScanPage.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiCapturedScanPage] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiCapturedScanPage]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiCapturedScanPage.read(from: &buf))
         }
         return seq
     }
@@ -4728,6 +5510,19 @@ public func documentCoreAddHighlightAnnotation(sessionId: String, annotation: Ff
 })
 }
 /**
+ * Appends a captured camera scan frame to an active scanning session (`SCAN-006`).
+ */
+public func documentCoreAppendScanPage(sessionId: String, frame: FfiScanFrame, corners: FfiQuadCorners?, cleanupProfile: FfiScanCleanupProfile?)throws  -> FfiCapturedScanPage  {
+    return try  FfiConverterTypeFfiCapturedScanPage_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_append_scan_page(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterOptionTypeFfiQuadCorners.lower(corners),
+        FfiConverterOptionTypeFfiScanCleanupProfile.lower(cleanupProfile),$0
+    )
+})
+}
+/**
  * Checks if a specific document by source path or token has an active crash recovery container.
  */
 public func documentCoreCheckDocumentRecovery(sourceToken: String)throws  -> FfiRecoverableDocumentInfo?  {
@@ -4748,6 +5543,15 @@ public func documentCoreCheckExternalChanges(sessionId: String)throws  -> FfiExt
 })
 }
 /**
+ * Closes and releases an active scanning session.
+ */
+public func documentCoreCloseScanSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_close_scan_session(
+        FfiConverterString.lower(sessionId),$0
+    )
+}
+}
+/**
  * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
  */
 public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -4755,6 +5559,16 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
         FfiConverterString.lower(sessionId),$0
     )
 }
+}
+/**
+ * Detects document edges and corner coordinates in real time from a live camera frame (`SCAN-001`, `SCAN-004`).
+ */
+public func documentCoreDetectDocumentEdges(frame: FfiScanFrame)throws  -> FfiQuadCorners?  {
+    return try  FfiConverterOptionTypeFfiQuadCorners.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(
+        FfiConverterTypeFfiScanFrame_lower(frame),$0
+    )
+})
 }
 /**
  * Executes a recovery action (`Restore`, `Preview`, `Discard`, `OpenAsNew`) on a recovered document.
@@ -4787,6 +5601,16 @@ public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: Stri
     uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(basePath),
         FfiConverterString.lower(suffix),$0
+    )
+})
+}
+/**
+ * Queries the current state of a scanning session.
+ */
+public func documentCoreGetScanSession(sessionId: String)throws  -> FfiScanSessionSnapshot  {
+    return try  FfiConverterTypeFfiScanSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_scan_session(
+        FfiConverterString.lower(sessionId),$0
     )
 })
 }
@@ -5100,6 +5924,15 @@ public func documentCoreSetPageLabelRanges(sessionId: String, ranges: [FfiPageLa
 })
 }
 /**
+ * Starts a new multi-page scan capture session (`SCAN-006`).
+ */
+public func documentCoreStartScanSession() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_start_scan_session($0
+    )
+})
+}
+/**
  * Returns current telemetry statistics of the separate `ThumbnailCache`.
  */
 public func documentCoreThumbnailCacheStats()throws  -> FfiThumbnailCacheStats  {
@@ -5156,13 +5989,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722) {
@@ -5172,6 +6014,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_session_snapshot() != 61057) {
@@ -5259,6 +6104,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229) {
