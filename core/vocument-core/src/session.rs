@@ -107,8 +107,11 @@ impl DocumentSession {
 
     /// Marks the active session as cleanly saved and updates its baseline `FileIdentity` (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).
     pub fn mark_as_saved(&mut self, new_identity: FileIdentity) {
+        let new_doc_id = new_identity.stable_document_id();
+        let new_sha = new_identity.sha256_hex.clone();
         self.file_identity = new_identity;
-        self.transaction_manager.mark_as_saved();
+        self.document_id = new_doc_id.clone();
+        self.transaction_manager.mark_as_saved(new_doc_id, new_sha);
         self.sync_from_transaction_manager();
     }
 }

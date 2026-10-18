@@ -789,6 +789,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -857,6 +859,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_resolve_save_conflict(
 fun uniffi_vocument_ffi_checksum_func_document_core_restore_transaction_journal_json(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_save_session(
 ): Short
@@ -980,6 +984,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_resolve_save_conflict(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_restore_transaction_journal_json(`sessionId`: RustBuffer.ByValue,`journalJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_save_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1210,6 +1216,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650.toShort()) {
@@ -1861,6 +1870,69 @@ public object FfiConverterTypeFfiHighlightAnnotation: FfiConverterRustBuffer<Ffi
             FfiConverterUInt.write(value.`opacityMilli`, buf)
             FfiConverterOptionalString.write(value.`author`, buf)
             FfiConverterOptionalString.write(value.`contents`, buf)
+    }
+}
+
+
+
+/**
+ * Interoperability verification report crossing the UniFFI boundary (`ROADMAP.md` M0.7).
+ */
+data class FfiInteropReport (
+    var `m0ScenarioPassed`: kotlin.Boolean, 
+    var `mupdfReopenVerified`: kotlin.Boolean, 
+    var `mutoolVerified`: kotlin.Boolean, 
+    var `coregraphicsSipsVerified`: kotlin.Boolean, 
+    var `chromePdfiumVerified`: kotlin.Boolean, 
+    var `acrobatStatus`: kotlin.String, 
+    var `pdfXchangeStatus`: kotlin.String, 
+    var `firefoxStatus`: kotlin.String, 
+    var `summary`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiInteropReport: FfiConverterRustBuffer<FfiInteropReport> {
+    override fun read(buf: ByteBuffer): FfiInteropReport {
+        return FfiInteropReport(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiInteropReport) = (
+            FfiConverterBoolean.allocationSize(value.`m0ScenarioPassed`) +
+            FfiConverterBoolean.allocationSize(value.`mupdfReopenVerified`) +
+            FfiConverterBoolean.allocationSize(value.`mutoolVerified`) +
+            FfiConverterBoolean.allocationSize(value.`coregraphicsSipsVerified`) +
+            FfiConverterBoolean.allocationSize(value.`chromePdfiumVerified`) +
+            FfiConverterString.allocationSize(value.`acrobatStatus`) +
+            FfiConverterString.allocationSize(value.`pdfXchangeStatus`) +
+            FfiConverterString.allocationSize(value.`firefoxStatus`) +
+            FfiConverterString.allocationSize(value.`summary`)
+    )
+
+    override fun write(value: FfiInteropReport, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`m0ScenarioPassed`, buf)
+            FfiConverterBoolean.write(value.`mupdfReopenVerified`, buf)
+            FfiConverterBoolean.write(value.`mutoolVerified`, buf)
+            FfiConverterBoolean.write(value.`coregraphicsSipsVerified`, buf)
+            FfiConverterBoolean.write(value.`chromePdfiumVerified`, buf)
+            FfiConverterString.write(value.`acrobatStatus`, buf)
+            FfiConverterString.write(value.`pdfXchangeStatus`, buf)
+            FfiConverterString.write(value.`firefoxStatus`, buf)
+            FfiConverterString.write(value.`summary`, buf)
     }
 }
 
@@ -4305,6 +4377,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_rotate_pages(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`deltaDegrees`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRunInteropGateSuite`(): FfiInteropReport {
+            return FfiConverterTypeFfiInteropReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(
+        _status)
 }
     )
     }

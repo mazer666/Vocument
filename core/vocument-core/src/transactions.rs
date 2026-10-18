@@ -298,9 +298,13 @@ impl TransactionManager {
         self.current_revision != self.saved_revision
     }
 
-    /// Marks the current document revision as cleanly saved (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).
-    pub fn mark_as_saved(&mut self) {
+    /// Marks the current document revision as cleanly saved and updates the baseline identity (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).
+    pub fn mark_as_saved(&mut self, document_id: DocumentId, base_pdf_sha256: String) {
+        self.document_id = document_id;
+        self.base_pdf_sha256 = base_pdf_sha256;
         self.saved_revision = self.current_revision;
+        self.undo_stack.clear();
+        self.redo_stack.clear();
     }
 
     pub fn can_undo(&self) -> bool {

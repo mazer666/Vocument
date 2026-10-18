@@ -529,4 +529,21 @@ fun main() {
     } finally {
         m06TempDir.deleteRecursively()
     }
+
+    // M0.7 verification: Interoperability Gate & Full M0 Workflow
+    val interopReport = bridge.runInteropGateSuite()
+    check(interopReport.m0ScenarioPassed) {
+        "M0.7 Interop Gate failed: DoD workflow did not complete successfully."
+    }
+    check(interopReport.mupdfReopenVerified && interopReport.mutoolVerified) {
+        "M0.7 Interop Gate failed: MuPDF verification failed."
+    }
+    check(interopReport.coregraphicsSipsVerified && interopReport.chromePdfiumVerified) {
+        "M0.7 Interop Gate failed: foreign viewer verification failed."
+    }
+    println(
+        "✓ Kotlin (Android M0.7) → InteropGate → FullWorkflow → " +
+            "MuPDF(${interopReport.mupdfReopenVerified}) → mutool(${interopReport.mutoolVerified}) → " +
+            "Quartz(${interopReport.coregraphicsSipsVerified}) → PDFium(${interopReport.chromePdfiumVerified}) → AllGatesPassed"
+    )
 }

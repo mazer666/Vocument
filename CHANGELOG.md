@@ -4,6 +4,19 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m0.7] - 2026-10-18
+
+### Added
+- Completed **M0.7 — Interoperability Gate** (`docs/acceptance/M0.7-ACCEPTANCE.md`, `ADR-0010`).
+- Formally completed **Milestone M0: Foundation / Trustworthy Viewer** in full (`docs/acceptance/M0-ACCEPTANCE.md`).
+- Implemented full M0 Definition of Done end-to-end workflow verification harness (`document_core_run_interop_gate_suite()`, `core/vocument-core/tests/interop_tests.rs`):
+  `Open → search → select text → highlight → rotate → undo → redo → save → hard-kill → recover → save → foreign viewer reopen`.
+- Implemented multi-save baseline rebinding invariant in `TransactionManager::mark_as_saved` and `DocumentSession::mark_as_saved` supporting sequential safe saves and crash recoveries.
+- Automated foreign viewer cross-validation against MuPDF 1.28.5 (`vocument-pdf-mupdf`), reference CLI `mutool draw` / `mutool info`, Apple CoreGraphics / Quartz (`/usr/bin/sips`), and Chromium PDFium (`Google Chrome --headless --screenshot`).
+- Established foreign viewer honesty policy: Adobe Acrobat Reader, PDF-XChange, and Firefox are checked and honestly documented as uninstalled on runner host without simulating false passes.
+- Integrated M0.7 Interoperability Gate verification into macOS Swift handshake (`vocument-mac-handshake`) and Android Kotlin handshake (`VerifyKotlinHandshakeCli.kt`).
+- Enforced M0.7 Gate validation in `scripts/validate-repo.sh`.
+
 ## [0.1.0-m0.6] - 2026-10-18
 
 ### Added

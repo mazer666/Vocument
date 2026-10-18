@@ -6,6 +6,7 @@ import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiFileAccessOrigin
 import uniffi.vocument_ffi.FfiExternalChangeCheckResult
 import uniffi.vocument_ffi.FfiHighlightAnnotation
+import uniffi.vocument_ffi.FfiInteropReport
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiPageDescriptor
 import uniffi.vocument_ffi.FfiPageLabelRange
@@ -43,6 +44,7 @@ import uniffi.vocument_ffi.documentCoreMarkRecoveryCleanShutdown
 import uniffi.vocument_ffi.documentCoreOpenBrokeredFile
 import uniffi.vocument_ffi.documentCoreOpenMacosScopedFile
 import uniffi.vocument_ffi.documentCorePageDescriptors
+import uniffi.vocument_ffi.documentCoreRunInteropGateSuite
 import uniffi.vocument_ffi.documentCorePageGeometry
 import uniffi.vocument_ffi.documentCorePageHighlightAnnotations
 import uniffi.vocument_ffi.documentCorePageRotationDegrees
@@ -400,6 +402,13 @@ class DocumentCoreBridge {
      */
     fun markRecoveryCleanShutdown(documentId: String) {
         documentCoreMarkRecoveryCleanShutdown(documentId)
+    }
+
+    /**
+     * Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers (`ROADMAP.md` M0.7, `M0-ACCEPTANCE.md`).
+     */
+    fun runInteropGateSuite(): FfiInteropReport {
+        return documentCoreRunInteropGateSuite()
     }
 
     /**

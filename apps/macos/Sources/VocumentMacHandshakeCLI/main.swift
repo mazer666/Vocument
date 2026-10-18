@@ -503,5 +503,21 @@ struct VocumentMacHandshakeCLI {
         try client.closeSession(sessionId: m06Session.sessionId)
         try client.closeSession(sessionId: restoredSnap.sessionId)
         print("✓ Swift (macOS M0.6) → RecoveryContainer → CrashDetection → RestoreAction → GateVerified(disk-untouched-until-save) verified")
+
+        // -------------------------------------------------------------
+        // M0.7 INTEROPERABILITY GATE VERIFICATION (ROADMAP.md M0.7)
+        // Full M0 Workflow: Open -> Search -> Select -> Highlight -> Rotate -> Undo -> Redo -> Save -> Crash -> Recover -> Save -> Foreign Viewer Reopen
+        // -------------------------------------------------------------
+        let interopReport = try client.runInteropGateSuite()
+        guard interopReport.m0ScenarioPassed else {
+            fatalError("M0.7 Interop Gate failed: DoD workflow did not complete successfully.")
+        }
+        guard interopReport.mupdfReopenVerified && interopReport.mutoolVerified else {
+            fatalError("M0.7 Interop Gate failed: MuPDF verification failed.")
+        }
+        guard interopReport.coregraphicsSipsVerified && interopReport.chromePdfiumVerified else {
+            fatalError("M0.7 Interop Gate failed: foreign viewer verification failed.")
+        }
+        print("✓ Swift (macOS M0.7) → InteropGate → FullWorkflow → MuPDF(\(interopReport.mupdfReopenVerified)) → mutool(\(interopReport.mutoolVerified)) → Quartz(\(interopReport.coregraphicsSipsVerified)) → PDFium(\(interopReport.chromePdfiumVerified)) → AllGatesPassed")
     }
 }

@@ -283,6 +283,11 @@ public struct DocumentCoreClient: Sendable {
         try documentCoreMarkRecoveryCleanShutdown(documentId: documentId)
     }
 
+    /// Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers (`ROADMAP.md` M0.7, `M0-ACCEPTANCE.md`).
+    public func runInteropGateSuite() throws -> FfiInteropReport {
+        try documentCoreRunInteropGateSuite()
+    }
+
     /// Converts an immutable `FfiRenderedTile` RGBA8 buffer into a native `CGImage` (`ARCHITECTURE.md` §10).
     public static func makeCGImage(from tile: FfiRenderedTile) -> CGImage? {
         makeCGImageFromRgba8(

@@ -46,6 +46,8 @@ REQUIRED_FILES=(
   "docs/acceptance/M0.4-ACCEPTANCE.md"
   "docs/acceptance/M0.5-ACCEPTANCE.md"
   "docs/acceptance/M0.6-ACCEPTANCE.md"
+  "docs/acceptance/M0.7-ACCEPTANCE.md"
+  "docs/acceptance/M0-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -56,10 +58,13 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0007-m0-4-transaction-manager-mutations-undo-redo-and-journal.md"
   "docs/adr/ADR-0008-m0-5-safe-save-atomic-staging-validation-and-conflict-handling.md"
   "docs/adr/ADR-0009-m0-6-crash-recovery-containers-and-restore-actions.md"
+  "docs/adr/ADR-0010-m0-7-interoperability-gate-and-foreign-viewer-verification.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
   "platform/vocument-ffi/src/recovery_dto.rs"
+  "platform/vocument-ffi/src/interop_dto.rs"
+  "core/vocument-core/tests/interop_tests.rs"
   "scripts/generate-bindings.sh"
   "scripts/verify-kotlin-handshake.sh"
   "apps/macos/Package.swift"
@@ -143,5 +148,16 @@ if ! grep -q "test_hard_kill_recovery_with_subprocess_sigkill" core/vocument-cor
   exit 1
 fi
 echo "✓ M0.6 Gate verified: Original file remains intact through hard-kill crash recovery until explicit save."
+
+# Enforce M0.7 Gate: Full M0 workflow and foreign viewer verification (MuPDF, CoreGraphics, PDFium, honesty checks)
+if ! grep -q "test_m0_full_dod_workflow_and_recovery_cycle" core/vocument-core/tests/interop_tests.rs; then
+  echo "ERROR (M0.7 Gate): M0.7 end-to-end DoD workflow test missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_run_interop_gate_suite" platform/vocument-ffi/src/interop_dto.rs; then
+  echo "ERROR (M0.7 Gate): M0.7 document_core_run_interop_gate_suite export missing!" >&2
+  exit 1
+fi
+echo "✓ M0.7 Gate verified: Full M0 workflow and foreign viewer interoperability verified."
 
 echo "==> Repository validation passed."

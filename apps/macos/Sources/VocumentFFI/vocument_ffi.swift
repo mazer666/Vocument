@@ -1225,6 +1225,135 @@ public func FfiConverterTypeFfiHighlightAnnotation_lower(_ value: FfiHighlightAn
 
 
 /**
+ * Interoperability verification report crossing the UniFFI boundary (`ROADMAP.md` M0.7).
+ */
+public struct FfiInteropReport {
+    public var m0ScenarioPassed: Bool
+    public var mupdfReopenVerified: Bool
+    public var mutoolVerified: Bool
+    public var coregraphicsSipsVerified: Bool
+    public var chromePdfiumVerified: Bool
+    public var acrobatStatus: String
+    public var pdfXchangeStatus: String
+    public var firefoxStatus: String
+    public var summary: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(m0ScenarioPassed: Bool, mupdfReopenVerified: Bool, mutoolVerified: Bool, coregraphicsSipsVerified: Bool, chromePdfiumVerified: Bool, acrobatStatus: String, pdfXchangeStatus: String, firefoxStatus: String, summary: String) {
+        self.m0ScenarioPassed = m0ScenarioPassed
+        self.mupdfReopenVerified = mupdfReopenVerified
+        self.mutoolVerified = mutoolVerified
+        self.coregraphicsSipsVerified = coregraphicsSipsVerified
+        self.chromePdfiumVerified = chromePdfiumVerified
+        self.acrobatStatus = acrobatStatus
+        self.pdfXchangeStatus = pdfXchangeStatus
+        self.firefoxStatus = firefoxStatus
+        self.summary = summary
+    }
+}
+
+#if compiler(>=6)
+extension FfiInteropReport: Sendable {}
+#endif
+
+
+extension FfiInteropReport: Equatable, Hashable {
+    public static func ==(lhs: FfiInteropReport, rhs: FfiInteropReport) -> Bool {
+        if lhs.m0ScenarioPassed != rhs.m0ScenarioPassed {
+            return false
+        }
+        if lhs.mupdfReopenVerified != rhs.mupdfReopenVerified {
+            return false
+        }
+        if lhs.mutoolVerified != rhs.mutoolVerified {
+            return false
+        }
+        if lhs.coregraphicsSipsVerified != rhs.coregraphicsSipsVerified {
+            return false
+        }
+        if lhs.chromePdfiumVerified != rhs.chromePdfiumVerified {
+            return false
+        }
+        if lhs.acrobatStatus != rhs.acrobatStatus {
+            return false
+        }
+        if lhs.pdfXchangeStatus != rhs.pdfXchangeStatus {
+            return false
+        }
+        if lhs.firefoxStatus != rhs.firefoxStatus {
+            return false
+        }
+        if lhs.summary != rhs.summary {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(m0ScenarioPassed)
+        hasher.combine(mupdfReopenVerified)
+        hasher.combine(mutoolVerified)
+        hasher.combine(coregraphicsSipsVerified)
+        hasher.combine(chromePdfiumVerified)
+        hasher.combine(acrobatStatus)
+        hasher.combine(pdfXchangeStatus)
+        hasher.combine(firefoxStatus)
+        hasher.combine(summary)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiInteropReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiInteropReport {
+        return
+            try FfiInteropReport(
+                m0ScenarioPassed: FfiConverterBool.read(from: &buf), 
+                mupdfReopenVerified: FfiConverterBool.read(from: &buf), 
+                mutoolVerified: FfiConverterBool.read(from: &buf), 
+                coregraphicsSipsVerified: FfiConverterBool.read(from: &buf), 
+                chromePdfiumVerified: FfiConverterBool.read(from: &buf), 
+                acrobatStatus: FfiConverterString.read(from: &buf), 
+                pdfXchangeStatus: FfiConverterString.read(from: &buf), 
+                firefoxStatus: FfiConverterString.read(from: &buf), 
+                summary: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiInteropReport, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.m0ScenarioPassed, into: &buf)
+        FfiConverterBool.write(value.mupdfReopenVerified, into: &buf)
+        FfiConverterBool.write(value.mutoolVerified, into: &buf)
+        FfiConverterBool.write(value.coregraphicsSipsVerified, into: &buf)
+        FfiConverterBool.write(value.chromePdfiumVerified, into: &buf)
+        FfiConverterString.write(value.acrobatStatus, into: &buf)
+        FfiConverterString.write(value.pdfXchangeStatus, into: &buf)
+        FfiConverterString.write(value.firefoxStatus, into: &buf)
+        FfiConverterString.write(value.summary, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiInteropReport_lift(_ buf: RustBuffer) throws -> FfiInteropReport {
+    return try FfiConverterTypeFfiInteropReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiInteropReport_lower(_ value: FfiInteropReport) -> RustBuffer {
+    return FfiConverterTypeFfiInteropReport.lower(value)
+}
+
+
+/**
  * Combined physical and logical identity of a page (`PAGELABEL-002`).
  */
 public struct FfiPageDescriptor {
@@ -4877,6 +5006,15 @@ public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], de
 })
 }
 /**
+ * Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers.
+ */
+public func documentCoreRunInteropGateSuite()throws  -> FfiInteropReport  {
+    return try  FfiConverterTypeFfiInteropReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite($0
+    )
+})
+}
+/**
  * Safe save of active `session_id` back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
  */
 public func documentCoreSaveSession(sessionId: String)throws  -> FfiSaveOutcome  {
@@ -5094,6 +5232,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650) {
