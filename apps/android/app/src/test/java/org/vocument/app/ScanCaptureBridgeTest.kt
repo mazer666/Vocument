@@ -246,9 +246,35 @@ class ScanCaptureBridgeTest {
         val detectedEng = bridge.detectTextLanguage(engText)
         assertEquals("Primary language must be English", "eng", detectedEng)
 
-        val frame = createSyntheticShadowedDocumentFrame(width = 100u, height = 100u)
-        val ocrRes = bridge.ocrCleanScanFrame(frame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("eng"), true)
+        val pgmFile = listOf(
+            java.io.File("tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm"),
+            java.io.File("../../tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm"),
+            java.io.File("../../../tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm")
+        ).first { it.exists() }
+        val pgmBytes = pgmFile.readBytes()
+        val realDeuFrame = FfiScanFrame(
+            width = 1240u,
+            height = 1755u,
+            stride = 1240u,
+            format = FfiScanPixelFormat.GRAY8,
+            orientationDegrees = 0u,
+            pixels = pgmBytes.copyOfRange(pgmBytes.size - 1240 * 1755, pgmBytes.size),
+            timestampMs = System.currentTimeMillis().toULong(),
+            deviceAngleDegrees = 0f,
+            brightnessHint = 0.9f,
+            isSteady = true
+        )
+
+        val ocrRes = bridge.ocrCleanScanFrame(realDeuFrame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu", "eng"), true)
         assertNotNull("OCR on cleaned frame should return result", ocrRes)
-        assertTrue("OCR result frame dimensions must be valid", ocrRes.frameWidth == 100u && ocrRes.frameHeight == 100u)
+        assertEquals("Detected language must be German", "deu", ocrRes.detectedLanguage)
+        assertTrue("Real OCR must extract at least 30 words (got ${ocrRes.words.size})", ocrRes.words.size >= 30)
+        assertTrue("Must extract VEREINBARUNG", ocrRes.fullText.contains("VEREINBARUNG"))
+        assertTrue("Must extract VERTRAULICHKEIT", ocrRes.fullText.contains("VERTRAULICHKEIT"))
+        assertTrue("Must extract ABGB", ocrRes.fullText.contains("ABGB"))
+        assertTrue("Must extract Wien", ocrRes.fullText.contains("Wien"))
+        assertTrue("Must extract Österreich", ocrRes.fullText.contains("Österreich"))
+        assertTrue("Mean confidence must be >= 85.0% (got ${ocrRes.meanConfidence}%)", ocrRes.meanConfidence >= 85.0f)
+        assertTrue("Word bounding boxes must be valid", ocrRes.words.all { (it.bbox.x1 > it.bbox.x0) && (it.bbox.y1 > it.bbox.y0) })
     }
 }

@@ -1,0 +1,22 @@
+{
+  "document_id": "deu_vertrag_vertraulichkeit_camera_distorted",
+  "language": "deu",
+  "locale_variant": "de-AT",
+  "category": "camera_scan_distorted",
+  "expected_keywords": [
+    "VEREINBARUNG",
+    "VERTRAULICHKEIT",
+    "GEHEIMHALTUNG",
+    "Geltungsbereich",
+    "Gesch\u00e4fts-",
+    "Betriebsgeheimnisse",
+    "ABGB",
+    "UWG",
+    "Empf\u00e4nger",
+    "Erf\u00fcllungsort",
+    "Gerichtsstand",
+    "Wien",
+    "\u00d6sterreich"
+  ],
+  "min_confidence": 85.0
+}

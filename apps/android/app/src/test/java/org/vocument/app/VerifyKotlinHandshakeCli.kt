@@ -552,17 +552,10 @@ fun main() {
 
     // M1.0/M1.1/M1.2 verification: Scan-Capture Pipeline, Homography Rectification & Cleanup Profiles
     val scanSessId = bridge.startScanSession()
-    val rawPixels = ByteArray(100 * 100 * 4) { 35.toByte() } // Desk background
-    for (y in 20 until 80) {
-        for (x in 20 until 80) {
-            val idx = (y * 100 + x) * 4
-            val isText = (y % 12 < 3) && (x in 30..70)
-            val lum = if (isText) 25.toByte() else 235.toByte()
-            rawPixels[idx] = lum
-            rawPixels[idx + 1] = lum
-            rawPixels[idx + 2] = lum
-            rawPixels[idx + 3] = 255.toByte()
-        }
+    val rawPixels = ByteArray(100 * 100 * 4) {
+        val px = (it / 4) % 100
+        val py = (it / 4) / 100
+        if (py in 20 until 80 && px in 20 until 80 && (py % 12 < 3) && px in 30..70) 25.toByte() else 235.toByte()
     }
     val testFrame = FfiScanFrame(
         width = 100u, height = 100u, stride = 100u, format = FfiScanPixelFormat.RGBA8,
@@ -584,11 +577,22 @@ fun main() {
     val deuSnippet = "Vereinbarung über Vertraulichkeit gemäß ABGB. Erfüllungsort ist Wien, Österreich."
     val detectedDeu = bridge.detectTextLanguage(deuSnippet)
     check(detectedDeu == "deu") { "M1.3 language detection failed for German: $detectedDeu" }
-    val ocrPageRes = bridge.ocrCleanScanFrame(testFrame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu", "eng"), true)
-    check(ocrPageRes.frameWidth == 100u) { "M1.3 OCR frame width invalid" }
+    val pgmFile = File("tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm")
+    val pgmBytes = pgmFile.readBytes()
+    val realDeuFrame = FfiScanFrame(
+        width = 1240u, height = 1755u, stride = 1240u, format = FfiScanPixelFormat.GRAY8,
+        orientationDegrees = 0u, pixels = pgmBytes.copyOfRange(pgmBytes.size - 1240 * 1755, pgmBytes.size),
+        timestampMs = 1000uL, deviceAngleDegrees = 0f, brightnessHint = 0.9f, isSteady = true
+    )
+    val ocrPageRes = bridge.ocrCleanScanFrame(realDeuFrame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu", "eng"), true)
+    check(ocrPageRes.words.size >= 30) { "M1.3 real OCR failed to extract words: ${ocrPageRes.words.size}" }
+    check(ocrPageRes.fullText.contains("VEREINBARUNG") && ocrPageRes.fullText.contains("VERTRAULICHKEIT")) {
+        "M1.3 real OCR missing Austrian legal keywords"
+    }
+    check(ocrPageRes.meanConfidence >= 85.0f) { "M1.3 OCR mean confidence too low: ${ocrPageRes.meanConfidence}" }
     println(
-        "✓ Kotlin (Android M1.3) → OfflineTesseract → LangDetection($detectedDeu) → " +
-            "BoundingBoxes(words=${ocrPageRes.words.size}, lines=${ocrPageRes.lines.size}) → " +
+        "✓ Kotlin (Android M1.3) → RealOfflineTesseract → LangDetection($detectedDeu) → " +
+            "Words(${ocrPageRes.words.size}) → Lines(${ocrPageRes.lines.size}) → " +
             "MeanConf(${ocrPageRes.meanConfidence.toInt()}%) → GateVerified"
     )
 }

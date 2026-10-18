@@ -128,7 +128,9 @@ fun ScanCaptureScreen(
             val deskew = warped?.let { runCatching { coreBridge.deskewFrame(it) }.getOrNull() }
             val deskewInfo = if (deskew != null) ", skew=${deskew.skewAngleDegrees}°" else ""
             val profileInfo = ", ${selectedProfile.name.lowercase().replace('_', ' ')}"
-            statusMessage = "Page #${page.pageIndex + 1u} cleaned (${enhanced?.width ?: warped?.width ?: frameToCapture.width}x${enhanced?.height ?: warped?.height ?: frameToCapture.height}px$deskewInfo$profileInfo)"
+            val ocrRes = runCatching { coreBridge.ocrScanSessionPage(sessionId, page.pageIndex, listOf("deu", "eng")) }.getOrNull()
+            val ocrInfo = if (ocrRes != null && ocrRes.words.isNotEmpty()) ", OCR: ${ocrRes.detectedLanguage} (${ocrRes.meanConfidence.toInt()}%, ${ocrRes.words.size}w)" else ""
+            statusMessage = "Page #${page.pageIndex + 1u} cleaned$ocrInfo (${enhanced?.width ?: warped?.width ?: frameToCapture.width}x${enhanced?.height ?: warped?.height ?: frameToCapture.height}px$deskewInfo$profileInfo)"
             errorMessage = null
         }.onFailure { err ->
             errorMessage = "Scan error: ${err.message}"
@@ -143,9 +145,11 @@ fun ScanCaptureScreen(
         for (y in 25 until 135) {
             for (x in 20 until 100) {
                 val idx = (y * 120 + x) * 4
-                pixels[idx] = 245.toByte()
-                pixels[idx + 1] = 245.toByte()
-                pixels[idx + 2] = 245.toByte()
+                val isTextStroke = (y % 14 in 4..7) && (x in 28..92) && (x % 16 !in 0..2)
+                val lum = if (isTextStroke) 20.toByte() else 245.toByte()
+                pixels[idx] = lum
+                pixels[idx + 1] = lum
+                pixels[idx + 2] = lum
                 pixels[idx + 3] = 255.toByte()
             }
         }

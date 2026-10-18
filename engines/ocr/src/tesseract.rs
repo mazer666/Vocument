@@ -85,6 +85,10 @@ impl TesseractEngine {
         }
         let candidates = [
             PathBuf::from("/opt/homebrew/share/tessdata"),
+            PathBuf::from("apps/android/app/src/main/assets/tessdata"),
+            PathBuf::from("../../apps/android/app/src/main/assets/tessdata"),
+            PathBuf::from("/data/user/0/org.vocument.app/files/tessdata"),
+            PathBuf::from("/data/data/org.vocument.app/files/tessdata"),
             PathBuf::from("/usr/local/share/tessdata"),
             PathBuf::from("/usr/share/tessdata"),
             PathBuf::from("tessdata"),

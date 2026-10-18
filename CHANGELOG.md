@@ -12,18 +12,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `provider.rs`: Abstract `OcrProvider` trait and structured `OcrError` taxonomy.
   - `models.rs`: `BoundingBox` (normalized $[0.0, 1.0]$ and pixel coordinates), `OcrCharacter`, `OcrWord`, `OcrLine`, `OcrBlock`, and `OcrPageResult`.
   - `tesseract.rs`: `TesseractEngine` adapter interfacing directly via native C API memory buffers (`TessBaseAPISetImage`), extracting blocks, lines, words, character glyphs, and confidence scores in a single iterator traversal.
-  - `csrc/tesseract_bridge.c`: High-performance C bridge encapsulating Tesseract C API.
-  - `csrc/tesseract_stub_bridge.c`: Clean stub bridge enabling seamless `aarch64-linux-android` cross-compilation in local CI.
+  - `csrc/tesseract_bridge.c`: High-performance C bridge encapsulating Tesseract C API compiled for both macOS and Android ARM64 without stub bridges.
+  - Native Android ARM64 libraries (`libtesseract.so`, `libleptonica.so`, `libjpeg.so`, `libpngx.so`) packaged in `jniLibs/arm64-v8a/` and linked by `libvocument_ffi.so`.
+  - Offline language models (`deu.traineddata`, `eng.traineddata`) embedded in Android APK assets (`assets/tessdata/`).
   - `language.rs`: Multi-language detection heuristics for German (`deu` with Austrian legal markers `de-AT`) and English (`eng`), umlaut handling, and bilingual classification.
-  - `corpus.rs`: Realistic test corpus loader, PGM frame parser, and ground truth verification.
+  - `corpus.rs`: Realistic test corpus loader, PGM frame parser, and ground truth verification with Levenshtein-based CER/WER calculation and hardened $\ge 95\%$ character accuracy gate (zero 85% fallback).
 - Created realistic scan and OCR test corpus (`tests/corpus/ocr/`):
   - `deu_vertrag_vertraulichkeit`: Austrian confidentiality agreement with Umlauts, paragraph symbols (`§`), and Austrian legal terminology (`ABGB`, `UWG`, `OGH`, `Wien`).
+  - `deu_vertrag_vertraulichkeit_camera_distorted`: Realistic smartphone camera capture with 6.5° perspective tilt, illumination gradient, and mobile cast shadow.
   - `eng_mutual_nda`: English mutual NDA with commercial clauses and standard of care provisions.
   - `bilingual_rechnung_invoice`: Bilingual commercial invoice with line items, VAT calculations, and bank details.
-- Integrated directly with M1.2 cleanup pipeline: `recognize_clean_scan_page` executes OCR on `DocumentAuto` and `HighContrastBw` enhanced frames, verifying $\ge 95\%$ keyword hit rate.
+- Integrated directly with M1.1 perspective warp and M1.2 cleanup pipeline: `recognize_clean_scan_page` executes OCR on `DocumentAuto` and `HighContrastBw` enhanced frames, verifying $\ge 95\%$ character accuracy.
 - Harmonized M1.2 threshold inconsistencies across code, tests, and documentation to authoritative $\ge 90\%$ background uniformity, $\ge 80\%$ contrast ratio, $\ge 80\%$ shadow attenuation, and $\ge 245$ whitening.
 - Exposed M1.3 OCR APIs across UniFFI (`platform/vocument-ffi/src/ocr_dto.rs`): `document_core_ocr_frame`, `document_core_ocr_clean_scan_frame`, `document_core_ocr_scan_session_page`, `document_core_detect_text_language`.
-- Added Kotlin bridge methods in `DocumentCoreBridge.kt` (516 lines) and verified in `ScanCaptureBridgeTest.kt` (254 lines) and `VerifyKotlinHandshakeCli.kt` (594 lines).
+- Added Kotlin bridge methods in `DocumentCoreBridge.kt` (516 lines) and verified in `ScanCaptureBridgeTest.kt` (277 lines) and `VerifyKotlinHandshakeCli.kt` (598 lines).
+- Verified real OCR on Android runtime (`emulator-5554`) and desktop Kotlin handshake CLI.
 - Enforced M1.3 Gate validation in `scripts/validate-repo.sh`.
 
 ## [0.1.0-m1.2] - 2026-10-18

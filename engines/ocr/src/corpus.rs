@@ -35,6 +35,10 @@ pub struct CorpusVerificationResult {
     pub detected_language: String,
     pub mean_confidence: f32,
     pub keyword_hit_rate: f32,
+    pub character_accuracy: f32,
+    pub word_accuracy: f32,
+    pub cer: f32,
+    pub wer: f32,
     pub matched_keywords: Vec<String>,
     pub missing_keywords: Vec<String>,
     pub total_words: usize,
@@ -144,6 +148,7 @@ pub fn load_ocr_corpus(base_dir: Option<&Path>) -> Result<Vec<CorpusDocument>, O
         "deu_vertrag_vertraulichkeit",
         "eng_mutual_nda",
         "bilingual_rechnung_invoice",
+        "deu_vertrag_vertraulichkeit_camera_distorted",
     ];
     let mut docs = Vec::new();
 
@@ -187,7 +192,71 @@ pub fn load_ocr_corpus(base_dir: Option<&Path>) -> Result<Vec<CorpusDocument>, O
     Ok(docs)
 }
 
-/// Evaluates an OCR provider result against expected ground truth metadata.
+/// Computes the Levenshtein edit distance between two slices.
+pub fn levenshtein_distance<T: PartialEq>(a: &[T], b: &[T]) -> usize {
+    let len_b = b.len();
+    if a.is_empty() {
+        return len_b;
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+
+    let mut prev_row: Vec<usize> = (0..=len_b).collect();
+    let mut curr_row = vec![0; len_b + 1];
+
+    for (i, elem_a) in a.iter().enumerate() {
+        curr_row[0] = i + 1;
+        for (j, elem_b) in b.iter().enumerate() {
+            let cost = if elem_a == elem_b { 0 } else { 1 };
+            curr_row[j + 1] = (prev_row[j + 1] + 1)
+                .min(curr_row[j] + 1)
+                .min(prev_row[j] + cost);
+        }
+        prev_row.copy_from_slice(&curr_row);
+    }
+
+    prev_row[len_b]
+}
+
+/// Normalizes whitespace in OCR text string for comparative evaluation.
+pub fn normalize_ocr_text(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Computes Character Error Rate (CER) and Character Accuracy against expected text.
+pub fn compute_character_error_rate(expected: &str, recognized: &str) -> (f32, f32) {
+    let norm_exp = normalize_ocr_text(expected);
+    let norm_rec = normalize_ocr_text(recognized);
+    let exp_chars: Vec<char> = norm_exp.chars().collect();
+    let rec_chars: Vec<char> = norm_rec.chars().collect();
+
+    if exp_chars.is_empty() {
+        return (0.0, 1.0);
+    }
+
+    let distance = levenshtein_distance(&exp_chars, &rec_chars);
+    let cer = distance as f32 / exp_chars.len() as f32;
+    let accuracy = (1.0 - cer.min(1.0)).max(0.0);
+    (cer, accuracy)
+}
+
+/// Computes Word Error Rate (WER) and Word Accuracy against expected text.
+pub fn compute_word_error_rate(expected: &str, recognized: &str) -> (f32, f32) {
+    let exp_words: Vec<&str> = expected.split_whitespace().collect();
+    let rec_words: Vec<&str> = recognized.split_whitespace().collect();
+
+    if exp_words.is_empty() {
+        return (0.0, 1.0);
+    }
+
+    let distance = levenshtein_distance(&exp_words, &rec_words);
+    let wer = distance as f32 / exp_words.len() as f32;
+    let accuracy = (1.0 - wer.min(1.0)).max(0.0);
+    (wer, accuracy)
+}
+
+/// Evaluates an OCR provider result against expected ground truth metadata with a hardened $\ge 95\%$ gate.
 pub fn verify_corpus_document_result(
     doc: &CorpusDocument,
     result: &OcrPageResult,
@@ -241,11 +310,18 @@ pub fn verify_corpus_document_result(
         }
     }
 
-    let conf_passed = result.mean_confidence >= (doc.meta.min_confidence - 5.0);
-    let hit_passed = keyword_hit_rate >= 0.85;
+    let (cer, character_accuracy) =
+        compute_character_error_rate(&doc.expected_text, &result.full_text);
+    let (wer, word_accuracy) = compute_word_error_rate(&doc.expected_text, &result.full_text);
+
+    // Hardened gate: Character accuracy >= 95%, keyword hit rate >= 95%,
+    // confidence >= min_confidence, valid bounding boxes, non-empty text.
+    let conf_passed = result.mean_confidence >= doc.meta.min_confidence;
+    let hit_passed = keyword_hit_rate >= 0.95;
+    let char_acc_passed = character_accuracy >= 0.95;
     let boxes_passed = bounding_boxes_valid && total_words > 0;
 
-    let passed = conf_passed && hit_passed && boxes_passed;
+    let passed = conf_passed && hit_passed && char_acc_passed && boxes_passed;
 
     CorpusVerificationResult {
         document_id: doc.meta.document_id.clone(),
@@ -253,6 +329,10 @@ pub fn verify_corpus_document_result(
         detected_language: result.detected_language.clone(),
         mean_confidence: result.mean_confidence,
         keyword_hit_rate,
+        character_accuracy,
+        word_accuracy,
+        cer,
+        wer,
         matched_keywords,
         missing_keywords,
         total_words,

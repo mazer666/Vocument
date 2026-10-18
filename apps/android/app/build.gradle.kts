@@ -41,6 +41,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("net.java.dev.jna:jna:5.15.0@aar")
+    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
 
     val cameraVersion = "1.4.1"
     implementation("androidx.camera:camera-core:$cameraVersion")

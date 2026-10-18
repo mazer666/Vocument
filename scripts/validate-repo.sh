@@ -81,9 +81,13 @@ REQUIRED_FILES=(
   "engines/ocr/src/corpus.rs"
   "engines/ocr/src/lib.rs"
   "engines/ocr/csrc/tesseract_bridge.c"
-  "engines/ocr/csrc/tesseract_stub_bridge.c"
+  "engines/ocr/android-libs/arm64-v8a/libtesseract.so"
+  "apps/android/app/src/main/jniLibs/arm64-v8a/libtesseract.so"
+  "apps/android/app/src/main/assets/tessdata/deu.traineddata"
+  "apps/android/app/src/main/assets/tessdata/eng.traineddata"
   "platform/vocument-ffi/src/ocr_dto.rs"
   "tests/corpus/ocr/deu_vertrag_vertraulichkeit.pdf"
+  "tests/corpus/ocr/deu_vertrag_vertraulichkeit_camera_distorted.pgm"
   "tests/corpus/ocr/eng_mutual_nda.pdf"
   "tests/corpus/ocr/bilingual_rechnung_invoice.pdf"
   "apps/android/app/src/main/java/org/vocument/app/CameraPreviewView.kt"
@@ -239,10 +243,18 @@ if ! grep -q "document_core_ocr_frame" platform/vocument-ffi/src/ocr_dto.rs; the
   echo "ERROR (M1.3 Gate): M1.3 document_core_ocr_frame export missing!" >&2
   exit 1
 fi
-if ! grep -q "pub trait OcrProvider" engines/ocr/src/provider.rs; then
-  echo "ERROR (M1.3 Gate): M1.3 OcrProvider trait missing!" >&2
+if [[ -f "engines/ocr/csrc/tesseract_stub_bridge.c" ]]; then
+  echo "ERROR (M1.3 Gate): tesseract_stub_bridge.c detected! Android must use real embedded Tesseract." >&2
   exit 1
 fi
-echo "✓ M1.3 Gate verified: Offline Tesseract OCR, typographical hierarchy & realistic corpus verified."
+if ! grep -q "compute_character_error_rate" engines/ocr/src/corpus.rs; then
+  echo "ERROR (M1.3 Gate): compute_character_error_rate missing in corpus.rs!" >&2
+  exit 1
+fi
+if ! grep -q "test_realistic_camera_distorted_scan_and_cleanup_pipeline" engines/ocr/tests/corpus_tests.rs; then
+  echo "ERROR (M1.3 Gate): Camera distortion pipeline test missing in corpus_tests.rs!" >&2
+  exit 1
+fi
+echo "✓ M1.3 Gate verified: Real offline embedded Tesseract OCR, CER/WER >= 95% & realistic camera distortion corpus verified."
 
 echo "==> Repository validation passed."

@@ -284,17 +284,18 @@ Deliver:
 
 Deliver:
 
-- [x] embedded offline Tesseract engine integration via `OcrProvider` (deu, eng)
+- [x] embedded offline Tesseract engine integration via `OcrProvider` (deu, eng) with real native Android ARM64 libraries (`libtesseract.so`, `libleptonica.so`) and offline `assets/tessdata/` models without any stub bridge
 - [x] word and character bounding box generation in pixel and normalized coordinates (`hOCR` / box text)
 - [x] multi-language detection (German legal variants `de-AT`/`de-DE`, English, and bilingual documents)
 - [x] OCR confidence scores per page, per word, and per character glyph
-- [x] realistic scan and OCR test corpus (`tests/corpus/ocr/`) with ground truth and automated verification
-- [x] direct pipeline integration with M1.2 cleaned scan pages (`DocumentAuto`, `HighContrastBw`)
+- [x] hardened OCR quality gate: Levenshtein CER $\le 5.0\%$ (character accuracy $\ge 95.0\%$) and keyword accuracy $\ge 95.0\%$ without 85% fallback
+- [x] realistic camera-distorted test corpus fixture (`deu_vertrag_vertraulichkeit_camera_distorted`) with 6.5° tilt, desk surface, illumination gradient, and mobile cast shadow
+- [x] direct pipeline integration with M1.1 perspective warp and M1.2 cleaned scan pages (`DocumentAuto`, `HighContrastBw`)
 - [x] UniFFI exposure and Android/macOS bridge integration (`document_core_ocr_frame`, `document_core_ocr_clean_scan_frame`, `document_core_ocr_scan_session_page`, `document_core_detect_text_language`)
 
 ### Gate
 
-Tesseract operates completely offline through `OcrProvider` without cloud or network calls, extracts word and character bounding boxes with confidence scores, correctly detects German (including Austrian legal terms) and English documents, achieves $\ge 95\%$ keyword recognition on the realistic test corpus, and integrates seamlessly with M1.2 clean scan pages. *(Verified via `cargo test -p vocument-ocr`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
+Tesseract operates completely offline through `OcrProvider` on both macOS and Android ARM64 without stub bridges or cloud calls, extracts word and character bounding boxes with confidence scores, correctly detects German (including Austrian legal terms) and English documents, achieves $\ge 95\%$ character accuracy ($\text{CER} \le 5\%$) and keyword recognition on the realistic test corpus, and integrates seamlessly with M1.1 perspective correction and M1.2 clean scan pages. *(Verified via `cargo test -p vocument-ocr`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
 
 ---
 
