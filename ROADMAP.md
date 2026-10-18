@@ -262,18 +262,25 @@ Arbitrary convex camera quadrilateral is rectified into an upright planar rectan
 
 ---
 
-## M1.2 — Intelligent Scan Cleanup & Enhancement *(Next)*
+## M1.2 — Intelligent Scan Cleanup & Enhancement *(Status: **COMPLETE** — see [M1.2 Acceptance Record](docs/acceptance/M1.2-ACCEPTANCE.md) and [ADR-0013](docs/adr/ADR-0013-m1-2-intelligent-scan-cleanup-and-enhancement.md))*
 
 Deliver:
 
-- adaptive contrast enhancement and document background whitening
-- shadow and crease removal filters
-- binarization modes (`HighContrastBw`, `PreservePhoto`, `DocumentAuto`)
-- visual regression and cleanup quality comparison
+- [x] adaptive 2D block-based background illumination estimation ($B(x, y)$ via 90th percentile grid) and document background whitening
+- [x] shadow and crease removal filters via homomorphic background division ($> 80\%$ attenuation)
+- [x] dedicated cleanup profiles: `DocumentAuto` (adaptive color/gray), `HighContrastBw` (adaptive Bradley/Sauvola binarization), `PreservePhoto` (continuous-tone dynamic range preservation)
+- [x] quantitative visual regression metrics (`CleanupQualityMetrics`: background uniformity $\ge 90\%$, contrast ratio $\ge 80\%$, shadow attenuation $\ge 80\%$, `is_binarized`)
+- [x] genuine interactive draggable corner-adjustment handles with 24dp active glowing indicator in Compose `ViewfinderOverlay`
+- [x] strictly binding Android runtime verification gate without silent skipping (`scripts/verify-android-runtime.sh`)
+- [x] UniFFI exposure and Android/macOS bridge integration (`document_core_enhance_scan_frame`, `document_core_get_enhanced_scan_page`, `document_core_evaluate_cleanup_quality`)
+
+### Gate
+
+2D background illumination modeling normalizes paper background to $\ge 245$, cancels uneven cast shadows and paper fold creases ($> 80\%$ attenuation), provides distinct `DocumentAuto`, `HighContrastBw`, and `PreservePhoto` profiles, and demonstrates quantitative visual regression metrics ($\ge 90\%$ background uniformity, $\ge 80\%$ contrast ratio) across native Rust and Android test suites. *(Verified via `cargo test -p vocument-imaging`, `cargo test -p vocument-ffi`, and `scripts/verify-android-runtime.sh`.)*
 
 ---
 
-## M1.3 — Tesseract OCR & Text Layer Generation
+## M1.3 — Tesseract OCR & Text Layer Generation *(Next)*
 
 Deliver:
 

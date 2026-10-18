@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,19 +37,23 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import uniffi.vocument_ffi.FfiCapturedScanPage
+import uniffi.vocument_ffi.FfiPoint2D
 import uniffi.vocument_ffi.FfiQuadCorners
 import uniffi.vocument_ffi.FfiScanCleanupProfile
 import uniffi.vocument_ffi.FfiScanFrame
 import uniffi.vocument_ffi.FfiScanPixelFormat
 
 /**
- * Scan Capture & Camera Ingestion Screen (`ROADMAP.md` M1.0, `SCAN-001`, `SCAN-004`, `SCAN-006`).
+ * Scan Capture & Camera Ingestion Screen (`ROADMAP.md` M1.0/M1.1, `SCAN-001`..`SCAN-006`).
  * Interfaces live camera viewfinder frames with Rust `ImagingEngine` for real-time document
- * edge detection, multi-page scanning session state, and cleanup profile configuration.
+ * edge detection, interactive draggable corner adjustments, multi-page scan sessions, and cleanup profiles.
  */
 @Composable
 fun ScanCaptureScreen(
@@ -72,9 +77,30 @@ fun ScanCaptureScreen(
     var capturedPages by remember { mutableStateOf<List<FfiCapturedScanPage>>(emptyList()) }
     var latestLiveFrame by remember { mutableStateOf<FfiScanFrame?>(null) }
     var detectedCorners by remember { mutableStateOf<FfiQuadCorners?>(null) }
+    var isManualAdjustmentActive by remember { mutableStateOf(false) }
     var selectedProfile by remember { mutableStateOf(FfiScanCleanupProfile.DOCUMENT_AUTO) }
     var statusMessage by remember { mutableStateOf(if (hasCameraPermission) "Camera active: point at document" else "Camera permission required") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun updateCorner(cornerIndex: Int, newX: Float, newY: Float) {
+        val current = detectedCorners ?: FfiQuadCorners(
+            topLeft = FfiPoint2D(0.15f, 0.15f),
+            topRight = FfiPoint2D(0.85f, 0.15f),
+            bottomRight = FfiPoint2D(0.85f, 0.85f),
+            bottomLeft = FfiPoint2D(0.15f, 0.85f),
+            confidenceMilli = 999u
+        )
+        val clampedPt = FfiPoint2D(newX.coerceIn(0.01f, 0.99f), newY.coerceIn(0.01f, 0.99f))
+        val updated = when (cornerIndex) {
+            0 -> current.copy(topLeft = clampedPt, confidenceMilli = 1000u)
+            1 -> current.copy(topRight = clampedPt, confidenceMilli = 1000u)
+            2 -> current.copy(bottomRight = clampedPt, confidenceMilli = 1000u)
+            else -> current.copy(bottomLeft = clampedPt, confidenceMilli = 1000u)
+        }
+        detectedCorners = updated
+        isManualAdjustmentActive = true
+        statusMessage = "Manual corner alignment active (Handle #${cornerIndex + 1})"
+    }
 
     fun ensureActiveSession(): String {
         val existing = activeSessionId
@@ -88,7 +114,7 @@ fun ScanCaptureScreen(
     fun handleCaptureCurrentFrame(frameToCapture: FfiScanFrame) {
         runCatching {
             val sessionId = ensureActiveSession()
-            val corners = coreBridge.detectDocumentEdges(frameToCapture)
+            val corners = detectedCorners ?: coreBridge.detectDocumentEdges(frameToCapture)
             val page = coreBridge.appendScanPage(
                 sessionId = sessionId,
                 frame = frameToCapture,
@@ -98,9 +124,11 @@ fun ScanCaptureScreen(
             val session = coreBridge.getScanSession(sessionId)
             capturedPages = session.pages
             val warped = runCatching { coreBridge.getWarpedScanPage(sessionId, page.pageIndex) }.getOrNull()
+            val enhanced = runCatching { coreBridge.getEnhancedScanPage(sessionId, page.pageIndex) }.getOrNull()
             val deskew = warped?.let { runCatching { coreBridge.deskewFrame(it) }.getOrNull() }
             val deskewInfo = if (deskew != null) ", skew=${deskew.skewAngleDegrees}°" else ""
-            statusMessage = "Page #${page.pageIndex + 1u} rectified (${warped?.width ?: frameToCapture.width}x${warped?.height ?: frameToCapture.height}px$deskewInfo)"
+            val profileInfo = ", ${selectedProfile.name.lowercase().replace('_', ' ')}"
+            statusMessage = "Page #${page.pageIndex + 1u} cleaned (${enhanced?.width ?: warped?.width ?: frameToCapture.width}x${enhanced?.height ?: warped?.height ?: frameToCapture.height}px$deskewInfo$profileInfo)"
             errorMessage = null
         }.onFailure { err ->
             errorMessage = "Scan error: ${err.message}"
@@ -141,6 +169,7 @@ fun ScanCaptureScreen(
             activeSessionId = null
             capturedPages = emptyList()
             detectedCorners = null
+            isManualAdjustmentActive = false
             statusMessage = "Scan session completed and closed."
         }
     }
@@ -200,10 +229,12 @@ fun ScanCaptureScreen(
                         modifier = Modifier.fillMaxSize(),
                         onFrameAnalyzed = { liveFrame ->
                             latestLiveFrame = liveFrame
-                            val corners = runCatching { coreBridge.detectDocumentEdges(liveFrame) }.getOrNull()
-                            detectedCorners = corners
-                            if (corners != null && corners.confidenceMilli >= 650u) {
-                                statusMessage = "Document detected (${corners.confidenceMilli}‰) — steady"
+                            if (!isManualAdjustmentActive) {
+                                val corners = runCatching { coreBridge.detectDocumentEdges(liveFrame) }.getOrNull()
+                                detectedCorners = corners
+                                if (corners != null && corners.confidenceMilli >= 650u) {
+                                    statusMessage = "Document detected (${corners.confidenceMilli}‰) — steady"
+                                }
                             }
                         }
                     )
@@ -223,9 +254,11 @@ fun ScanCaptureScreen(
                     }
                 }
 
-                // Overlay with dynamic quadrilateral corners
+                // Overlay with dynamic quadrilateral corners and draggable adjustment handles
                 ViewfinderOverlay(
                     corners = detectedCorners,
+                    isManualAdjustment = isManualAdjustmentActive,
+                    onCornerDragged = ::updateCorner,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -249,11 +282,28 @@ fun ScanCaptureScreen(
             }
         }
 
-        // Cleanup Profile Selection
-        Text(
-            text = "Enhancement Profile",
-            style = MaterialTheme.typography.labelMedium
-        )
+        // Cleanup Profile Selection & Corner Reset
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Enhancement Profile",
+                style = MaterialTheme.typography.labelMedium
+            )
+            if (isManualAdjustmentActive) {
+                OutlinedButton(
+                    onClick = {
+                        isManualAdjustmentActive = false
+                        detectedCorners = null
+                        statusMessage = "Auto corner detection restored"
+                    }
+                ) {
+                    Text("Reset Auto Corners")
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -324,9 +374,70 @@ fun ScanCaptureScreen(
 @Composable
 fun ViewfinderOverlay(
     corners: FfiQuadCorners?,
+    isManualAdjustment: Boolean,
+    onCornerDragged: (cornerIndex: Int, newX: Float, newY: Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = modifier) {
+    var activeDraggingCorner by remember { mutableStateOf<Int?>(null) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Canvas(
+        modifier = modifier
+            .onSizeChanged { canvasSize = it }
+            .pointerInput(corners) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        if (canvasSize.width > 0 && canvasSize.height > 0) {
+                            val activeCorners = corners ?: FfiQuadCorners(
+                                topLeft = FfiPoint2D(0.15f, 0.15f),
+                                topRight = FfiPoint2D(0.85f, 0.15f),
+                                bottomRight = FfiPoint2D(0.85f, 0.85f),
+                                bottomLeft = FfiPoint2D(0.15f, 0.85f),
+                                confidenceMilli = 999u
+                            )
+                            val p0 = Offset(activeCorners.topLeft.x * canvasSize.width, activeCorners.topLeft.y * canvasSize.height)
+                            val p1 = Offset(activeCorners.topRight.x * canvasSize.width, activeCorners.topRight.y * canvasSize.height)
+                            val p2 = Offset(activeCorners.bottomRight.x * canvasSize.width, activeCorners.bottomRight.y * canvasSize.height)
+                            val p3 = Offset(activeCorners.bottomLeft.x * canvasSize.width, activeCorners.bottomLeft.y * canvasSize.height)
+                            val points = listOf(p0, p1, p2, p3)
+                            val hitRadius = 48.dp.toPx()
+                            val hitIndex = points.indexOfFirst { (it - offset).getDistance() <= hitRadius }
+                            if (hitIndex != -1) {
+                                activeDraggingCorner = hitIndex
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        activeDraggingCorner = null
+                    },
+                    onDragCancel = {
+                        activeDraggingCorner = null
+                    },
+                    onDrag = { change, dragAmount ->
+                        val cornerIdx = activeDraggingCorner
+                        if (cornerIdx != null && canvasSize.width > 0 && canvasSize.height > 0) {
+                            change.consume()
+                            val activeCorners = corners ?: FfiQuadCorners(
+                                topLeft = FfiPoint2D(0.15f, 0.15f),
+                                topRight = FfiPoint2D(0.85f, 0.15f),
+                                bottomRight = FfiPoint2D(0.85f, 0.85f),
+                                bottomLeft = FfiPoint2D(0.15f, 0.85f),
+                                confidenceMilli = 999u
+                            )
+                            val currentNorm = when (cornerIdx) {
+                                0 -> activeCorners.topLeft
+                                1 -> activeCorners.topRight
+                                2 -> activeCorners.bottomRight
+                                else -> activeCorners.bottomLeft
+                            }
+                            val newX = (currentNorm.x + dragAmount.x / canvasSize.width).coerceIn(0.01f, 0.99f)
+                            val newY = (currentNorm.y + dragAmount.y / canvasSize.height).coerceIn(0.01f, 0.99f)
+                            onCornerDragged(cornerIdx, newX, newY)
+                        }
+                    }
+                )
+            }
+    ) {
         val canvasWidth = size.width
         val canvasHeight = size.height
 
@@ -358,7 +469,9 @@ fun ViewfinderOverlay(
                 close()
             }
 
-            val quadColor = if (corners.confidenceMilli >= 650u) {
+            val quadColor = if (isManualAdjustment) {
+                Color(0xFF29B6F6) // Cyan/Blue in manual adjustment mode
+            } else if (corners.confidenceMilli >= 650u) {
                 Color(0xFF00E676) // High confidence: Vibrant Green
             } else {
                 Color(0xFFFFD600) // Moderate confidence: Amber
@@ -374,9 +487,18 @@ fun ViewfinderOverlay(
                 style = Stroke(width = 3.dp.toPx())
             )
 
-            for (cp in listOf(p1, p2, p3, p4)) {
-                drawCircle(color = Color.White, radius = 6.dp.toPx(), center = cp)
-                drawCircle(color = quadColor, radius = 4.dp.toPx(), center = cp)
+            val points = listOf(p1, p2, p3, p4)
+            for ((idx, cp) in points.withIndex()) {
+                val isDragging = activeDraggingCorner == idx
+                if (isDragging) {
+                    drawCircle(color = quadColor.copy(alpha = 0.35f), radius = 24.dp.toPx(), center = cp)
+                    drawCircle(color = Color.White, radius = 12.dp.toPx(), center = cp)
+                    drawCircle(color = quadColor, radius = 8.dp.toPx(), center = cp)
+                } else {
+                    drawCircle(color = Color.Black.copy(alpha = 0.4f), radius = 16.dp.toPx(), center = cp)
+                    drawCircle(color = Color.White, radius = 8.dp.toPx(), center = cp)
+                    drawCircle(color = quadColor, radius = 5.dp.toPx(), center = cp)
+                }
             }
         }
     }

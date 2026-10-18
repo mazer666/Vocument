@@ -910,6 +910,95 @@ public func FfiConverterTypeFfiCapturedScanPage_lower(_ value: FfiCapturedScanPa
 
 
 /**
+ * Quantitative metrics evaluating scan cleanup quality crossing UniFFI boundary (`SCAN-004`).
+ */
+public struct FfiCleanupQualityMetrics {
+    public var backgroundUniformity: Float
+    public var contrastRatio: Float
+    public var shadowAttenuation: Float
+    public var isBinarized: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(backgroundUniformity: Float, contrastRatio: Float, shadowAttenuation: Float, isBinarized: Bool) {
+        self.backgroundUniformity = backgroundUniformity
+        self.contrastRatio = contrastRatio
+        self.shadowAttenuation = shadowAttenuation
+        self.isBinarized = isBinarized
+    }
+}
+
+#if compiler(>=6)
+extension FfiCleanupQualityMetrics: Sendable {}
+#endif
+
+
+extension FfiCleanupQualityMetrics: Equatable, Hashable {
+    public static func ==(lhs: FfiCleanupQualityMetrics, rhs: FfiCleanupQualityMetrics) -> Bool {
+        if lhs.backgroundUniformity != rhs.backgroundUniformity {
+            return false
+        }
+        if lhs.contrastRatio != rhs.contrastRatio {
+            return false
+        }
+        if lhs.shadowAttenuation != rhs.shadowAttenuation {
+            return false
+        }
+        if lhs.isBinarized != rhs.isBinarized {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(backgroundUniformity)
+        hasher.combine(contrastRatio)
+        hasher.combine(shadowAttenuation)
+        hasher.combine(isBinarized)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiCleanupQualityMetrics: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCleanupQualityMetrics {
+        return
+            try FfiCleanupQualityMetrics(
+                backgroundUniformity: FfiConverterFloat.read(from: &buf), 
+                contrastRatio: FfiConverterFloat.read(from: &buf), 
+                shadowAttenuation: FfiConverterFloat.read(from: &buf), 
+                isBinarized: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiCleanupQualityMetrics, into buf: inout [UInt8]) {
+        FfiConverterFloat.write(value.backgroundUniformity, into: &buf)
+        FfiConverterFloat.write(value.contrastRatio, into: &buf)
+        FfiConverterFloat.write(value.shadowAttenuation, into: &buf)
+        FfiConverterBool.write(value.isBinarized, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCleanupQualityMetrics_lift(_ buf: RustBuffer) throws -> FfiCleanupQualityMetrics {
+    return try FfiConverterTypeFfiCleanupQualityMetrics.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCleanupQualityMetrics_lower(_ value: FfiCleanupQualityMetrics) -> RustBuffer {
+    return FfiConverterTypeFfiCleanupQualityMetrics.lower(value)
+}
+
+
+/**
  * Result of deskewing and orientation correction crossing UniFFI boundary.
  */
 public struct FfiDeskewResult {
@@ -5697,6 +5786,28 @@ public func documentCoreDetectDocumentEdges(frame: FfiScanFrame)throws  -> FfiQu
 })
 }
 /**
+ * Enhances an ingested scan frame according to the selected cleanup profile (`SCAN-004`).
+ */
+public func documentCoreEnhanceScanFrame(frame: FfiScanFrame, profile: FfiScanCleanupProfile)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterTypeFfiScanCleanupProfile_lower(profile),$0
+    )
+})
+}
+/**
+ * Evaluates cleanup quality metrics between an original uncleaned frame and an enhanced frame.
+ */
+public func documentCoreEvaluateCleanupQuality(original: FfiScanFrame, enhanced: FfiScanFrame)throws  -> FfiCleanupQualityMetrics  {
+    return try  FfiConverterTypeFfiCleanupQualityMetrics_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_evaluate_cleanup_quality(
+        FfiConverterTypeFfiScanFrame_lower(original),
+        FfiConverterTypeFfiScanFrame_lower(enhanced),$0
+    )
+})
+}
+/**
  * Executes a recovery action (`Restore`, `Preview`, `Discard`, `OpenAsNew`) on a recovered document.
  *
  * **M0.6 Gate Invariant:** Disk file remains 100% intact until explicit user save.
@@ -5727,6 +5838,17 @@ public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: Stri
     uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(basePath),
         FfiConverterString.lower(suffix),$0
+    )
+})
+}
+/**
+ * Retrieves the enhanced scan page image from an active scanning session (`SCAN-004`, `SCAN-006`).
+ */
+public func documentCoreGetEnhancedScanPage(sessionId: String, pageIndex: UInt32)throws  -> FfiScanFrame  {
+    return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
     )
 })
 }
@@ -6173,6 +6295,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_evaluate_cleanup_quality() != 31082) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -6180,6 +6308,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558) {

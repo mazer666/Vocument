@@ -50,6 +50,7 @@ REQUIRED_FILES=(
   "docs/acceptance/M0-ACCEPTANCE.md"
   "docs/acceptance/M1.0-ACCEPTANCE.md"
   "docs/acceptance/M1.1-ACCEPTANCE.md"
+  "docs/acceptance/M1.2-ACCEPTANCE.md"
   "docs/adr/ADR_TEMPLATE.md"
   "docs/adr/ADR-0001-cargo-workspace-and-module-boundaries.md"
   "docs/adr/ADR-0002-central-configuration-sync.md"
@@ -63,11 +64,13 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0010-m0-7-interoperability-gate-and-foreign-viewer-verification.md"
   "docs/adr/ADR-0011-m1-0-android-runtime-foundation-and-scan-capture-pipeline.md"
   "docs/adr/ADR-0012-m1-1-perspective-correction-deskew-and-adaptive-rotation.md"
+  "docs/adr/ADR-0013-m1-2-intelligent-scan-cleanup-and-enhancement.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "archive/baselines/0.1/MANIFEST.sha256"
   "engines/imaging/src/geometry.rs"
   "engines/imaging/src/perspective.rs"
+  "engines/imaging/src/cleanup.rs"
   "engines/imaging/src/lib.rs"
   "apps/android/app/src/main/java/org/vocument/app/CameraPreviewView.kt"
   "platform/vocument-ffi/src/recovery_dto.rs"
@@ -197,5 +200,20 @@ if ! grep -q "document_core_deskew_frame" platform/vocument-ffi/src/scan_dto.rs;
   exit 1
 fi
 echo "✓ M1.1 Gate verified: Perspective correction, deskew & adaptive rotation verified."
+
+# Enforce M1.2 Gate: Intelligent scan cleanup, shadow/crease reduction & enhancement verified
+if ! grep -q "testCleanupProfilesAndVisualRegressionMetrics" apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt; then
+  echo "ERROR (M1.2 Gate): M1.2 cleanup profile bridge test missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_enhance_scan_frame" platform/vocument-ffi/src/scan_dto.rs; then
+  echo "ERROR (M1.2 Gate): M1.2 document_core_enhance_scan_frame export missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_evaluate_cleanup_quality" platform/vocument-ffi/src/scan_dto.rs; then
+  echo "ERROR (M1.2 Gate): M1.2 document_core_evaluate_cleanup_quality export missing!" >&2
+  exit 1
+fi
+echo "✓ M1.2 Gate verified: Intelligent scan cleanup, shadow/crease reduction & enhancement verified."
 
 echo "==> Repository validation passed."

@@ -1,7 +1,8 @@
 use vocument_imaging::{
-    CapturedScanPage, DeskewResult, PixelFormat, Point2D, QuadCorners, ScanCaptureSession,
-    ScanCaptureSessionRegistry, ScanCleanupProfile, ScanFrame, ScanFrameMetadata,
-    auto_orient_frame, deskew_frame, detect_document_edges, rotate_frame_90, warp_perspective,
+    CapturedScanPage, CleanupQualityMetrics, DeskewResult, PixelFormat, Point2D, QuadCorners,
+    ScanCaptureSession, ScanCaptureSessionRegistry, ScanCleanupProfile, ScanFrame,
+    ScanFrameMetadata, auto_orient_frame, deskew_frame, detect_document_edges, enhance_frame,
+    evaluate_cleanup_quality, rotate_frame_90, warp_perspective,
 };
 
 use crate::DocumentCoreError;
@@ -348,6 +349,60 @@ pub fn document_core_get_warped_scan_page(
     Ok(frame.into())
 }
 
+/// Quantitative metrics evaluating scan cleanup quality crossing UniFFI boundary (`SCAN-004`).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct FfiCleanupQualityMetrics {
+    pub background_uniformity: f32,
+    pub contrast_ratio: f32,
+    pub shadow_attenuation: f32,
+    pub is_binarized: bool,
+}
+
+impl From<CleanupQualityMetrics> for FfiCleanupQualityMetrics {
+    fn from(m: CleanupQualityMetrics) -> Self {
+        Self {
+            background_uniformity: m.background_uniformity,
+            contrast_ratio: m.contrast_ratio,
+            shadow_attenuation: m.shadow_attenuation,
+            is_binarized: m.is_binarized,
+        }
+    }
+}
+
+/// Enhances an ingested scan frame according to the selected cleanup profile (`SCAN-004`).
+#[uniffi::export]
+pub fn document_core_enhance_scan_frame(
+    frame: FfiScanFrame,
+    profile: FfiScanCleanupProfile,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let internal_frame: ScanFrame = frame.into();
+    let enhanced = enhance_frame(&internal_frame, profile.into())?;
+    Ok(enhanced.into())
+}
+
+/// Retrieves the enhanced scan page image from an active scanning session (`SCAN-004`, `SCAN-006`).
+#[uniffi::export]
+pub fn document_core_get_enhanced_scan_page(
+    session_id: String,
+    page_index: u32,
+) -> Result<FfiScanFrame, DocumentCoreError> {
+    let frame =
+        ScanCaptureSessionRegistry::global().get_enhanced_page(&session_id, page_index as usize)?;
+    Ok(frame.into())
+}
+
+/// Evaluates cleanup quality metrics between an original uncleaned frame and an enhanced frame.
+#[uniffi::export]
+pub fn document_core_evaluate_cleanup_quality(
+    original: FfiScanFrame,
+    enhanced: FfiScanFrame,
+) -> Result<FfiCleanupQualityMetrics, DocumentCoreError> {
+    let orig: ScanFrame = original.into();
+    let enh: ScanFrame = enhanced.into();
+    let metrics = evaluate_cleanup_quality(&orig, &enh)?;
+    Ok(metrics.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -385,7 +440,15 @@ mod tests {
         let warped = document_core_warp_perspective(frame.clone(), corners, None).expect("warp");
         assert!(warped.width > 0 && warped.height > 0);
 
-        let deskewed = document_core_deskew_frame(warped).expect("deskew");
+        let enhanced =
+            document_core_enhance_scan_frame(warped.clone(), FfiScanCleanupProfile::DocumentAuto)
+                .expect("enhance");
+        assert_eq!(enhanced.width, warped.width);
+
+        let metrics = document_core_evaluate_cleanup_quality(warped, enhanced).expect("metrics");
+        assert!(metrics.background_uniformity >= 0.80);
+
+        let deskewed = document_core_deskew_frame(frame.clone()).expect("deskew");
         assert!(deskewed.skew_angle_degrees.abs() <= 15.0);
 
         let rotated = document_core_rotate_frame(frame.clone(), 1).expect("rotate");
@@ -399,6 +462,10 @@ mod tests {
         let warped_page =
             document_core_get_warped_scan_page(session_id.clone(), 0).expect("get warped page");
         assert!(warped_page.width > 0);
+
+        let enhanced_page =
+            document_core_get_enhanced_scan_page(session_id.clone(), 0).expect("get enhanced page");
+        assert!(enhanced_page.width > 0);
 
         let snap = document_core_get_scan_session(session_id.clone()).expect("get snap");
         assert_eq!(snap.page_count, 1);

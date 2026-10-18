@@ -156,4 +156,77 @@ class ScanCaptureBridgeTest {
         assertEquals("Auto-oriented width must be 60", 60u, oriented.width)
         assertEquals("Auto-oriented height must be 80", 80u, oriented.height)
     }
+
+    private fun createSyntheticShadowedDocumentFrame(width: UInt, height: UInt): FfiScanFrame {
+        val totalBytes = (width * height * 4u).toInt()
+        val pixels = ByteArray(totalBytes) { 255.toByte() }
+        val w = width.toInt()
+        val h = height.toInt()
+        for (y in 0 until h) {
+            val yf = y.toFloat() / h.toFloat()
+            val row = y * w * 4
+            for (x in 0 until w) {
+                val xf = x.toFloat() / w.toFloat()
+                var bg = 110f + xf * 130f
+                if (kotlin.math.abs(yf - 0.5f) < 0.02f) {
+                    bg *= 0.75f
+                }
+                val isText = (y % 20 < 4) && (x in 20 until (w - 20))
+                val lum = if (isText) 25f else bg
+                val idx = row + (x * 4)
+                val byteVal = lum.toInt().coerceIn(0, 255).toByte()
+                pixels[idx] = byteVal
+                pixels[idx + 1] = byteVal
+                pixels[idx + 2] = byteVal
+                pixels[idx + 3] = 255.toByte()
+            }
+        }
+        return FfiScanFrame(
+            width = width,
+            height = height,
+            stride = width,
+            format = FfiScanPixelFormat.RGBA8,
+            orientationDegrees = 0u,
+            pixels = pixels,
+            timestampMs = System.currentTimeMillis().toULong(),
+            deviceAngleDegrees = 0.0f,
+            brightnessHint = 0.8f,
+            isSteady = true
+        )
+    }
+
+    @Test
+    fun testCleanupProfilesAndVisualRegressionMetrics() {
+        val frame = createSyntheticShadowedDocumentFrame(width = 128u, height = 128u)
+
+        // 1. DocumentAuto profile:
+        val autoEnhanced = bridge.enhanceScanFrame(frame, FfiScanCleanupProfile.DOCUMENT_AUTO)
+        assertEquals("Enhanced width must match", 128u, autoEnhanced.width)
+        assertEquals("Enhanced height must match", 128u, autoEnhanced.height)
+
+        val autoMetrics = bridge.evaluateCleanupQuality(frame, autoEnhanced)
+        assertTrue("Background uniformity should be >= 0.85 (got ${autoMetrics.backgroundUniformity})", autoMetrics.backgroundUniformity >= 0.85f)
+        assertTrue("Contrast ratio should be >= 0.80 (got ${autoMetrics.contrastRatio})", autoMetrics.contrastRatio >= 0.80f)
+        assertTrue("Shadow attenuation should be >= 0.75 (got ${autoMetrics.shadowAttenuation})", autoMetrics.shadowAttenuation >= 0.75f)
+
+        // 2. HighContrastBw profile:
+        val bwEnhanced = bridge.enhanceScanFrame(frame, FfiScanCleanupProfile.HIGH_CONTRAST_BW)
+        val bwMetrics = bridge.evaluateCleanupQuality(frame, bwEnhanced)
+        assertTrue("HighContrastBw must be binarized", bwMetrics.isBinarized)
+        assertTrue("Binarized background uniformity >= 0.95", bwMetrics.backgroundUniformity >= 0.95f)
+
+        // 3. PreservePhoto profile:
+        val photoEnhanced = bridge.enhanceScanFrame(frame, FfiScanCleanupProfile.PRESERVE_PHOTO)
+        val photoMetrics = bridge.evaluateCleanupQuality(frame, photoEnhanced)
+        assertTrue("PreservePhoto must not be binarized", !photoMetrics.isBinarized)
+
+        // 4. Session enhanced page retrieval:
+        val sessionId = bridge.startScanSession()
+        val page = bridge.appendScanPage(sessionId, frame, null, FfiScanCleanupProfile.DOCUMENT_AUTO)
+        val retrievedEnhanced = bridge.getEnhancedScanPage(sessionId, page.pageIndex)
+        val warpedPage = bridge.getWarpedScanPage(sessionId, page.pageIndex)
+        assertEquals("Retrieved enhanced frame width must match warped width", warpedPage.width, retrievedEnhanced.width)
+        assertTrue("Retrieved enhanced frame width must be positive", retrievedEnhanced.width > 0u)
+        bridge.closeScanSession(sessionId)
+    }
 }

@@ -1,10 +1,10 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m0-complete"
+  product_status: "m1-in-progress"
   current_milestone: "M1"
   current_milestone_name: "Android Scan & OCR"
-  current_submilestone: "M1.2"
+  current_submilestone: "M1.3"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -18,6 +18,7 @@ project:
     - "M0.7"
     - "M1.0"
     - "M1.1"
+    - "M1.2"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

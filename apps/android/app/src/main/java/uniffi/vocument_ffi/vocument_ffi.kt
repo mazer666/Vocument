@@ -811,6 +811,12 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -844,11 +850,17 @@ fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_evaluate_cleanup_quality(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_scan_session(
 ): Short
@@ -989,11 +1001,17 @@ fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.B
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_evaluate_cleanup_quality(`original`: RustBuffer.ByValue,`enhanced`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(`documentId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1224,6 +1242,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_evaluate_cleanup_quality() != 31082.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1231,6 +1255,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558.toShort()) {
@@ -1822,6 +1849,49 @@ public object FfiConverterTypeFfiCapturedScanPage: FfiConverterRustBuffer<FfiCap
             FfiConverterUInt.write(value.`frameHeight`, buf)
             FfiConverterULong.write(value.`rawBytesLen`, buf)
             FfiConverterULong.write(value.`capturedUnixMs`, buf)
+    }
+}
+
+
+
+/**
+ * Quantitative metrics evaluating scan cleanup quality crossing UniFFI boundary (`SCAN-004`).
+ */
+data class FfiCleanupQualityMetrics (
+    var `backgroundUniformity`: kotlin.Float, 
+    var `contrastRatio`: kotlin.Float, 
+    var `shadowAttenuation`: kotlin.Float, 
+    var `isBinarized`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCleanupQualityMetrics: FfiConverterRustBuffer<FfiCleanupQualityMetrics> {
+    override fun read(buf: ByteBuffer): FfiCleanupQualityMetrics {
+        return FfiCleanupQualityMetrics(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCleanupQualityMetrics) = (
+            FfiConverterFloat.allocationSize(value.`backgroundUniformity`) +
+            FfiConverterFloat.allocationSize(value.`contrastRatio`) +
+            FfiConverterFloat.allocationSize(value.`shadowAttenuation`) +
+            FfiConverterBoolean.allocationSize(value.`isBinarized`)
+    )
+
+    override fun write(value: FfiCleanupQualityMetrics, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`backgroundUniformity`, buf)
+            FfiConverterFloat.write(value.`contrastRatio`, buf)
+            FfiConverterFloat.write(value.`shadowAttenuation`, buf)
+            FfiConverterBoolean.write(value.`isBinarized`, buf)
     }
 }
 
@@ -4761,6 +4831,32 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Enhances an ingested scan frame according to the selected cleanup profile (`SCAN-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEnhanceScanFrame`(`frame`: FfiScanFrame, `profile`: FfiScanCleanupProfile): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterTypeFfiScanCleanupProfile.lower(`profile`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Evaluates cleanup quality metrics between an original uncleaned frame and an enhanced frame.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEvaluateCleanupQuality`(`original`: FfiScanFrame, `enhanced`: FfiScanFrame): FfiCleanupQualityMetrics {
+            return FfiConverterTypeFfiCleanupQualityMetrics.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_evaluate_cleanup_quality(
+        FfiConverterTypeFfiScanFrame.lower(`original`),FfiConverterTypeFfiScanFrame.lower(`enhanced`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Executes a recovery action (`Restore`, `Preview`, `Discard`, `OpenAsNew`) on a recovered document.
          *
          * **M0.6 Gate Invariant:** Disk file remains 100% intact until explicit user save.
@@ -4795,6 +4891,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(`basePath`),FfiConverterString.lower(`suffix`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Retrieves the enhanced scan page image from an active scanning session (`SCAN-004`, `SCAN-006`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetEnhancedScanPage`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiScanFrame {
+            return FfiConverterTypeFfiScanFrame.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
 }
     )
     }

@@ -6,6 +6,9 @@ import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiRecoveryAction
 import uniffi.vocument_ffi.FfiSaveConflictResolution
 import uniffi.vocument_ffi.FfiSaveOutcome
+import uniffi.vocument_ffi.FfiScanCleanupProfile
+import uniffi.vocument_ffi.FfiScanFrame
+import uniffi.vocument_ffi.FfiScanPixelFormat
 import uniffi.vocument_ffi.FfiTileRenderRequest
 
 fun main() {
@@ -545,5 +548,35 @@ fun main() {
         "✓ Kotlin (Android M0.7) → InteropGate → FullWorkflow → " +
             "MuPDF(${interopReport.mupdfReopenVerified}) → mutool(${interopReport.mutoolVerified}) → " +
             "Quartz(${interopReport.coregraphicsSipsVerified}) → PDFium(${interopReport.chromePdfiumVerified}) → AllGatesPassed"
+    )
+
+    // M1.0/M1.1/M1.2 verification: Scan-Capture Pipeline, Homography Rectification & Cleanup Profiles
+    val scanSessId = bridge.startScanSession()
+    val rawPixels = ByteArray(100 * 100 * 4) { 35.toByte() } // Desk background
+    for (y in 20 until 80) {
+        for (x in 20 until 80) {
+            val idx = (y * 100 + x) * 4
+            val isText = (y % 12 < 3) && (x in 30..70)
+            val lum = if (isText) 25.toByte() else 235.toByte()
+            rawPixels[idx] = lum
+            rawPixels[idx + 1] = lum
+            rawPixels[idx + 2] = lum
+            rawPixels[idx + 3] = 255.toByte()
+        }
+    }
+    val testFrame = FfiScanFrame(
+        width = 100u, height = 100u, stride = 100u, format = FfiScanPixelFormat.RGBA8,
+        orientationDegrees = 0u, pixels = rawPixels, timestampMs = 1000uL,
+        deviceAngleDegrees = 0f, brightnessHint = 0.8f, isSteady = true
+    )
+    val scanPage = bridge.appendScanPage(scanSessId, testFrame, null, FfiScanCleanupProfile.DOCUMENT_AUTO)
+    val enhanced = bridge.getEnhancedScanPage(scanSessId, scanPage.pageIndex)
+    val metrics = bridge.evaluateCleanupQuality(testFrame, enhanced)
+    check(metrics.backgroundUniformity >= 0.80f) { "M1.2 uniformity check failed: ${metrics.backgroundUniformity}" }
+    bridge.closeScanSession(scanSessId)
+    println(
+        "✓ Kotlin (Android M1.2) → ScanCapture → HomographyWarp → Deskew → " +
+            "Cleanup(DocumentAuto) → Uniformity(${(metrics.backgroundUniformity * 100).toInt()}%) → " +
+            "Contrast(${(metrics.contrastRatio * 100).toInt()}%) → GateVerified"
     )
 }

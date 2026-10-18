@@ -4,6 +4,27 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m1.2] - 2026-10-18
+
+### Added
+- Completed **M1.2 — Intelligent Scan Cleanup & Enhancement** (`docs/acceptance/M1.2-ACCEPTANCE.md`, `ADR-0013`).
+- Implemented modular image cleanup in `engines/imaging/src/cleanup.rs` (581 lines) strictly complying with `CODE-001` (all source files $\le 600$ lines).
+- Implemented adaptive 2D block-based background illumination estimation ($B(x, y)$ via 90th percentile grid with $3\times 3$ box smoothing and bilinear interpolation).
+- Implemented shadow and crease removal filters via homomorphic background division ($> 80\%$ gradient attenuation).
+- Implemented dedicated scan cleanup profiles:
+  - `DocumentAuto`: Background whitening ($> 215 \to 255$), ink darkening ($< 80 \to \text{dark}$), power-law S-curve contrast, and color/hue preservation for color scans.
+  - `HighContrastBw`: Adaptive Bradley/Sauvola threshold binarization ($18\%$ below local paper background) generating crisp binary output without shadow artifacts.
+  - `PreservePhoto`: Continuous-tone photo enhancement with soft illumination flattening ($\gamma = 0.60$) preserving full dynamic range without clipping.
+- Implemented quantitative visual regression metrics (`CleanupQualityMetrics` and `evaluate_cleanup_quality`: background uniformity $\ge 90\%$, contrast ratio $\ge 80\%$, shadow attenuation $\ge 80\%$, `is_binarized`).
+- Resolved M1.1 gaps:
+  - Added interactive draggable corner adjustment handles in Compose `ViewfinderOverlay` with 24dp active glowing indicator, manual override locking, and "Reset Auto Corners" control.
+  - Converted Step 4 in `scripts/verify-android-runtime.sh` into a strictly binding runtime gate (no silent skipping if `adb` or device/emulator missing).
+  - Updated `product_status` in `project/project.yaml` to `"m1-in-progress"`.
+- Exposed M1.2 APIs across UniFFI (`platform/vocument-ffi/src/scan_dto.rs`, 479 lines): `document_core_enhance_scan_frame`, `document_core_get_enhanced_scan_page`, `document_core_evaluate_cleanup_quality`, `FfiCleanupQualityMetrics`.
+- Added Kotlin wrapper methods in `DocumentCoreBridge.kt` (564 lines) and enhanced `ScanCaptureScreen.kt` (526 lines).
+- Added comprehensive unit and regression tests in Rust (`cleanup::tests`) and Android Gradle (`ScanCaptureBridgeTest.kt`, `VerifyKotlinHandshakeCli.kt`).
+- Enforced M1.2 Gate validation in `scripts/validate-repo.sh`.
+
 ## [0.1.0-m1.1] - 2026-10-18
 
 ### Added

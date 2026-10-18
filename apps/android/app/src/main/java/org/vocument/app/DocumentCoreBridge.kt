@@ -37,6 +37,7 @@ import uniffi.vocument_ffi.FfiTileCacheStats
 import uniffi.vocument_ffi.FfiTileRenderRequest
 import uniffi.vocument_ffi.FfiTransactionHistorySnapshot
 import uniffi.vocument_ffi.FfiViewportRenderResult
+import uniffi.vocument_ffi.FfiCleanupQualityMetrics
 import uniffi.vocument_ffi.documentCoreAddHighlightAnnotation
 import uniffi.vocument_ffi.documentCoreAppendScanPage
 import uniffi.vocument_ffi.documentCoreAutoOrientFrame
@@ -46,9 +47,12 @@ import uniffi.vocument_ffi.documentCoreCloseScanSession
 import uniffi.vocument_ffi.documentCoreCloseSession
 import uniffi.vocument_ffi.documentCoreDeskewFrame
 import uniffi.vocument_ffi.documentCoreDetectDocumentEdges
+import uniffi.vocument_ffi.documentCoreEnhanceScanFrame
+import uniffi.vocument_ffi.documentCoreEvaluateCleanupQuality
 import uniffi.vocument_ffi.documentCoreExecuteRecoveryAction
 import uniffi.vocument_ffi.documentCoreExportTransactionJournalJson
 import uniffi.vocument_ffi.documentCoreGenerateCollisionFreePath
+import uniffi.vocument_ffi.documentCoreGetEnhancedScanPage
 import uniffi.vocument_ffi.documentCoreGetScanSession
 import uniffi.vocument_ffi.documentCoreGetSessionSnapshot
 import uniffi.vocument_ffi.documentCoreGetWarpedScanPage
@@ -506,6 +510,27 @@ class DocumentCoreBridge {
      */
     fun getWarpedScanPage(sessionId: String, pageIndex: UInt): FfiScanFrame {
         return documentCoreGetWarpedScanPage(sessionId, pageIndex)
+    }
+
+    /**
+     * Enhances an ingested scan frame according to the selected cleanup profile (`SCAN-004`).
+     */
+    fun enhanceScanFrame(frame: FfiScanFrame, profile: FfiScanCleanupProfile): FfiScanFrame {
+        return documentCoreEnhanceScanFrame(frame, profile)
+    }
+
+    /**
+     * Retrieves the enhanced scan page image from an active scanning session (`SCAN-004`, `SCAN-006`).
+     */
+    fun getEnhancedScanPage(sessionId: String, pageIndex: UInt): FfiScanFrame {
+        return documentCoreGetEnhancedScanPage(sessionId, pageIndex)
+    }
+
+    /**
+     * Evaluates cleanup quality metrics between an original uncleaned frame and an enhanced frame (`SCAN-004`).
+     */
+    fun evaluateCleanupQuality(original: FfiScanFrame, enhanced: FfiScanFrame): FfiCleanupQualityMetrics {
+        return documentCoreEvaluateCleanupQuality(original, enhanced)
     }
 
     /**

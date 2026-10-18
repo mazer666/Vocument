@@ -13,9 +13,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod cleanup;
 pub mod geometry;
 pub mod perspective;
 
+pub use cleanup::{CleanupQualityMetrics, enhance_frame, evaluate_cleanup_quality};
 pub use geometry::{Point2D, QuadCorners};
 pub use perspective::{
     DeskewResult, ProjectiveMapping, auto_orient_frame, deskew_frame, rotate_frame_90,
@@ -241,6 +243,7 @@ pub struct CapturedScanPage {
     pub raw_bytes_len: usize,
     pub captured_unix_ms: u64,
     pub warped_frame: Option<ScanFrame>,
+    pub enhanced_frame: Option<ScanFrame>,
 }
 
 /// A multi-page document scanning session (`SCAN-006`, `SCAN-007`).
@@ -277,6 +280,7 @@ impl ScanCaptureSession {
         };
 
         let warped = warp_perspective(frame, &resolved_corners, None).ok();
+        let enhanced = warped.as_ref().and_then(|w| enhance_frame(w, profile).ok());
         let page_index = self.pages.len() as u32;
         let page_id = format!("scan_page_{}_{page_index}", self.session_id);
         let page = CapturedScanPage {
@@ -289,6 +293,7 @@ impl ScanCaptureSession {
             raw_bytes_len: frame.pixels.len(),
             captured_unix_ms: current_unix_ms(),
             warped_frame: warped,
+            enhanced_frame: enhanced,
         };
         self.pages.push(page);
         Ok(self.pages.last().expect("just pushed"))
@@ -306,6 +311,21 @@ impl ScanCaptureSession {
             .clone()
             .ok_or_else(|| ImagingError::InvalidQuad {
                 details: "Warped frame not available for page".to_owned(),
+            })
+    }
+
+    pub fn get_enhanced_page(&self, page_index: usize) -> Result<ScanFrame, ImagingError> {
+        if page_index >= self.pages.len() {
+            return Err(ImagingError::InvalidPageIndex {
+                page_index,
+                total_pages: self.pages.len(),
+            });
+        }
+        self.pages[page_index]
+            .enhanced_frame
+            .clone()
+            .ok_or_else(|| ImagingError::InvalidQuad {
+                details: "Enhanced frame not available for page".to_owned(),
             })
     }
 
@@ -377,6 +397,20 @@ impl ScanCaptureSessionRegistry {
                 session_id: session_id.to_owned(),
             })?;
         session.get_warped_page(page_index)
+    }
+
+    pub fn get_enhanced_page(
+        &self,
+        session_id: &str,
+        page_index: usize,
+    ) -> Result<ScanFrame, ImagingError> {
+        let map = self.sessions.lock().expect("lock registry");
+        let session = map
+            .get(session_id)
+            .ok_or_else(|| ImagingError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        session.get_enhanced_page(page_index)
     }
 
     pub fn get_session_snapshot(
