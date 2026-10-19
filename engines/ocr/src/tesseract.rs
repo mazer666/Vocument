@@ -84,11 +84,11 @@ impl TesseractEngine {
             }
         }
         let candidates = [
+            PathBuf::from("/data/user/0/org.vocument.app/files/tessdata"),
+            PathBuf::from("/data/data/org.vocument.app/files/tessdata"),
             PathBuf::from("/opt/homebrew/share/tessdata"),
             PathBuf::from("apps/android/app/src/main/assets/tessdata"),
             PathBuf::from("../../apps/android/app/src/main/assets/tessdata"),
-            PathBuf::from("/data/user/0/org.vocument.app/files/tessdata"),
-            PathBuf::from("/data/data/org.vocument.app/files/tessdata"),
             PathBuf::from("/usr/local/share/tessdata"),
             PathBuf::from("/usr/share/tessdata"),
             PathBuf::from("tessdata"),
@@ -98,7 +98,19 @@ impl TesseractEngine {
                 return candidate;
             }
         }
-        PathBuf::from("/opt/homebrew/share/tessdata")
+        #[cfg(target_os = "android")]
+        {
+            PathBuf::from("/data/user/0/org.vocument.app/files/tessdata")
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let brew = PathBuf::from("/opt/homebrew/share/tessdata");
+            if brew.exists() {
+                brew
+            } else {
+                PathBuf::from("/usr/share/tessdata")
+            }
+        }
     }
 }
 

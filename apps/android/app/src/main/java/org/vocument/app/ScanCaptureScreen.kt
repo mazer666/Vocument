@@ -80,6 +80,7 @@ fun ScanCaptureScreen(
     var isManualAdjustmentActive by remember { mutableStateOf(false) }
     var selectedProfile by remember { mutableStateOf(FfiScanCleanupProfile.DOCUMENT_AUTO) }
     var statusMessage by remember { mutableStateOf(if (hasCameraPermission) "Camera active: point at document" else "Camera permission required") }
+    var lastOcrSummary by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun updateCorner(cornerIndex: Int, newX: Float, newY: Float) {
@@ -128,41 +129,65 @@ fun ScanCaptureScreen(
             val deskew = warped?.let { runCatching { coreBridge.deskewFrame(it) }.getOrNull() }
             val deskewInfo = if (deskew != null) ", skew=${deskew.skewAngleDegrees}°" else ""
             val profileInfo = ", ${selectedProfile.name.lowercase().replace('_', ' ')}"
-            val ocrRes = runCatching { coreBridge.ocrScanSessionPage(sessionId, page.pageIndex, listOf("deu", "eng")) }.getOrNull()
-            val ocrInfo = if (ocrRes != null && ocrRes.words.isNotEmpty()) ", OCR: ${ocrRes.detectedLanguage} (${ocrRes.meanConfidence.toInt()}%, ${ocrRes.words.size}w)" else ""
-            statusMessage = "Page #${page.pageIndex + 1u} cleaned$ocrInfo (${enhanced?.width ?: warped?.width ?: frameToCapture.width}x${enhanced?.height ?: warped?.height ?: frameToCapture.height}px$deskewInfo$profileInfo)"
+            val ocrRes = coreBridge.ocrScanSessionPage(sessionId, page.pageIndex, listOf("deu", "eng"))
+            val bboxesValid = ocrRes.words.isNotEmpty() && ocrRes.words.all { (it.bbox.x1 > it.bbox.x0) && (it.bbox.y1 > it.bbox.y0) }
+            val bboxStatus = if (bboxesValid) "valid bboxes (${ocrRes.words.size})" else "invalid bboxes"
+            val ocrSummary = "OCR: ${ocrRes.detectedLanguage} (${ocrRes.meanConfidence.toInt()}%, ${ocrRes.words.size}w, $bboxStatus)"
+            lastOcrSummary = ocrSummary
+            statusMessage = "Page #${page.pageIndex + 1u} cleaned, $ocrSummary (${enhanced?.width ?: warped?.width ?: frameToCapture.width}x${enhanced?.height ?: warped?.height ?: frameToCapture.height}px$deskewInfo$profileInfo)"
             errorMessage = null
         }.onFailure { err ->
             errorMessage = "Scan error: ${err.message}"
         }
     }
 
-    fun createSyntheticDocumentFrame(): FfiScanFrame {
+    fun loadCorpusOrSyntheticFrame(): FfiScanFrame {
+        val bitmap = runCatching {
+            context.assets.open("corpus/deu_vertrag_vertraulichkeit_camera_distorted.png").use { stream ->
+                android.graphics.BitmapFactory.decodeStream(stream)
+            }
+        }.getOrNull()
+
+        if (bitmap != null) {
+            val width = bitmap.width.toUInt()
+            val height = bitmap.height.toUInt()
+            val argbPixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(argbPixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            val rgbaBytes = ByteArray(bitmap.width * bitmap.height * 4)
+            var byteIdx = 0
+            for (pixel in argbPixels) {
+                rgbaBytes[byteIdx] = (pixel shr 16 and 0xFF).toByte()
+                rgbaBytes[byteIdx + 1] = (pixel shr 8 and 0xFF).toByte()
+                rgbaBytes[byteIdx + 2] = (pixel and 0xFF).toByte()
+                rgbaBytes[byteIdx + 3] = (pixel shr 24 and 0xFF).toByte()
+                byteIdx += 4
+            }
+            return FfiScanFrame(
+                width = width,
+                height = height,
+                stride = width,
+                format = FfiScanPixelFormat.RGBA8,
+                orientationDegrees = 0u,
+                pixels = rgbaBytes,
+                timestampMs = System.currentTimeMillis().toULong(),
+                deviceAngleDegrees = 0f,
+                brightnessHint = 1.0f,
+                isSteady = true
+            )
+        }
+
         val width = 120u
         val height = 160u
-        val totalBytes = (width * height * 4u).toInt()
-        val pixels = ByteArray(totalBytes) { 35.toByte() }
-        for (y in 25 until 135) {
-            for (x in 20 until 100) {
-                val idx = (y * 120 + x) * 4
-                val isTextStroke = (y % 14 in 4..7) && (x in 28..92) && (x % 16 !in 0..2)
-                val lum = if (isTextStroke) 20.toByte() else 245.toByte()
-                pixels[idx] = lum
-                pixels[idx + 1] = lum
-                pixels[idx + 2] = lum
-                pixels[idx + 3] = 255.toByte()
-            }
-        }
         return FfiScanFrame(
             width = width,
             height = height,
             stride = width,
             format = FfiScanPixelFormat.RGBA8,
             orientationDegrees = 0u,
-            pixels = pixels,
+            pixels = ByteArray((width * height * 4u).toInt()) { 240.toByte() },
             timestampMs = System.currentTimeMillis().toULong(),
-            deviceAngleDegrees = 2.0f,
-            brightnessHint = 0.85f,
+            deviceAngleDegrees = 0f,
+            brightnessHint = 0.9f,
             isSteady = true
         )
     }
@@ -190,13 +215,13 @@ fun ScanCaptureScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = "Scan & OCR Capture",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = if (activeSessionId != null) "Session: ${activeSessionId?.take(12)}…" else "Ready",
+                    text = if (lastOcrSummary != null) "Session: ${activeSessionId?.take(12)}… | $lastOcrSummary" else if (activeSessionId != null) "Session: ${activeSessionId?.take(12)}… | $statusMessage" else statusMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -357,7 +382,7 @@ fun ScanCaptureScreen(
         ) {
             Button(
                 onClick = {
-                    val frame = latestLiveFrame ?: createSyntheticDocumentFrame()
+                    val frame = latestLiveFrame ?: loadCorpusOrSyntheticFrame()
                     handleCaptureCurrentFrame(frame)
                 },
                 modifier = Modifier.weight(1f)

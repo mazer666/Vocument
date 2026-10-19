@@ -17,21 +17,8 @@ if [[ ! -d "$ANDROID_HOME" ]]; then
 fi
 
 if [[ -d "${ANDROID_HOME}/ndk" ]]; then
-  NDK_DIR="$(find "${ANDROID_HOME}/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n1)"
-  TOOLCHAIN="${NDK_DIR}/toolchains/llvm/prebuilt/darwin-x86_64"
-  if [[ -x "${TOOLCHAIN}/bin/aarch64-linux-android34-clang" ]]; then
-    export CC_aarch64_linux_android="${TOOLCHAIN}/bin/aarch64-linux-android34-clang"
-    export CXX_aarch64_linux_android="${TOOLCHAIN}/bin/aarch64-linux-android34-clang++"
-    export AR_aarch64_linux_android="${TOOLCHAIN}/bin/llvm-ar"
-    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${TOOLCHAIN}/bin/aarch64-linux-android34-clang"
-    export PATH="$HOME/.cargo/bin:$PATH"
-    if [[ ! -f "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]] || [[ "$REPO_ROOT/platform/vocument-ffi/src/scan_dto.rs" -nt "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]] || [[ "$REPO_ROOT/platform/vocument-ffi/src/ocr_dto.rs" -nt "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so" ]]; then
-      echo "==> Building native Android libvocument_ffi.so for aarch64-linux-android..."
-      cargo build -p vocument-ffi --target aarch64-linux-android
-      mkdir -p "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
-      cp "$REPO_ROOT/target/aarch64-linux-android/debug/libvocument_ffi.so" "$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a/libvocument_ffi.so"
-    fi
-  fi
+  # Deterministically build native Android libvocument_ffi.so (forces rebuild on any OCR/core change)
+  ./scripts/build-android-rust.sh
 fi
 
 echo "==> Step 1: Building Android debug APK via Gradle..."
@@ -71,7 +58,7 @@ echo "==> Step 3: Running Android unit tests with native Rust Core linkage (Grad
 (cd "$REPO_ROOT/apps/android" && ./gradlew testDebugUnitTest)
 echo "✓ Android Gradle unit and scan capture bridge tests passed."
 
-echo "==> Step 4: Running binding on-device / emulator scan workflow verification..."
+echo "==> Step 4: Running binding on-device / emulator real OCR gate verification..."
 if ! command -v adb >/dev/null 2>&1; then
   echo "ERROR: adb command not found in PATH! Binding Android runtime gate requires adb." >&2
   exit 1
@@ -111,35 +98,59 @@ adb -s "$TARGET_DEVICE" install -r "$APK_PATH"
 echo "    Granting CAMERA permission..."
 adb -s "$TARGET_DEVICE" shell pm grant org.vocument.app android.permission.CAMERA
 
-echo "    Launching Vocument MainActivity on $TARGET_DEVICE..."
+echo "    4a. Running authentic on-device OCR quality gate on Android..."
 adb -s "$TARGET_DEVICE" logcat -c
-adb -s "$TARGET_DEVICE" shell am start -W -n org.vocument.app/.MainActivity
+adb -s "$TARGET_DEVICE" shell "run-as org.vocument.app rm -f files/ocr_verification_result.json" 2>/dev/null || true
+adb -s "$TARGET_DEVICE" shell am start -W -n org.vocument.app/.MainActivity --es "action" "verify-ocr"
 
-echo "    Verifying process is alive..."
-APP_PID="$(adb -s "$TARGET_DEVICE" shell pidof org.vocument.app | tr -d '\r')"
-if [[ -z "$APP_PID" ]]; then
-  echo "ERROR: org.vocument.app failed to start on $TARGET_DEVICE!" >&2
-  adb -s "$TARGET_DEVICE" logcat -d -s AndroidRuntime:E
+# Wait for on-device OCR pipeline execution
+OCR_RESULT=""
+for i in {1..15}; do
+  OCR_RESULT="$(adb -s "$TARGET_DEVICE" exec-out run-as org.vocument.app cat files/ocr_verification_result.json 2>/dev/null || true)"
+  if [[ -n "$OCR_RESULT" ]]; then
+    break
+  fi
+  sleep 1
+done
+
+echo "    On-Device OCR result: $OCR_RESULT"
+OCR_LOG="$(adb -s "$TARGET_DEVICE" logcat -d -s VocumentOcrGate:I | grep "SUCCESS:" || true)"
+if [[ -n "$OCR_LOG" ]]; then
+  echo "    Logcat verification: $OCR_LOG"
+fi
+
+if [[ "$OCR_RESULT" != *"\"passed\": true"* ]]; then
+  echo "ERROR: On-device Android OCR quality gate failed! Expected passed: true in result." >&2
+  adb -s "$TARGET_DEVICE" logcat -d -s VocumentOcrGate:V AndroidRuntime:E
   exit 1
 fi
-echo "    App running with PID: $APP_PID"
 
-echo "    Switching to Scan tab and capturing a document frame..."
+if [[ "$OCR_RESULT" != *"\"bounding_boxes_valid\": true"* ]]; then
+  echo "ERROR: On-device Android OCR produced missing or invalid bounding boxes!" >&2
+  exit 1
+fi
+
+echo "✓ On-device authentic OCR quality gate passed on $TARGET_DEVICE (CER/WER >= 95%, valid bboxes, non-empty text)."
+
+echo "    4b. Verifying live UI scan capture & OCR workflow on $TARGET_DEVICE..."
+adb -s "$TARGET_DEVICE" shell am force-stop org.vocument.app
+adb -s "$TARGET_DEVICE" shell am start -W -n org.vocument.app/.MainActivity
 sleep 1
+
 # Tap Scan (M1) tab (approx x=280, y=604 on standard 320x640 display)
 adb -s "$TARGET_DEVICE" shell input tap 280 604
 sleep 1
-# Tap Capture button
-adb -s "$TARGET_DEVICE" shell input tap 160 504
-sleep 1
+# Tap Capture button (bounds: [32,475][137,528] -> center 85, 500)
+adb -s "$TARGET_DEVICE" shell input tap 85 500
+sleep 4
 
 # Dump UI hierarchy to verify scan session and captured page
 adb -s "$TARGET_DEVICE" shell uiautomator dump /data/local/tmp/verify_scan_dump.xml
 DUMP_TEXT="$(adb -s "$TARGET_DEVICE" shell cat /data/local/tmp/verify_scan_dump.xml 2>/dev/null || true)"
-if [[ "$DUMP_TEXT" == *"Scan &"* && "$DUMP_TEXT" == *"1 pages"* ]]; then
-  echo "✓ Verified live scan capture workflow on $TARGET_DEVICE: Session created and page appended!"
+if [[ "$DUMP_TEXT" == *"Scan &"* && "$DUMP_TEXT" == *"1 pages"* && "$DUMP_TEXT" == *"OCR: deu"* && "$DUMP_TEXT" == *"valid bboxes"* ]]; then
+  echo "✓ Verified live scan capture & real OCR workflow in Android UI on $TARGET_DEVICE!"
 else
-  echo "ERROR: Live scan capture could not be confirmed in UI dump on $TARGET_DEVICE!" >&2
+  echo "ERROR: Live scan capture & OCR could not be confirmed in UI dump on $TARGET_DEVICE!" >&2
   echo "UI dump output was: $DUMP_TEXT" >&2
   adb -s "$TARGET_DEVICE" shell am force-stop org.vocument.app
   exit 1

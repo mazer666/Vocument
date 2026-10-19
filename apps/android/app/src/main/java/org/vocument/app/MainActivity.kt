@@ -47,6 +47,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val tessdataDir = TessdataProvisioner.ensureTessdata(this)
+        coreBridge.configureTessdataPath(tessdataDir.absolutePath)
+
+        val runOcr = intent?.getStringExtra("action") == "verify-ocr" ||
+            intent?.getBooleanExtra("run_ocr_verification", false) == true
+        if (runOcr) {
+            AndroidOcrRuntimeGate.runVerification(this, coreBridge)
+        }
+
         setContent {
             MaterialTheme {
                 val handshake = remember { coreBridge.performHandshake() }

@@ -82,8 +82,10 @@ REQUIRED_FILES=(
   "engines/ocr/src/corpus.rs"
   "engines/ocr/src/lib.rs"
   "engines/ocr/csrc/tesseract_bridge.c"
-  "engines/ocr/android-libs/arm64-v8a/libtesseract.so"
-  "apps/android/app/src/main/jniLibs/arm64-v8a/libtesseract.so"
+  "engines/ocr/include/tesseract/capi.h"
+  "engines/ocr/include/tesseract/export.h"
+  "scripts/prepare-android-tesseract.sh"
+  "scripts/build-android-rust.sh"
   "apps/android/app/src/main/assets/tessdata/deu.traineddata"
   "apps/android/app/src/main/assets/tessdata/eng.traineddata"
   "platform/vocument-ffi/src/ocr_dto.rs"
@@ -147,6 +149,7 @@ done < <(find core engines formats platform apps scripts \
   -not -path "*/target/*" \
   -not -path "*/.build/*" \
   -not -path "*/build/*" \
+  -not -path "engines/ocr/include/*" \
   -not -path "apps/macos/Sources/VocumentFFI/*" \
   -not -path "apps/macos/Sources/VocumentFFIHeaders/*" \
   -not -path "apps/android/app/src/main/java/uniffi/*" \

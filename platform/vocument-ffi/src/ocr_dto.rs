@@ -139,6 +139,26 @@ fn domain_result_to_ffi(res: vocument_ocr::OcrPageResult) -> FfiOcrPageResult {
     }
 }
 
+use std::sync::RwLock;
+
+static CONFIGURED_TESSDATA_PATH: RwLock<Option<String>> = RwLock::new(None);
+
+fn current_tessdata_path() -> Option<std::path::PathBuf> {
+    CONFIGURED_TESSDATA_PATH
+        .read()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .map(std::path::PathBuf::from)
+}
+
+/// Explicitly configures the directory containing traineddata files (deu.traineddata, eng.traineddata).
+#[uniffi::export]
+pub fn document_core_configure_tessdata_path(path: String) {
+    if let Ok(mut lock) = CONFIGURED_TESSDATA_PATH.write() {
+        *lock = Some(path);
+    }
+}
+
 /// Executes optical character recognition on a raw input scan frame.
 #[uniffi::export]
 pub fn document_core_ocr_frame(
@@ -155,7 +175,7 @@ pub fn document_core_ocr_frame(
 
     let options = OcrOptions {
         languages,
-        tessdata_path: None,
+        tessdata_path: current_tessdata_path(),
         detect_language,
         generate_hocr: true,
     };
@@ -188,7 +208,7 @@ pub fn document_core_ocr_clean_scan_frame(
 
     let options = OcrOptions {
         languages,
-        tessdata_path: None,
+        tessdata_path: current_tessdata_path(),
         detect_language,
         generate_hocr: true,
     };
@@ -218,7 +238,7 @@ pub fn document_core_ocr_scan_session_page(
 
     let options = OcrOptions {
         languages,
-        tessdata_path: None,
+        tessdata_path: current_tessdata_path(),
         detect_language: true,
         generate_hocr: true,
     };

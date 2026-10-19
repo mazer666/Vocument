@@ -12,6 +12,13 @@ class DocumentCoreBridge {
     }
 
     /**
+     * Configures the explicit filesystem path to the tessdata models directory.
+     */
+    fun configureTessdataPath(path: String) {
+        documentCoreConfigureTessdataPath(path)
+    }
+
+    /**
      * Opens a PDF resolved through Android's Storage Access Framework (`content://` URI)
      * inside the Rust core (`ROADMAP.md` M0.1).
      */

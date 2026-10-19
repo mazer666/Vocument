@@ -3,13 +3,19 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-changed=csrc/tesseract_bridge.h");
     println!("cargo:rerun-if-changed=csrc/tesseract_bridge.c");
+    println!("cargo:rerun-if-changed=include/tesseract/capi.h");
+    println!("cargo:rerun-if-changed=include/tesseract/export.h");
     println!("cargo:rerun-if-env-changed=TESSERACT_DIR");
+    println!("cargo:rerun-if-env-changed=TESSERACT_ANDROID_LIB_DIR");
+
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
+    let include_dir = manifest_dir.join("include");
 
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "android" {
-        let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
-        let android_lib_dir = manifest_dir.join("android-libs").join("arm64-v8a");
-        let include_dir = PathBuf::from("/opt/homebrew/include");
+        let android_lib_dir = std::env::var("TESSERACT_ANDROID_LIB_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| manifest_dir.join("android-libs").join("arm64-v8a"));
 
         cc::Build::new()
             .file("csrc/tesseract_bridge.c")
@@ -36,7 +42,6 @@ fn main() {
                 }
             });
 
-        let include_dir = tesseract_prefix.join("include");
         let lib_dir = tesseract_prefix.join("lib");
 
         cc::Build::new()

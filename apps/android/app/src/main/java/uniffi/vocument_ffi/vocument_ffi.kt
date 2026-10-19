@@ -825,6 +825,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -853,6 +855,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
 fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
@@ -1012,6 +1016,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`
 fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1258,6 +1264,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
@@ -5167,6 +5176,17 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_close_session(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    
+    
+
+        /**
+         * Explicitly configures the directory containing traineddata files (deu.traineddata, eng.traineddata).
+         */ fun `documentCoreConfigureTessdataPath`(`path`: kotlin.String)
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(
+        FfiConverterString.lower(`path`),_status)
 }
     
     

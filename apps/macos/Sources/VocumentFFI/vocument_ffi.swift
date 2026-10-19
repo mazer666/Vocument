@@ -6350,6 +6350,15 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
 }
 }
 /**
+ * Explicitly configures the directory containing traineddata files (deu.traineddata, eng.traineddata).
+ */
+public func documentCoreConfigureTessdataPath(path: String)  {try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(
+        FfiConverterString.lower(path),$0
+    )
+}
+}
+/**
  * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
  */
 public func documentCoreDeskewFrame(frame: FfiScanFrame)throws  -> FfiDeskewResult  {
@@ -6919,6 +6928,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
