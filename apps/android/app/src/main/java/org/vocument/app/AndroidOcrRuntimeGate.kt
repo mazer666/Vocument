@@ -10,11 +10,14 @@ import uniffi.vocument_ffi.*
 
 data class AndroidOcrVerificationResult(
     val passed: Boolean,
+    val cer: Double,
     val characterAccuracy: Double,
     val keywordHitRate: Double,
     val meanConfidence: Double,
     val totalWords: Int,
+    val totalCharacters: Int,
     val boundingBoxesValid: Boolean,
+    val characterBoundingBoxesValid: Boolean,
     val detectedLanguage: String,
     val fullText: String,
     val errorMessage: String? = null
@@ -95,8 +98,11 @@ object AndroidOcrRuntimeGate {
                 throw AssertionError("Android OCR produced 0 recognized words!")
             }
 
-            // 7. Verify Bounding Boxes
+            // 7. Verify Word and Character Bounding Boxes
             var bboxesValid = true
+            var charBboxesValid = true
+            var totalCharacters = 0
+
             for (word in ocrRes.words) {
                 val box = word.bbox
                 if (box.x1 <= box.x0 || box.y1 <= box.y0) {
@@ -104,13 +110,32 @@ object AndroidOcrRuntimeGate {
                     Log.e(TAG, "Invalid bounding box for word '${word.text}': x0=${box.x0}, y0=${box.y0}, x1=${box.x1}, y1=${box.y1}")
                     break
                 }
+                for (ch in word.characters) {
+                    totalCharacters++
+                    val cbox = ch.bbox
+                    if (cbox.x1 <= cbox.x0 || cbox.y1 <= cbox.y0) {
+                        charBboxesValid = false
+                        Log.e(TAG, "Invalid bounding box for character '${ch.text}': x0=${cbox.x0}, y0=${cbox.y0}, x1=${cbox.x1}, y1=${cbox.y1}")
+                        break
+                    }
+                }
+                if (!charBboxesValid) break
             }
             if (!bboxesValid) {
-                throw AssertionError("Android OCR bounding boxes were invalid or empty!")
+                throw AssertionError("Android OCR word bounding boxes were invalid or empty!")
+            }
+            if (!charBboxesValid || totalCharacters == 0) {
+                throw AssertionError("Android OCR character glyph bounding boxes were invalid or empty (total=$totalCharacters)!")
             }
 
-            // 8. Compute Levenshtein Character Accuracy & Keyword Hit Rate
-            val charAccuracy = computeCharacterAccuracy(ocrRes.fullText, expectedText)
+            // 8. Verify Detected Language (must be German/Austrian legal variant)
+            val langValid = ocrRes.detectedLanguage == "deu" || ocrRes.detectedLanguage.startsWith("de")
+            if (!langValid) {
+                throw AssertionError("Android OCR detected language mismatch: expected 'deu' or 'de-AT', got '${ocrRes.detectedLanguage}'")
+            }
+
+            // 9. Compute Levenshtein Character Error Rate (CER) and Accuracy identically to Rust corpus.rs
+            val (cer, charAccuracy) = computeCharacterErrorRate(expectedText, ocrRes.fullText)
             val keywords = listOf(
                 "VEREINBARUNG", "VERTRAULICHKEIT", "GEHEIMHALTUNG",
                 "Vertrags-ID", "Österreichisches", "Geltungsbereich",
@@ -129,21 +154,24 @@ object AndroidOcrRuntimeGate {
             }
             val keywordHitRate = matchedKeywords.toDouble() / keywords.size.toDouble()
 
-            // 9. Evaluate Quality Gate (Accuracy >= 95.0% and Keywords >= 95.0%)
-            val passed = charAccuracy >= 0.95 && keywordHitRate >= 0.95 && bboxesValid
+            // 10. Evaluate Hardened Quality Gate (CER <= 5.0%, Char Acc >= 95.0%, Keywords >= 95.0%)
+            val passed = cer <= 0.05 && charAccuracy >= 0.95 && keywordHitRate >= 0.95 && bboxesValid && charBboxesValid && langValid
 
             val result = AndroidOcrVerificationResult(
                 passed = passed,
+                cer = cer,
                 characterAccuracy = charAccuracy,
                 keywordHitRate = keywordHitRate,
                 meanConfidence = ocrRes.meanConfidence.toDouble(),
                 totalWords = ocrRes.words.size,
+                totalCharacters = totalCharacters,
                 boundingBoxesValid = bboxesValid,
+                characterBoundingBoxesValid = charBboxesValid,
                 detectedLanguage = ocrRes.detectedLanguage,
                 fullText = ocrRes.fullText
             )
 
-            val logMsg = "Result: passed=$passed, charAcc=${String.format("%.2f", charAccuracy * 100)}%, kwHit=${String.format("%.1f", keywordHitRate * 100)}%, words=${ocrRes.words.size}, bboxes=$bboxesValid, lang=${ocrRes.detectedLanguage}"
+            val logMsg = "Result: passed=$passed, cer=${String.format("%.2f", cer * 100)}%, charAcc=${String.format("%.2f", charAccuracy * 100)}%, kwHit=${String.format("%.1f", keywordHitRate * 100)}%, words=${ocrRes.words.size}, chars=$totalCharacters, bboxes=$bboxesValid, charBboxes=$charBboxesValid, lang=${ocrRes.detectedLanguage}"
             if (passed) {
                 Log.i(TAG, "SUCCESS: $logMsg")
             } else {
@@ -152,7 +180,7 @@ object AndroidOcrRuntimeGate {
 
             // Write verification result to file in app files directory for adb retrieval
             runCatching {
-                val outJson = """{"passed": $passed, "character_accuracy": $charAccuracy, "keyword_hit_rate": $keywordHitRate, "total_words": ${ocrRes.words.size}, "bounding_boxes_valid": $bboxesValid, "detected_language": "${ocrRes.detectedLanguage}"}"""
+                val outJson = """{"passed": $passed, "cer": $cer, "character_accuracy": $charAccuracy, "keyword_hit_rate": $keywordHitRate, "total_words": ${ocrRes.words.size}, "total_characters": $totalCharacters, "bounding_boxes_valid": $bboxesValid, "character_bounding_boxes_valid": $charBboxesValid, "detected_language": "${ocrRes.detectedLanguage}"}"""
                 File(context.filesDir, "ocr_verification_result.json").writeText(outJson)
             }
 
@@ -164,11 +192,14 @@ object AndroidOcrRuntimeGate {
             }
             return AndroidOcrVerificationResult(
                 passed = false,
+                cer = 1.0,
                 characterAccuracy = 0.0,
                 keywordHitRate = 0.0,
                 meanConfidence = 0.0,
                 totalWords = 0,
+                totalCharacters = 0,
                 boundingBoxesValid = false,
+                characterBoundingBoxesValid = false,
                 detectedLanguage = "unknown",
                 fullText = "",
                 errorMessage = e.message
@@ -176,13 +207,14 @@ object AndroidOcrRuntimeGate {
         }
     }
 
-    private fun computeCharacterAccuracy(actual: String, target: String): Double {
-        val s1 = actual.replace("\\s+".toRegex(), " ").trim()
-        val s2 = target.replace("\\s+".toRegex(), " ").trim()
-        val maxLen = max(s1.length, s2.length)
-        if (maxLen == 0) return 1.0
-        val dist = levenshtein(s1, s2)
-        return max(0.0, 1.0 - dist.toDouble() / maxLen.toDouble())
+    private fun computeCharacterErrorRate(expected: String, recognized: String): Pair<Double, Double> {
+        val normExp = expected.replace("\\s+".toRegex(), " ").trim()
+        val normRec = recognized.replace("\\s+".toRegex(), " ").trim()
+        if (normExp.isEmpty()) return Pair(0.0, 1.0)
+        val dist = levenshtein(normExp, normRec)
+        val cer = dist.toDouble() / normExp.length.toDouble()
+        val accuracy = max(0.0, 1.0 - min(1.0, cer))
+        return Pair(cer, accuracy)
     }
 
     private fun levenshtein(s1: String, s2: String): Int {

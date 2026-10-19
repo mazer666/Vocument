@@ -827,6 +827,12 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -888,6 +894,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame(
@@ -947,6 +955,10 @@ fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_start_scan_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_synthesize_scan_session_pdf(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_synthesize_searchable_pdf(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats(
 ): Short
@@ -1049,6 +1061,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRu
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: RustBuffer.ByValue,`preferredStartPage`: Int,`maxPages`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(`scanSessionId`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`displayName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1108,6 +1122,10 @@ fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: Rust
 fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_start_scan_session(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_synthesize_scan_session_pdf(`sessionId`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_synthesize_searchable_pdf(`frame`: RustBuffer.ByValue,`ocrResult`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_thumbnail_cache_stats(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1314,6 +1332,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_index_search_batch() != 35695.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1402,6 +1423,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_synthesize_scan_session_pdf() != 12636.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_synthesize_searchable_pdf() != 14098.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229.toShort()) {
@@ -5388,6 +5415,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Ingests an active scan capture session directly as an application-managed `DocumentSession` (`ROADMAP.md` M1.4).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreIngestScanAsDocumentSession`(`scanSessionId`: kotlin.String, `cleanupProfile`: FfiScanCleanupProfile, `languages`: List<kotlin.String>, `displayName`: kotlin.String): FfiDocumentSessionSnapshot {
+            return FfiConverterTypeFfiDocumentSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(
+        FfiConverterString.lower(`scanSessionId`),FfiConverterTypeFfiScanCleanupProfile.lower(`cleanupProfile`),FfiConverterSequenceString.lower(`languages`),FfiConverterString.lower(`displayName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Marks a document's recovery container clean shutdown.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreMarkRecoveryCleanShutdown`(`documentId`: kotlin.String)
@@ -5772,6 +5812,32 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_start_scan_session(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Synthesizes a multi-page searchable PDF document directly from an active scan capture session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSynthesizeScanSessionPdf`(`sessionId`: kotlin.String, `cleanupProfile`: FfiScanCleanupProfile, `languages`: List<kotlin.String>): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_synthesize_scan_session_pdf(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiScanCleanupProfile.lower(`cleanupProfile`),FfiConverterSequenceString.lower(`languages`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Synthesizes a single-page searchable PDF with an invisible OCR text layer matching word bounding boxes.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSynthesizeSearchablePdf`(`frame`: FfiScanFrame, `ocrResult`: FfiOcrPageResult): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_synthesize_searchable_pdf(
+        FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterTypeFfiOcrPageResult.lower(`ocrResult`),_status)
 }
     )
     }

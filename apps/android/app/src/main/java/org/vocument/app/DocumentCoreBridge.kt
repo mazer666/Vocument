@@ -493,6 +493,39 @@ class DocumentCoreBridge {
     }
 
     /**
+     * Synthesizes a single-page searchable PDF with an invisible OCR text layer (`PDF-001`, `OCR-004`).
+     */
+    fun synthesizeSearchablePdf(
+        frame: FfiScanFrame,
+        ocrResult: FfiOcrPageResult
+    ): ByteArray {
+        return documentCoreSynthesizeSearchablePdf(frame, ocrResult)
+    }
+
+    /**
+     * Synthesizes a multi-page searchable PDF document directly from an active scan capture session (`PDF-001`).
+     */
+    fun synthesizeScanSessionPdf(
+        sessionId: String,
+        cleanupProfile: FfiScanCleanupProfile = FfiScanCleanupProfile.DOCUMENT_AUTO,
+        languages: List<String> = listOf("deu", "eng")
+    ): ByteArray {
+        return documentCoreSynthesizeScanSessionPdf(sessionId, cleanupProfile, languages)
+    }
+
+    /**
+     * Ingests an active scan capture session directly as an application-managed `DocumentSession` (`ROADMAP.md` M1.4).
+     */
+    fun ingestScanAsDocumentSession(
+        scanSessionId: String,
+        cleanupProfile: FfiScanCleanupProfile = FfiScanCleanupProfile.DOCUMENT_AUTO,
+        languages: List<String> = listOf("deu", "eng"),
+        displayName: String = ""
+    ): FfiDocumentSessionSnapshot {
+        return documentCoreIngestScanAsDocumentSession(scanSessionId, cleanupProfile, languages, displayName)
+    }
+
+    /**
      * Converts an RGBA8 `FfiRenderedTile` byte array into an `IntArray` of `ARGB_8888` pixels
      * suitable for `android.graphics.Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)`.
      */

@@ -595,4 +595,46 @@ fun main() {
             "Words(${ocrPageRes.words.size}) → Lines(${ocrPageRes.lines.size}) → " +
             "MeanConf(${ocrPageRes.meanConfidence.toInt()}%) → GateVerified"
     )
+
+    // M1.4 verification: Searchable PDF Synthesis, Invisible Text Layer, Session Ingestion & FTS5 Search
+    val synthesizedPdfBytes = bridge.synthesizeSearchablePdf(realDeuFrame, ocrPageRes)
+    check(synthesizedPdfBytes.size > 1000 && synthesizedPdfBytes.take(5).toByteArray().contentEquals("%PDF-".toByteArray())) {
+        "M1.4 synthesized PDF header check failed"
+    }
+
+    val scanSess2 = bridge.startScanSession()
+    bridge.appendScanPage(scanSess2, realDeuFrame, null, FfiScanCleanupProfile.DOCUMENT_AUTO)
+    val ingestedDoc = bridge.ingestScanAsDocumentSession(
+        scanSessionId = scanSess2,
+        cleanupProfile = FfiScanCleanupProfile.DOCUMENT_AUTO,
+        languages = listOf("deu", "eng"),
+        displayName = "ingested_ocr_contract.pdf"
+    )
+    check(ingestedDoc.pdfSummary.pageCount == 1u) {
+        "Expected 1 page in ingested document session, got ${ingestedDoc.pdfSummary.pageCount}"
+    }
+
+    val indexProg = bridge.indexSearchBatch(ingestedDoc.sessionId, 0u, 10u)
+    check(indexProg.isComplete && indexProg.indexedPages == 1u) {
+        "Expected 1 indexed page in synthesized session"
+    }
+
+    val searchRes = bridge.searchExact(ingestedDoc.sessionId, "Vertraulichkeit")
+    check(searchRes.hits.isNotEmpty()) {
+        "M1.4 FTS5 search on ingested searchable PDF failed to find 'Vertraulichkeit'"
+    }
+    val abgbRes = bridge.searchExact(ingestedDoc.sessionId, "ABGB")
+    check(abgbRes.hits.isNotEmpty()) {
+        "M1.4 FTS5 search on ingested searchable PDF failed to find 'ABGB'"
+    }
+
+    bridge.closeSession(ingestedDoc.sessionId)
+    bridge.closeScanSession(scanSess2)
+
+    println(
+        "✓ Kotlin (Android M1.4) → SearchablePdfSynthesis(${synthesizedPdfBytes.size}B) → " +
+            "InvisibleTextLayer(3 Tr) → DocumentSessionIngestion(${ingestedDoc.sessionId}) → " +
+            "FTS5Search(Vertraulichkeit=${searchRes.hits.size}, ABGB=${abgbRes.hits.size}) → GateVerified"
+    )
 }
+

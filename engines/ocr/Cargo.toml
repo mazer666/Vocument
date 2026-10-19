@@ -13,6 +13,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+vocument-pdf-mupdf = { path = "../pdf-mupdf" }
+
 [build-dependencies]
 cc.workspace = true
 

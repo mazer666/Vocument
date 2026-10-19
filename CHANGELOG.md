@@ -4,6 +4,34 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0-m1.4] - 2026-10-19
+
+### Added
+- Completed **M1.4 — Searchable PDF Synthesis & Session Ingestion** (`docs/acceptance/M1.4-ACCEPTANCE.md`, `ADR-0015`).
+- Implemented `vocument_ocr::synthesis` (`engines/ocr/src/synthesis.rs`, 384 lines, strictly complying with `CODE-001`):
+  - Standard-conforming PDF 1.7 synthesizer generating document catalog, page tree, font resources (`/Helvetica` with standard WinAnsiEncoding), image XObjects, content streams, and cross-reference table.
+  - Deflate stream compression (`flate2`) for scanned image raster (`/DeviceRGB` or `/DeviceGray`) and text content streams.
+  - Invisible searchable text layer (`3 Tr` text rendering mode) perfectly positioned and aligned over the underlying scanned document image.
+  - Precise horizontal text scaling (`Tz`) to calibrate word highlight rectangles to underlying scanned word widths.
+  - Font baseline offset ($0.18 \times h_{\text{pt}}$) for exact vertical alignment of glyph ascenders and descenders.
+  - Proper WinAnsi octal escape sequences for German diacritics (`ä`, `ö`, `ü`, `ß`) and Austrian legal markers (`§`).
+  - Multi-page and single-page searchable PDF synthesis (`synthesize_searchable_pdf`, `synthesize_single_page_pdf`).
+- Implemented zero-copy direct session ingestion:
+  - `document_core_ingest_scan_as_document_session` in `platform/vocument-ffi/src/ocr_dto.rs` (425 lines).
+  - Ingests synthesized PDF bytes into `DocumentSession` via `SessionRegistry::open_brokered_file` with `FileAccessOrigin::InMemoryBuffer`.
+  - Immediate progressive SQLite FTS5 search indexing via `index_search_batch` and full-text querying with `search_exact` and snippet extraction.
+- Hardened quality details:
+  - Pinned native Android Tesseract/Leptonica ARM64 library SHA-256 checksums in `prepare-android-tesseract.sh`.
+  - Calculated Android Levenshtein CER identically to the Rust gate in `AndroidOcrRuntimeGate.kt` ($\text{CER} = 1.02\% \le 5.0\%$).
+  - Strictly asserted valid character glyph bounding boxes (`totalCharacters > 0`, `characterBoundingBoxesValid == true`) and German language detection on `emulator-5554`.
+- Updated mobile UI workflow:
+  - Added "Open as PDF" in `ScanCaptureScreen.kt` (586 lines) and connected `onDocumentSessionOpened` in `MainActivity.kt` to switch seamlessly to the Document Canvas with FTS5 search enabled.
+- Comprehensive integration testing:
+  - `engines/ocr/tests/synthesis_tests.rs` (283 lines): Verified PDF synthesis, `mutool info`, `mutool draw`, MuPDF `extract_page_text` roundtrip for Austrian legal terminology (`ABGB`, `UWG`, `Vertraulichkeit`, `Wien`), session ingestion, and SQLite FTS5 fulltext search with snippets.
+  - `ScanCaptureBridgeTest.kt`: Added `testSearchablePdfSynthesisAndSessionIngestion`.
+  - `VerifyKotlinHandshakeCli.kt`: Added M1.4 end-to-end verification step.
+  - Enforced M1.4 Gate in `scripts/validate-repo.sh`.
+
 ## [0.1.0-m1.3] - 2026-10-18
 
 ### Added

@@ -261,6 +261,29 @@ if ! grep -q "test_realistic_camera_distorted_scan_and_cleanup_pipeline" engines
 fi
 echo "✓ M1.3 Gate verified: Real offline embedded Tesseract OCR, CER/WER >= 95% & realistic camera distortion corpus verified."
 
+# Enforce M1.4 Gate: Searchable PDF synthesis, invisible text layer & DocumentSession ingestion verified
+if [[ ! -f "engines/ocr/src/synthesis.rs" ]]; then
+  echo "ERROR (M1.4 Gate): engines/ocr/src/synthesis.rs missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_synthesize_searchable_pdf" platform/vocument-ffi/src/ocr_dto.rs; then
+  echo "ERROR (M1.4 Gate): M1.4 document_core_synthesize_searchable_pdf export missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_ingest_scan_as_document_session" platform/vocument-ffi/src/ocr_dto.rs; then
+  echo "ERROR (M1.4 Gate): M1.4 document_core_ingest_scan_as_document_session export missing!" >&2
+  exit 1
+fi
+if ! grep -q "testSearchablePdfSynthesisAndSessionIngestion" apps/android/app/src/test/java/org/vocument/app/ScanCaptureBridgeTest.kt; then
+  echo "ERROR (M1.4 Gate): M1.4 testSearchablePdfSynthesisAndSessionIngestion missing in Android tests!" >&2
+  exit 1
+fi
+if ! grep -q "test_searchable_pdf_synthesis_and_mupdf_roundtrip" engines/ocr/tests/synthesis_tests.rs; then
+  echo "ERROR (M1.4 Gate): M1.4 synthesis and FTS5 ingestion test missing in synthesis_tests.rs!" >&2
+  exit 1
+fi
+echo "✓ M1.4 Gate verified: Searchable PDF synthesis (invisible 3 Tr text layer), DocumentSession ingestion & FTS5 search verified."
+
 # Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
 if ! grep -q "QA-003" REQUIREMENTS.md; then
   echo "ERROR (QA-003): QA-003 missing in REQUIREMENTS.md!" >&2

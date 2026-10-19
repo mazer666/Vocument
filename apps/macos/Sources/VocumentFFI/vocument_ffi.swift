@@ -6519,6 +6519,19 @@ public func documentCoreIndexSearchBatch(sessionId: String, preferredStartPage: 
 })
 }
 /**
+ * Ingests an active scan capture session directly as an application-managed `DocumentSession` (`ROADMAP.md` M1.4).
+ */
+public func documentCoreIngestScanAsDocumentSession(scanSessionId: String, cleanupProfile: FfiScanCleanupProfile, languages: [String], displayName: String)throws  -> FfiDocumentSessionSnapshot  {
+    return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(
+        FfiConverterString.lower(scanSessionId),
+        FfiConverterTypeFfiScanCleanupProfile_lower(cleanupProfile),
+        FfiConverterSequenceString.lower(languages),
+        FfiConverterString.lower(displayName),$0
+    )
+})
+}
+/**
  * Marks a document's recovery container clean shutdown.
  */
 public func documentCoreMarkRecoveryCleanShutdown(documentId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -6844,6 +6857,29 @@ public func documentCoreStartScanSession() -> String  {
 })
 }
 /**
+ * Synthesizes a multi-page searchable PDF document directly from an active scan capture session.
+ */
+public func documentCoreSynthesizeScanSessionPdf(sessionId: String, cleanupProfile: FfiScanCleanupProfile, languages: [String])throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_synthesize_scan_session_pdf(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiScanCleanupProfile_lower(cleanupProfile),
+        FfiConverterSequenceString.lower(languages),$0
+    )
+})
+}
+/**
+ * Synthesizes a single-page searchable PDF with an invisible OCR text layer matching word bounding boxes.
+ */
+public func documentCoreSynthesizeSearchablePdf(frame: FfiScanFrame, ocrResult: FfiOcrPageResult)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_synthesize_searchable_pdf(
+        FfiConverterTypeFfiScanFrame_lower(frame),
+        FfiConverterTypeFfiOcrPageResult_lower(ocrResult),$0
+    )
+})
+}
+/**
  * Returns current telemetry statistics of the separate `ThumbnailCache`.
  */
 public func documentCoreThumbnailCacheStats()throws  -> FfiThumbnailCacheStats  {
@@ -6978,6 +7014,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_index_search_batch() != 35695) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7066,6 +7105,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_synthesize_scan_session_pdf() != 12636) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_synthesize_searchable_pdf() != 14098) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_thumbnail_cache_stats() != 8229) {

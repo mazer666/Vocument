@@ -277,4 +277,58 @@ class ScanCaptureBridgeTest {
         assertTrue("Mean confidence must be >= 85.0% (got ${ocrRes.meanConfidence}%)", ocrRes.meanConfidence >= 85.0f)
         assertTrue("Word bounding boxes must be valid", ocrRes.words.all { (it.bbox.x1 > it.bbox.x0) && (it.bbox.y1 > it.bbox.y0) })
     }
+
+    @Test
+    fun testSearchablePdfSynthesisAndSessionIngestion() {
+        val pgmFile = listOf(
+            java.io.File("tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm"),
+            java.io.File("../../tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm"),
+            java.io.File("../../../tests/corpus/ocr/deu_vertrag_vertraulichkeit.pgm")
+        ).first { it.exists() }
+        val pgmBytes = pgmFile.readBytes()
+        val realDeuFrame = FfiScanFrame(
+            width = 1240u,
+            height = 1755u,
+            stride = 1240u,
+            format = FfiScanPixelFormat.GRAY8,
+            orientationDegrees = 0u,
+            pixels = pgmBytes.copyOfRange(pgmBytes.size - 1240 * 1755, pgmBytes.size),
+            timestampMs = System.currentTimeMillis().toULong(),
+            deviceAngleDegrees = 0f,
+            brightnessHint = 0.9f,
+            isSteady = true
+        )
+
+        val ocrRes = bridge.ocrCleanScanFrame(realDeuFrame, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu"), true)
+
+        // 1. Single-page Searchable PDF Synthesis
+        val pdfBytes = bridge.synthesizeSearchablePdf(realDeuFrame, ocrRes)
+        assertTrue("Synthesized PDF must start with %PDF-", pdfBytes.take(5).toByteArray().decodeToString().startsWith("%PDF-"))
+        val endStr = pdfBytes.takeLast(10).toByteArray().decodeToString()
+        assertTrue("Synthesized PDF must end with %%EOF", endStr.contains("%%EOF"))
+        assertTrue("Synthesized PDF must have non-trivial size (> 50KB)", pdfBytes.size > 50000)
+
+        // 2. Scan Session Multi-Page PDF Synthesis & Session Ingestion
+        val sessId = bridge.startScanSession()
+        bridge.appendScanPage(sessId, realDeuFrame, null, FfiScanCleanupProfile.DOCUMENT_AUTO)
+
+        val sessionPdf = bridge.synthesizeScanSessionPdf(sessId, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu"))
+        assertTrue("Session PDF must start with %PDF-", sessionPdf.take(5).toByteArray().decodeToString().startsWith("%PDF-"))
+
+        val ingestedSession = bridge.ingestScanAsDocumentSession(sessId, FfiScanCleanupProfile.DOCUMENT_AUTO, listOf("deu"), "ScannedContract.pdf")
+        assertNotNull("Ingested session snapshot must not be null", ingestedSession)
+        assertEquals("Ingested PDF must have 1 page", 1u, ingestedSession.pdfSummary.pageCount)
+
+        // 3. Immediate SQLite FTS5 Search
+        val searchRes = bridge.searchExact(ingestedSession.sessionId, "Vertraulichkeit")
+        assertEquals("FTS5 search for 'Vertraulichkeit' must return 1 hit", 1, searchRes.hits.size)
+        assertEquals("Hit must be on page 0", 0u, searchRes.hits[0].pageIndex)
+        assertTrue("Snippet must contain search keyword", searchRes.hits[0].snippet.lowercase().contains("vertraulichkeit"))
+
+        val searchAbgb = bridge.searchExact(ingestedSession.sessionId, "ABGB")
+        assertEquals("FTS5 search for 'ABGB' must return 1 hit", 1, searchAbgb.hits.size)
+        assertTrue("Snippet must contain ABGB", searchAbgb.hits[0].snippet.contains("ABGB"))
+
+        bridge.closeScanSession(sessId)
+    }
 }

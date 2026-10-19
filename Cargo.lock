@@ -924,6 +924,7 @@ dependencies = [
  "thiserror",
  "vocument-core",
  "vocument-imaging",
+ "vocument-pdf-mupdf",
 ]
 
 [[package]]

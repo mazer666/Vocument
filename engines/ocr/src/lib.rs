@@ -12,6 +12,7 @@ pub mod corpus;
 pub mod language;
 pub mod models;
 pub mod provider;
+pub mod synthesis;
 pub mod tesseract;
 
 pub use corpus::{
@@ -23,6 +24,10 @@ pub use models::{
     BoundingBox, OcrBlock, OcrBlockType, OcrCharacter, OcrLine, OcrOptions, OcrPageResult, OcrWord,
 };
 pub use provider::{OcrError, OcrProvider};
+pub use synthesis::{
+    SearchablePdfDocument, SearchablePdfPageInput, escape_pdf_winansi_string,
+    helvetica_glyph_width, synthesize_searchable_pdf, synthesize_single_page_pdf,
+};
 pub use tesseract::TesseractEngine;
 use vocument_imaging::{ScanCleanupProfile, ScanFrame, enhance_frame};
 

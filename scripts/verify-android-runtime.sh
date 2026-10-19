@@ -126,11 +126,21 @@ if [[ "$OCR_RESULT" != *"\"passed\": true"* ]]; then
 fi
 
 if [[ "$OCR_RESULT" != *"\"bounding_boxes_valid\": true"* ]]; then
-  echo "ERROR: On-device Android OCR produced missing or invalid bounding boxes!" >&2
+  echo "ERROR: On-device Android OCR produced missing or invalid word bounding boxes!" >&2
   exit 1
 fi
 
-echo "✓ On-device authentic OCR quality gate passed on $TARGET_DEVICE (CER/WER >= 95%, valid bboxes, non-empty text)."
+if [[ "$OCR_RESULT" != *"\"character_bounding_boxes_valid\": true"* ]]; then
+  echo "ERROR: On-device Android OCR produced missing or invalid character glyph bounding boxes!" >&2
+  exit 1
+fi
+
+if [[ "$OCR_RESULT" != *"\"detected_language\": \"deu\""* ]]; then
+  echo "ERROR: On-device Android OCR language detection failed! Expected 'deu', got result: $OCR_RESULT" >&2
+  exit 1
+fi
+
+echo "✓ On-device authentic OCR quality gate passed on $TARGET_DEVICE (CER <= 5.0%, Char/Word Acc >= 95%, valid word & char bboxes, detected lang deu)."
 
 echo "    4b. Verifying live UI scan capture & OCR workflow on $TARGET_DEVICE..."
 adb -s "$TARGET_DEVICE" shell am force-stop org.vocument.app

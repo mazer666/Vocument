@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import uniffi.vocument_ffi.FfiCapturedScanPage
+import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiPoint2D
 import uniffi.vocument_ffi.FfiQuadCorners
 import uniffi.vocument_ffi.FfiScanCleanupProfile
@@ -51,14 +52,16 @@ import uniffi.vocument_ffi.FfiScanFrame
 import uniffi.vocument_ffi.FfiScanPixelFormat
 
 /**
- * Scan Capture & Camera Ingestion Screen (`ROADMAP.md` M1.0/M1.1, `SCAN-001`..`SCAN-006`).
+ * Scan Capture & Camera Ingestion Screen (`ROADMAP.md` M1.0/M1.1/M1.4, `SCAN-001`..`SCAN-006`).
  * Interfaces live camera viewfinder frames with Rust `ImagingEngine` for real-time document
- * edge detection, interactive draggable corner adjustments, multi-page scan sessions, and cleanup profiles.
+ * edge detection, interactive draggable corner adjustments, multi-page scan sessions, cleanup profiles,
+ * and direct ingestion into `DocumentSession` as searchable PDF with progressive SQLite FTS5 search.
  */
 @Composable
 fun ScanCaptureScreen(
     coreBridge: DocumentCoreBridge,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDocumentSessionOpened: (FfiDocumentSessionSnapshot) -> Unit = {}
 ) {
     val context = LocalContext.current
     var hasCameraPermission by remember {
@@ -200,6 +203,26 @@ fun ScanCaptureScreen(
             detectedCorners = null
             isManualAdjustmentActive = false
             statusMessage = "Scan session completed and closed."
+        }
+    }
+
+    fun handleIngestAsDocumentSession() {
+        val sessionId = activeSessionId ?: return
+        runCatching {
+            val sessionSnap = coreBridge.ingestScanAsDocumentSession(
+                scanSessionId = sessionId,
+                cleanupProfile = selectedProfile,
+                languages = listOf("deu", "eng"),
+                displayName = "Scan_${System.currentTimeMillis()}.pdf"
+            )
+            activeSessionId = null
+            capturedPages = emptyList()
+            detectedCorners = null
+            isManualAdjustmentActive = false
+            statusMessage = "PDF synthesized (${sessionSnap.pdfSummary.pageCount} p.) & opened in session"
+            onDocumentSessionOpened(sessionSnap)
+        }.onFailure { err ->
+            errorMessage = "PDF Ingestion error: ${err.message}"
         }
     }
 
@@ -388,6 +411,13 @@ fun ScanCaptureScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(if (latestLiveFrame != null) "Capture Page" else "Capture / Simulate Page")
+            }
+            if (activeSessionId != null && capturedPages.isNotEmpty()) {
+                Button(
+                    onClick = { handleIngestAsDocumentSession() }
+                ) {
+                    Text("Open as PDF")
+                }
             }
             if (activeSessionId != null) {
                 OutlinedButton(

@@ -299,18 +299,22 @@ Tesseract operates completely offline through `OcrProvider` on both macOS and An
 
 ---
 
-## M1.4 — Searchable PDF Synthesis & Session Ingestion *(Next)*
+## M1.4 — Searchable PDF Synthesis & Session Ingestion *(Status: **COMPLETE** — see [M1.4 Acceptance Record](docs/acceptance/M1.4-ACCEPTANCE.md) and [ADR-0015](docs/adr/ADR-0015-searchable-pdf-synthesis-and-session-ingestion.md))*
 
 Deliver:
 
-- PDF synthesis with invisible searchable text layer behind clean scan image
-- integration of scanned document directly into `DocumentSession`
-- immediate progressive SQLite FTS5 search over OCR text
-- roundtrip PDF validation against MuPDF and reference renderers
+- [x] PDF synthesis with invisible searchable text layer behind clean scan image (`engines/ocr/src/synthesis.rs`, standard PDF 1.7, `/Helvetica 3 Tr`, `Tz` horizontal stretching, `Tm` baseline offset, WinAnsi octal escapes)
+- [x] integration of scanned document directly into `DocumentSession` (`SessionRegistry::open_brokered_file`, `FileAccessOrigin::InMemoryBuffer`, `document_core_ingest_scan_as_document_session` in UniFFI/Kotlin/Swift)
+- [x] immediate progressive SQLite FTS5 search over OCR text (`index_search_batch`, `search_exact`, keyword search and snippet generation for Austrian legal terms)
+- [x] roundtrip PDF validation against MuPDF and reference renderers (`mutool info`, `mutool draw`, MuPDF `extract_page_text` roundtrip verification)
+
+### Gate
+
+Searchable PDF 1.7 documents are synthesized directly from rectified/cleaned scan frames with an invisible, spatially aligned text layer (`3 Tr`); the resulting document is ingested directly into `DocumentSession` without intermediate disk hops; MuPDF and `mutool` validate structural integrity and 100% text recovery; and progressive SQLite FTS5 search immediately indexes and finds OCR terms across native Rust and Android test suites. *(Verified via `cargo test -p vocument-ocr --test synthesis_tests`, `scripts/verify-android-runtime.sh`, and `scripts/local-ci.sh`.)*
 
 ---
 
-## M1.5 — Background Job Processing, Battery & Thermal Adaptation
+## M1.5 — Background Job Processing, Battery & Thermal Adaptation *(Next)*
 
 Deliver:
 

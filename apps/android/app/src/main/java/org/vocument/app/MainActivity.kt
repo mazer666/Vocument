@@ -186,7 +186,15 @@ fun MinimalReaderSessionScreen(
 
             if (activeTab == 3) {
                 Spacer(modifier = Modifier.height(8.dp))
-                ScanCaptureScreen(coreBridge = coreBridge)
+                ScanCaptureScreen(
+                    coreBridge = coreBridge,
+                    onDocumentSessionOpened = { newSession ->
+                        activeSession = newSession
+                        currentPageIndex = 0u
+                        refreshViewport(newSession, 0u, scaleMilli)
+                        activeTab = 0
+                    }
+                )
             } else {
                 val session = activeSession
                 val currentViewport = viewportResult
