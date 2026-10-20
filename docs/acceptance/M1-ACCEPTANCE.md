@@ -126,3 +126,32 @@ Energie- und Thermikdruck sind nicht gemessen. Ohne diese Nachweise ist M1
 
 Der Umfang von M1.6b ist damit sachlich abgeschlossen; was fehlt, ist
 **Umgebung und Entscheidung**, nicht Implementierung.
+
+---
+
+## 6. Nachbereitung nach der Abnahme (2026-10-20)
+
+Nach der Abnahme wurde der Stand erneut gegen die Anforderungen geprüft. Die
+Prüfung hat vier Mängel gefunden, die im Abnahmerecord noch nicht abgebildet
+waren. Sie sind inzwischen behoben und nachgewiesen:
+
+| # | Mangel | Behebung | Nachweis |
+|---|---|---|---|
+| 26 | Ein Dokument aus einem Dokumentanbieter (`content://`-URI) wurde vom lokalen Broker als Dateipfad behandelt — es entstand eine Datei mit dem URI-Namen, und das Dokument wurde nicht gespeichert | Die Fähigkeit „kann zurückgeschrieben werden?" liegt beim Broker (`FileBroker::can_write_back`); ein solches Dokument wird mit `NotLocallyWritable` abgelehnt und über den Export (`export_session_bytes`) an einen Ort des Nutzers geschrieben | `core/vocument-core/tests/export_and_conflict_tests.rs`, `platform/vocument-ffi/tests/scan_workflow_e2e_tests.rs` |
+| 27 | Ein Konflikt beim Speichern (die Datei wurde extern geändert) war in der Android-Oberfläche für den Nutzer unsichtbar | Die Oberfläche wertet das Ergebnis aus und bietet die vier Auflösungen: Kopie, Überschreiben, Neu laden, Abbrechen | `MainActivity.kt`, `resolve_save_conflict` |
+| 28 | Die Dateien der Anwendung (Staging, Recovery-Container, Manifest, Journal) waren mit den Standardrechten des Systems angelegt | Staging `0600`, Container `0700`, Manifest und Journal `0600` | `core/vocument-core/tests/export_and_conflict_tests.rs` (Modus geprüft) |
+| 29 | Die Kamera wurde beim Verlassen der Komposition nicht freigegeben; der Zustand der Oberfläche wurde aus dem Kameratread geschrieben | Die Kamera wird in `onDispose` freigegeben, die Ergebnisse werden auf dem Hauptthread veröffentlicht | `CameraPreviewView.kt`, `ScanCaptureScreen.kt` |
+
+Zusätzlich ist der **Export in eine Datei des Nutzers** als eigener
+Nachweis hinzugekommen: das exportierte Dokument ist ein vollständiges PDF,
+es lässt sich mit der MuPDF-Engine öffnen, der OCR-Text ist lesbar, und es
+enthält weder Pfade des Build-Rechners noch interne Kennungen.
+
+Der Stand nach der Nachbereitung: **141 Tests, 21 Suites, 0 Fehler**; clippy 0,
+fmt 0, `validate-repo.sh` 0, Android-Unit-Tests 8/8 grün, natives Gate über
+das Paket grün. Die **plattformabhängigen** Nachweise aus Abschnitt 4 bleiben
+unverändert **NOT RUN** — die Nachbereitung hat sie nicht ersetzt.
+
+Die Nachbereitung und der Beginn von M2 sind in
+`docs/reports/M1-NACHBEREITUNG-UND-M2-BEGINN.md` beschrieben, die Redaction
+in `docs/acceptance/M2.1-ACCEPTANCE.md`.
