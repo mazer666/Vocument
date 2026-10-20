@@ -467,12 +467,42 @@ if ! grep -q "fn replace_pdf_bytes" core/vocument-core/src/pdf_engine.rs; then
   echo "ERROR (M2.1 Gate): the engine interface cannot restore the previous bytes — the rollback of a redaction needs it!" >&2
   exit 1
 fi
+if ! grep -q "fn word_touches_region" core/vocument-core/src/redaction_rules.rs; then
+  echo "ERROR (M2.1 Gate): the region has to remove every word it touches — a word that is only partly covered would leave a fragment behind!" >&2
+  exit 1
+fi
+if ! grep -q "fn extend_regions_to_touching_words" core/vocument-core/src/redaction_rules.rs; then
+  echo "ERROR (M2.1 Gate): the region has to grow to the whole word that it touches!" >&2
+  exit 1
+fi
+if ! grep -q "fn fail_after_change" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): every error after the removal has to put the document back!" >&2
+  exit 1
+fi
+if ! grep -q "RedactionRollbackFailed" core/vocument-core/src/session.rs; then
+  echo "ERROR (M2.1 Gate): a rollback that fails itself has to be reported as its own error — the session then holds a document in an unknown state!" >&2
+  exit 1
+fi
+if ! grep -q "options.mode(0o600)" core/vocument-core/src/recovery.rs; then
+  echo "ERROR (M2.1 Gate): the checkpoints of the recovery store hold the document in plain text — they have to belong to the user alone!" >&2
+  exit 1
+fi
+if ! grep -q "remaining_occurrences" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): the report must name the places where the same word still stands — otherwise nobody knows that the word is still in the document!" >&2
+  exit 1
+fi
 for proof in \
+    "core/vocument-core/src/redaction_rules.rs|a_region_grows_to_the_words_it_touches" \
+    "core/vocument-core/tests/redaction_remaining_occurrences_tests.rs|the_same_word_on_another_page_is_named_in_the_report" \
+    "engines/pdf-mupdf/src/scrub_tests.rs|the_alternative_text_of_an_annotation_and_the_xmp_packet_of_a_page_are_found" \
+    "engines/pdf-mupdf/src/scrub_tests.rs|the_alternative_text_of_an_annotation_and_the_xmp_packet_of_a_page_are_emptied" \
+    "core/vocument-core/tests/redaction_remaining_occurrences_tests.rs|a_remainder_without_a_place_still_stops_the_redaction" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|the_same_word_on_another_page_is_named_in_the_report" \
     "engines/pdf-mupdf/src/redaction_rotation_tests.rs|the_word_boxes_of_a_turned_page_are_normalised" \
     "engines/pdf-mupdf/src/scrub_tests.rs|the_text_of_an_annotation_and_of_a_form_field_is_emptied" \
     "engines/pdf-mupdf/src/scrub_tests.rs|a_word_that_is_hex_encoded_is_found" \
-    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_redaction_that_only_covers_a_part_of_a_word_is_not_reported_as_successful" \
-    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_redaction_that_cannot_be_verified_leaves_the_document_unchanged" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_region_without_content_is_refused_and_the_document_stays_unchanged" \
     "core/vocument-core/tests/redaction_rollback_tests.rs|a_successful_redaction_deletes_the_checkpoints_of_the_recovery_store" \
     "core/vocument-core/tests/redaction_rollback_tests.rs|a_redaction_that_cannot_be_verified_leaves_the_document_and_the_checkpoints_alone"; do
   file="${proof%%|*}"

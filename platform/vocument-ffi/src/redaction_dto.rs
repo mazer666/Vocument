@@ -20,6 +20,7 @@
 //! has to show to the user before the document is saved.
 
 use crate::{DocumentCoreError, session_registry};
+use vocument_core::pdf_engine::PdfTextOccurrence;
 use vocument_core::redaction::{RedactionCheck, RedactionRegion, RedactionReport};
 
 /// A region of a page whose content shall be removed (`REDACT-001`).
@@ -67,6 +68,34 @@ impl From<RedactionCheck> for FfiRedactionCheck {
     }
 }
 
+/// A place of the document that still carries a redacted word
+/// (`REDACT-001`).
+///
+/// The redaction removes what the user marked. A word that occurs somewhere
+/// else in the document is not part of the redaction — but the shell has to
+/// know about it, so that it cannot tell the user that the word is gone from
+/// the document when it is still in it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FfiRedactionOccurrence {
+    /// The kind of the place: `content`, `annotation`, `form`, `attachment`,
+    /// `info` or `xmp`.
+    pub kind: String,
+    /// The page the place lies on, `-1` for the document itself.
+    pub page_index: i32,
+    /// A short description of the place.
+    pub location: String,
+}
+
+impl From<PdfTextOccurrence> for FfiRedactionOccurrence {
+    fn from(occurrence: PdfTextOccurrence) -> Self {
+        Self {
+            kind: occurrence.kind,
+            page_index: occurrence.page_index,
+            location: occurrence.location,
+        }
+    }
+}
+
 /// The report of a redaction and of its verification (`REDACT-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiRedactionReport {
@@ -86,6 +115,13 @@ pub struct FfiRedactionReport {
     pub rendered_page_clean: FfiRedactionCheck,
     /// The words are no longer present in the bytes of the file as plain text.
     pub file_bytes_clean: FfiRedactionCheck,
+    /// The places of the document where the same word still stands — on
+    /// another page, for example.
+    ///
+    /// The redaction removes what the user marked. The shell should show
+    /// these places to the user: the word is still in the document, only not
+    /// under the region that was marked.
+    pub remaining_occurrences: Vec<FfiRedactionOccurrence>,
     /// The removal was verified in every respect.
     pub verified: bool,
     /// The revision of the document after the redaction.
@@ -104,6 +140,11 @@ impl From<RedactionReport> for FfiRedactionReport {
             search_index_clean: report.search_index_clean.into(),
             rendered_page_clean: report.rendered_page_clean.into(),
             file_bytes_clean: report.file_bytes_clean.into(),
+            remaining_occurrences: report
+                .remaining_occurrences
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             verified,
             revision: report.revision,
         }

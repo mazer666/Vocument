@@ -4139,6 +4139,113 @@ public func FfiConverterTypeFfiRecoveryActionResult_lower(_ value: FfiRecoveryAc
 
 
 /**
+ * A place of the document that still carries a redacted word
+ * (`REDACT-001`).
+ *
+ * The redaction removes what the user marked. A word that occurs somewhere
+ * else in the document is not part of the redaction — but the shell has to
+ * know about it, so that it cannot tell the user that the word is gone from
+ * the document when it is still in it.
+ */
+public struct FfiRedactionOccurrence {
+    /**
+     * The kind of the place: `content`, `annotation`, `form`, `attachment`,
+     * `info` or `xmp`.
+     */
+    public var kind: String
+    /**
+     * The page the place lies on, `-1` for the document itself.
+     */
+    public var pageIndex: Int32
+    /**
+     * A short description of the place.
+     */
+    public var location: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The kind of the place: `content`, `annotation`, `form`, `attachment`,
+         * `info` or `xmp`.
+         */kind: String, 
+        /**
+         * The page the place lies on, `-1` for the document itself.
+         */pageIndex: Int32, 
+        /**
+         * A short description of the place.
+         */location: String) {
+        self.kind = kind
+        self.pageIndex = pageIndex
+        self.location = location
+    }
+}
+
+#if compiler(>=6)
+extension FfiRedactionOccurrence: Sendable {}
+#endif
+
+
+extension FfiRedactionOccurrence: Equatable, Hashable {
+    public static func ==(lhs: FfiRedactionOccurrence, rhs: FfiRedactionOccurrence) -> Bool {
+        if lhs.kind != rhs.kind {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.location != rhs.location {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(kind)
+        hasher.combine(pageIndex)
+        hasher.combine(location)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRedactionOccurrence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRedactionOccurrence {
+        return
+            try FfiRedactionOccurrence(
+                kind: FfiConverterString.read(from: &buf), 
+                pageIndex: FfiConverterInt32.read(from: &buf), 
+                location: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRedactionOccurrence, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterInt32.write(value.pageIndex, into: &buf)
+        FfiConverterString.write(value.location, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionOccurrence_lift(_ buf: RustBuffer) throws -> FfiRedactionOccurrence {
+    return try FfiConverterTypeFfiRedactionOccurrence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionOccurrence_lower(_ value: FfiRedactionOccurrence) -> RustBuffer {
+    return FfiConverterTypeFfiRedactionOccurrence.lower(value)
+}
+
+
+/**
  * A region of a page whose content shall be removed (`REDACT-001`).
  *
  * The coordinates are in the page space of the engine: milli-points, origin
@@ -4268,6 +4375,15 @@ public struct FfiRedactionReport {
      */
     public var fileBytesClean: FfiRedactionCheck
     /**
+     * The places of the document where the same word still stands — on
+     * another page, for example.
+     *
+     * The redaction removes what the user marked. The shell should show
+     * these places to the user: the word is still in the document, only not
+     * under the region that was marked.
+     */
+    public var remainingOccurrences: [FfiRedactionOccurrence]
+    /**
      * The removal was verified in every respect.
      */
     public var verified: Bool
@@ -4304,6 +4420,14 @@ public struct FfiRedactionReport {
          * The words are no longer present in the bytes of the file as plain text.
          */fileBytesClean: FfiRedactionCheck, 
         /**
+         * The places of the document where the same word still stands — on
+         * another page, for example.
+         *
+         * The redaction removes what the user marked. The shell should show
+         * these places to the user: the word is still in the document, only not
+         * under the region that was marked.
+         */remainingOccurrences: [FfiRedactionOccurrence], 
+        /**
          * The removal was verified in every respect.
          */verified: Bool, 
         /**
@@ -4317,6 +4441,7 @@ public struct FfiRedactionReport {
         self.searchIndexClean = searchIndexClean
         self.renderedPageClean = renderedPageClean
         self.fileBytesClean = fileBytesClean
+        self.remainingOccurrences = remainingOccurrences
         self.verified = verified
         self.revision = revision
     }
@@ -4353,6 +4478,9 @@ extension FfiRedactionReport: Equatable, Hashable {
         if lhs.fileBytesClean != rhs.fileBytesClean {
             return false
         }
+        if lhs.remainingOccurrences != rhs.remainingOccurrences {
+            return false
+        }
         if lhs.verified != rhs.verified {
             return false
         }
@@ -4371,6 +4499,7 @@ extension FfiRedactionReport: Equatable, Hashable {
         hasher.combine(searchIndexClean)
         hasher.combine(renderedPageClean)
         hasher.combine(fileBytesClean)
+        hasher.combine(remainingOccurrences)
         hasher.combine(verified)
         hasher.combine(revision)
     }
@@ -4393,6 +4522,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
                 searchIndexClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 renderedPageClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 fileBytesClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
+                remainingOccurrences: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
                 verified: FfiConverterBool.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf)
         )
@@ -4407,6 +4537,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
         FfiConverterTypeFfiRedactionCheck.write(value.searchIndexClean, into: &buf)
         FfiConverterTypeFfiRedactionCheck.write(value.renderedPageClean, into: &buf)
         FfiConverterTypeFfiRedactionCheck.write(value.fileBytesClean, into: &buf)
+        FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.remainingOccurrences, into: &buf)
         FfiConverterBool.write(value.verified, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)
     }
@@ -6234,6 +6365,16 @@ public enum DocumentCoreError: Swift.Error {
      */
     case RedactionUnverified(details: String
     )
+    /**
+     * The redaction failed and the document could **not** be put back
+     * (`REDACT-002`).
+     *
+     * The session holds a document in an unknown state. The shell has to
+     * tell the user that the document has to be opened again — the file on
+     * the disk still holds the original.
+     */
+    case RedactionRollbackFailed(original: String, rollback: String
+    )
     case NavigationFailure(details: String
     )
     case TransactionFailure(details: String
@@ -6284,22 +6425,26 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 8: return .RedactionUnverified(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .NavigationFailure(
+        case 9: return .RedactionRollbackFailed(
+            original: try FfiConverterString.read(from: &buf), 
+            rollback: try FfiConverterString.read(from: &buf)
+            )
+        case 10: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .TransactionFailure(
+        case 11: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .SaveFailure(
+        case 12: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 12: return .RecoveryFailure(
+        case 13: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 13: return .ImagingFailure(
+        case 14: return .ImagingFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 14: return .InternalFailure(
+        case 15: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -6353,33 +6498,39 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .NavigationFailure(details):
+        case let .RedactionRollbackFailed(original,rollback):
             writeInt(&buf, Int32(9))
-            FfiConverterString.write(details, into: &buf)
+            FfiConverterString.write(original, into: &buf)
+            FfiConverterString.write(rollback, into: &buf)
             
         
-        case let .TransactionFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .SaveFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .RecoveryFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(12))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(13))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(14))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(15))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -8068,6 +8219,31 @@ fileprivate struct FfiConverterSequenceTypeFfiRecoverableDocumentInfo: FfiConver
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiRecoverableDocumentInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiRedactionOccurrence: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiRedactionOccurrence]
+
+    public static func write(_ value: [FfiRedactionOccurrence], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiRedactionOccurrence.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiRedactionOccurrence] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiRedactionOccurrence]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiRedactionOccurrence.read(from: &buf))
         }
         return seq
     }

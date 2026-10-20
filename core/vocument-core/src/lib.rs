@@ -12,6 +12,7 @@ pub mod navigation;
 pub mod pdf_engine;
 pub mod recovery;
 pub mod redaction;
+pub mod redaction_rules;
 pub mod render;
 pub mod rendered_page;
 pub mod save;

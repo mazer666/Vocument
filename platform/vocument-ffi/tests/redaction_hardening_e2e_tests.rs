@@ -19,22 +19,54 @@ use vocument_ffi::{document_core_open_brokered_file, document_core_page_words};
 /// and short enough that a part of it can stay behind.
 const SECRET: &str = "VERTRAULICH";
 
-/// Builds a page with a single line of text.
+/// Builds a document whose pages each carry a single line of text.
 fn document_with_secret() -> Vec<u8> {
+    document_with_secret_on_pages(1)
+}
+
+/// Builds a document with the given number of pages. Every page carries the
+/// word — the same word on every page.
+fn document_with_secret_on_pages(page_count: usize) -> Vec<u8> {
     let content = format!("BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\n");
-    let objects: Vec<Vec<u8>> = vec![
+    // The objects: 1 the catalog, 2 the pages, 3.. the pages, then the font
+    // and one content stream per page.
+    let font_object = 3 + page_count as u32;
+    let first_content_object = font_object + 1;
+    let kids: String = (0..page_count)
+        .map(|index| format!("{} 0 R ", 3 + index as u32))
+        .collect();
+    let mut objects: Vec<Vec<u8>> = vec![
         b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
-        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
-        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
-        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
-        {
-            let mut obj =
-                format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
-            obj.extend_from_slice(content.as_bytes());
-            obj.extend_from_slice(b"\nendstream\nendobj\n");
-            obj
-        },
+        format!("2 0 obj\n<< /Type /Pages /Kids [{kids}] /Count {page_count} >>\nendobj\n")
+            .into_bytes(),
     ];
+    for index in 0..page_count as u32 {
+        objects.push(
+            format!(
+                "{} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 {font_object} 0 R >> >> /Contents {} 0 R >>\nendobj\n",
+                3 + index,
+                first_content_object + index
+            )
+            .into_bytes(),
+        );
+    }
+    objects.push(
+        format!(
+            "{font_object} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+        )
+        .into_bytes(),
+    );
+    for index in 0..page_count as u32 {
+        let mut obj = format!(
+            "{} 0 obj\n<< /Length {} >>\nstream\n",
+            first_content_object + index,
+            content.len()
+        )
+        .into_bytes();
+        obj.extend_from_slice(content.as_bytes());
+        obj.extend_from_slice(b"\nendstream\nendobj\n");
+        objects.push(obj);
+    }
 
     let mut pdf = Vec::new();
     pdf.extend_from_slice(b"%PDF-1.7\n");
@@ -75,7 +107,7 @@ fn open_session(pdf_bytes: Vec<u8>) -> String {
 }
 
 #[test]
-fn a_redaction_that_only_covers_a_part_of_a_word_is_not_reported_as_successful() {
+fn a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word() {
     let session_id = open_session(document_with_secret());
 
     let words =
@@ -86,8 +118,8 @@ fn a_redaction_that_only_covers_a_part_of_a_word_is_not_reported_as_successful()
         .expect("the word must be in the text of the page");
 
     // The region covers the first half of the word. The removal works
-    // character by character, so the rest of the word stays in the document —
-    // and a fragment is still content.
+    // character by character, so the region grows to the whole word: a
+    // fragment of a secret is still a secret.
     let region = FfiRedactionRegion {
         x0_milli_pt: word.rect.x0_milli_pt,
         y0_milli_pt: word.rect.y0_milli_pt,
@@ -95,18 +127,36 @@ fn a_redaction_that_only_covers_a_part_of_a_word_is_not_reported_as_successful()
         y1_milli_pt: word.rect.y1_milli_pt,
     };
 
-    let result = document_core_redact_page_regions(session_id.clone(), 0, vec![region]);
+    let report = document_core_redact_page_regions(session_id.clone(), 0, vec![region])
+        .expect("the redaction must succeed");
     assert!(
-        result.is_err(),
-        "a redaction that leaves a fragment of the word must not be reported as successful"
+        report.verified,
+        "the whole word has to be gone, not a fragment of it"
+    );
+
+    // The word is not in the document any more — not in its text layer, not
+    // in the bytes of the file.
+    let after =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    assert!(
+        !after
+            .iter()
+            .any(|word| word.text.eq_ignore_ascii_case(SECRET)),
+        "the word must not be in the text any more"
+    );
+    let bytes = document_core_export_session_bytes(session_id.clone())
+        .expect("the bytes of the document must be readable");
+    assert!(
+        !String::from_utf8_lossy(&bytes)
+            .to_lowercase()
+            .contains(SECRET.to_lowercase().as_str()),
+        "the word must not be in the bytes of the file any more"
     );
 }
 
 #[test]
-fn a_redaction_that_cannot_be_verified_leaves_the_document_unchanged() {
-    let session_id = open_session(document_with_secret());
-    let before = document_core_export_session_bytes(session_id.clone())
-        .expect("the bytes of the document must be readable");
+fn the_same_word_on_another_page_is_named_in_the_report() {
+    let session_id = open_session(document_with_secret_on_pages(2));
 
     let words =
         document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
@@ -117,14 +167,45 @@ fn a_redaction_that_cannot_be_verified_leaves_the_document_unchanged() {
     let region = FfiRedactionRegion {
         x0_milli_pt: word.rect.x0_milli_pt,
         y0_milli_pt: word.rect.y0_milli_pt,
-        x1_milli_pt: (word.rect.x0_milli_pt + word.rect.x1_milli_pt) / 2,
+        x1_milli_pt: word.rect.x1_milli_pt,
         y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let report = document_core_redact_page_regions(session_id, 0, vec![region])
+        .expect("the redaction of the marked page must succeed");
+
+    // The word is still in the document, on the second page. The report says
+    // so, so that nobody believes the word is gone.
+    assert_eq!(
+        report.remaining_occurrences.len(),
+        1,
+        "the place of the word is named: {:?}",
+        report.remaining_occurrences
+    );
+    assert_eq!(report.remaining_occurrences[0].page_index, 1);
+    assert!(report.verified, "the marked page is clean in every respect");
+}
+
+#[test]
+fn a_region_without_content_is_refused_and_the_document_stays_unchanged() {
+    let session_id = open_session(document_with_secret());
+    let before = document_core_export_session_bytes(session_id.clone())
+        .expect("the bytes of the document must be readable");
+
+    // A region that touches no word at all. The redaction would remove
+    // nothing, and a redaction that removes nothing must not be reported as
+    // a success: the user would believe that something was removed.
+    let region = FfiRedactionRegion {
+        x0_milli_pt: 150_000,
+        y0_milli_pt: 150_000,
+        x1_milli_pt: 190_000,
+        y1_milli_pt: 190_000,
     };
 
     let result = document_core_redact_page_regions(session_id.clone(), 0, vec![region]);
     assert!(
         result.is_err(),
-        "the redaction cannot be verified and must fail"
+        "a redaction that removes nothing must be refused"
     );
 
     let after = document_core_export_session_bytes(session_id.clone())

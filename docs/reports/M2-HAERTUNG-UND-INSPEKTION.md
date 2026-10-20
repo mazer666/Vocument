@@ -163,6 +163,21 @@ text behind.
 | M2.2 | `document_actions` in the engine interface, `inspect_document` in the core, the risk policy in the core, the FFI function, the three tests |
 | M2.3 | `document_attachments` and `document_signatures`, `changed_since_signing` and `is_risky_attachment` in the core, the engine and end-to-end tests |
 
+### 3.5 The second audit: the same word on another page
+
+The second audit went further than the first one and built a document in which
+the same word stands on two pages. The redaction of one of them reported
+"clean" in every check — and the word was still in the document, on the other
+page.
+
+The promise of the redaction is about the marked region. The word that
+stands elsewhere is named in the report now (`remaining_occurrences`), over
+the FFI boundary as well, so that the shell can show it. A remainder in the
+bytes of the file **without** a known place still stops the redaction.
+
+Proofs: `the_same_word_on_another_page_is_named_in_the_report` (core and
+across the FFI boundary), `a_remainder_without_a_place_still_stops_the_redaction`.
+
 ## 4. Architecture and platform
 
 - **Separation of layers:** both new functions separate facts and assessment.

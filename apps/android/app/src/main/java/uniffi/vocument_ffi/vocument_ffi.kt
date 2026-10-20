@@ -3626,6 +3626,61 @@ public object FfiConverterTypeFfiRecoveryActionResult: FfiConverterRustBuffer<Ff
 
 
 /**
+ * A place of the document that still carries a redacted word
+ * (`REDACT-001`).
+ *
+ * The redaction removes what the user marked. A word that occurs somewhere
+ * else in the document is not part of the redaction — but the shell has to
+ * know about it, so that it cannot tell the user that the word is gone from
+ * the document when it is still in it.
+ */
+data class FfiRedactionOccurrence (
+    /**
+     * The kind of the place: `content`, `annotation`, `form`, `attachment`,
+     * `info` or `xmp`.
+     */
+    var `kind`: kotlin.String, 
+    /**
+     * The page the place lies on, `-1` for the document itself.
+     */
+    var `pageIndex`: kotlin.Int, 
+    /**
+     * A short description of the place.
+     */
+    var `location`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRedactionOccurrence: FfiConverterRustBuffer<FfiRedactionOccurrence> {
+    override fun read(buf: ByteBuffer): FfiRedactionOccurrence {
+        return FfiRedactionOccurrence(
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiRedactionOccurrence) = (
+            FfiConverterString.allocationSize(value.`kind`) +
+            FfiConverterInt.allocationSize(value.`pageIndex`) +
+            FfiConverterString.allocationSize(value.`location`)
+    )
+
+    override fun write(value: FfiRedactionOccurrence, buf: ByteBuffer) {
+            FfiConverterString.write(value.`kind`, buf)
+            FfiConverterInt.write(value.`pageIndex`, buf)
+            FfiConverterString.write(value.`location`, buf)
+    }
+}
+
+
+
+/**
  * A region of a page whose content shall be removed (`REDACT-001`).
  *
  * The coordinates are in the page space of the engine: milli-points, origin
@@ -3709,6 +3764,15 @@ data class FfiRedactionReport (
      */
     var `fileBytesClean`: FfiRedactionCheck, 
     /**
+     * The places of the document where the same word still stands — on
+     * another page, for example.
+     *
+     * The redaction removes what the user marked. The shell should show
+     * these places to the user: the word is still in the document, only not
+     * under the region that was marked.
+     */
+    var `remainingOccurrences`: List<FfiRedactionOccurrence>, 
+    /**
      * The removal was verified in every respect.
      */
     var `verified`: kotlin.Boolean, 
@@ -3735,6 +3799,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterTypeFfiRedactionCheck.read(buf),
+            FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterULong.read(buf),
         )
@@ -3749,6 +3814,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`searchIndexClean`) +
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`renderedPageClean`) +
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`fileBytesClean`) +
+            FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`remainingOccurrences`) +
             FfiConverterBoolean.allocationSize(value.`verified`) +
             FfiConverterULong.allocationSize(value.`revision`)
     )
@@ -3762,6 +3828,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.write(value.`searchIndexClean`, buf)
             FfiConverterTypeFfiRedactionCheck.write(value.`renderedPageClean`, buf)
             FfiConverterTypeFfiRedactionCheck.write(value.`fileBytesClean`, buf)
+            FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`remainingOccurrences`, buf)
             FfiConverterBoolean.write(value.`verified`, buf)
             FfiConverterULong.write(value.`revision`, buf)
     }
@@ -4710,6 +4777,24 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    /**
+     * The redaction failed and the document could **not** be put back
+     * (`REDACT-002`).
+     *
+     * The session holds a document in an unknown state. The shell has to
+     * tell the user that the document has to be opened again — the file on
+     * the disk still holds the original.
+     */
+    class RedactionRollbackFailed(
+        
+        val `original`: kotlin.String, 
+        
+        val `rollback`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "original=${ `original` }, rollback=${ `rollback` }"
+    }
+    
     class NavigationFailure(
         
         val `details`: kotlin.String
@@ -4796,22 +4881,26 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             8 -> DocumentCoreException.RedactionUnverified(
                 FfiConverterString.read(buf),
                 )
-            9 -> DocumentCoreException.NavigationFailure(
+            9 -> DocumentCoreException.RedactionRollbackFailed(
+                FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            10 -> DocumentCoreException.TransactionFailure(
+            10 -> DocumentCoreException.NavigationFailure(
                 FfiConverterString.read(buf),
                 )
-            11 -> DocumentCoreException.SaveFailure(
+            11 -> DocumentCoreException.TransactionFailure(
                 FfiConverterString.read(buf),
                 )
-            12 -> DocumentCoreException.RecoveryFailure(
+            12 -> DocumentCoreException.SaveFailure(
                 FfiConverterString.read(buf),
                 )
-            13 -> DocumentCoreException.ImagingFailure(
+            13 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            14 -> DocumentCoreException.InternalFailure(
+            14 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            15 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4858,6 +4947,12 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.RedactionRollbackFailed -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`original`)
+                + FfiConverterString.allocationSize(value.`rollback`)
             )
             is DocumentCoreException.NavigationFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -4933,33 +5028,39 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.NavigationFailure -> {
+            is DocumentCoreException.RedactionRollbackFailed -> {
                 buf.putInt(9)
-                FfiConverterString.write(value.`details`, buf)
+                FfiConverterString.write(value.`original`, buf)
+                FfiConverterString.write(value.`rollback`, buf)
                 Unit
             }
-            is DocumentCoreException.TransactionFailure -> {
+            is DocumentCoreException.NavigationFailure -> {
                 buf.putInt(10)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.SaveFailure -> {
+            is DocumentCoreException.TransactionFailure -> {
                 buf.putInt(11)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.RecoveryFailure -> {
+            is DocumentCoreException.SaveFailure -> {
                 buf.putInt(12)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.ImagingFailure -> {
+            is DocumentCoreException.RecoveryFailure -> {
                 buf.putInt(13)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(14)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(15)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -6409,6 +6510,34 @@ public object FfiConverterSequenceTypeFfiRecoverableDocumentInfo: FfiConverterRu
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiRecoverableDocumentInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiRedactionOccurrence: FfiConverterRustBuffer<List<FfiRedactionOccurrence>> {
+    override fun read(buf: ByteBuffer): List<FfiRedactionOccurrence> {
+        val len = buf.getInt()
+        return List<FfiRedactionOccurrence>(len) {
+            FfiConverterTypeFfiRedactionOccurrence.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiRedactionOccurrence>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiRedactionOccurrence.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiRedactionOccurrence>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiRedactionOccurrence.write(it, buf)
         }
     }
 }

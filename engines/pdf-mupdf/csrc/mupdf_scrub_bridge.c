@@ -94,14 +94,25 @@ static int vocument_scrub_annotations(
             }
             continue;
         }
-        if (!vocument_object_carries_word(ctx, contents, words, word_count)) {
-            continue;
-        }
         /* The text of the annotation is emptied, the annotation itself stays:
            it belongs to the document and may carry information that the user
-           wants to keep. */
-        pdf_dict_puts(ctx, annot, "Contents", pdf_new_string(ctx, "", 0));
-        changed++;
+           wants to keep.
+
+           An annotation carries more than its text: the title, the
+           alternative text, the subject, the reply and the name of the file.
+           All of them can carry the text of the user, and all of them are
+           emptied. */
+        static const char *const text_fields[] = {
+            "Contents", "T", "RC", "Alt", "Subj", "R", "IT", "DS"
+        };
+        for (size_t f = 0; f < sizeof(text_fields) / sizeof(text_fields[0]); f++) {
+            pdf_obj *value = pdf_dict_gets(ctx, annot, text_fields[f]);
+            if (!vocument_object_carries_word(ctx, value, words, word_count)) {
+                continue;
+            }
+            pdf_dict_puts(ctx, annot, text_fields[f], pdf_new_string(ctx, "", 0));
+            changed++;
+        }
     }
 
     if (out_changed) {
@@ -233,6 +244,84 @@ static unsigned char *vocument_replace_words(
     return out;
 }
 
+static int vocument_scrub_xmp_stream(
+    fz_context *ctx,
+    pdf_document *pdf_doc,
+    pdf_obj *metadata,
+    const char *const *words,
+    size_t word_count
+) {
+    int changed = 0;
+    fz_buffer *xmp_buffer = NULL;
+    fz_var(xmp_buffer);
+
+    if (!pdf_is_stream(ctx, metadata)) {
+        return 0;
+    }
+
+    fz_try(ctx) {
+        xmp_buffer = pdf_load_stream(ctx, metadata);
+        if (xmp_buffer) {
+            unsigned char *data = NULL;
+            size_t len = fz_buffer_storage(ctx, xmp_buffer, &data);
+            int carries = 0;
+            for (size_t w = 0; w < word_count && !carries; w++) {
+                if (words[w] && words[w][0]) {
+                    carries = vocument_contains_word(data, len, words[w]);
+                }
+            }
+            if (carries) {
+                size_t new_len = 0;
+                unsigned char *replaced = vocument_replace_words(data, len, words, word_count, &new_len);
+                if (replaced) {
+                    fz_buffer *new_buffer = fz_new_buffer_from_copied_data(ctx, replaced, new_len);
+                    free(replaced);
+                    if (new_buffer) {
+                        pdf_update_stream(ctx, pdf_doc, metadata, new_buffer, 0);
+                        fz_drop_buffer(ctx, new_buffer);
+                        changed++;
+                    }
+                }
+            }
+        }
+    }
+    fz_always(ctx) {
+        if (xmp_buffer) {
+            fz_drop_buffer(ctx, xmp_buffer);
+        }
+    }
+    fz_catch(ctx) {
+        fz_rethrow(ctx);
+    }
+    return changed;
+}
+
+static int vocument_scrub_page_metadata(
+    fz_context *ctx,
+    pdf_document *pdf_doc,
+    const char *const *words,
+    size_t word_count,
+    int *out_changed
+) {
+    int changed = 0;
+    int page_count = pdf_count_pages(ctx, pdf_doc);
+    for (int i = 0; i < page_count; i++) {
+        pdf_page *page = pdf_load_page(ctx, pdf_doc, i);
+        if (!page) {
+            continue;
+        }
+        /* The metadata of the page: the object of the dictionary is the
+           stream itself, an indirect object that MuPDF knows. */
+        pdf_obj *metadata = pdf_dict_get(ctx, page->obj, PDF_NAME(Metadata));
+        changed += vocument_scrub_xmp_stream(ctx, pdf_doc, metadata, words, word_count);
+        pdf_drop_page(ctx, page);
+    }
+    if (out_changed) {
+        *out_changed += changed;
+    }
+    return 0;
+}
+
 /* Empties the metadata of the document: the fields of the document
    information dictionary and the XMP packet. */
 static int vocument_scrub_metadata(
@@ -265,36 +354,10 @@ static int vocument_scrub_metadata(
             }
         }
 
-        /* The XMP packet. It is a stream of its own, so it is written back
-           with the redacted words replaced by a placeholder. */
+        /* The XMP packet of the document. */
         pdf_obj *root = pdf_dict_get(ctx, trailer, PDF_NAME(Root));
         pdf_obj *metadata = pdf_dict_get(ctx, root, PDF_NAME(Metadata));
-        if (pdf_is_stream(ctx, metadata)) {
-            xmp_buffer = pdf_load_stream(ctx, metadata);
-            if (xmp_buffer) {
-                unsigned char *data = NULL;
-                size_t len = fz_buffer_storage(ctx, xmp_buffer, &data);
-                int carries = 0;
-                for (size_t w = 0; w < word_count && !carries; w++) {
-                    if (words[w] && words[w][0]) {
-                        carries = vocument_contains_word(data, len, words[w]);
-                    }
-                }
-                if (carries) {
-                    size_t new_len = 0;
-                    unsigned char *replaced = vocument_replace_words(data, len, words, word_count, &new_len);
-                    if (replaced) {
-                        fz_buffer *new_buffer = fz_new_buffer_from_copied_data(ctx, replaced, new_len);
-                        free(replaced);
-                        if (new_buffer) {
-                            pdf_update_stream(ctx, pdf_doc, metadata, new_buffer, 0);
-                            fz_drop_buffer(ctx, new_buffer);
-                            changed++;
-                        }
-                    }
-                }
-            }
-        }
+        changed += vocument_scrub_xmp_stream(ctx, pdf_doc, metadata, words, word_count);
     }
     fz_always(ctx) {
         if (xmp_buffer) {
@@ -310,16 +373,6 @@ static int vocument_scrub_metadata(
     }
     return 0;
 }
-
-/* Empties the metadata of the document: the fields of the document
-   information dictionary and the XMP packet. */
-static int vocument_scrub_metadata(
-    fz_context *ctx,
-    pdf_document *pdf_doc,
-    const char *const *words,
-    size_t word_count,
-    int *out_changed
-);
 
 /**
  * Removes the given words from the annotations, the form fields and the
@@ -396,6 +449,9 @@ int vocument_mupdf_scrub_document(
                 }
             }
             status = vocument_scrub_metadata(ctx, pdf_doc, words, word_count, out_scrubbed_metadata);
+            if (status == 0) {
+                status = vocument_scrub_page_metadata(ctx, pdf_doc, words, word_count, out_scrubbed_metadata);
+            }
             if (status == 0) {
                 vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
             }

@@ -201,16 +201,7 @@ impl RecoveryContainer {
     /// It must not be readable for anyone else on the machine.
     fn ensure_container_dir(&self) -> Result<(), RecoveryError> {
         fs::create_dir_all(&self.container_dir)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut permissions = fs::metadata(&self.container_dir)?.permissions();
-            if permissions.mode() & 0o077 != 0 {
-                permissions.set_mode(0o700);
-                fs::set_permissions(&self.container_dir, permissions)?;
-            }
-        }
-        Ok(())
+        Self::set_private_directory_permissions(&self.container_dir)
     }
 
     /// Creates a file that only the owner may read.
@@ -230,6 +221,20 @@ impl RecoveryContainer {
 
     fn checkpoints_dir(&self) -> PathBuf {
         self.container_dir.join("checkpoints")
+    }
+
+    /// Makes a directory private to its owner.
+    fn set_private_directory_permissions(dir: &Path) -> Result<(), RecoveryError> {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(dir)?.permissions();
+            if permissions.mode() & 0o077 != 0 {
+                permissions.set_mode(0o700);
+                fs::set_permissions(dir, permissions)?;
+            }
+        }
+        Ok(())
     }
 
     /// Atomically writes the recovery manifest to disk via sibling staging and rename.
@@ -308,6 +313,11 @@ impl RecoveryContainer {
     }
 
     /// Atomically writes a periodic full document checkpoint PDF to `checkpoints/`.
+    ///
+    /// A checkpoint holds the document in plain text. It therefore belongs to
+    /// the user alone: the directory is `0700`, the file `0600`. A file that
+    /// anybody on the machine could read would be a second copy of the
+    /// document outside of the place the user expects it.
     pub fn write_checkpoint(
         &self,
         revision: u64,
@@ -315,11 +325,19 @@ impl RecoveryContainer {
     ) -> Result<(String, String), RecoveryError> {
         let dir = self.checkpoints_dir();
         fs::create_dir_all(&dir)?;
+        Self::set_private_directory_permissions(&dir)?;
         let filename = format!("checkpoint_rev_{revision}.pdf");
         let dest = dir.join(&filename);
         let temp = dir.join(format!(".tmp_{filename}"));
 
-        let mut file = File::create(&temp)?;
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&temp)?;
         file.write_all(pdf_bytes)?;
         file.sync_all()?;
         fs::rename(temp, dest)?;

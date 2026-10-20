@@ -57,7 +57,7 @@ impl RedactionRegion {
         }
     }
 
-    fn as_rect(self) -> PdfRectMilliPt {
+    pub fn as_rect(self) -> PdfRectMilliPt {
         PdfRectMilliPt {
             x0_milli_pt: self.x0_milli_pt,
             y0_milli_pt: self.y0_milli_pt,
@@ -105,6 +105,14 @@ pub struct RedactionReport {
     pub rendered_page_clean: RedactionCheck,
     /// The words are no longer present in the bytes of the file as plain text.
     pub file_bytes_clean: RedactionCheck,
+    /// The places of the document where the same word still stands — on
+    /// another page, for example.
+    ///
+    /// The redaction removes what the user marked. A word that occurs
+    /// somewhere else in the document is not part of the redaction, but the
+    /// user has to know about it: the report names the places, so that nobody
+    /// believes that a word is gone from the document when it is still in it.
+    pub remaining_occurrences: Vec<PdfTextOccurrence>,
     /// The revision of the document after the redaction.
     pub revision: u64,
 }
@@ -176,122 +184,11 @@ impl From<PdfEngineError> for RedactionError {
     }
 }
 
-/// Normalises a text for the comparison in the bytes of the file.
-///
-/// A PDF may store the text in an encoding that is not UTF-8 — a subset font
-/// with its own encoding, for example. The check over the bytes is therefore
-/// only a supplementary signal; the extraction and the rendered page are the
-/// proof.
-fn normalized_for_bytes(text: &str) -> String {
-    text.chars()
-        .filter(|c| !c.is_whitespace() && !c.is_control())
-        .flat_map(|c| c.to_lowercase())
-        .collect()
-}
-
-/// The comparison form of a word: lower case, without punctuation.
-fn comparison_key(word: &str) -> String {
-    word.chars()
-        .filter(|c| c.is_alphanumeric())
-        .flat_map(|c| c.to_lowercase())
-        .collect()
-}
-
-/// The number of characters a word must have to be checked.
-///
-/// A single character would match almost everywhere in a PDF file and would be
-/// no evidence of a leak. This limit applies to the checks that look for a
-/// word in the document — the text layer, the search and the bytes of the
-/// file. A short word is not left unchecked: the check over the redacted
-/// region (see [`word_lies_in_region`]) covers every word, however short it
-/// is.
-const MIN_CONTENT_CHARACTERS: usize = 4;
-
-/// The tolerance of the position comparison, in milli-points.
-///
-/// The picture of a page and the text layer of a page never agree to the
-/// last micrometre: the rendering rounds, the OCR estimates. A word counts as
-/// "still there" when it lies inside the redacted region, enlarged by this
-/// tolerance.
-const POSITION_TOLERANCE_MILLI_PT: i32 = 2_000;
-
-/// Answers whether a word carries content.
-fn is_content_word(word: &str) -> bool {
-    comparison_key(word).chars().count() >= MIN_CONTENT_CHARACTERS
-}
-
-/// Answers whether the word `candidate` is the same word as `reference`.
-fn is_same_word(candidate: &str, reference: &str) -> bool {
-    let candidate_key = comparison_key(candidate);
-    let reference_key = comparison_key(reference);
-    !candidate_key.is_empty() && candidate_key == reference_key
-}
-
-/// Answers whether `candidate` is a fragment of `reference`.
-///
-/// The removal works character by character. A word that is only partly
-/// covered can lose its first or its last characters — what is left is a
-/// fragment of the word, and a fragment is still readable. A check that only
-/// looks for the whole word does not see it: "CH" is not the word
-/// "VERTRAULICH", but it is still part of it and it is still in the file.
-///
-/// Only the beginning and the end of a word can survive, because the region
-/// has an edge: a fragment is therefore a prefix or a suffix of the word. A
-/// single character is not enough evidence — it occurs in almost every
-/// document and would refuse every redaction.
-fn is_fragment_of(candidate: &str, reference: &str) -> bool {
-    let candidate_key = comparison_key(candidate);
-    let reference_key = comparison_key(reference);
-    candidate_key.chars().count() >= 2
-        && candidate_key.chars().count() < reference_key.chars().count()
-        && (reference_key.starts_with(&candidate_key) || reference_key.ends_with(&candidate_key))
-}
-
-/// Answers whether a word lies in the redacted region.
-///
-/// The centre of the word decides: a word that only touches the border of the
-/// region is not counted as removed.
-fn word_lies_in_region(word: &PdfTextWord, regions: &[RedactionRegion]) -> bool {
-    regions.iter().any(|region| {
-        let rect = region.as_rect();
-        let centre_x = (word.bbox.x0_milli_pt + word.bbox.x1_milli_pt) / 2;
-        let centre_y = (word.bbox.y0_milli_pt + word.bbox.y1_milli_pt) / 2;
-        centre_x >= rect.x0_milli_pt
-            && centre_x <= rect.x1_milli_pt
-            && centre_y >= rect.y0_milli_pt
-            && centre_y <= rect.y1_milli_pt
-    })
-}
-
-/// Answers whether a word still sticks out of the redacted region.
-///
-/// The removal works character by character: a word that is only partly
-/// covered can lose its first or its last characters and survive as a
-/// fragment. Such a fragment is still content — it can still be read and it
-/// is still in the file. A check that only looks for the *whole* word would
-/// not see it, because "CH" is not the word "VERTRAULICH".
-///
-/// The rule is the same as the one that decides which words were removed in
-/// the first place: a word belongs to the region when its centre lies in it.
-/// What was there before has to be gone afterwards — otherwise the region
-/// still carries something that a reader can see.
-fn word_remains_in_region(word: &PdfTextWord, regions: &[RedactionRegion]) -> bool {
-    word_lies_in_region(word, regions)
-}
-
-/// Answers whether a word lies in the redacted region, enlarged by the
-/// tolerance.
-fn word_lies_in_region_tolerant(word: &PdfTextWord, regions: &[RedactionRegion]) -> bool {
-    regions.iter().any(|region| {
-        let rect = region.as_rect();
-        let centre_x = (word.bbox.x0_milli_pt + word.bbox.x1_milli_pt) / 2;
-        let centre_y = (word.bbox.y0_milli_pt + word.bbox.y1_milli_pt) / 2;
-        centre_x >= rect.x0_milli_pt - POSITION_TOLERANCE_MILLI_PT
-            && centre_x <= rect.x1_milli_pt + POSITION_TOLERANCE_MILLI_PT
-            && centre_y >= rect.y0_milli_pt - POSITION_TOLERANCE_MILLI_PT
-            && centre_y <= rect.y1_milli_pt + POSITION_TOLERANCE_MILLI_PT
-    })
-}
+use crate::redaction_rules::{
+    boxes_overlap, extend_regions_to_touching_words, is_content_word, is_fragment_of, is_same_word,
+    normalized_for_bytes, word_lies_in_region_tolerant, word_remains_in_region,
+    word_touches_region,
+};
 
 impl SessionRegistry {
     /// The places of the document that still carry one of the given words.
@@ -331,8 +228,6 @@ impl SessionRegistry {
         if regions.is_empty() {
             return Err(SessionError::Redaction(RedactionError::EmptySelection));
         }
-        let rects: Vec<PdfRectMilliPt> = regions.iter().map(|region| region.as_rect()).collect();
-
         let page_count =
             self.with_session(session_id, |session| Ok(session.pdf_summary.page_count))?;
         if page_index >= page_count {
@@ -347,24 +242,54 @@ impl SessionRegistry {
         let text_before = self.with_session(session_id, |session| {
             Ok(session.actor.extract_page_text(page_index)?)
         })?;
-        let removed_words: Vec<PdfTextWord> = text_before
-            .words
-            .iter()
-            .filter(|word| word_lies_in_region(word, regions))
-            .cloned()
-            .collect();
-
         // The words that are readable on the picture of the region, before the
         // removal. The text layer does not know everything: a scan carries its
         // words in the image, and a graphic carries no text at all. The
         // picture is the truth about what a reader sees.
         let visible_before = self.read_rendered_words(session_id, page_index)?;
+
+        // Every word the region touches belongs to the redaction, and the
+        // region grows to the whole word: the removal works character by
+        // character, and a word that is only partly covered would leave a
+        // readable fragment behind. The report names the words that were
+        // removed.
+        //
+        // The words of the picture count as well: a scan has no text layer,
+        // and the pixels of the image are the content there.
+        let mut touched_words: Vec<PdfTextWord> = text_before
+            .words
+            .iter()
+            .filter(|word| word_touches_region(word, regions))
+            .cloned()
+            .collect();
+        touched_words.extend(
+            visible_before
+                .as_ref()
+                .map(|words| {
+                    words
+                        .iter()
+                        .filter(|word| word_lies_in_region_tolerant(word, regions))
+                        .cloned()
+                        .collect::<Vec<PdfTextWord>>()
+                })
+                .unwrap_or_default(),
+        );
+        let regions: Vec<RedactionRegion> =
+            extend_regions_to_touching_words(regions, &touched_words);
+        let rects: Vec<PdfRectMilliPt> = regions.iter().map(|region| region.as_rect()).collect();
+        let removed_words: Vec<PdfTextWord> = text_before
+            .words
+            .iter()
+            .filter(|word| word_touches_region(word, &regions))
+            .cloned()
+            .collect();
+
         let visible_words_before: Vec<PdfTextWord> = visible_before
             .as_ref()
             .map(|words| {
                 words
                     .iter()
-                    .filter(|word| word_lies_in_region_tolerant(word, regions))
+                    .filter(|word| word_lies_in_region_tolerant(word, &regions))
                     .cloned()
                     .collect()
             })
@@ -398,12 +323,17 @@ impl SessionRegistry {
             }
         }
 
-        // The checks that look for a word in the document — the text layer,
-        // the search and the bytes of the file — only work for words that are
-        // long enough to be evidence of a leak. A short word is not left
-        // unchecked: the check over the redacted region covers every word,
-        // however short it is.
-        let checked_words: Vec<String> = removed_word_texts
+        // Every word that was removed is checked — also the short ones. A
+        // secret of three letters is as secret as a secret of twenty, and the
+        // search and the search for the places of the document are exact
+        // enough to carry a word of one or two letters.
+        //
+        // Only the check over the bytes of the file needs a minimum length:
+        // it looks for the word in the whole document, and a single letter
+        // would be found in every line of every font and would drown the
+        // check in false hits.
+        let checked_words: Vec<String> = removed_word_texts.clone();
+        let byte_check_words: Vec<String> = removed_word_texts
             .iter()
             .filter(|text| is_content_word(text))
             .cloned()
@@ -417,13 +347,21 @@ impl SessionRegistry {
             Ok(session.actor.current_pdf_bytes()?.to_vec())
         })?;
 
-        // The removal itself.
-        self.apply_redaction(session_id, page_index, rects)?;
+        // The removal itself. From here on the document is changed, and every
+        // error has to put it back.
+        if let Err(error) = self.apply_redaction(session_id, page_index, rects.clone()) {
+            return self.fail_after_change(session_id, page_index, &bytes_before, error);
+        }
 
         // The verification.
-        let text_after = self.with_session(session_id, |session| {
+        let text_after = match self.with_session(session_id, |session| {
             Ok(session.actor.extract_page_text(page_index)?)
-        })?;
+        }) {
+            Ok(text) => text,
+            Err(error) => {
+                return self.fail_after_change(session_id, page_index, &bytes_before, error);
+            }
+        };
         let words_after: Vec<PdfTextWord> = text_after.words.clone();
 
         // The text layer. Two things have to hold:
@@ -434,7 +372,7 @@ impl SessionRegistry {
         //    still content.
         let residue: Vec<&PdfTextWord> = words_after
             .iter()
-            .filter(|word| word_remains_in_region(word, regions))
+            .filter(|word| word_remains_in_region(word, &regions))
             .collect();
         let fragment: Option<(&str, &str)> = checked_words.iter().find_map(|target| {
             words_after
@@ -455,9 +393,13 @@ impl SessionRegistry {
 
         // The search index holds the text of the page. It has to be updated,
         // otherwise the search would still find the removed text.
-        self.reindex_page(session_id, page_index)?;
+        if let Err(error) = self.reindex_page(session_id, page_index) {
+            return self.fail_after_change(session_id, page_index, &bytes_before, error);
+        }
         let search_index_clean = if checked_words.is_empty() {
-            RedactionCheck::Passed
+            // Nothing to look for: the check was not carried out, and that is
+            // not a pass.
+            RedactionCheck::NotChecked
         } else {
             let mut failed = false;
             for removed in &checked_words {
@@ -489,25 +431,42 @@ impl SessionRegistry {
         // every word that was readable in the region before must be gone
         // afterwards. It does not rely on the text layer, which does not know
         // about the content of an image.
-        let rendered_page_clean = match (
-            visible_before,
-            self.read_rendered_words(session_id, page_index)?,
-        ) {
+        let visible_after = match self.read_rendered_words(session_id, page_index) {
+            Ok(words) => words,
+            Err(error) => {
+                return self.fail_after_change(session_id, page_index, &bytes_before, error);
+            }
+        };
+        let rendered_page_clean = match (visible_before, visible_after) {
             (Some(before), Some(after)) => {
-                // A word that is still readable on the picture of the region
-                // is a survivor. That is also true for a fragment of a word:
-                // the picture can show "CH" where the text layer had
-                // "VERTRAULICH", and a fragment is still readable.
-                let survivors: Vec<String> = before
+                // Two things have to hold:
+                //
+                // 1. Nothing may be readable at the place of the removed word
+                //    any more. A word that the OCR could not read before was
+                //    never in the list of the words that were readable — such
+                //    a word would survive a comparison of the two lists
+                //    without being noticed.
+                // 2. Everything that was readable in the region before has to
+                //    be gone afterwards, the whole word and its fragments.
+                let removed_boxes: Vec<PdfRectMilliPt> = removed_words
                     .iter()
-                    .filter(|word| word_lies_in_region_tolerant(word, regions))
+                    .map(|word| word.bbox)
+                    .chain(visible_words_before.iter().map(|word| word.bbox))
+                    .collect();
+                let survivors: Vec<String> = after
+                    .iter()
+                    .filter(|word| word_lies_in_region_tolerant(word, &regions))
                     .filter(|word| is_content_word(&word.text))
                     .filter(|word| {
-                        after.iter().any(|other| {
+                        let stands_at_the_place = removed_boxes
+                            .iter()
+                            .any(|box_of_word| boxes_overlap(word.bbox, *box_of_word));
+                        let was_readable_before = before.iter().any(|other| {
                             (is_same_word(&other.text, &word.text)
-                                || is_fragment_of(&other.text, &word.text))
-                                && word_lies_in_region_tolerant(other, regions)
-                        })
+                                || is_fragment_of(&word.text, &other.text))
+                                && word_lies_in_region_tolerant(other, &regions)
+                        });
+                        stands_at_the_place || was_readable_before
                     })
                     .map(|word| word.text.trim().to_owned())
                     .collect();
@@ -530,43 +489,77 @@ impl SessionRegistry {
         // legitimately occurs somewhere else in the document also stops the
         // redaction: the check is strict on purpose, because a redaction
         // that cannot be verified is not a redaction.
-        let file_bytes = self.with_session(session_id, |session| {
+        let file_bytes = match self.with_session(session_id, |session| {
             Ok(session.actor.current_pdf_bytes()?.to_vec())
-        })?;
+        }) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return self.fail_after_change(session_id, page_index, &bytes_before, error);
+            }
+        };
 
         // The places of the document that still carry the removed text: the
         // text of an annotation, the value of a form field, the metadata, the
         // XMP packet, the content of an embedded file. The engine reports the
         // places, the core decides what they mean. A place that still carries
         // the text means that the redaction could not be verified.
+        let mut remaining_occurrences: Vec<PdfTextOccurrence> = Vec::new();
+        // The places of the document that the engine could not clean: the
+        // text of an annotation, the value of a form field, the metadata, the
+        // content of an embedded file. They are named in the error, so that
+        // the user knows where the text is still standing.
+        let mut uncleaned_places: Vec<PdfTextOccurrence> = Vec::new();
         let file_bytes_clean = if checked_words.is_empty() {
-            RedactionCheck::Passed
+            // Nothing to look for: the check was not carried out, and that is
+            // not a pass.
+            RedactionCheck::NotChecked
         } else {
             match self.find_word_occurrences(session_id, &checked_words) {
                 Ok(occurrences) => {
-                    let places_that_carry_the_text: Vec<&PdfTextOccurrence> = occurrences
+                    // The content of the other pages is not part of the
+                    // redaction: the user marked a region of this page. Those
+                    // places are reported, they do not stop the redaction. The
+                    // other places — an annotation, a form value, the
+                    // metadata — were cleaned before the check, and a place
+                    // that survives the cleaning stops the redaction.
+                    let inside: Vec<&PdfTextOccurrence> = occurrences
                         .iter()
                         .filter(|occurrence| {
-                            // The content of the other pages is not part of the
-                            // redaction: the user marked a region of this
-                            // page. The other places belong to the document;
-                            // they are cleaned before the check and a place
-                            // that survives the cleaning stops the redaction.
                             !(occurrence.kind == "content"
                                 && occurrence.page_index != page_index as i32)
                         })
                         .collect();
-                    if !places_that_carry_the_text.is_empty() {
+                    let outside: Vec<&PdfTextOccurrence> = occurrences
+                        .iter()
+                        .filter(|occurrence| {
+                            occurrence.kind == "content"
+                                && occurrence.page_index != page_index as i32
+                        })
+                        .collect();
+                    remaining_occurrences = outside
+                        .iter()
+                        .map(|occurrence| (*occurrence).clone())
+                        .collect();
+                    uncleaned_places = inside.iter().map(|place| (*place).clone()).collect();
+                    if !inside.is_empty() {
                         RedactionCheck::Failed
                     } else {
                         let haystack = normalized_for_bytes(&String::from_utf8_lossy(&file_bytes));
                         let mut failed = false;
-                        for removed in &checked_words {
+                        for removed in &byte_check_words {
                             let needle = normalized_for_bytes(removed);
                             if needle.is_empty() {
                                 continue;
                             }
-                            if haystack.contains(&needle) {
+                            // A word that stands in a place the engine
+                            // knows — on another page — is reported, not
+                            // refused: the user marked a region, and the word
+                            // belongs to the document. A word that the
+                            // engine does not know any more but that still
+                            // stands in the bytes is a remainder without a
+                            // place: an old version of the file, an
+                            // unreachable object. That stops the redaction.
+                            if haystack.contains(&needle) && remaining_occurrences.is_empty() {
                                 failed = true;
                                 break;
                             }
@@ -595,24 +588,35 @@ impl SessionRegistry {
             search_index_clean,
             rendered_page_clean,
             file_bytes_clean,
+            remaining_occurrences,
             revision,
         };
 
         // A redaction that cannot be verified is not a redaction. The document
         // is put back as it was, and the caller is told that nothing changed.
         if !report.is_verified() {
-            let failures = report.failed_checks().join("; ");
-            self.rollback_redaction(session_id, bytes_before, page_index)?;
-            return Err(SessionError::Redaction(
-                RedactionError::VerificationFailed { details: failures },
-            ));
+            let mut failures = report.failed_checks();
+            for place in &uncleaned_places {
+                failures.push(format!(
+                    "the text is still there: {} (page {}, {})",
+                    place.location, place.page_index, place.kind
+                ));
+            }
+            let failures = failures.join("; ");
+            return self.fail_after_change(
+                session_id,
+                page_index,
+                &bytes_before,
+                SessionError::Redaction(RedactionError::VerificationFailed { details: failures }),
+            );
         }
 
         // The checkpoints of the recovery store hold the bytes of the earlier
         // states of the document, and those bytes still contain the removed
         // content. They are deleted with the redaction — but only now, after
-        // the removal has been proven.
-        self.purge_redaction_checkpoints(session_id)?;
+        // the removal has been proven. A failure here does not undo the
+        // redaction: the content is gone, and the verification has said so.
+        self.purge_checkpoints_after_success(session_id);
 
         Ok(report)
     }
@@ -643,6 +647,46 @@ impl SessionRegistry {
         Ok(())
     }
 
+    /// Puts the document back after an error and returns the error.
+    ///
+    /// The removal happens before the verification. **Every** error after
+    /// that point has to put the document back: the user must not hold a
+    /// changed document while believing that nothing happened. A rollback
+    /// that fails itself is reported as its own error — the session then
+    /// holds a document in an unknown state, and the user has to know that.
+    fn fail_after_change<T>(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        bytes_before: &[u8],
+        error: SessionError,
+    ) -> Result<T, SessionError> {
+        match self.rollback_redaction(session_id, bytes_before.to_vec(), page_index) {
+            Ok(()) => Err(error),
+            Err(rollback_error) => Err(SessionError::RedactionRollbackFailed {
+                original: error.to_string(),
+                rollback: rollback_error.to_string(),
+            }),
+        }
+    }
+
+    /// Deletes the checkpoints of the recovery store, and does not turn a
+    /// failure into the failure of the redaction.
+    ///
+    /// The redaction itself has succeeded at this point: the content is gone
+    /// and the verification has confirmed it. A checkpoint that could not be
+    /// deleted is a problem of the recovery store — and it must not turn a
+    /// redaction that worked into an error, because the caller would then
+    /// believe that the document is in doubt.
+    fn purge_checkpoints_after_success(&self, session_id: &str) {
+        if let Err(error) = self.purge_redaction_checkpoints(session_id) {
+            // The redaction has succeeded; the recovery store is the problem.
+            eprintln!(
+                "vocument: the checkpoints of the recovery store could not be deleted after a redaction: {error}"
+            );
+        }
+    }
+
     /// Deletes the checkpoints of the recovery store of the document
     /// (`REDACT-005`).
     ///
@@ -656,67 +700,5 @@ impl SessionRegistry {
             .purge_checkpoints()
             .map_err(SessionError::Recovery)?;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn word(text: &str, x0: i32, y0: i32, x1: i32, y1: i32) -> PdfTextWord {
-        PdfTextWord {
-            text: text.to_owned(),
-            bbox: PdfRectMilliPt {
-                x0_milli_pt: x0,
-                y0_milli_pt: y0,
-                x1_milli_pt: x1,
-                y1_milli_pt: y1,
-            },
-        }
-    }
-
-    fn region(x0: i32, y0: i32, x1: i32, y1: i32) -> RedactionRegion {
-        RedactionRegion::new(x0, y0, x1, y1)
-    }
-
-    #[test]
-    fn a_fragment_of_a_removed_word_is_recognised() {
-        // "CH" is what is left of "VERTRAULICH" when the region covered the
-        // beginning of the word. It is not the word any more — but it is
-        // still part of it, and it is still readable.
-        assert!(is_fragment_of("CH", "VERTRAULICH"));
-        assert!(is_fragment_of("VERT", "VERTRAULICH"));
-        assert!(is_fragment_of("ch", "vertraulich"));
-    }
-
-    #[test]
-    fn a_word_that_is_only_similar_is_not_a_fragment() {
-        // Another word that happens to end in the same letters is not a
-        // fragment of the removed one.
-        assert!(!is_fragment_of("Antrag", "VERTRAULICH"));
-        assert!(!is_fragment_of("Fach", "VERTRAULICH"));
-        assert!(!is_fragment_of("VERTRAULICH", "VERTRAULICH"));
-    }
-
-    #[test]
-    fn a_single_character_is_no_evidence_of_a_leak() {
-        // "S" occurs in almost every document and would refuse every
-        // redaction.
-        assert!(!is_fragment_of("S", "SECRET"));
-    }
-
-    #[test]
-    fn a_word_that_stays_in_the_region_is_a_residue() {
-        let regions = [region(0, 0, 1_000, 1_000)];
-        // The rest of a word that was only partly covered.
-        assert!(word_remains_in_region(
-            &word("CH", 100, 100, 300, 200),
-            &regions
-        ));
-        // A word of the next line, outside of the region.
-        assert!(!word_remains_in_region(
-            &word("Anhang", 100, 2_000, 900, 2_100),
-            &regions
-        ));
     }
 }

@@ -112,6 +112,108 @@ fn the_text_of_an_annotation_and_of_a_form_field_is_emptied() {
     );
 }
 
+/// Builds a page whose annotation carries the secret in its alternative text
+/// and whose page carries an XMP packet with the secret.
+fn document_with_alternative_text_and_page_metadata() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let xmp = "<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d'?><x:xmpmeta xmlns:x='adobe:ns:meta/'><rdf:RDF><rdf:Description xmlns:dc='http://purl.org/dc/elements/1.1/'><dc:title><rdf:Alt><rdf:li xml:lang='x-default'>GEHEIM</rdf:li></rdf:Alt></dc:title></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end='w'?>";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R /Annots [4 0 R] /Metadata 7 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Annot /Subtype /Text /Rect [20 20 40 40] /Contents (visible) /Alt (GEHEIM) >>\nendobj\n".to_vec(),
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj =
+                format!("6 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        {
+            let mut obj =
+                format!("7 0 obj\n<< /Length {} >>\nstream\n", xmp.len()).into_bytes();
+            obj.extend_from_slice(xmp.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// The alternative text of an annotation and the XMP packet of a page carry
+/// the secret — both places have to be found and both have to be cleaned.
+#[test]
+fn the_alternative_text_of_an_annotation_and_the_xmp_packet_of_a_page_are_found() {
+    let engine = crate::MuPdfEngineAdapter::new();
+    let document = engine
+        .open_pdf_bytes(&document_with_alternative_text_and_page_metadata())
+        .expect("the document must be openable");
+
+    let occurrences = document
+        .find_word_occurrences(&[SECRET.to_owned()])
+        .expect("the search must work");
+    let kinds: Vec<&str> = occurrences
+        .iter()
+        .map(|entry| entry.kind.as_str())
+        .collect();
+    assert!(
+        kinds.contains(&"annotation"),
+        "the alternative text of the annotation must be found: {kinds:?}"
+    );
+    assert!(
+        kinds.contains(&"xmp"),
+        "the XMP packet of the page must be found: {kinds:?}"
+    );
+}
+
+#[test]
+fn the_alternative_text_of_an_annotation_and_the_xmp_packet_of_a_page_are_emptied() {
+    let (scrubbed, report) = scrub_words(
+        &document_with_alternative_text_and_page_metadata(),
+        &[SECRET.to_owned()],
+    )
+    .expect("the cleaning must work");
+    assert!(
+        report.scrubbed_metadata_fields > 0,
+        "the XMP packet of the page must be cleaned: {report:?}"
+    );
+
+    let engine = crate::MuPdfEngineAdapter::new();
+    let document = engine
+        .open_pdf_bytes(&scrubbed)
+        .expect("the scrubbed document must be openable");
+    let occurrences = document
+        .find_word_occurrences(&[SECRET.to_owned()])
+        .expect("the search must work");
+    assert!(
+        occurrences.is_empty(),
+        "the secret must not stand in the document any more: {occurrences:?}"
+    );
+}
+
 #[test]
 fn a_word_that_is_not_in_the_document_is_not_reported() {
     let bytes = document_with_annotation_and_field();

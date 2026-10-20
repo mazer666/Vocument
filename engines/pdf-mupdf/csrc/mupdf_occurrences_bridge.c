@@ -167,17 +167,27 @@ static void vocument_report_page_annots(
         if (!pdf_is_dict(ctx, annot)) {
             continue;
         }
-        pdf_obj *contents = pdf_dict_get(ctx, annot, PDF_NAME(Contents));
-        if (pdf_is_array(ctx, contents)) {
-            int entries = pdf_array_len(ctx, contents);
-            for (int e = 0; e < entries; e++) {
-                pdf_obj *entry = pdf_resolve_indirect(ctx, pdf_array_get(ctx, contents, e));
-                if (vocument_object_carries_word(ctx, entry, words, word_count)) {
-                    vocument_report_line(report, "annotation", page_index, "annotation text");
+        /* The text of an annotation, its title, its alternative text, its
+           subject, its reply and the name of the file: all of them can carry
+           the text of the user. */
+        static const char *const text_fields[] = {
+            "Contents", "T", "RC", "Alt", "Subj", "R", "IT", "DS"
+        };
+        for (size_t f = 0; f < sizeof(text_fields) / sizeof(text_fields[0]); f++) {
+            pdf_obj *value = pdf_dict_gets(ctx, annot, text_fields[f]);
+            if (pdf_is_array(ctx, value)) {
+                int entries = pdf_array_len(ctx, value);
+                for (int e = 0; e < entries; e++) {
+                    pdf_obj *entry = pdf_resolve_indirect(ctx, pdf_array_get(ctx, value, e));
+                    if (vocument_object_carries_word(ctx, entry, words, word_count)) {
+                        vocument_report_line(report, "annotation", page_index, text_fields[f]);
+                    }
                 }
+                continue;
             }
-        } else if (vocument_object_carries_word(ctx, contents, words, word_count)) {
-            vocument_report_line(report, "annotation", page_index, "annotation text");
+            if (vocument_object_carries_word(ctx, value, words, word_count)) {
+                vocument_report_line(report, "annotation", page_index, text_fields[f]);
+            }
         }
         /* The value of a form field. */
         if (pdf_dict_get(ctx, annot, PDF_NAME(FT))) {
@@ -325,7 +335,7 @@ int vocument_mupdf_find_text_occurrences(
                 }
             }
 
-            /* The XMP packet. */
+            /* The XMP packet of the document. */
             pdf_obj *root = pdf_dict_get(ctx, trailer, PDF_NAME(Root));
             pdf_obj *metadata = pdf_dict_get(ctx, root, PDF_NAME(Metadata));
             if (pdf_is_stream(ctx, metadata)) {
@@ -338,6 +348,28 @@ int vocument_mupdf_find_text_occurrences(
                     }
                     fz_drop_buffer(ctx, buffer);
                 }
+            }
+
+            /* The XMP packet of the pages. A document may carry one on every
+               page — the PDF/A and the PDF/X files do. */
+            for (int i = 0; i < page_count; i++) {
+                pdf_page *page = pdf_load_page(ctx, pdf_doc, i);
+                if (!page) {
+                    continue;
+                }
+                pdf_obj *page_metadata = pdf_dict_get(ctx, page->obj, PDF_NAME(Metadata));
+                if (pdf_is_stream(ctx, page_metadata)) {
+                    fz_buffer *buffer = pdf_load_stream(ctx, page_metadata);
+                    if (buffer) {
+                        unsigned char *data = NULL;
+                        size_t xmp_len = fz_buffer_storage(ctx, buffer, &data);
+                        if (vocument_buffer_carries_word(data, xmp_len, words, word_count)) {
+                            vocument_report_line(&report, "xmp", i, "XMP metadata of the page");
+                        }
+                        fz_drop_buffer(ctx, buffer);
+                    }
+                }
+                pdf_drop_page(ctx, page);
             }
 
             /* The embedded files. */

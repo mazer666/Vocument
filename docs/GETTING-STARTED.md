@@ -197,7 +197,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Nine traps that have already bitten once:**
+**Ten traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -235,6 +235,15 @@ decision can be checked without a device.
    otherwise the user holds a changed document and believes that nothing
    happened. The checkpoints of the recovery store are only deleted after a
    successful verification.
+10. **The same word can stand somewhere else.** The redaction removes what
+    the user marked — a region of one page. A word that occurs on another
+    page is not part of the redaction, and refusing the redaction because of
+    it would make every document with a word that occurs twice impossible to
+    redact. The report names those places (`remaining_occurrences`), so that
+    the shell can show them: the word is still in the document, only not
+    under the marked region. A remainder in the bytes of the file **without**
+    a known place — an old version of the file, an unreachable object — is
+    something else: that one stops the redaction.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in

@@ -474,10 +474,15 @@ impl TransactionManager {
     /// back as it was. The attempt must not leave a transaction behind — the
     /// journal of the recovery store would otherwise replay a redaction that
     /// never happened.
+    ///
+    /// The revision goes back as well: the bytes of the document are the old
+    /// ones, and a document that is marked as changed although it is the
+    /// saved one would make the user save a document that nobody touched.
     pub fn discard_last_transaction(&mut self) -> Option<TransactionRecord> {
         let record = self.undo_stack.pop();
-        if record.is_some() {
+        if let Some(record) = &record {
             self.redo_stack.clear();
+            self.current_revision = record.revision_before;
         }
         record
     }

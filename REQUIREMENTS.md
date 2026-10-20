@@ -682,6 +682,8 @@ store. The caller is told that nothing changed.
 
 The check against the rendered page is the decisive one: the page is rendered and read, exactly as a reader sees it. A redaction therefore must not cover the removed region with a drawn box — the box would hide content that survived the removal, and the verification would only see the covering.
 
+The promise of the redaction is about the **marked region**. A word that occurs somewhere else in the document — on another page, or a second time on the same page — is not part of the redaction: the user marked a region, not the word in the whole document. The report **names** those places, so that the shell can show them and nobody believes that a word is gone from the document when it is still in it. Such a place does not stop the redaction; a remainder in the bytes of the file **without** a known place — an old version of the file, an unreachable object — does.
+
 A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success.
 
 ### REDACT-004a — The pixels of an image are replaced

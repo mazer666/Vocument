@@ -115,6 +115,16 @@ pub enum DocumentCoreError {
     /// redacted.
     #[error("the redaction could not be verified: {details}")]
     RedactionUnverified { details: String },
+    /// The redaction failed and the document could **not** be put back
+    /// (`REDACT-002`).
+    ///
+    /// The session holds a document in an unknown state. The shell has to
+    /// tell the user that the document has to be opened again — the file on
+    /// the disk still holds the original.
+    #[error(
+        "the redaction failed and the document could not be put back; the document has to be opened again. The error was: {original}. The rollback failed with: {rollback}"
+    )]
+    RedactionRollbackFailed { original: String, rollback: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
@@ -166,6 +176,9 @@ impl From<SessionError> for DocumentCoreError {
                     "session {session_id} lives in a platform document provider; export it to a location the user owns"
                 ),
             },
+            SessionError::RedactionRollbackFailed { original, rollback } => {
+                Self::RedactionRollbackFailed { original, rollback }
+            }
             SessionError::Redaction(redaction_err) => match redaction_err {
                 vocument_core::redaction::RedactionError::VerificationFailed { details } => {
                     Self::RedactionUnverified { details }

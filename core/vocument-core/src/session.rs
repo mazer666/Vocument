@@ -56,6 +56,16 @@ pub enum SessionError {
     RegistryPoisoned,
     #[error("redaction failed: {0}")]
     Redaction(#[from] crate::redaction::RedactionError),
+    /// A redaction failed and the document could **not** be put back
+    /// (`REDACT-002`).
+    ///
+    /// The document in the session is in an unknown state. The user has to
+    /// open it again — the file on the disk still holds the original, but the
+    /// session does not know what it is holding.
+    #[error(
+        "the redaction failed and the document could not be put back; the session is in an unknown state, open the document again. The error was: {original}. The rollback failed with: {rollback}"
+    )]
+    RedactionRollbackFailed { original: String, rollback: String },
 }
 
 /// Immutable snapshot of an active `DocumentSession` exposed to native UI across UniFFI (`ARCHITECTURE.md` §§5–6).
