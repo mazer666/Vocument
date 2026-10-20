@@ -428,6 +428,61 @@ if ! grep -q "the_redacted_region_is_empty_in_the_picture_of_the_page" \
   exit 1
 fi
 
+# --- M2.1 Gate, second review: the hardening of the redaction ---
+#
+# An independent adversarial audit found that the guarantee of the redaction
+# did not hold. The gate therefore insists on the properties that close the
+# findings: normalised word boxes on turned pages, the check of the region
+# and of the fragments, the search for the places of the document that still
+# carry the text, and the rollback of a redaction that cannot be verified.
+if ! grep -q "vocument_grow_box_for_character" engines/pdf-mupdf/csrc/mupdf_text_bridge.c; then
+  echo "ERROR (M2.1 Gate): the word boxes must be the bounding box of the corners of the characters — on a turned page they would be inverted otherwise!" >&2
+  exit 1
+fi
+if ! grep -q "is_fragment_of" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): the verification must recognise a fragment of a removed word — the removal works character by character!" >&2
+  exit 1
+fi
+if ! grep -q "word_remains_in_region" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): the verification must check the redacted region itself — nothing may lie in it any more!" >&2
+  exit 1
+fi
+if ! grep -q "fn find_word_occurrences" core/vocument-core/src/pdf_engine.rs; then
+  echo "ERROR (M2.1 Gate): the engine interface has no search for the places of the document that still carry a word!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_mupdf_find_text_occurrences" engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c; then
+  echo "ERROR (M2.1 Gate): the engine does not report the places of the document that still carry the text!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_mupdf_scrub_document" engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c; then
+  echo "ERROR (M2.1 Gate): the engine does not clean the annotations, the form values and the metadata of the removed text!" >&2
+  exit 1
+fi
+if ! grep -q "fn rollback_redaction" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): a redaction that cannot be verified must be rolled back — the user must not hold a changed document!" >&2
+  exit 1
+fi
+if ! grep -q "fn replace_pdf_bytes" core/vocument-core/src/pdf_engine.rs; then
+  echo "ERROR (M2.1 Gate): the engine interface cannot restore the previous bytes — the rollback of a redaction needs it!" >&2
+  exit 1
+fi
+for proof in \
+    "engines/pdf-mupdf/src/redaction_rotation_tests.rs|the_word_boxes_of_a_turned_page_are_normalised" \
+    "engines/pdf-mupdf/src/scrub_tests.rs|the_text_of_an_annotation_and_of_a_form_field_is_emptied" \
+    "engines/pdf-mupdf/src/scrub_tests.rs|a_word_that_is_hex_encoded_is_found" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_redaction_that_only_covers_a_part_of_a_word_is_not_reported_as_successful" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|a_redaction_that_cannot_be_verified_leaves_the_document_unchanged" \
+    "core/vocument-core/tests/redaction_rollback_tests.rs|a_successful_redaction_deletes_the_checkpoints_of_the_recovery_store" \
+    "core/vocument-core/tests/redaction_rollback_tests.rs|a_redaction_that_cannot_be_verified_leaves_the_document_and_the_checkpoints_alone"; do
+  file="${proof%%|*}"
+  name="${proof##*|}"
+  if [[ ! -f "$file" ]] || ! grep -q "$name" "$file"; then
+    echo "ERROR (M2.1 Gate): the proof '$name' is missing ($file)!" >&2
+    exit 1
+  fi
+done
+
 # --- M2.2 Gate: the inspection of the links and actions of a document ---
 if ! grep -q "fn document_actions" core/vocument-core/src/pdf_engine.rs; then
   echo "ERROR (M2.2 Gate): the engine interface has no inspection of the actions of a document!" >&2

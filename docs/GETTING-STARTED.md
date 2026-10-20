@@ -191,10 +191,13 @@ decision can be checked without a device.
 |---|---|
 | The redaction with verification in the core | `core/vocument-core/src/redaction.rs` |
 | The removal of the content in the MuPDF engine | `engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c` (`vocument_mupdf_redact_page_regions`) |
+| The cleaning of the annotations, the form values and the metadata | `engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c` (`vocument_mupdf_scrub_document`) |
+| The search for the places that still carry the text | `engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c` (`vocument_mupdf_find_text_occurrences`) |
+| The word boxes of the text layer | `engines/pdf-mupdf/csrc/mupdf_text_bridge.c` |
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Five traps that have already bitten once:**
+**Nine traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -215,13 +218,36 @@ decision can be checked without a device.
    exactly what the check has to see. The redaction therefore draws nothing
    over the region (`black_boxes = 0`); the picture of the page shows the
    truth.
+6. **The removal works character by character.** A region that covers only a
+   part of a word leaves a fragment behind, and a fragment is still content.
+   The verification therefore compares fragments and checks the region itself.
+7. **A turned page has its corners in another order.** The box of a word is
+   the bounding box of all four corners of all of its characters — built from
+   the upper-left and the lower-right corner alone, it comes out inverted on a
+   page that is turned by 90 degrees, and the redaction then removes nothing.
+8. **The text survives outside the page.** The text of an annotation, the
+   value of a form field, the metadata and the XMP packet are not touched by
+   the redaction of MuPDF — and the text does not have to be plain text: it
+   can be stored as UTF-16 or as the hex string of the UTF-16 bytes. The
+   engine cleans those places and reports what it cannot clean.
+9. **A failed redaction must change nothing.** The removal happens before the
+   verification, so a verification that fails has to put the document back —
+   otherwise the user holds a changed document and believes that nothing
+   happened. The checkpoints of the recovery store are only deleted after a
+   successful verification.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in
 which the page is drawn. `PdfRectMilliPt` in
 `core/vocument-core/src/pdf_engine.rs` describes it.
 
-Evidence: `docs/acceptance/M2.1-ACCEPTANCE.md`.
+**What happens when the redaction fails:** the document keeps the bytes it
+had before the attempt, the search index is built again, and the caller gets
+an error that says that nothing changed. The recovery points of the document
+stay untouched.
+
+Evidence: `docs/acceptance/M2.1-ACCEPTANCE.md`, the audits in
+`docs/audit/`.
 
 ## 7c. How do I inspect the links and the actions of a document?
 

@@ -123,13 +123,43 @@ boundary.
 
 Acceptance record: `docs/acceptance/M2.3-ACCEPTANCE.md`.
 
-### 3.4 The gates
+### 3.4 M2.1 hardened — the independent adversarial audit (commit `123d7ac`)
+
+The record of M2.1 was written by the team that built the feature. That is
+not good enough for a security-critical function, so the redaction was
+audited again by two auditors who had no part in the implementation. They
+tried to **break** the guarantee with their own harness, built against the
+production bridge and linked against MuPDF 1.28.5, with `mutool` as the
+independent reference.
+
+**They broke it.** Eleven findings, five of them critical or high. The
+findings and their measurements are in `docs/audit/redaction-security-audit.md`
+and `docs/audit/redaction-pdf-qa-audit.md`.
+
+| Finding | Severity | What changed |
+|---|---|---|
+| The word boxes of a turned page (`/Rotate`) were inverted | High | The box of a word is the bounding box of all four corners of all of its characters; the distance between two characters is measured along the reading direction of the line |
+| A redaction that covered only a part of a word left a fragment behind, and the verification reported success | Critical | The verification compares fragments and checks the redacted region itself |
+| The text of an annotation, the value of a form field, the metadata and the XMP packet survived the redaction; the check over the bytes only saw plain text | High | The engine cleans those places and reports every place of the document that still carries the word — as plain text, as UTF-16 in both byte orders and as the hex string of the UTF-16 bytes |
+| There was no rollback: the document was changed before the verification, and the caller received an error that said nothing about it | High | A redaction that cannot be verified is rolled back: the bytes are restored, the search index is built again, the transaction of the attempt leaves no trace in the journal, and the checkpoints are only deleted after a successful verification |
+| Words with fewer than four characters were not checked | Medium | The region check covers every word, however short it is |
+| The text of a Type 3 font is not removed by MuPDF at all | Critical | Such a document is reported as **not verified** and the redaction is refused |
+
+The new proofs: the word boxes of a turned page, the removal of the text of an
+annotation and of a form field, the search for a hex encoded word, a redaction
+that only covers a part of a word, a redaction that cannot be verified leaving
+the document unchanged, and the deletion of the checkpoints after a successful
+redaction — against the real engine as well as against a mock that leaves the
+text behind.
+
+### 3.5 The gates
 
 `scripts/validate-repo.sh` now checks in addition:
 
 | Gate | What it enforces |
 |---|---|
 | M2.1 | `PDF_REDACT_TEXT_REMOVE`, `PDF_REDACT_IMAGE_PIXELS`, `opts.black_boxes = 0`, the picture check in the core, `RedactionUnverified` at the FFI boundary, the two engine tests |
+| M2.1 (hardening) | the normalised word boxes of the text bridge, the fragment and the region check in the core, the search for the places of the document that still carry the text, the cleaning of the annotations, the form values and the metadata, the rollback of a redaction that cannot be verified, and the seven new proofs |
 | M2.2 | `document_actions` in the engine interface, `inspect_document` in the core, the risk policy in the core, the FFI function, the three tests |
 | M2.3 | `document_attachments` and `document_signatures`, `changed_since_signing` and `is_risky_attachment` in the core, the engine and end-to-end tests |
 
@@ -153,6 +183,8 @@ Acceptance record: `docs/acceptance/M2.3-ACCEPTANCE.md`.
 | The macOS interface of all three functions | **NOT RUN** | no macOS host |
 | The behaviour on a device (Android, macOS) | **NOT RUN** | no device, no `/dev/kvm` |
 | Interoperability with Acrobat/Foxit/Okular | **NOT RUN** | M2 gate, open for all M2 functions |
+| A document whose text is drawn with a Type 3 font | **NOT RUN** | MuPDF 1.28.5 cannot remove such a text. The redaction is refused for such a document (the verification fails, the document stays unchanged), but the text is not removed — a different approach is needed |
+| The redaction in the applications | **NOT RUN** | The function is available across the FFI boundary, but neither the macOS nor the Android application calls it yet: the tool of the interface belongs to the macOS slice of M2 |
 | The verification of the signature itself (chain, certificate) | **not started** | MuPDF offers no public interface for it in this version; what is checked is the *coverage* of the signature |
 | M2: comments, stamps, comparison, jurist palette | **not started** | the next slices |
 | Licensing decision E1–E5 | open | no release as "approved" |

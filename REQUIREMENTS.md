@@ -652,8 +652,33 @@ Professional annotation system with editable jurist preset.
 ### REDACT-001
 Secure redaction removes underlying text/OCR/hidden relevant content.
 
+The removal reaches the places of the document that do not lie on the page as
+well: the text of an annotation, the value of a form field, the metadata and
+the XMP packet are cleaned of the removed text. A place that cannot be
+cleaned without destroying the document — an embedded file — makes the
+redaction fail instead of being reported as a success. The embedded file
+itself is never deleted.
+
 ### REDACT-002
 Verify that redacted content is no longer searchable/extractable. The verification covers four aspects: the words are no longer extractable from the text layer of the page, the full-text search no longer finds them, they are no longer readable on the **rendered page**, and they are no longer present in the bytes of the file as plain text.
+
+The text layer check covers the **whole redacted region**: nothing may lie in
+it any more, and a **fragment** of a removed word counts as content. The
+removal works character by character, so a region that covers only a part of a
+word leaves a fragment behind — a word that is a prefix or a suffix of a
+removed word is a survivor. A fragment of a single character is not compared:
+it occurs in every document and would be no evidence of a leak.
+
+The engine reports every **place of the document** that still carries the
+removed text — the content streams, the annotations, the form values, the
+embedded files, the metadata and the XMP packet — as plain text, as UTF-16 in
+both byte orders and as the hex string of the UTF-16 bytes. A place that
+carries the text means that the redaction could not be verified.
+
+A redaction that cannot be verified is **rolled back**: the document keeps the
+bytes it had before the attempt, the search index is built again, and the
+transaction of the attempt leaves no trace in the journal of the recovery
+store. The caller is told that nothing changed.
 
 The check against the rendered page is the decisive one: the page is rendered and read, exactly as a reader sees it. A redaction therefore must not cover the removed region with a drawn box — the box would hide content that survived the removal, and the verification would only see the covering.
 
@@ -666,7 +691,7 @@ A document can carry the same text twice: as a text layer and as pixels in an im
 The verification is word by word. A line in which only one word was redacted keeps its other words, and the removal is not reported as a failure.
 
 ### REDACT-005 — A redaction cannot be undone
-The removed content is gone from the document. An undo that would bring it back would be a lie, so the undo is refused explicitly. The checkpoints of the recovery store, which still hold the bytes of the earlier states of the document, are deleted with the redaction. The persistent journal carries no text of the removed content.
+The removed content is gone from the document. An undo that would bring it back would be a lie, so the undo is refused explicitly. The checkpoints of the recovery store, which still hold the bytes of the earlier states of the document, are deleted with the redaction — but only after the verification has succeeded, so that a failed attempt leaves the recovery points intact. The persistent journal carries no text of the removed content.
 
 ### REDACT-003
 Search-assisted candidate selection.

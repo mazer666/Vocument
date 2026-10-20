@@ -1,7 +1,7 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host"
+  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host-m2.1-hardened-after-independent-audit"
   current_milestone: "M2"
   current_milestone_name: "macOS Professional Review"
   current_submilestone: "M2.3"
@@ -24,8 +24,12 @@ project:
     - "M1.4b"
     - "M1.5"
     # M2.1 covers the secure redaction with its verification in the core, the
-    # engine and over the FFI boundary. The macOS interface of the redaction
-    # is not part of M2.1 and stays open, see docs/acceptance/M2.1-ACCEPTANCE.md.
+    # engine and over the FFI boundary. The redaction was hardened after an
+    # independent adversarial audit: the word boxes of a turned page, the
+    # fragments of a partly covered word, the places of the document that
+    # still carry the text and the rollback of a redaction that cannot be
+    # verified. The macOS interface of the redaction is not part of M2.1 and
+    # stays open, see docs/acceptance/M2.1-ACCEPTANCE.md.
     - "M2.1"
     # M2.2 covers the inspection of the links and actions of a document: the
     # engine reports the facts, the core decides the risk, the FFI boundary
