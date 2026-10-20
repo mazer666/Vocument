@@ -33,6 +33,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use super::power::{PowerLimits, PowerMonitor, PowerState};
 use super::scheduler::{
     CancellationToken, JobDescriptor, JobError, JobOutcome, JobQueue, JobState, JobTask,
 };
@@ -124,6 +125,45 @@ impl JobTracker {
             }
             terminal => Ok(terminal),
         }
+    }
+
+    /// Moves a running job back into the queue (`ROADMAP.md` M1.5, pause).
+    ///
+    /// A job that is interrupted by a pause is not a failed job. The state goes
+    /// back to `Queued`, so that the job can be picked up again after the
+    /// resume. A job that was cancelled by the user stays cancelled.
+    ///
+    /// Returns `true` when the job was put back into the queue.
+    pub fn requeue(&self, job_id: u64) -> Result<bool, JobError> {
+        let mut guard = self.lock()?;
+        if guard.cancelled_while_running.remove(&job_id) {
+            // The user cancelled the job; that decision is not reversed.
+            return Ok(false);
+        }
+        let status = guard
+            .statuses
+            .get_mut(&job_id)
+            .ok_or(JobError::JobNotFound { job_id })?;
+        if status.descriptor.state != JobState::Running {
+            return Ok(false);
+        }
+        status.descriptor.state = JobState::Queued;
+        status.descriptor.progress_percent = 0;
+        guard.tokens.remove(&job_id);
+        Ok(true)
+    }
+
+    /// Returns the ids of the jobs that are currently running.
+    pub fn running_job_ids(&self) -> Vec<u64> {
+        let Ok(guard) = self.lock() else {
+            return Vec::new();
+        };
+        guard
+            .statuses
+            .values()
+            .filter(|status| status.descriptor.state == JobState::Running)
+            .map(|status| status.descriptor.job_id)
+            .collect()
     }
 
     /// Returns true when the job was already cancelled before it started running.
@@ -266,6 +306,15 @@ pub struct JobExecutor {
     shutdown: AtomicBool,
     /// Longest time `shutdown` waits for a worker to end before detaching it.
     shutdown_grace: Duration,
+    /// The energy and thermal state of the device (`POWER-001`).
+    power: Arc<PowerMonitor>,
+    /// Whether the pool is currently paused (`ROADMAP.md` M1.5).
+    paused: Arc<AtomicBool>,
+    /// The jobs that were interrupted by a pause.
+    ///
+    /// A job belongs here when a pause asked it to stop. The job then knows
+    /// that it may be resumed, independently of the current pause state.
+    pause_interrupted: Arc<Mutex<std::collections::HashSet<u64>>>,
     /// Number of jobs that are currently executing inside a worker.
     ///
     /// Shared with the worker threads, so that the count stays correct even while
@@ -286,13 +335,22 @@ impl JobExecutor {
     pub fn start(budgets: JobBudgets) -> Result<Arc<Self>, JobError> {
         let worker_count = budgets.max_concurrent_workers.max(1);
         let shutdown_grace = Duration::from_millis(budgets.shutdown_grace_ms);
+        let running_jobs = Arc::new(AtomicU64::new(0));
+        let power = PowerMonitor::new(worker_count);
         let executor = Arc::new(Self {
-            queue: Arc::new(JobQueue::new(budgets)),
+            queue: Arc::new(JobQueue::new(
+                budgets,
+                Arc::clone(&power),
+                Arc::clone(&running_jobs),
+            )),
             tracker: Arc::new(JobTracker::default()),
             workers: Mutex::new(Vec::with_capacity(worker_count)),
             shutdown: AtomicBool::new(false),
             shutdown_grace,
-            running_jobs: Arc::new(AtomicU64::new(0)),
+            power,
+            paused: Arc::new(AtomicBool::new(false)),
+            pause_interrupted: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            running_jobs,
         });
 
         let mut handles = Vec::with_capacity(worker_count);
@@ -300,11 +358,13 @@ impl JobExecutor {
             let queue = Arc::clone(&executor.queue);
             let tracker = Arc::clone(&executor.tracker);
             let running_jobs = Arc::clone(&executor.running_jobs);
+            let paused = Arc::clone(&executor.paused);
+            let pause_interrupted = Arc::clone(&executor.pause_interrupted);
             let (exit_tx, exit_rx) = mpsc::channel();
             match std::thread::Builder::new()
                 .name(format!("vocument-job-worker-{index}"))
                 .spawn(move || {
-                    worker_loop(queue, tracker, running_jobs);
+                    worker_loop(queue, tracker, running_jobs, paused, pause_interrupted);
                     // The signal is sent even when the worker panics, because the
                     // sender is dropped with the closure.
                     let _ = exit_tx.send(());
@@ -407,6 +467,57 @@ impl JobExecutor {
         self.tracker.purge_terminal()
     }
 
+    /// Pauses the pool (`ROADMAP.md` M1.5).
+    ///
+    /// The workers stop taking new jobs. The running jobs are asked to stop as
+    /// well, so that the device is not busy while the application is in the
+    /// background. A job that was submitted as **resumable** is not lost: it
+    /// goes back into the queue and runs again after the resume.
+    ///
+    /// Returns the number of jobs that were interrupted.
+    pub fn pause(&self) -> usize {
+        self.paused.store(true, Ordering::Release);
+        // The jobs that are running right now are interrupted. They are
+        // marked, so that a job knows afterwards that it was the pause that
+        // stopped it and not the user.
+        let interrupted = self.tracker.running_job_ids();
+        let _ = self.tracker.cancel_all_running();
+        if let Ok(mut guard) = self.pause_interrupted.lock() {
+            for job_id in &interrupted {
+                guard.insert(*job_id);
+            }
+        }
+        self.queue.notify_all_workers();
+        interrupted.len()
+    }
+
+    /// Resumes a paused pool (`ROADMAP.md` M1.5).
+    pub fn resume(&self) {
+        self.paused.store(false, Ordering::Release);
+        self.queue.notify_all_workers();
+    }
+
+    /// Returns whether the pool is currently paused.
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Ordering::Acquire)
+    }
+
+    /// Reports the energy and thermal state of the device (`POWER-001`).
+    ///
+    /// The platform shell reports the state; the pool decides what it means.
+    /// A state that suspends the background work wakes the waiting workers, so
+    /// that a suspended job starts as soon as the device allows it again.
+    pub fn report_power_state(&self, state: PowerState) -> PowerLimits {
+        let limits = self.power.report(state);
+        self.queue.notify_all_workers();
+        limits
+    }
+
+    /// Returns the limits that the current power state implies.
+    pub fn power_limits(&self) -> PowerLimits {
+        self.power.limits()
+    }
+
     /// Returns the number of jobs currently executing.
     pub fn running_count(&self) -> u64 {
         self.running_jobs.load(Ordering::Acquire)
@@ -477,16 +588,50 @@ impl Drop for JobExecutor {
 }
 
 /// Worker loop: pull a job, execute it, publish the terminal state.
-fn worker_loop(queue: Arc<JobQueue>, tracker: Arc<JobTracker>, running_jobs: Arc<AtomicU64>) {
+fn worker_loop(
+    queue: Arc<JobQueue>,
+    tracker: Arc<JobTracker>,
+    running_jobs: Arc<AtomicU64>,
+    paused: Arc<AtomicBool>,
+    pause_interrupted: Arc<Mutex<std::collections::HashSet<u64>>>,
+) {
     loop {
-        let next = match queue.take_next() {
-            Ok(next) => next,
-            Err(_) => return,
+        // The worker waits for work that may run under the current power
+        // limits. Only then it reserves a slot, so that a suspended job does
+        // not occupy a slot.
+        let next = loop {
+            // A paused pool does not start new work. The wait is woken by the
+            // resume, so it does not spin.
+            if !queue.wait_until_resumed(&paused).unwrap_or(false) {
+                return;
+            }
+            if !queue.wait_for_work().unwrap_or(false) {
+                // The pool was shut down.
+                return;
+            }
+            // The pause may have been requested while the worker was waiting.
+            if paused.load(Ordering::Acquire) {
+                continue;
+            }
+            // The slot is reserved under the lock of the queue, so that two
+            // workers can never both pass the limit.
+            if !queue.reserve_slot().unwrap_or(false) {
+                return;
+            }
+            match queue.take_next_ready() {
+                Ok(Some(job)) => break job,
+                Ok(None) => {
+                    // Another worker was faster. The reserved slot is released
+                    // again and the worker starts over.
+                    queue.release_slot();
+                }
+                Err(_) => {
+                    queue.release_slot();
+                    return;
+                }
+            }
         };
-        let Some((descriptor, task)) = next else {
-            // The queue is empty and the manager was shut down.
-            return;
-        };
+        let (descriptor, task) = next;
 
         if tracker
             .is_cancelled_before_start(descriptor.job_id)
@@ -515,7 +660,6 @@ fn worker_loop(queue: Arc<JobQueue>, tracker: Arc<JobTracker>, running_jobs: Arc
         }
 
         let job_id = descriptor.job_id;
-        running_jobs.fetch_add(1, Ordering::AcqRel);
 
         let outcome = catch_unwind(AssertUnwindSafe(|| task(job_id, &token)));
         let outcome = match outcome {
@@ -527,6 +671,22 @@ fn worker_loop(queue: Arc<JobQueue>, tracker: Arc<JobTracker>, running_jobs: Arc
         // that a job is never reported as "not running" while it still runs.
         running_jobs.fetch_sub(1, Ordering::AcqRel);
 
+        // A job that was interrupted by a pause is put back into the queue
+        // when it may be resumed. A job that the user cancelled stays
+        // cancelled.
+        let interrupted_by_pause = pause_interrupted
+            .lock()
+            .map(|mut guard| guard.remove(&job_id))
+            .unwrap_or(false);
+        if outcome == JobOutcome::Cancelled
+            && descriptor.resumable
+            && interrupted_by_pause
+            && tracker.requeue(job_id).unwrap_or(false)
+        {
+            let _ = queue.requeue(descriptor.clone(), task);
+            continue;
+        }
+
         let (state, failure) = match outcome {
             JobOutcome::Completed => (JobState::Completed, None),
             JobOutcome::Failed(details) => (JobState::Failed, Some(details)),
@@ -534,6 +694,9 @@ fn worker_loop(queue: Arc<JobQueue>, tracker: Arc<JobTracker>, running_jobs: Arc
         };
         let _ = tracker.finish(job_id, state, failure);
         tracker.detach_token(job_id);
+        // A slot became free: a worker that waits for the power limits may
+        // continue now.
+        queue.notify_all_workers();
     }
 }
 

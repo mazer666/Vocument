@@ -112,7 +112,7 @@ fn submitting_a_job_returns_immediately_and_runs_on_a_worker() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 let worker_thread = std::thread::current().id();
                 let started = Instant::now();
                 while !release_flag.load(Ordering::SeqCst) {
@@ -179,7 +179,7 @@ fn the_cancellation_latency_is_bounded_by_the_token_poll_interval() {
             1,
             JobKind::RunOcr,
             false,
-            Box::new(move |_, token| {
+            Arc::new(move |_, token| {
                 // A cooperative engine polls its token between steps.
                 loop {
                     if token.is_cancelled() {
@@ -236,7 +236,7 @@ fn a_full_queue_reports_the_overflow_instead_of_growing_without_limit() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 while !blocker_flag.load(Ordering::SeqCst) {
                     std::thread::sleep(Duration::from_millis(1));
                 }
@@ -261,7 +261,7 @@ fn a_full_queue_reports_the_overflow_instead_of_growing_without_limit() {
             1,
             JobKind::PrefetchNeighborTile,
             false,
-            Box::new(move |_, token| {
+            Arc::new(move |_, token| {
                 while !queue_blocker_flag.load(Ordering::SeqCst) {
                     if token.is_cancelled() {
                         return JobOutcome::Cancelled;
@@ -313,7 +313,7 @@ fn closing_a_session_cancels_its_jobs_and_the_result_is_never_applied() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, token| {
+            Arc::new(move |_, token| {
                 // The engine finishes its work even though the session was
                 // closed. The late result must be discarded by the tracker.
                 std::thread::sleep(Duration::from_millis(60));
@@ -360,7 +360,7 @@ fn the_status_surface_reports_every_state_of_a_job() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 while !release_flag.load(Ordering::SeqCst) {
                     std::thread::sleep(Duration::from_millis(1));
                 }

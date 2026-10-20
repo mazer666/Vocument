@@ -29,8 +29,10 @@
 
 pub mod executor;
 pub mod legacy;
+pub mod power;
 pub mod scheduler;
 
 pub use executor::{JobExecutor, JobStatus, JobTracker, wait_for_terminal};
 pub use legacy::{JobDescriptor, JobError, JobKind, JobManager, JobPriority, JobState};
+pub use power::{PowerLimits, PowerMonitor, PowerState, ThermalStatus};
 pub use scheduler::{CancellationToken, JobClass, JobOutcome, JobQueue, JobTask};

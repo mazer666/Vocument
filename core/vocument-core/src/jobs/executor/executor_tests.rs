@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::jobs::scheduler::JobKind;
+use std::sync::Arc;
 
 /// Releases the blocker of a worker even when the test fails.
 ///
@@ -57,7 +58,7 @@ fn submitted_job_runs_on_a_worker_and_completes() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(|_, _| JobOutcome::Completed),
+            Arc::new(|_, _| JobOutcome::Completed),
         )
         .expect("submit");
 
@@ -77,7 +78,7 @@ fn panicking_job_body_is_isolated_and_marked_failed() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(|_, _| panic!("engine blew up")),
+            Arc::new(|_, _| panic!("engine blew up")),
         )
         .expect("submit");
 
@@ -93,7 +94,7 @@ fn panicking_job_body_is_isolated_and_marked_failed() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(|_, _| JobOutcome::Completed),
+            Arc::new(|_, _| JobOutcome::Completed),
         )
         .expect("submit");
     let status = wait_for_terminal(&executor.tracker, second.job_id, Duration::from_secs(5))
@@ -111,7 +112,7 @@ fn job_can_cancel_itself_cooperatively() {
             1,
             JobKind::RunOcr,
             false,
-            Box::new(|_, token| {
+            Arc::new(|_, token| {
                 token.cancel();
                 JobOutcome::Cancelled
             }),
@@ -133,7 +134,7 @@ fn closing_a_session_cancels_its_running_jobs() {
             1,
             JobKind::RunOcr,
             false,
-            Box::new(|_, token| {
+            Arc::new(|_, token| {
                 // Long running work that checks the cancellation flag.
                 for _ in 0..2000 {
                     if token.is_cancelled() {
@@ -174,7 +175,7 @@ fn queue_limit_is_enforced_under_concurrent_submission() {
             1,
             JobKind::PrefetchNeighborTile,
             false,
-            Box::new(|_, _| {
+            Arc::new(|_, _| {
                 std::thread::sleep(Duration::from_millis(20));
                 JobOutcome::Completed
             }),
@@ -206,7 +207,7 @@ fn worker_count_is_bounded_and_jobs_run_concurrently() {
                     1,
                     JobKind::RenderVisibleTile,
                     false,
-                    Box::new(move |_, _| {
+                    Arc::new(move |_, _| {
                         let current = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
                         peak.fetch_max(current, std::sync::atomic::Ordering::SeqCst);
                         std::thread::sleep(Duration::from_millis(50));
@@ -251,7 +252,7 @@ fn running_count_reflects_the_jobs_that_execute() {
                     1,
                     JobKind::RenderVisibleTile,
                     false,
-                    Box::new(move |_, token| {
+                    Arc::new(move |_, token| {
                         while !release.load(std::sync::atomic::Ordering::SeqCst) {
                             if token.is_cancelled() {
                                 return JobOutcome::Cancelled;
@@ -302,7 +303,7 @@ fn a_job_cancelled_before_it_starts_never_executes_its_body() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 while !blocker_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     std::thread::sleep(Duration::from_millis(2));
                 }
@@ -319,7 +320,7 @@ fn a_job_cancelled_before_it_starts_never_executes_its_body() {
             1,
             JobKind::PrefetchNeighborTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 executed_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 JobOutcome::Completed
             }),
@@ -361,7 +362,7 @@ fn a_cancelled_job_never_reports_success_even_if_the_body_completes() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 started_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 // The engine cannot be interrupted: it finishes its work.
                 std::thread::sleep(Duration::from_millis(80));
@@ -401,7 +402,7 @@ fn starting_and_stopping_the_pool_repeatedly_keeps_it_usable() {
                 1,
                 JobKind::RenderVisibleTile,
                 false,
-                Box::new(|_, _| JobOutcome::Completed),
+                Arc::new(|_, _| JobOutcome::Completed),
             )
             .expect("submit");
         let status =
@@ -432,7 +433,7 @@ fn shutting_the_pool_down_asks_the_running_jobs_to_stop() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, token| {
+            Arc::new(move |_, token| {
                 started_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 while !token.is_cancelled()
                     && !force_release_flag.load(std::sync::atomic::Ordering::SeqCst)
@@ -507,7 +508,7 @@ fn a_job_that_ignores_the_cancellation_does_not_block_the_shutdown_forever() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 started_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 // Deliberately ignores the cancellation token.
                 while !release_flag.load(std::sync::atomic::Ordering::SeqCst) {
@@ -539,6 +540,177 @@ fn a_job_that_ignores_the_cancellation_does_not_block_the_shutdown_forever() {
         "the shutdown must be bounded by the grace period, it took {elapsed:?}"
     );
 }
+
+#[test]
+fn a_paused_pool_does_not_start_new_work_and_resumes_it_afterwards() {
+    let executor = JobExecutor::start(test_budgets(2, 16)).expect("executor must start");
+    let ran = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let ran_flag = Arc::clone(&ran);
+    let release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let release_flag = Arc::clone(&release);
+    let blocker_guard = BlockerGuard::new(&release);
+
+    executor.pause();
+    assert!(executor.is_paused(), "the pool must report the pause");
+
+    executor
+        .submit(
+            "sess_1".to_owned(),
+            1,
+            JobKind::RenderThumbnail,
+            false,
+            Arc::new(move |_, _| {
+                ran_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                while !release_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                JobOutcome::Completed
+            }),
+        )
+        .expect("submit");
+
+    std::thread::sleep(Duration::from_millis(150));
+    assert!(
+        !ran.load(std::sync::atomic::Ordering::SeqCst),
+        "a paused pool must not start new work"
+    );
+
+    executor.resume();
+    assert!(!executor.is_paused(), "the pool must report the resume");
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while !ran.load(std::sync::atomic::Ordering::SeqCst) && std::time::Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(
+        ran.load(std::sync::atomic::Ordering::SeqCst),
+        "the job must run after the resume"
+    );
+
+    drop(blocker_guard);
+    release.store(true, std::sync::atomic::Ordering::SeqCst);
+    executor.shutdown();
+}
+
+#[test]
+fn a_resumable_job_that_is_interrupted_by_a_pause_runs_again() {
+    let executor = JobExecutor::start(test_budgets(1, 16)).expect("executor must start");
+    let attempts = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let attempts_flag = Arc::clone(&attempts);
+    let release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let release_flag = Arc::clone(&release);
+    let blocker_guard = BlockerGuard::new(&release);
+
+    let descriptor = executor
+        .submit(
+            "sess_1".to_owned(),
+            1,
+            JobKind::RunOcr,
+            true,
+            Arc::new(move |_, token| {
+                let attempt = attempts_flag.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if attempt == 1 {
+                    // The first attempt is interrupted by the pause.
+                    while !token.is_cancelled()
+                        && !release_flag.load(std::sync::atomic::Ordering::SeqCst)
+                    {
+                        std::thread::sleep(Duration::from_millis(2));
+                    }
+                    return JobOutcome::Cancelled;
+                }
+                JobOutcome::Completed
+            }),
+        )
+        .expect("submit");
+    assert!(
+        descriptor.resumable,
+        "the job must be submitted as resumable"
+    );
+
+    // Wait until the job runs, then pause the pool: the job is interrupted.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while attempts.load(std::sync::atomic::Ordering::SeqCst) == 0
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(
+        attempts.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "the job must have started"
+    );
+    executor.pause();
+
+    // The interrupted job goes back into the queue and runs again.
+    executor.resume();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while attempts.load(std::sync::atomic::Ordering::SeqCst) < 2
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(
+        attempts.load(std::sync::atomic::Ordering::SeqCst),
+        2,
+        "the interrupted job must run again after the resume"
+    );
+
+    drop(blocker_guard);
+    release.store(true, std::sync::atomic::Ordering::SeqCst);
+    executor.shutdown();
+}
+
+#[test]
+fn a_job_that_was_cancelled_by_the_user_is_not_revived_by_a_pause() {
+    let executor = JobExecutor::start(test_budgets(1, 16)).expect("executor must start");
+    let attempts = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let attempts_flag = Arc::clone(&attempts);
+    let release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let release_flag = Arc::clone(&release);
+    let blocker_guard = BlockerGuard::new(&release);
+
+    let descriptor = executor
+        .submit(
+            "sess_1".to_owned(),
+            1,
+            JobKind::RunOcr,
+            true,
+            Arc::new(move |_, token| {
+                attempts_flag.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                while !token.is_cancelled()
+                    && !release_flag.load(std::sync::atomic::Ordering::SeqCst)
+                {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                JobOutcome::Cancelled
+            }),
+        )
+        .expect("submit");
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while attempts.load(std::sync::atomic::Ordering::SeqCst) == 0
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    // The user cancels the job and pauses the pool afterwards.
+    executor
+        .cancel_and_signal(descriptor.job_id)
+        .expect("cancel");
+    executor.pause();
+    executor.resume();
+
+    std::thread::sleep(Duration::from_millis(150));
+    assert_eq!(
+        attempts.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "a job that the user cancelled must not be revived by a pause"
+    );
+
+    drop(blocker_guard);
+    release.store(true, std::sync::atomic::Ordering::SeqCst);
+    executor.shutdown();
+}
+
 #[test]
 fn the_queue_reports_the_number_of_waiting_jobs() {
     let executor = JobExecutor::start(test_budgets(1, 16)).expect("executor must start");
@@ -555,7 +727,7 @@ fn the_queue_reports_the_number_of_waiting_jobs() {
             1,
             JobKind::RenderVisibleTile,
             false,
-            Box::new(move |_, _| {
+            Arc::new(move |_, _| {
                 blocker_running_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 while !blocker_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     std::thread::sleep(Duration::from_millis(2));
@@ -572,7 +744,7 @@ fn the_queue_reports_the_number_of_waiting_jobs() {
                 1,
                 JobKind::PrefetchNeighborTile,
                 false,
-                Box::new(|_, _| JobOutcome::Completed),
+                Arc::new(|_, _| JobOutcome::Completed),
             )
             .expect("submit");
     }

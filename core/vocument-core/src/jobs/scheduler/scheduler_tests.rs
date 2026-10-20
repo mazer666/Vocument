@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::config::JobBudgets;
+use std::sync::Arc;
 
 fn budgets(max_queued: usize, promotion_ms: u64) -> JobBudgets {
     JobBudgets {
@@ -20,12 +21,21 @@ fn budgets(max_queued: usize, promotion_ms: u64) -> JobBudgets {
 }
 
 fn noop_task() -> JobTask {
-    Box::new(|_, _| JobOutcome::Completed)
+    Arc::new(|_, _| JobOutcome::Completed)
+}
+
+/// Creates a queue without any power restriction.
+fn unrestricted_queue(max_queued: usize) -> JobQueue {
+    JobQueue::new(
+        budgets(max_queued, 60_000),
+        crate::jobs::power::PowerMonitor::new(2),
+        std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+    )
 }
 
 #[test]
 fn interactive_work_is_served_before_background_work() {
-    let queue = JobQueue::new(budgets(16, 60_000));
+    let queue = unrestricted_queue(16);
     queue
         .enqueue(
             "sess_1".to_owned(),
@@ -52,7 +62,7 @@ fn interactive_work_is_served_before_background_work() {
 
 #[test]
 fn equal_priority_is_served_first_in_first_out() {
-    let queue = JobQueue::new(budgets(16, 60_000));
+    let queue = unrestricted_queue(16);
     let first = queue
         .enqueue(
             "sess_1".to_owned(),
@@ -80,7 +90,7 @@ fn equal_priority_is_served_first_in_first_out() {
 
 #[test]
 fn queue_is_bounded_and_rejects_overflow() {
-    let queue = JobQueue::new(budgets(2, 60_000));
+    let queue = unrestricted_queue(2);
     queue
         .enqueue(
             "sess_1".to_owned(),
@@ -120,7 +130,7 @@ fn queue_is_bounded_and_rejects_overflow() {
 
 #[test]
 fn starved_background_job_is_promoted_over_newer_background_jobs() {
-    let queue = JobQueue::new(budgets(16, 0));
+    let queue = unrestricted_queue(16);
     // The first job is enqueued with the background class, the second one
     // later. With promotion enabled the older job wins.
     queue
@@ -153,7 +163,7 @@ fn starved_background_job_is_promoted_over_newer_background_jobs() {
 
 #[test]
 fn shutdown_prevents_further_submissions_and_drops_queued_work() {
-    let queue = JobQueue::new(budgets(16, 60_000));
+    let queue = unrestricted_queue(16);
     queue
         .enqueue(
             "sess_1".to_owned(),

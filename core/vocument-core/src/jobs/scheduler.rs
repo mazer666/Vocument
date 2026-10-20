@@ -25,6 +25,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+
+use super::power::PowerMonitor;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -230,7 +232,11 @@ pub enum JobOutcome {
 /// [`JobOutcome`] and must not panic; a panic inside the closure is caught and
 /// converted into a `Failed` job, so that one faulty job cannot take down a
 /// worker thread.
-pub type JobTask = Box<dyn FnOnce(u64, &CancellationToken) -> JobOutcome + Send + 'static>;
+///
+/// The closure is shared, not consumed. That is what makes a **resumable** job
+/// possible: a job that was interrupted by a pause goes back into the queue and
+/// runs again, so the closure has to be callable more than once.
+pub type JobTask = Arc<dyn Fn(u64, &CancellationToken) -> JobOutcome + Send + Sync + 'static>;
 
 /// Internal queue entry.
 ///
@@ -246,6 +252,13 @@ pub struct JobQueue {
     inner: Mutex<QueueInner>,
     signal: Condvar,
     budgets: JobBudgets,
+    /// The current energy and thermal state of the device.
+    power: Arc<PowerMonitor>,
+    /// Number of jobs that are currently executing.
+    ///
+    /// Shared with the worker pool, so that the queue can limit the
+    /// parallelism without owning the workers.
+    running_jobs: Arc<AtomicU64>,
 }
 
 impl std::fmt::Debug for JobQueue {
@@ -267,7 +280,15 @@ struct QueueInner {
 
 impl JobQueue {
     /// Creates a queue with the given capacity limits.
-    pub fn new(budgets: JobBudgets) -> Self {
+    ///
+    /// The queue observes the power monitor, so that background work is
+    /// suspended and the parallelism is reduced when the device is hot or
+    /// almost empty.
+    pub fn new(
+        budgets: JobBudgets,
+        power: Arc<PowerMonitor>,
+        running_jobs: Arc<AtomicU64>,
+    ) -> Self {
         Self {
             inner: Mutex::new(QueueInner {
                 entries: VecDeque::new(),
@@ -276,7 +297,19 @@ impl JobQueue {
             }),
             signal: Condvar::new(),
             budgets,
+            power,
+            running_jobs,
         }
+    }
+
+    /// Returns the number of jobs that are currently executing.
+    pub fn running_count(&self) -> u64 {
+        self.running_jobs.load(Ordering::Acquire)
+    }
+
+    /// Wakes every waiting worker, for example after a power state change.
+    pub fn notify_all_workers(&self) {
+        self.signal.notify_all();
     }
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, QueueInner>, JobError> {
@@ -329,7 +362,9 @@ impl JobQueue {
             enqueued_at: Instant::now(),
         });
         drop(guard);
-        self.signal.notify_one();
+        // Every waiting worker has to re-evaluate: whether a job may run
+        // depends on the power limits, which are the same for all of them.
+        self.signal.notify_all();
         Ok(descriptor)
     }
 
@@ -355,37 +390,227 @@ impl JobQueue {
                 continue;
             }
 
-            // Apply anti-starvation: a job that waited long enough is promoted by
-            // one level before the ordering is computed.
-            let now = Instant::now();
-            let promotion = Duration::from_millis(self.budgets.starvation_promotion_ms);
-            for entry in guard.entries.iter_mut() {
-                if now.duration_since(entry.enqueued_at) >= promotion {
-                    let promoted = entry.descriptor.priority.demoted();
-                    entry.descriptor.priority = promoted;
-                }
+            // Energy and thermal adaptation: while the device is hot or almost
+            // empty, the background work stays queued. The job is not lost, it
+            // simply waits for a state in which it may run.
+            if !self.power.limits().allow_background_jobs
+                && guard
+                    .entries
+                    .iter()
+                    .all(|entry| entry.descriptor.class == JobClass::Background)
+            {
+                // There is work, but none of it may run right now. The worker
+                // waits until the power state changes or the pool is shut down.
+                // The wait has no idle timeout on purpose: the queue is not
+                // empty, so the worker must not leave the pool.
+                guard = self
+                    .signal
+                    .wait(guard)
+                    .map_err(|_| JobError::LockPoisoned)?;
+                continue;
             }
 
-            let selected = guard
-                .entries
-                .iter()
-                .enumerate()
-                .min_by_key(|(_, entry)| {
-                    (entry.descriptor.priority.value(), entry.descriptor.sequence)
-                })
-                .map(|(index, _)| index);
-
-            if let Some(index) = selected {
-                // The index was derived from the very same `entries` deque under
-                // the same lock, so the removal cannot fail. It is handled as an
-                // error nevertheless, so that a future change of the container
-                // cannot turn into a panic inside a worker thread.
-                let Some(entry) = guard.entries.remove(index) else {
-                    return Err(JobError::LockPoisoned);
-                };
-                return Ok(Some((entry.descriptor, entry.task)));
+            if let Some(job) = self.select_next(&mut guard) {
+                return Ok(Some(job));
             }
         }
+    }
+
+    /// Returns whether a job may run under the current power limits.
+    pub fn has_eligible_job(&self) -> bool {
+        let Ok(guard) = self.lock() else {
+            return false;
+        };
+        if guard.entries.is_empty() {
+            return false;
+        }
+        self.power.limits().allow_background_jobs
+            || guard
+                .entries
+                .iter()
+                .any(|entry| entry.descriptor.class != JobClass::Background)
+    }
+
+    /// Waits until the pool is resumed or shut down (`ROADMAP.md` M1.5).
+    ///
+    /// The wait is woken by the resume and by the shutdown of the pool, so it
+    /// does not spin while the pool is paused.
+    pub fn wait_until_resumed(
+        &self,
+        paused: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, JobError> {
+        let mut guard = self.lock()?;
+        loop {
+            if guard.shutdown {
+                return Ok(false);
+            }
+            if !paused.load(std::sync::atomic::Ordering::Acquire) {
+                return Ok(true);
+            }
+            let (new_guard, _) = self
+                .signal
+                .wait_timeout(guard, Duration::from_millis(50))
+                .map_err(|_| JobError::LockPoisoned)?;
+            guard = new_guard;
+        }
+    }
+
+    /// Waits until work is available or the pool is shut down.
+    ///
+    /// Returns `false` when the pool was shut down while waiting.
+    pub fn wait_for_work(&self) -> Result<bool, JobError> {
+        let mut guard = self.lock()?;
+        loop {
+            if guard.shutdown {
+                return Ok(false);
+            }
+            if self.has_eligible_job_locked(&guard) {
+                return Ok(true);
+            }
+            // The wait is woken by a new job, by the end of a job and by a
+            // power state change.
+            let (new_guard, _) = self
+                .signal
+                .wait_timeout(guard, Duration::from_millis(50))
+                .map_err(|_| JobError::LockPoisoned)?;
+            guard = new_guard;
+        }
+    }
+
+    /// Takes the next job without waiting.
+    ///
+    /// Returns `None` when no job may run right now, either because the queue
+    /// is empty or because the power limits suspend the queued work.
+    pub fn take_next_ready(&self) -> Result<Option<(JobDescriptor, JobTask)>, JobError> {
+        let mut guard = self.lock()?;
+        if guard.shutdown {
+            return Ok(None);
+        }
+        Ok(self.select_next(&mut guard))
+    }
+
+    /// Returns whether a job may run, with the lock already held.
+    fn has_eligible_job_locked(&self, guard: &QueueInner) -> bool {
+        if guard.entries.is_empty() {
+            return false;
+        }
+        self.power.limits().allow_background_jobs
+            || guard
+                .entries
+                .iter()
+                .any(|entry| entry.descriptor.class != JobClass::Background)
+    }
+
+    /// Selects the next job to run and removes it from the queue.
+    ///
+    /// The caller holds the lock. The selection applies the priority order, the
+    /// anti-starvation promotion and the power limits.
+    fn select_next(&self, guard: &mut QueueInner) -> Option<(JobDescriptor, JobTask)> {
+        // Apply anti-starvation: a job that waited long enough is promoted by
+        // one level before the ordering is computed.
+        let now = Instant::now();
+        let promotion = Duration::from_millis(self.budgets.starvation_promotion_ms);
+        for entry in guard.entries.iter_mut() {
+            if now.duration_since(entry.enqueued_at) >= promotion {
+                let promoted = entry.descriptor.priority.demoted();
+                entry.descriptor.priority = promoted;
+            }
+        }
+
+        let allow_background = self.power.limits().allow_background_jobs;
+        let selected = guard
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| allow_background || entry.descriptor.class != JobClass::Background)
+            .min_by_key(|(_, entry)| (entry.descriptor.priority.value(), entry.descriptor.sequence))
+            .map(|(index, _)| index);
+
+        let index = selected?;
+        // The index was derived from the very same `entries` deque under
+        // the same lock, so the removal cannot fail. It is handled as an
+        // error nevertheless, so that a future change of the container
+        // cannot turn into a panic inside a worker thread.
+        let entry = guard.entries.remove(index)?;
+        Some((entry.descriptor, entry.task))
+    }
+
+    /// Reserves a slot for a job under the current power limits.
+    ///
+    /// The check and the reservation happen under the same lock, so that two
+    /// workers can never both pass the limit. Returns `false` when the pool
+    /// was shut down.
+    pub fn reserve_slot(&self) -> Result<bool, JobError> {
+        let guard = self.lock()?;
+        if guard.shutdown {
+            return Ok(false);
+        }
+        let limits = self.power.limits();
+        if (self.running_jobs.load(Ordering::Acquire) as usize) < limits.max_concurrent_jobs {
+            self.running_jobs.fetch_add(1, Ordering::AcqRel);
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// Releases a slot that was reserved but not used.
+    pub fn release_slot(&self) {
+        self.running_jobs.fetch_sub(1, Ordering::AcqRel);
+        self.signal.notify_all();
+    }
+
+    /// Waits until a slot becomes free or the pool is shut down.
+    ///
+    /// Returns `false` when the pool was shut down while waiting.
+    pub fn await_free_slot(&self) -> Result<bool, JobError> {
+        let mut guard = self.lock()?;
+        loop {
+            if guard.shutdown {
+                return Ok(false);
+            }
+            let limits = self.power.limits();
+            if (self.running_jobs.load(Ordering::Acquire) as usize) < limits.max_concurrent_jobs {
+                return Ok(true);
+            }
+            // The wait is woken by the end of a job and by a power state change.
+            let (new_guard, _) = self
+                .signal
+                .wait_timeout(guard, Duration::from_millis(50))
+                .map_err(|_| JobError::LockPoisoned)?;
+            guard = new_guard;
+        }
+    }
+
+    /// Puts a job back into the queue after a pause (`ROADMAP.md` M1.5).
+    ///
+    /// The job keeps its id, so that the caller can still refer to it. It is
+    /// placed at the end of its priority class, so that the jobs that waited
+    /// longer are not overtaken.
+    pub fn requeue(&self, descriptor: JobDescriptor, task: JobTask) -> Result<(), JobError> {
+        let mut guard = self.lock()?;
+        if guard.shutdown {
+            return Err(JobError::JobFailed {
+                job_id: descriptor.job_id,
+                details: "job manager is shut down".to_owned(),
+            });
+        }
+        if guard.entries.len() >= self.budgets.max_queued_jobs {
+            return Err(JobError::QueueFull {
+                queued: guard.entries.len(),
+                limit: self.budgets.max_queued_jobs,
+            });
+        }
+        let sequence = guard.next_sequence;
+        guard.next_sequence += 1;
+        guard.entries.push_back(QueueEntry {
+            descriptor,
+            task,
+            enqueued_at: Instant::now(),
+        });
+        let _ = sequence;
+        drop(guard);
+        self.signal.notify_all();
+        Ok(())
     }
 
     /// Returns the number of currently queued jobs.
