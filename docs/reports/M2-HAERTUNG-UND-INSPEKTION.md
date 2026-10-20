@@ -152,17 +152,6 @@ the document unchanged, and the deletion of the checkpoints after a successful
 redaction — against the real engine as well as against a mock that leaves the
 text behind.
 
-### 3.5 The gates
-
-`scripts/validate-repo.sh` now checks in addition:
-
-| Gate | What it enforces |
-|---|---|
-| M2.1 | `PDF_REDACT_TEXT_REMOVE`, `PDF_REDACT_IMAGE_PIXELS`, `opts.black_boxes = 0`, the picture check in the core, `RedactionUnverified` at the FFI boundary, the two engine tests |
-| M2.1 (hardening) | the normalised word boxes of the text bridge, the fragment and the region check in the core, the search for the places of the document that still carry the text, the cleaning of the annotations, the form values and the metadata, the rollback of a redaction that cannot be verified, and the seven new proofs |
-| M2.2 | `document_actions` in the engine interface, `inspect_document` in the core, the risk policy in the core, the FFI function, the three tests |
-| M2.3 | `document_attachments` and `document_signatures`, `changed_since_signing` and `is_risky_attachment` in the core, the engine and end-to-end tests |
-
 ### 3.5 The second audit: the same word on another page
 
 The second audit went further than the first one and built a document in which
@@ -177,6 +166,53 @@ bytes of the file **without** a known place still stops the redaction.
 
 Proofs: `the_same_word_on_another_page_is_named_in_the_report` (core and
 across the FFI boundary), `a_remainder_without_a_place_still_stops_the_redaction`.
+
+### 3.6 The second audit: nine findings on the document level, fifteen along the chain
+
+A second independent audit went further than the first one. It built a
+document in which the same word stands on two pages, it split a word over
+several objects, it hid a secret in the alternative text of an annotation
+and in the XMP packet of a page, and it measured the whole chain from the
+call to the app. Nine findings on the document level, fifteen along the
+chain — the reports are in `docs/audit/`.
+
+What was changed:
+
+- **The region takes the whole word.** A word that the region touches
+  belongs to the redaction, and the region grows to its box. The rule of
+  the common tools.
+- **Every error after the removal puts the document back**, and a rollback
+  that fails itself is reported as its own error.
+- **Every word that was removed is checked** — also a word of three letters.
+  The exact checks carry every word; only the check over the bytes of the
+  file keeps a minimum length.
+- **The places are named**: a place of the document that the engine could
+  not clean is named in the error. The annotations are cleaned down to their
+  alternative text, and the XMP packet of a **page** is found and cleaned.
+- **The state of the session is truthful**: after a rollback the revision
+  goes back, and the checkpoints of the recovery store belong to the user
+  alone (`0600`).
+- **The chain has a caller**: the macOS client and the Android bridge call
+  the redaction and check the report themselves.
+- **The recovery does not replay a redaction**: the journal cannot say
+  whether it was verified.
+
+What stays open: the step of the interface (the user marks the region and
+sees the report) belongs to the macOS slice of M2 and cannot be built here;
+a secret in Base64 stays undetected; a word whose parts lie apart from each
+other needs the full sanitising; and the proof of the picture rests on the
+OCR.
+
+### 3.7 The gates
+
+`scripts/validate-repo.sh` now checks in addition:
+
+| Gate | What it enforces |
+|---|---|
+| M2.1 | `PDF_REDACT_TEXT_REMOVE`, `PDF_REDACT_IMAGE_PIXELS`, `opts.black_boxes = 0`, the picture check in the core, `RedactionUnverified` at the FFI boundary, the two engine tests |
+| M2.1 (hardening) | the normalised word boxes of the text bridge, the fragment and the region check in the core, the search for the places of the document that still carry the text, the cleaning of the annotations, the form values and the metadata, the rollback of a redaction that cannot be verified, and the seven new proofs |
+| M2.2 | `document_actions` in the engine interface, `inspect_document` in the core, the risk policy in the core, the FFI function, the three tests |
+| M2.3 | `document_attachments` and `document_signatures`, `changed_since_signing` and `is_risky_attachment` in the core, the engine and end-to-end tests |
 
 ## 4. Architecture and platform
 

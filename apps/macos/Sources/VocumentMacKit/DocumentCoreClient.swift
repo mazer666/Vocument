@@ -2,6 +2,24 @@ import Foundation
 import CoreGraphics
 import VocumentFFI
 
+/// The errors of the Swift-side client.
+///
+/// The client reports what the core could not promise: a redaction whose
+/// verification did not succeed in every respect. The core has already
+/// refused such a redaction — the check here is the second line, in case the
+/// boundary ever changes.
+public enum DocumentCoreClientError: Error, CustomStringConvertible {
+    /// The redaction could not be verified in every respect.
+    case redactionNotVerified(String)
+
+    public var description: String {
+        switch self {
+        case .redactionNotVerified(let details):
+            return details
+        }
+    }
+}
+
 /// Thin Swift-side client wrapping the UniFFI `DocumentCore` API (`ARCHITECTURE.md` §§3–10, 15, 17, `ROADMAP.md` M0.0–M0.3).
 /// Never hardcodes product defaults or accesses MuPDF directly; all document state is owned by `vocument-core`.
 public struct DocumentCoreClient: Sendable {
@@ -243,6 +261,41 @@ public struct DocumentCoreClient: Sendable {
             pageIndex: pageIndex,
             annotationId: annotationId
         )
+    }
+
+    /// Removes the content of the marked regions of a page for good
+    /// (`REDACT-001`, `REDACT-002`).
+    ///
+    /// The redaction cannot be undone. The report tells the shell what it has
+    /// to show to the user before the document is saved: the words that were
+    /// removed, the four checks of the verification and the places of the
+    /// document where the same word still stands.
+    ///
+    /// The client does not trust the `verified` flag of the report: it looks
+    /// at the four checks themselves. A check that was not carried out
+    /// (`notChecked`) is not a pass.
+    public func redactPageRegions(
+        sessionId: String,
+        pageIndex: UInt32,
+        regions: [FfiRedactionRegion]
+    ) throws -> FfiRedactionReport {
+        let report = try documentCoreRedactPageRegions(
+            sessionId: sessionId,
+            pageIndex: pageIndex,
+            regions: regions
+        )
+        let checks: [(String, FfiRedactionCheck)] = [
+            ("the text layer of the page", report.textLayerClean),
+            ("the search over the document", report.searchIndexClean),
+            ("the picture of the page", report.renderedPageClean),
+            ("the bytes of the file", report.fileBytesClean),
+        ]
+        for (what, check) in checks where check != .passed {
+            throw DocumentCoreClientError.redactionNotVerified(
+                "the redaction of the page \(pageIndex) could not be verified: \(what) is not clean"
+            )
+        }
+        return report
     }
 
     /// Undoes the last committed transaction on `sessionId` via `TransactionManager` (`UNDO-001`, `UNDO-004`).

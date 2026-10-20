@@ -246,7 +246,18 @@ impl SessionRegistry {
         // removal. The text layer does not know everything: a scan carries its
         // words in the image, and a graphic carries no text at all. The
         // picture is the truth about what a reader sees.
-        let visible_before = self.read_rendered_words(session_id, page_index)?;
+        let visible_before = match self.read_rendered_words(session_id, page_index) {
+            Ok(words) => words,
+            Err(error) => {
+                return Err(SessionError::Redaction(
+                    RedactionError::VerificationFailed {
+                        details: format!(
+                            "the picture of the page could not be read, so the removal cannot be verified: {error}"
+                        ),
+                    },
+                ));
+            }
+        };
 
         // Every word the region touches belongs to the redaction, and the
         // region grows to the whole word: the removal works character by

@@ -181,10 +181,15 @@ impl From<SessionError> for DocumentCoreError {
             }
             SessionError::Redaction(redaction_err) => match redaction_err {
                 vocument_core::redaction::RedactionError::VerificationFailed { details } => {
-                    Self::RedactionUnverified { details }
+                    // The text of the error travels in the field: the
+                    // generated bindings show the field, not the message of
+                    // the Rust error. The meaning has to be in it.
+                    Self::RedactionUnverified {
+                        details: format!("the redaction could not be verified: {details}"),
+                    }
                 }
                 other => Self::RedactionFailure {
-                    details: other.to_string(),
+                    details: format!("the redaction failed: {other}"),
                 },
             },
             SessionError::RegistryPoisoned => Self::InternalFailure {

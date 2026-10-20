@@ -66,7 +66,9 @@ found, with its own harness and `mutool` as the reference:
   had happened.
 - The text of a **Type 3 font** cannot be removed by MuPDF 1.28.5 at all
   (`recurse = 0`). The auditors measured 8322 dark pixels before and after
-  the redaction.
+  the redaction. (The second audit could not reproduce this: the text of a
+  Type 3 font was removed completely in the construction it built — the
+  claim is withdrawn for that construction.)
 
 The fix is not a patch on one line: the redaction now checks the **whole
 region** (nothing may lie in it any more), compares **fragments**, searches
@@ -130,9 +132,11 @@ commands and the limits of what could be checked.
 |---|---|---|
 | The macOS interface of all three functions | **NOT RUN** | no macOS host |
 | The behaviour on a device (Android, macOS) | **NOT RUN** | no device, no `/dev/kvm` |
-| The applications do not call the functions yet | **open** | the redaction, the link inspection and the attachment inspection are available across the FFI boundary, but the tool of the interface belongs to the macOS slice of M2 |
+| The applications do not call the functions yet | **open** | the redaction now has a caller in the macOS client and in the Android bridge, and both check the report themselves. The **step of the interface** — the user marks the region and sees the report — belongs to the macOS slice of M2 |
 | Interoperability with Acrobat/Foxit/Okular | **NOT RUN** | M2 gate, open for all M2 functions |
-| A document whose text is drawn with a Type 3 font | **NOT RUN** | MuPDF 1.28.5 cannot remove such a text. The redaction is refused for such a document (the verification fails, the document stays unchanged) — but the text is not removed |
+| A document whose text is drawn with a Type 3 font | **NOT RUN** (residual) | The first audit assumed that MuPDF 1.28.5 cannot remove such a text. The second audit **could not reproduce** that: the text of a Type 3 font was removed completely in the construction it built. The claim is withdrawn for that construction; the others were not checked exhaustively. Should a construction survive, the check over the region sees it and the redaction is refused |
+| A secret in Base64 | **NOT RUN** | the search looks for plain text, for UTF-16 in both byte orders and for the hex string of the UTF-16 bytes |
+| A word whose parts lie apart from each other | **NOT RUN** | the region takes every word it touches, but two pieces of a word that lie far apart are not one word in the text layer. The full sanitising (`SAN-001`) is the place for that |
 | The full sanitize of a document (metadata, hidden content, attachments, actions, comments, form remnants) | **open** | `SAN-001`, the separate feature of the roadmap. The redaction now reports the places it cannot clean, instead of staying silent about them |
 | The licence decision | **open** | the decision paper `docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md` is waiting for the choice of the variant |
 | AddressSanitizer | **NOT RUN** | only with a nightly toolchain (`-Zbuild-std`); the substitute is the valgrind memcheck of the difficult corpus |

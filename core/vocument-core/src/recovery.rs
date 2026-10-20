@@ -586,7 +586,15 @@ impl SessionRegistry {
             action: RecoveryAction::Restore,
             session_snapshot: Some(restored_snap),
             target_token: Some(manifest.source_token),
-            message: "Document session restored from crash recovery journal. Original file on disk remains unchanged until save.".to_owned(),
+            message: if journal
+                .committed_records
+                .iter()
+                .any(|record| record.forward_command.is_redaction())
+            {
+                "Document session restored from crash recovery journal, but the last redaction was not replayed: a redaction cannot be verified from the journal, and the document stands at the state before it. Original file on disk remains unchanged until save.".to_owned()
+            } else {
+                "Document session restored from crash recovery journal. Original file on disk remains unchanged until save.".to_owned()
+            },
         })
     }
 

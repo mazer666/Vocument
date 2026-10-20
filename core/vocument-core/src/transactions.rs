@@ -118,6 +118,14 @@ impl TransactionCommand {
         }
     }
 
+    /// Answers whether the command is a redaction.
+    ///
+    /// A redaction is irreversible and the journal cannot say whether it was
+    /// ever verified. The recovery therefore does not replay it.
+    pub fn is_redaction(&self) -> bool {
+        matches!(self, Self::RedactPageRegions { .. })
+    }
+
     pub fn affected_pages(&self) -> Vec<u32> {
         match self {
             Self::RotatePages { page_indices, .. } => page_indices.clone(),
@@ -535,11 +543,32 @@ impl TransactionManager {
             });
         }
 
+        // A redaction is not replayed. It is irreversible, and the journal
+        // cannot say whether it was ever verified: the process may have died
+        // between the removal and the verification. Replaying it would put
+        // content into the document without a proof. The document is restored
+        // to the state before the redaction, and the caller has to say so.
         for rec in &journal.committed_records {
+            if matches!(
+                rec.forward_command,
+                TransactionCommand::RedactPageRegions { .. }
+            ) {
+                continue;
+            }
             let _ = Self::apply_command_on_actor(actor, rec.forward_command.clone())?;
         }
 
-        self.undo_stack = journal.committed_records.clone();
+        self.undo_stack = journal
+            .committed_records
+            .iter()
+            .filter(|record| {
+                !matches!(
+                    record.forward_command,
+                    TransactionCommand::RedactPageRegions { .. }
+                )
+            })
+            .cloned()
+            .collect();
         self.redo_stack = journal.redo_records.clone();
         self.current_revision = journal.current_revision;
         self.saved_revision = journal.saved_revision;

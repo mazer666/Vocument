@@ -190,6 +190,7 @@ decision can be checked without a device.
 | Topic | File |
 |---|---|
 | The redaction with verification in the core | `core/vocument-core/src/redaction.rs` |
+| The rules of the redaction (the comparison form, the fragment, the region) | `core/vocument-core/src/redaction_rules.rs` |
 | The removal of the content in the MuPDF engine | `engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c` (`vocument_mupdf_redact_page_regions`) |
 | The cleaning of the annotations, the form values and the metadata | `engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c` (`vocument_mupdf_scrub_document`) |
 | The search for the places that still carry the text | `engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c` (`vocument_mupdf_find_text_occurrences`) |
@@ -197,7 +198,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Ten traps that have already bitten once:**
+**Fourteen traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -244,6 +245,27 @@ decision can be checked without a device.
     under the marked region. A remainder in the bytes of the file **without**
     a known place — an old version of the file, an unreachable object — is
     something else: that one stops the redaction.
+11. **A marked region has to take the whole word.** The removal works
+    character by character, so a region that covers the half of a word
+    leaves the rest of the word behind — and the rest of a secret is still a
+    secret. The rule is: a word that the region **touches** belongs to the
+    redaction, and the region grows to the box of the whole word. The words
+    of the picture count as well: a scan has no text layer, and its pixels
+    are the content there.
+12. **An error after the removal has to put the document back.** The removal
+    happens before the verification, and every error in the verification —
+    the text extraction, the reindexing, the rendering of the page — must
+    leave the document as it was. Otherwise the user holds a changed
+    document and believes that nothing happened. A rollback that fails
+    itself is reported as its own error: the session then holds a document
+    in an unknown state.
+13. **A journal cannot say whether a redaction was verified.** The crash
+    recovery therefore does not replay a redaction: the document is restored
+    to the state before it, and the recovery says so.
+14. **The checkpoints of the recovery store hold the document in plain
+    text.** They belong to the user alone: the directory is `0700`, the
+    file `0600`. A file that anybody on the machine could read would be a
+    second copy of the document outside of the place the user expects it.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in

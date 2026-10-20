@@ -684,6 +684,12 @@ The check against the rendered page is the decisive one: the page is rendered an
 
 The promise of the redaction is about the **marked region**. A word that occurs somewhere else in the document — on another page, or a second time on the same page — is not part of the redaction: the user marked a region, not the word in the whole document. The report **names** those places, so that the shell can show them and nobody believes that a word is gone from the document when it is still in it. Such a place does not stop the redaction; a remainder in the bytes of the file **without** a known place — an old version of the file, an unreachable object — does.
 
+A marked region removes **every word it touches**, and the word goes as a whole. The removal works character by character, so a region that covers only a part of a word would leave the rest of the word behind — and the rest of a secret is still a secret. The region therefore grows to the box of every word it touches; the words of the picture count as well, because a scan has no text layer and its pixels are the content there. The report names the words that were removed.
+
+**Every error after the removal puts the document back.** The removal happens before the verification, and an error in the text extraction, in the reindexing, in the rendering of the page or while reading the bytes must not leave a changed document behind with an error that says nothing about it. A rollback that fails itself is reported as its own error: the session then holds a document in an unknown state, and the user has to be told that the document has to be opened again. The crash recovery does **not** replay a redaction — the journal cannot say whether it was ever verified — and restores the state before it.
+
+The checkpoints of the recovery store hold the bytes of the earlier states of the document, and those bytes still contain the removed content. They belong to the user alone: the directory is `0700`, the file `0600`.
+
 A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success.
 
 ### REDACT-004a — The pixels of an image are replaced

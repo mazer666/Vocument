@@ -6,6 +6,39 @@ import uniffi.vocument_ffi.*
  * Thin Kotlin client wrapping the generated UniFFI `DocumentCore` bindings (`ARCHITECTURE.md` §§3–12, §15, §17).
  * Never duplicates configuration defaults or accesses MuPDF directly; all document state lives in `vocument-core`.
  */
+/**
+ * Checks the report of a redaction and refuses it when a check did not
+ * succeed.
+ *
+ * A check that was not carried out (`NOT_CHECKED`) is not a pass: the
+ * content of the document may still be there, nobody has looked.
+ */
+internal fun requireVerifiedRedaction(pageIndex: UInt, report: FfiRedactionReport) {
+    val checks = listOf(
+        "the text layer of the page" to report.textLayerClean,
+        "the search over the document" to report.searchIndexClean,
+        "the picture of the page" to report.renderedPageClean,
+        "the bytes of the file" to report.fileBytesClean
+    )
+    for ((what, check) in checks) {
+        if (check != FfiRedactionCheck.PASSED) {
+            throw DocumentCoreBridgeException(
+                "the redaction of the page $pageIndex could not be verified: $what is not clean"
+            )
+        }
+    }
+}
+
+/**
+ * The errors of the bridge to the core.
+ *
+ * The bridge reports what the core could not promise: a redaction whose
+ * verification did not succeed in every respect. The core has already
+ * refused such a redaction — the check here is the second line, in case the
+ * boundary ever changes.
+ */
+class DocumentCoreBridgeException(message: String) : RuntimeException(message)
+
 class DocumentCoreBridge {
     fun performHandshake(): DocumentCoreHandshake {
         return documentCoreHandshake()
@@ -225,6 +258,29 @@ class DocumentCoreBridge {
         annotationId: String
     ): FfiTransactionHistorySnapshot {
         return documentCoreRemoveHighlightAnnotation(sessionId, pageIndex, annotationId)
+    }
+
+    /**
+     * Removes the content of the marked regions of a page for good
+     * (`REDACT-001`, `REDACT-002`).
+     *
+     * The redaction cannot be undone. The report tells the shell what it has
+     * to show to the user before the document is saved: the words that were
+     * removed, the four checks of the verification and the places of the
+     * document where the same word still stands.
+     *
+     * The bridge does not trust the `verified` flag of the report: it looks
+     * at the four checks themselves. A check that was not carried out
+     * (`NOT_CHECKED`) is not a pass.
+     */
+    fun redactPageRegions(
+        sessionId: String,
+        pageIndex: UInt,
+        regions: List<FfiRedactionRegion>
+    ): FfiRedactionReport {
+        val report = documentCoreRedactPageRegions(sessionId, pageIndex, regions)
+        requireVerifiedRedaction(pageIndex, report)
+        return report
     }
 
     /**

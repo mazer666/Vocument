@@ -6,10 +6,43 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.vocument_ffi.FfiFileAccessOrigin
+import uniffi.vocument_ffi.FfiRedactionCheck
+import uniffi.vocument_ffi.FfiRedactionReport
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiTileRenderRequest
 
 class DocumentCoreBridgeTest {
+    /**
+     * The report of a redaction is only accepted when every check has
+     * succeeded. A check that was not carried out is not a pass — the
+     * content of the document may still be there.
+     */
+    @Test
+    fun aRedactionWhoseVerificationDidNotSucceedIsRefused() {
+        val report = FfiRedactionReport(
+            pageIndex = 0u,
+            regionCount = 1u,
+            removedWords = listOf("VERTRAULICH"),
+            removedWordCount = 1u,
+            textLayerClean = FfiRedactionCheck.PASSED,
+            searchIndexClean = FfiRedactionCheck.PASSED,
+            renderedPageClean = FfiRedactionCheck.NOT_CHECKED,
+            fileBytesClean = FfiRedactionCheck.PASSED,
+            remainingOccurrences = emptyList(),
+            verified = true,
+            revision = 2u
+        )
+        val failure = runCatching { requireVerifiedRedaction(0u, report) }.exceptionOrNull()
+        assertTrue(
+            "a report with a check that was not carried out must be refused",
+            failure is DocumentCoreBridgeException
+        )
+        assertTrue(
+            "the error has to name the check that failed",
+            failure?.message?.contains("the picture of the page") == true
+        )
+    }
+
     @Test
     fun verifyAndroidPlatformUniFFIHandshakePdfSessionAndRendering() {
         val bridge = DocumentCoreBridge()
