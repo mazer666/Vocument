@@ -524,8 +524,20 @@ Delivered:
   checkpoints of the recovery store are deleted with it
 - the transaction command carries no text, so the persistent journal does not
   contain the removed content either
+- the redaction was hardened twice, each time after an independent
+  adversarial audit: a marked region removes **every word it touches** (and
+  the word goes as a whole), every error after the removal puts the document
+  back, every removed word is checked, the places of the document that the
+  engine could not clean are named, the checkpoints of the recovery store
+  belong to the user alone, and the crash recovery does not replay a
+  redaction
+- the applications call the redaction and check the report themselves — the
+  `verified` flag is not a check
 
-Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md).
+Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
+[the two audits](docs/audit/redaction-security-audit.md),
+[the second audit on the document level](docs/audit/redteam-document-level.md)
+and [the second audit along the chain](docs/audit/redteam-platform-chain.md).
 
 ## M2.2 — Link and action inspection *(Implemented, host-verified)*
 
@@ -569,8 +581,10 @@ Delivered:
 
 Evidence: [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md).
 
-Open in M2: the remaining six functions, the macOS interface, and the
-interoperability gate with the tools of other vendors.
+Open in M2: the remaining six functions (among them the annotation function
+with the jurist palette, `ANNOT-001`, and the full sanitising, `SAN-001`),
+the macOS interface, and the interoperability gate with the tools of other
+vendors.
 
 ---
 
