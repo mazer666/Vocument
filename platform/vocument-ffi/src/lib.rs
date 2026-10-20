@@ -4,6 +4,7 @@
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
 pub mod interop_dto;
+pub mod job_dto;
 pub mod mutation_dto;
 pub mod navigation_search_dto;
 pub mod ocr_dto;
@@ -207,8 +208,14 @@ pub fn document_core_get_session_snapshot(
 }
 
 /// Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
+///
+/// Every background job of the session is cancelled first, so that a result of a
+/// closed document can never be applied afterwards (`ARCHITECTURE.md` §8.4).
 #[uniffi::export]
 pub fn document_core_close_session(session_id: String) -> Result<(), DocumentCoreError> {
+    // Cancel first: a job that is still running would otherwise hold a reference
+    // to a session that is about to disappear.
+    let _ = job_dto::document_core_job_cancel_session(session_id.clone());
     session_registry().close_session(&session_id)?;
     Ok(())
 }

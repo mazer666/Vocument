@@ -74,6 +74,28 @@ fn resolve_available_tool(candidates: &[&str]) -> Option<String> {
     None
 }
 
+/// Returns the installation prefix of a MuPDF tool, if the tool lives in a
+/// `bin` directory of a custom prefix.
+///
+/// `mutool` links against the shared MuPDF library. When MuPDF is installed
+/// into a prefix other than the system directories, the dynamic loader needs
+/// the matching library path, otherwise the reference renderer cannot start
+/// and the interoperability gate would report a false negative.
+fn mupdf_runtime_prefix(tool_path: &str) -> Option<String> {
+    let path = std::path::Path::new(tool_path);
+    let bin_directory = path.parent()?;
+    if bin_directory.file_name() != Some(std::ffi::OsStr::new("bin")) {
+        return None;
+    }
+    let prefix = bin_directory.parent()?;
+    let library_directory = prefix.join("lib");
+    if library_directory.is_dir() {
+        Some(prefix.to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
 /// Returns the path of an installed Google Chrome / Chromium binary, if any.
 ///
 /// Used for the PDFium (Chromium) interoperability check. The lookup is
@@ -211,14 +233,31 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
         "/opt/homebrew/bin/mutool",
         "/usr/local/bin/mutool",
         "/usr/bin/mutool",
+        // MuPDF installations that are not in the default search path. The
+        // interop gate must find the reference renderer on a developer host that
+        // installed MuPDF into a custom prefix.
+        "/opt/mupdf-shared/bin/mutool",
+        "/opt/mupdf/bin/mutool",
         "mutool",
     ];
     let mutool_bin = resolve_available_tool(&mutool_candidates);
     if let Some(mutool_bin) = mutool_bin.as_deref() {
         let draw_out = temp_dir.join("mutool_render_%d.png");
-        let status = Command::new(mutool_bin)
-            .args(["draw", "-o", &draw_out.to_string_lossy(), &test_pdf_str])
-            .output();
+        // `mutool` links against the shared MuPDF library. When it is installed
+        // into a custom prefix, the loader needs the matching library path.
+        let mut command = Command::new(mutool_bin);
+        command.args(["draw", "-o", &draw_out.to_string_lossy(), &test_pdf_str]);
+        if let Some(prefix) = mupdf_runtime_prefix(mutool_bin) {
+            let current = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
+            let library_path = format!("{prefix}/lib");
+            let combined = if current.is_empty() {
+                library_path
+            } else {
+                format!("{library_path}:{current}")
+            };
+            command.env("LD_LIBRARY_PATH", combined);
+        }
+        let status = command.output();
         if let Ok(output) = status
             && output.status.success()
         {

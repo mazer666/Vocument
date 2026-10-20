@@ -34,8 +34,61 @@ public struct DocumentCoreClient: Sendable {
     }
 
     /// Closes an active `DocumentSession` and releases its engine resources.
+    ///
+    /// Every background job of the session is cancelled by the core before the
+    /// session is destroyed, so a late result can never be applied.
     public func closeSession(sessionId: String) throws {
         try documentCoreCloseSession(sessionId: sessionId)
+    }
+
+    // MARK: - Background job manager (`ARCHITECTURE.md` §8, `ROADMAP.md` M1.5)
+
+    /// Submits background work for a document.
+    ///
+    /// The work runs on the bounded worker pool inside the Rust core. This call
+    /// returns immediately; progress is polled with `jobStatus(jobId:)`.
+    public func submitJob(
+        sessionId: String,
+        documentRevision: UInt64,
+        kind: String,
+        resumable: Bool = false
+    ) throws -> UInt64 {
+        try documentCoreJobSubmit(
+            sessionId: sessionId,
+            documentRevision: documentRevision,
+            kind: kind,
+            resumable: resumable
+        )
+    }
+
+    /// Returns the current status of a background job.
+    public func jobStatus(jobId: UInt64) throws -> FfiJobStatus {
+        try documentCoreJobStatus(jobId: jobId)
+    }
+
+    /// Returns the status of every known background job.
+    public func jobStatuses() throws -> [FfiJobStatus] {
+        try documentCoreJobStatuses()
+    }
+
+    /// Requests a cooperative cancellation of a background job.
+    public func cancelJob(jobId: UInt64) throws -> String {
+        try documentCoreJobCancel(jobId: jobId)
+    }
+
+    /// Cancels every background job of a session.
+    public func cancelJobs(sessionId: String) throws -> UInt32 {
+        try documentCoreJobCancelSession(sessionId: sessionId)
+    }
+
+    /// Returns the number of jobs waiting in the queue.
+    public func queuedJobCount() throws -> UInt32 {
+        try documentCoreJobQueuedCount()
+    }
+
+    /// Returns the number of jobs currently executing.
+    public func runningJobCount() throws -> UInt32 {
+        try documentCoreJobRunningCount()
     }
 
     /// Queries the point geometry (`widthMilliPt`, `heightMilliPt`) of `pageIndex` via `DocumentActor` (`ROADMAP.md` M0.2).
