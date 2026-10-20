@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification** and **M2.2 — link and action inspection** (both implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md) and [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md)).
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection** and **M2.3 — attachment and signature inspection** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md) and [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -476,7 +476,7 @@ The parts that need a device or a macOS host remain open and are documented as
 
 ---
 
-# M2 — macOS Professional Review *(Started — M2.1 and M2.2 done)*
+# M2 — macOS Professional Review *(Started — M2.1, M2.2 and M2.3 done)*
 
 ## Purpose
 
@@ -548,7 +548,28 @@ Delivered:
 
 Evidence: [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md).
 
-Open in M2: the remaining seven functions, the macOS interface, and the
+## M2.3 — Anhangs- und Signaturprüfung *(Implemented, host-verified)*
+
+The third cut of M2. Two questions of a professional review that a document
+can answer on its own: what files are hidden in the document, and does the
+document carry a signature that still covers its content.
+
+Delivered:
+
+- the engine reports the embedded files of the document: name, type, size, and
+  whether the content is really in the document
+- the engine reports the signature fields: the name of the field, the signer,
+  the time, the reason and the place
+- the engine determines whether the document was changed after the signature —
+  the byte range of the signature decides it, and it is the only one who can
+  read it
+- the core applies the risk policy: a file that can execute code, a file that
+  points outside the document and a file whose checksum does not match are
+  risky; a signature that no longer covers the document is risky
+
+Evidence: [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md).
+
+Open in M2: the remaining six functions, the macOS interface, and the
 interoperability gate with the tools of other vendors.
 
 ---

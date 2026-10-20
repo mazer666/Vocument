@@ -252,6 +252,28 @@ Der Katalog ist nicht der Trailer, sondern das `/Root` des Trailers.
 
 Nachweise: `docs/acceptance/M2.2-ACCEPTANCE.md`.
 
+## 7b. Wie prüfe ich die Anlagen und die Signaturen eines Dokuments?
+
+**Zwei Fallen, die schon einmal zugeschlagen haben:**
+
+1. **Der MIME-Typ eines eingebetteten Anhangs muss maskiert werden.**
+   `/Subtype /application/octet-stream` ist falsch — der Schrägstrich trennt
+   im PDF den Namen ab, der Rest wird als neuer Schlüssel gelesen. MuPDF
+   meldet `invalid key in dict`, und die Anlage fehlt **ohne** Fehler im
+   Dokument. Richtig: `/Subtype /application#2Foctet-stream`.
+2. **Die Änderungsprüfung braucht das Feld, nicht die Signatur.**
+   `pdf_signature_incremental_change_since_signing` prüft selbst, ob das
+   übergebene Objekt ein Signaturfeld ist, und wirft sonst
+   `annotation is not a signature widget`. Der Byte-Bereich wird über den
+   Feldwert gelesen.
+
+**Wer entscheidet was:** die **Engine** liest den Byte-Bereich der Signatur
+und vergleicht ihn mit der Größe der Datei — nur sie kann das. Der **Core**
+entscheidet, was das bedeutet: ein Dokument, das nach der Signatur geändert
+wurde, trägt eine Signatur, die nichts mehr abdeckt.
+
+Nachweise: `docs/acceptance/M2.3-ACCEPTANCE.md`.
+
 ## 8. Wo ergänze ich neue Job-Arten?
 
 Drei Stellen, in dieser Reihenfolge:

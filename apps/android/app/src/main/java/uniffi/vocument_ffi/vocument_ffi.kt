@@ -2186,13 +2186,29 @@ data class FfiDocumentInspection (
      */
     var `actions`: List<FfiPdfActionInfo>, 
     /**
-     * The number of the actions that the policy marks as risky.
+     * The embedded files of the document.
+     */
+    var `attachments`: List<FfiPdfAttachmentInfo>, 
+    /**
+     * The signature fields of the document.
+     */
+    var `signatures`: List<FfiPdfSignatureInfo>, 
+    /**
+     * The number of the findings that the policy marks as risky.
      */
     var `riskyCount`: kotlin.UInt, 
     /**
      * The number of the actions that leave the document.
      */
-    var `externalCount`: kotlin.UInt
+    var `externalCount`: kotlin.UInt, 
+    /**
+     * True if the document carries at least one signature.
+     */
+    var `isSigned`: kotlin.Boolean, 
+    /**
+     * True if the document was not changed after it was signed.
+     */
+    var `isUnchangedSinceSigning`: kotlin.Boolean
 ) {
     
     companion object
@@ -2205,21 +2221,33 @@ public object FfiConverterTypeFfiDocumentInspection: FfiConverterRustBuffer<FfiD
     override fun read(buf: ByteBuffer): FfiDocumentInspection {
         return FfiDocumentInspection(
             FfiConverterSequenceTypeFfiPdfActionInfo.read(buf),
+            FfiConverterSequenceTypeFfiPdfAttachmentInfo.read(buf),
+            FfiConverterSequenceTypeFfiPdfSignatureInfo.read(buf),
             FfiConverterUInt.read(buf),
             FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiDocumentInspection) = (
             FfiConverterSequenceTypeFfiPdfActionInfo.allocationSize(value.`actions`) +
+            FfiConverterSequenceTypeFfiPdfAttachmentInfo.allocationSize(value.`attachments`) +
+            FfiConverterSequenceTypeFfiPdfSignatureInfo.allocationSize(value.`signatures`) +
             FfiConverterUInt.allocationSize(value.`riskyCount`) +
-            FfiConverterUInt.allocationSize(value.`externalCount`)
+            FfiConverterUInt.allocationSize(value.`externalCount`) +
+            FfiConverterBoolean.allocationSize(value.`isSigned`) +
+            FfiConverterBoolean.allocationSize(value.`isUnchangedSinceSigning`)
     )
 
     override fun write(value: FfiDocumentInspection, buf: ByteBuffer) {
             FfiConverterSequenceTypeFfiPdfActionInfo.write(value.`actions`, buf)
+            FfiConverterSequenceTypeFfiPdfAttachmentInfo.write(value.`attachments`, buf)
+            FfiConverterSequenceTypeFfiPdfSignatureInfo.write(value.`signatures`, buf)
             FfiConverterUInt.write(value.`riskyCount`, buf)
             FfiConverterUInt.write(value.`externalCount`, buf)
+            FfiConverterBoolean.write(value.`isSigned`, buf)
+            FfiConverterBoolean.write(value.`isUnchangedSinceSigning`, buf)
     }
 }
 
@@ -2984,6 +3012,76 @@ public object FfiConverterTypeFfiPdfActionInfo: FfiConverterRustBuffer<FfiPdfAct
 
 
 /**
+ * An embedded file of a document (`ATTACH-001`).
+ */
+data class FfiPdfAttachmentInfo (
+    /**
+     * The name of the file.
+     */
+    var `fileName`: kotlin.String, 
+    /**
+     * The declared type of the file.
+     */
+    var `mimeType`: kotlin.String, 
+    /**
+     * The size of the file in bytes.
+     */
+    var `sizeBytes`: kotlin.Long, 
+    /**
+     * True if the content of the file is really in the document. A file
+     * specification that only names a path points outside the document.
+     */
+    var `isEmbedded`: kotlin.Boolean, 
+    /**
+     * True if the checksum of the embedded file matches its content.
+     */
+    var `checksumIsValid`: kotlin.Boolean, 
+    /**
+     * True if the file is dangerous to open.
+     */
+    var `isRisky`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfAttachmentInfo: FfiConverterRustBuffer<FfiPdfAttachmentInfo> {
+    override fun read(buf: ByteBuffer): FfiPdfAttachmentInfo {
+        return FfiPdfAttachmentInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfAttachmentInfo) = (
+            FfiConverterString.allocationSize(value.`fileName`) +
+            FfiConverterString.allocationSize(value.`mimeType`) +
+            FfiConverterLong.allocationSize(value.`sizeBytes`) +
+            FfiConverterBoolean.allocationSize(value.`isEmbedded`) +
+            FfiConverterBoolean.allocationSize(value.`checksumIsValid`) +
+            FfiConverterBoolean.allocationSize(value.`isRisky`)
+    )
+
+    override fun write(value: FfiPdfAttachmentInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fileName`, buf)
+            FfiConverterString.write(value.`mimeType`, buf)
+            FfiConverterLong.write(value.`sizeBytes`, buf)
+            FfiConverterBoolean.write(value.`isEmbedded`, buf)
+            FfiConverterBoolean.write(value.`checksumIsValid`, buf)
+            FfiConverterBoolean.write(value.`isRisky`, buf)
+    }
+}
+
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 data class FfiPdfDocumentSummary (
@@ -3135,6 +3233,91 @@ public object FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRe
             FfiConverterInt.write(value.`y0MilliPt`, buf)
             FfiConverterInt.write(value.`x1MilliPt`, buf)
             FfiConverterInt.write(value.`y1MilliPt`, buf)
+    }
+}
+
+
+
+/**
+ * A signature field of a document (`SIGN-001`).
+ */
+data class FfiPdfSignatureInfo (
+    /**
+     * The name of the signature field.
+     */
+    var `fieldName`: kotlin.String, 
+    /**
+     * True if the field carries a signature.
+     */
+    var `isSigned`: kotlin.Boolean, 
+    /**
+     * The name of the signer.
+     */
+    var `signer`: kotlin.String, 
+    /**
+     * The time of the signing, in UTC (`2026-01-31T12:00:00Z`).
+     */
+    var `signedAt`: kotlin.String, 
+    /**
+     * The reason of the signing.
+     */
+    var `reason`: kotlin.String, 
+    /**
+     * The place of the signing.
+     */
+    var `location`: kotlin.String, 
+    /**
+     * True if the document was changed after it was signed. The signature
+     * then no longer covers the content of the document.
+     */
+    var `changedSinceSigning`: kotlin.Boolean, 
+    /**
+     * True if the signature is worth nothing: the document was changed after
+     * it was signed.
+     */
+    var `isRisky`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfSignatureInfo: FfiConverterRustBuffer<FfiPdfSignatureInfo> {
+    override fun read(buf: ByteBuffer): FfiPdfSignatureInfo {
+        return FfiPdfSignatureInfo(
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfSignatureInfo) = (
+            FfiConverterString.allocationSize(value.`fieldName`) +
+            FfiConverterBoolean.allocationSize(value.`isSigned`) +
+            FfiConverterString.allocationSize(value.`signer`) +
+            FfiConverterString.allocationSize(value.`signedAt`) +
+            FfiConverterString.allocationSize(value.`reason`) +
+            FfiConverterString.allocationSize(value.`location`) +
+            FfiConverterBoolean.allocationSize(value.`changedSinceSigning`) +
+            FfiConverterBoolean.allocationSize(value.`isRisky`)
+    )
+
+    override fun write(value: FfiPdfSignatureInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fieldName`, buf)
+            FfiConverterBoolean.write(value.`isSigned`, buf)
+            FfiConverterString.write(value.`signer`, buf)
+            FfiConverterString.write(value.`signedAt`, buf)
+            FfiConverterString.write(value.`reason`, buf)
+            FfiConverterString.write(value.`location`, buf)
+            FfiConverterBoolean.write(value.`changedSinceSigning`, buf)
+            FfiConverterBoolean.write(value.`isRisky`, buf)
     }
 }
 
@@ -6124,6 +6307,34 @@ public object FfiConverterSequenceTypeFfiPdfActionInfo: FfiConverterRustBuffer<L
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiPdfAttachmentInfo: FfiConverterRustBuffer<List<FfiPdfAttachmentInfo>> {
+    override fun read(buf: ByteBuffer): List<FfiPdfAttachmentInfo> {
+        val len = buf.getInt()
+        return List<FfiPdfAttachmentInfo>(len) {
+            FfiConverterTypeFfiPdfAttachmentInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPdfAttachmentInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPdfAttachmentInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPdfAttachmentInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPdfAttachmentInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<List<FfiPdfRectMilliPt>> {
     override fun read(buf: ByteBuffer): List<FfiPdfRectMilliPt> {
         val len = buf.getInt()
@@ -6142,6 +6353,34 @@ public object FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiPdfRectMilliPt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiPdfSignatureInfo: FfiConverterRustBuffer<List<FfiPdfSignatureInfo>> {
+    override fun read(buf: ByteBuffer): List<FfiPdfSignatureInfo> {
+        val len = buf.getInt()
+        return List<FfiPdfSignatureInfo>(len) {
+            FfiConverterTypeFfiPdfSignatureInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPdfSignatureInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPdfSignatureInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPdfSignatureInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPdfSignatureInfo.write(it, buf)
         }
     }
 }

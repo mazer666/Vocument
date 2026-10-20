@@ -75,6 +75,102 @@ fn pdf_with_actions() -> Vec<u8> {
     out
 }
 
+/// Builds a PDF with an embedded file and a signed form.
+///
+/// `changed_after_signing` decides whether the signature covers the whole
+/// document or only the beginning of it.
+fn pdf_with_attachment_and_signature(changed_after_signing: bool) -> Vec<u8> {
+    const CONTENTS_LEN: usize = 40;
+    let contents = "BT /F1 12 Tf 72 740 Td (Vocument Review) Tj ET\n";
+    let attachment = "MZ this is not a real program";
+
+    let build = |byte_range: &str| -> Vec<u8> {
+        let objects: Vec<String> = vec![
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [6 0 R] >> \
+/Names << /EmbeddedFiles << /Names [(anhang.exe) 8 0 R] >> >> >>"
+                .to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] \
+/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+                .to_owned(),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+            format!(
+                "<< /Length {} >>\nstream\n{contents}endstream",
+                contents.len()
+            ),
+            "<< /Type /Annot /Subtype /Widget /FT /Sig /T (Unterschrift) /V 7 0 R \
+/Rect [72 100 320 140] /P 3 0 R >>"
+                .to_owned(),
+            format!(
+                "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached \
+/Name (Dr. Weber) /M (D:20260131120000Z) /Reason (Freigabe) /Location (Berlin) \
+/ByteRange {byte_range} /Contents <{}> >>",
+                "0".repeat(CONTENTS_LEN)
+            ),
+            "<< /Type /Filespec /F (anhang.exe) /UF (anhang.exe) \
+/EF << /F 9 0 R >> /Desc (Anhang des Schreibens) >>"
+                .to_owned(),
+            format!(
+                "<< /Type /EmbeddedFile /Subtype /application#2Foctet-stream /Length {} \
+/Params << /Size {} >> >>\nstream\n{attachment}endstream",
+                attachment.len(),
+                attachment.len()
+            ),
+        ];
+
+        let mut out = Vec::new();
+        out.extend_from_slice(b"%PDF-1.7\n");
+        let mut offsets = Vec::with_capacity(objects.len());
+        for (index, object) in objects.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+        }
+        let xref_offset = out.len();
+        out.extend_from_slice(
+            format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+        );
+        for offset in &offsets {
+            out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(
+            format!(
+                "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+                objects.len() + 1
+            )
+            .as_bytes(),
+        );
+        out
+    };
+
+    let probe = build("[0000000000 0000000000 0000000000 0000000000]");
+    let marker = b"/Contents <";
+    let contents_start = probe
+        .windows(marker.len())
+        .position(|window| window == marker)
+        .expect("the fixture must carry the contents of the signature")
+        + marker.len();
+    let file_size = probe.len();
+
+    let byte_range = if changed_after_signing {
+        format!(
+            "[{:010} {:010} {:010} {:010}]",
+            0,
+            contents_start,
+            contents_start + CONTENTS_LEN,
+            100
+        )
+    } else {
+        format!(
+            "[{:010} {:010} {:010} {:010}]",
+            0,
+            contents_start,
+            contents_start + CONTENTS_LEN,
+            file_size - (contents_start + CONTENTS_LEN)
+        )
+    };
+    build(&byte_range)
+}
+
 #[test]
 fn the_inspection_of_a_document_shows_where_the_links_lead_and_what_they_do() {
     let path = temp_dir("inspection").join("links.pdf");
@@ -144,6 +240,92 @@ fn the_inspection_of_a_document_shows_where_the_links_lead_and_what_they_do() {
     assert_eq!(
         inspection.external_count, 2,
         "the findings that leave the document"
+    );
+
+    document_core_close_session(session_id).expect("the session must close");
+}
+
+#[test]
+fn the_inspection_shows_the_attachments_and_the_signatures_of_the_document() {
+    let path = temp_dir("inspection-attach").join("anhang.pdf");
+    std::fs::write(&path, pdf_with_attachment_and_signature(false))
+        .expect("the fixture must be writable");
+
+    let snapshot = document_core_open_macos_scoped_file(path.to_string_lossy().into_owned())
+        .expect("the document must be openable");
+    let session_id = snapshot.session_id.clone();
+
+    let inspection =
+        document_core_inspect_document(session_id.clone()).expect("the inspection must succeed");
+
+    // The attachment.
+    assert_eq!(
+        inspection.attachments.len(),
+        1,
+        "unexpected report: {inspection:?}"
+    );
+    let attachment = &inspection.attachments[0];
+    assert_eq!(attachment.file_name, "anhang.exe");
+    assert_eq!(attachment.mime_type, "application/octet-stream");
+    assert!(attachment.is_embedded, "the content is in the document");
+    assert!(
+        attachment.checksum_is_valid,
+        "there is no checksum to contradict"
+    );
+    assert!(
+        attachment.is_risky,
+        "a program that can be executed is dangerous to open"
+    );
+
+    // The signature.
+    assert_eq!(
+        inspection.signatures.len(),
+        1,
+        "unexpected report: {inspection:?}"
+    );
+    let signature = &inspection.signatures[0];
+    assert_eq!(signature.field_name, "Unterschrift");
+    assert!(signature.is_signed, "the field carries a signature");
+    assert_eq!(signature.signer, "Dr. Weber");
+    assert_eq!(signature.signed_at, "2026-01-31T12:00:00Z");
+    assert!(
+        !signature.changed_since_signing,
+        "the signature covers the document"
+    );
+    assert!(inspection.is_signed, "the document is signed");
+    assert!(
+        inspection.is_unchanged_since_signing,
+        "the document was not changed after the signature"
+    );
+
+    document_core_close_session(session_id).expect("the session must close");
+}
+
+#[test]
+fn a_document_that_was_changed_after_the_signature_is_reported_as_such() {
+    let path = temp_dir("inspection-changed").join("geaendert.pdf");
+    std::fs::write(&path, pdf_with_attachment_and_signature(true))
+        .expect("the fixture must be writable");
+
+    let snapshot = document_core_open_macos_scoped_file(path.to_string_lossy().into_owned())
+        .expect("the document must be openable");
+    let session_id = snapshot.session_id.clone();
+
+    let inspection =
+        document_core_inspect_document(session_id.clone()).expect("the inspection must succeed");
+
+    let signature = &inspection.signatures[0];
+    assert!(
+        signature.changed_since_signing,
+        "the signature covers only the beginning of the document"
+    );
+    assert!(
+        signature.is_risky,
+        "a signature that covers nothing is risky"
+    );
+    assert!(
+        !inspection.is_unchanged_since_signing,
+        "the document was changed after the signature"
     );
 
     document_core_close_session(session_id).expect("the session must close");

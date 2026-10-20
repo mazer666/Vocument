@@ -140,12 +140,126 @@ pub fn is_risky_target(kind: &PdfActionKind, target: &str) -> bool {
     }
 }
 
+/// An embedded file of a document (`ATTACH-001`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfAttachmentInfo {
+    /// The name of the file.
+    pub file_name: String,
+    /// The declared type of the file.
+    pub mime_type: String,
+    /// The size of the file in bytes.
+    pub size_bytes: i64,
+    /// True if the content of the file is really in the document. A file
+    /// specification that only names a path points outside the document.
+    pub is_embedded: bool,
+    /// True if the checksum of the embedded file matches its content.
+    pub checksum_is_valid: bool,
+    /// True if the file is dangerous to open.
+    pub is_risky: bool,
+}
+
+impl PdfAttachmentInfo {
+    /// Creates an attachment and applies the risk policy of the core to it.
+    pub fn new(
+        file_name: String,
+        mime_type: String,
+        size_bytes: i64,
+        is_embedded: bool,
+        checksum_is_valid: bool,
+    ) -> Self {
+        let is_risky =
+            !is_embedded || !checksum_is_valid || is_risky_attachment(&file_name, &mime_type);
+        Self {
+            file_name,
+            mime_type,
+            size_bytes,
+            is_embedded,
+            checksum_is_valid,
+            is_risky,
+        }
+    }
+}
+
+/// The extensions of files that can execute code when they are opened.
+const EXECUTABLE_EXTENSIONS: [&str; 14] = [
+    "exe", "bat", "cmd", "com", "scr", "msi", "dll", "jar", "js", "vbs", "ps1", "sh", "apk", "app",
+];
+
+/// True if the name or the type of the attachment says that it can execute
+/// code.
+pub fn is_risky_attachment(file_name: &str, mime_type: &str) -> bool {
+    let lowered_name = file_name.to_ascii_lowercase();
+    if let Some(index) = lowered_name.rfind('.') {
+        let extension = &lowered_name[index + 1..];
+        if EXECUTABLE_EXTENSIONS.contains(&extension) {
+            return true;
+        }
+    }
+    let lowered_type = mime_type.to_ascii_lowercase();
+    lowered_type.contains("executable")
+        || lowered_type.contains("msdownload")
+        || lowered_type.contains("msdos-program")
+        || lowered_type.contains("x-sh")
+        || lowered_type.contains("x-msdownload")
+}
+
+/// A signature field of a document (`SIGN-001`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfSignatureInfo {
+    /// The name of the signature field.
+    pub field_name: String,
+    /// True if the field carries a signature.
+    pub is_signed: bool,
+    /// The name of the signer.
+    pub signer: String,
+    /// The time of the signing, in UTC (`2026-01-31T12:00:00Z`).
+    pub signed_at: String,
+    /// The reason of the signing.
+    pub reason: String,
+    /// The place of the signing.
+    pub location: String,
+    /// True if the document was changed after it was signed. The signature
+    /// then no longer covers the content of the document.
+    pub changed_since_signing: bool,
+    /// True if the signature is worth nothing: the document was changed after
+    /// it was signed.
+    pub is_risky: bool,
+}
+
+impl PdfSignatureInfo {
+    /// Creates a signature and applies the risk policy of the core to it.
+    pub fn new(
+        field_name: String,
+        is_signed: bool,
+        signer: String,
+        signed_at: String,
+        reason: String,
+        location: String,
+        changed_since_signing: bool,
+    ) -> Self {
+        Self {
+            field_name,
+            is_signed,
+            signer,
+            signed_at,
+            reason,
+            location,
+            changed_since_signing,
+            is_risky: changed_since_signing,
+        }
+    }
+}
+
 /// The report of an inspection of a document (`INSPECT-001`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocumentInspection {
     /// All links and actions of the document.
     pub actions: Vec<PdfActionInfo>,
-    /// The number of the actions that the policy marks as risky.
+    /// The embedded files of the document.
+    pub attachments: Vec<PdfAttachmentInfo>,
+    /// The signature fields of the document.
+    pub signatures: Vec<PdfSignatureInfo>,
+    /// The number of the findings that the policy marks as risky.
     pub risky_count: usize,
     /// The number of the actions that leave the document (an address or a
     /// file).
@@ -153,9 +267,21 @@ pub struct DocumentInspection {
 }
 
 impl DocumentInspection {
-    /// Builds the report from the actions and counts the findings.
-    pub fn from_actions(actions: Vec<PdfActionInfo>) -> Self {
-        let risky_count = actions.iter().filter(|action| action.is_risky).count();
+    /// Builds the report from the findings and counts them.
+    pub fn from_findings(
+        actions: Vec<PdfActionInfo>,
+        attachments: Vec<PdfAttachmentInfo>,
+        signatures: Vec<PdfSignatureInfo>,
+    ) -> Self {
+        let risky_count = actions.iter().filter(|action| action.is_risky).count()
+            + attachments
+                .iter()
+                .filter(|attachment| attachment.is_risky)
+                .count()
+            + signatures
+                .iter()
+                .filter(|signature| signature.is_risky)
+                .count();
         let external_count = actions
             .iter()
             .filter(|action| {
@@ -167,9 +293,25 @@ impl DocumentInspection {
             .count();
         Self {
             actions,
+            attachments,
+            signatures,
             risky_count,
             external_count,
         }
+    }
+
+    /// True if the document carries at least one signature.
+    pub fn is_signed(&self) -> bool {
+        self.signatures.iter().any(|signature| signature.is_signed)
+    }
+
+    /// True if the document was changed after it was signed. A signature that
+    /// no longer covers the content of the document is worth nothing.
+    pub fn is_unchanged_since_signing(&self) -> bool {
+        self.signatures
+            .iter()
+            .filter(|signature| signature.is_signed)
+            .all(|signature| !signature.changed_since_signing)
     }
 
     /// True if the document does something beyond showing pages.
@@ -230,6 +372,85 @@ mod tests {
     }
 
     #[test]
+    fn a_file_that_can_execute_code_is_risky_and_a_text_file_is_not() {
+        let program = PdfAttachmentInfo::new(
+            "anhang.exe".to_owned(),
+            "application/octet-stream".to_owned(),
+            30,
+            true,
+            true,
+        );
+        assert!(program.is_risky, "a program that can be started is risky");
+
+        let script = PdfAttachmentInfo::new(
+            "notiz.js".to_owned(),
+            "text/plain".to_owned(),
+            30,
+            true,
+            true,
+        );
+        assert!(script.is_risky, "a script is risky");
+
+        let text = PdfAttachmentInfo::new(
+            "protokoll.txt".to_owned(),
+            "text/plain".to_owned(),
+            30,
+            true,
+            true,
+        );
+        assert!(!text.is_risky, "a text file is harmless");
+
+        let outside = PdfAttachmentInfo::new(
+            "protokoll.txt".to_owned(),
+            "text/plain".to_owned(),
+            30,
+            false,
+            true,
+        );
+        assert!(
+            outside.is_risky,
+            "a file that is not in the document points outside"
+        );
+
+        let changed = PdfAttachmentInfo::new(
+            "protokoll.txt".to_owned(),
+            "text/plain".to_owned(),
+            30,
+            true,
+            false,
+        );
+        assert!(
+            changed.is_risky,
+            "a checksum that does not match means a change"
+        );
+    }
+
+    #[test]
+    fn a_signature_that_no_longer_covers_the_document_is_risky() {
+        let intact = PdfSignatureInfo::new(
+            "Unterschrift".to_owned(),
+            true,
+            "Dr. Weber".to_owned(),
+            "2026-01-31T12:00:00Z".to_owned(),
+            "Freigabe".to_owned(),
+            "Berlin".to_owned(),
+            false,
+        );
+        assert!(!intact.is_risky, "an intact signature is not risky");
+
+        let changed = PdfSignatureInfo::new(
+            "Unterschrift".to_owned(),
+            true,
+            "Dr. Weber".to_owned(),
+            "2026-01-31T12:00:00Z".to_owned(),
+            "Freigabe".to_owned(),
+            "Berlin".to_owned(),
+            true,
+        );
+        assert!(changed.is_risky, "a signature that covers nothing is risky");
+    }
+
+    #[test]
     fn the_report_counts_what_it_found() {
         let actions = vec![
             PdfActionInfo::new(
@@ -246,7 +467,7 @@ mod tests {
                 "https://example.com".to_owned(),
             ),
         ];
-        let inspection = DocumentInspection::from_actions(actions);
+        let inspection = DocumentInspection::from_findings(actions, Vec::new(), Vec::new());
         assert_eq!(inspection.risky_count, 2);
         assert_eq!(inspection.external_count, 1);
         assert!(inspection.has_risky_actions());

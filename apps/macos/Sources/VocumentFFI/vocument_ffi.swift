@@ -1177,13 +1177,29 @@ public struct FfiDocumentInspection {
      */
     public var actions: [FfiPdfActionInfo]
     /**
-     * The number of the actions that the policy marks as risky.
+     * The embedded files of the document.
+     */
+    public var attachments: [FfiPdfAttachmentInfo]
+    /**
+     * The signature fields of the document.
+     */
+    public var signatures: [FfiPdfSignatureInfo]
+    /**
+     * The number of the findings that the policy marks as risky.
      */
     public var riskyCount: UInt32
     /**
      * The number of the actions that leave the document.
      */
     public var externalCount: UInt32
+    /**
+     * True if the document carries at least one signature.
+     */
+    public var isSigned: Bool
+    /**
+     * True if the document was not changed after it was signed.
+     */
+    public var isUnchangedSinceSigning: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -1192,14 +1208,30 @@ public struct FfiDocumentInspection {
          * All links and actions of the document.
          */actions: [FfiPdfActionInfo], 
         /**
-         * The number of the actions that the policy marks as risky.
+         * The embedded files of the document.
+         */attachments: [FfiPdfAttachmentInfo], 
+        /**
+         * The signature fields of the document.
+         */signatures: [FfiPdfSignatureInfo], 
+        /**
+         * The number of the findings that the policy marks as risky.
          */riskyCount: UInt32, 
         /**
          * The number of the actions that leave the document.
-         */externalCount: UInt32) {
+         */externalCount: UInt32, 
+        /**
+         * True if the document carries at least one signature.
+         */isSigned: Bool, 
+        /**
+         * True if the document was not changed after it was signed.
+         */isUnchangedSinceSigning: Bool) {
         self.actions = actions
+        self.attachments = attachments
+        self.signatures = signatures
         self.riskyCount = riskyCount
         self.externalCount = externalCount
+        self.isSigned = isSigned
+        self.isUnchangedSinceSigning = isUnchangedSinceSigning
     }
 }
 
@@ -1213,10 +1245,22 @@ extension FfiDocumentInspection: Equatable, Hashable {
         if lhs.actions != rhs.actions {
             return false
         }
+        if lhs.attachments != rhs.attachments {
+            return false
+        }
+        if lhs.signatures != rhs.signatures {
+            return false
+        }
         if lhs.riskyCount != rhs.riskyCount {
             return false
         }
         if lhs.externalCount != rhs.externalCount {
+            return false
+        }
+        if lhs.isSigned != rhs.isSigned {
+            return false
+        }
+        if lhs.isUnchangedSinceSigning != rhs.isUnchangedSinceSigning {
             return false
         }
         return true
@@ -1224,8 +1268,12 @@ extension FfiDocumentInspection: Equatable, Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(actions)
+        hasher.combine(attachments)
+        hasher.combine(signatures)
         hasher.combine(riskyCount)
         hasher.combine(externalCount)
+        hasher.combine(isSigned)
+        hasher.combine(isUnchangedSinceSigning)
     }
 }
 
@@ -1239,15 +1287,23 @@ public struct FfiConverterTypeFfiDocumentInspection: FfiConverterRustBuffer {
         return
             try FfiDocumentInspection(
                 actions: FfiConverterSequenceTypeFfiPdfActionInfo.read(from: &buf), 
+                attachments: FfiConverterSequenceTypeFfiPdfAttachmentInfo.read(from: &buf), 
+                signatures: FfiConverterSequenceTypeFfiPdfSignatureInfo.read(from: &buf), 
                 riskyCount: FfiConverterUInt32.read(from: &buf), 
-                externalCount: FfiConverterUInt32.read(from: &buf)
+                externalCount: FfiConverterUInt32.read(from: &buf), 
+                isSigned: FfiConverterBool.read(from: &buf), 
+                isUnchangedSinceSigning: FfiConverterBool.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiDocumentInspection, into buf: inout [UInt8]) {
         FfiConverterSequenceTypeFfiPdfActionInfo.write(value.actions, into: &buf)
+        FfiConverterSequenceTypeFfiPdfAttachmentInfo.write(value.attachments, into: &buf)
+        FfiConverterSequenceTypeFfiPdfSignatureInfo.write(value.signatures, into: &buf)
         FfiConverterUInt32.write(value.riskyCount, into: &buf)
         FfiConverterUInt32.write(value.externalCount, into: &buf)
+        FfiConverterBool.write(value.isSigned, into: &buf)
+        FfiConverterBool.write(value.isUnchangedSinceSigning, into: &buf)
     }
 }
 
@@ -2822,6 +2878,149 @@ public func FfiConverterTypeFfiPdfActionInfo_lower(_ value: FfiPdfActionInfo) ->
 
 
 /**
+ * An embedded file of a document (`ATTACH-001`).
+ */
+public struct FfiPdfAttachmentInfo {
+    /**
+     * The name of the file.
+     */
+    public var fileName: String
+    /**
+     * The declared type of the file.
+     */
+    public var mimeType: String
+    /**
+     * The size of the file in bytes.
+     */
+    public var sizeBytes: Int64
+    /**
+     * True if the content of the file is really in the document. A file
+     * specification that only names a path points outside the document.
+     */
+    public var isEmbedded: Bool
+    /**
+     * True if the checksum of the embedded file matches its content.
+     */
+    public var checksumIsValid: Bool
+    /**
+     * True if the file is dangerous to open.
+     */
+    public var isRisky: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The name of the file.
+         */fileName: String, 
+        /**
+         * The declared type of the file.
+         */mimeType: String, 
+        /**
+         * The size of the file in bytes.
+         */sizeBytes: Int64, 
+        /**
+         * True if the content of the file is really in the document. A file
+         * specification that only names a path points outside the document.
+         */isEmbedded: Bool, 
+        /**
+         * True if the checksum of the embedded file matches its content.
+         */checksumIsValid: Bool, 
+        /**
+         * True if the file is dangerous to open.
+         */isRisky: Bool) {
+        self.fileName = fileName
+        self.mimeType = mimeType
+        self.sizeBytes = sizeBytes
+        self.isEmbedded = isEmbedded
+        self.checksumIsValid = checksumIsValid
+        self.isRisky = isRisky
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfAttachmentInfo: Sendable {}
+#endif
+
+
+extension FfiPdfAttachmentInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfAttachmentInfo, rhs: FfiPdfAttachmentInfo) -> Bool {
+        if lhs.fileName != rhs.fileName {
+            return false
+        }
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.sizeBytes != rhs.sizeBytes {
+            return false
+        }
+        if lhs.isEmbedded != rhs.isEmbedded {
+            return false
+        }
+        if lhs.checksumIsValid != rhs.checksumIsValid {
+            return false
+        }
+        if lhs.isRisky != rhs.isRisky {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fileName)
+        hasher.combine(mimeType)
+        hasher.combine(sizeBytes)
+        hasher.combine(isEmbedded)
+        hasher.combine(checksumIsValid)
+        hasher.combine(isRisky)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfAttachmentInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfAttachmentInfo {
+        return
+            try FfiPdfAttachmentInfo(
+                fileName: FfiConverterString.read(from: &buf), 
+                mimeType: FfiConverterString.read(from: &buf), 
+                sizeBytes: FfiConverterInt64.read(from: &buf), 
+                isEmbedded: FfiConverterBool.read(from: &buf), 
+                checksumIsValid: FfiConverterBool.read(from: &buf), 
+                isRisky: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfAttachmentInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileName, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterInt64.write(value.sizeBytes, into: &buf)
+        FfiConverterBool.write(value.isEmbedded, into: &buf)
+        FfiConverterBool.write(value.checksumIsValid, into: &buf)
+        FfiConverterBool.write(value.isRisky, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfAttachmentInfo_lift(_ buf: RustBuffer) throws -> FfiPdfAttachmentInfo {
+    return try FfiConverterTypeFfiPdfAttachmentInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfAttachmentInfo_lower(_ value: FfiPdfAttachmentInfo) -> RustBuffer {
+    return FfiConverterTypeFfiPdfAttachmentInfo.lower(value)
+}
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 public struct FfiPdfDocumentSummary {
@@ -3141,6 +3340,179 @@ public func FfiConverterTypeFfiPdfRectMilliPt_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) -> RustBuffer {
     return FfiConverterTypeFfiPdfRectMilliPt.lower(value)
+}
+
+
+/**
+ * A signature field of a document (`SIGN-001`).
+ */
+public struct FfiPdfSignatureInfo {
+    /**
+     * The name of the signature field.
+     */
+    public var fieldName: String
+    /**
+     * True if the field carries a signature.
+     */
+    public var isSigned: Bool
+    /**
+     * The name of the signer.
+     */
+    public var signer: String
+    /**
+     * The time of the signing, in UTC (`2026-01-31T12:00:00Z`).
+     */
+    public var signedAt: String
+    /**
+     * The reason of the signing.
+     */
+    public var reason: String
+    /**
+     * The place of the signing.
+     */
+    public var location: String
+    /**
+     * True if the document was changed after it was signed. The signature
+     * then no longer covers the content of the document.
+     */
+    public var changedSinceSigning: Bool
+    /**
+     * True if the signature is worth nothing: the document was changed after
+     * it was signed.
+     */
+    public var isRisky: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The name of the signature field.
+         */fieldName: String, 
+        /**
+         * True if the field carries a signature.
+         */isSigned: Bool, 
+        /**
+         * The name of the signer.
+         */signer: String, 
+        /**
+         * The time of the signing, in UTC (`2026-01-31T12:00:00Z`).
+         */signedAt: String, 
+        /**
+         * The reason of the signing.
+         */reason: String, 
+        /**
+         * The place of the signing.
+         */location: String, 
+        /**
+         * True if the document was changed after it was signed. The signature
+         * then no longer covers the content of the document.
+         */changedSinceSigning: Bool, 
+        /**
+         * True if the signature is worth nothing: the document was changed after
+         * it was signed.
+         */isRisky: Bool) {
+        self.fieldName = fieldName
+        self.isSigned = isSigned
+        self.signer = signer
+        self.signedAt = signedAt
+        self.reason = reason
+        self.location = location
+        self.changedSinceSigning = changedSinceSigning
+        self.isRisky = isRisky
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfSignatureInfo: Sendable {}
+#endif
+
+
+extension FfiPdfSignatureInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfSignatureInfo, rhs: FfiPdfSignatureInfo) -> Bool {
+        if lhs.fieldName != rhs.fieldName {
+            return false
+        }
+        if lhs.isSigned != rhs.isSigned {
+            return false
+        }
+        if lhs.signer != rhs.signer {
+            return false
+        }
+        if lhs.signedAt != rhs.signedAt {
+            return false
+        }
+        if lhs.reason != rhs.reason {
+            return false
+        }
+        if lhs.location != rhs.location {
+            return false
+        }
+        if lhs.changedSinceSigning != rhs.changedSinceSigning {
+            return false
+        }
+        if lhs.isRisky != rhs.isRisky {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fieldName)
+        hasher.combine(isSigned)
+        hasher.combine(signer)
+        hasher.combine(signedAt)
+        hasher.combine(reason)
+        hasher.combine(location)
+        hasher.combine(changedSinceSigning)
+        hasher.combine(isRisky)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfSignatureInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfSignatureInfo {
+        return
+            try FfiPdfSignatureInfo(
+                fieldName: FfiConverterString.read(from: &buf), 
+                isSigned: FfiConverterBool.read(from: &buf), 
+                signer: FfiConverterString.read(from: &buf), 
+                signedAt: FfiConverterString.read(from: &buf), 
+                reason: FfiConverterString.read(from: &buf), 
+                location: FfiConverterString.read(from: &buf), 
+                changedSinceSigning: FfiConverterBool.read(from: &buf), 
+                isRisky: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfSignatureInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fieldName, into: &buf)
+        FfiConverterBool.write(value.isSigned, into: &buf)
+        FfiConverterString.write(value.signer, into: &buf)
+        FfiConverterString.write(value.signedAt, into: &buf)
+        FfiConverterString.write(value.reason, into: &buf)
+        FfiConverterString.write(value.location, into: &buf)
+        FfiConverterBool.write(value.changedSinceSigning, into: &buf)
+        FfiConverterBool.write(value.isRisky, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfSignatureInfo_lift(_ buf: RustBuffer) throws -> FfiPdfSignatureInfo {
+    return try FfiConverterTypeFfiPdfSignatureInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfSignatureInfo_lower(_ value: FfiPdfSignatureInfo) -> RustBuffer {
+    return FfiConverterTypeFfiPdfSignatureInfo.lower(value)
 }
 
 
@@ -7604,6 +7976,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPdfActionInfo: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiPdfAttachmentInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPdfAttachmentInfo]
+
+    public static func write(_ value: [FfiPdfAttachmentInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPdfAttachmentInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPdfAttachmentInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPdfAttachmentInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPdfAttachmentInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
     typealias SwiftType = [FfiPdfRectMilliPt]
 
@@ -7621,6 +8018,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiPdfSignatureInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPdfSignatureInfo]
+
+    public static func write(_ value: [FfiPdfSignatureInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPdfSignatureInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPdfSignatureInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPdfSignatureInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPdfSignatureInfo.read(from: &buf))
         }
         return seq
     }

@@ -689,6 +689,25 @@ The risk is decided by a policy of the core, not by the engine and not by the pl
 ### INSPECT-002 — A link is never followed without the user
 The inspection is a precondition for following a link. A risky action has to be shown to the user before it is carried out. The core does not follow links itself; it only reports them.
 
+### ATTACH-001 — The attachments of a document are reported
+A document can carry files inside it. Before a user opens such a file, the application must show what it is. The inspection reports for every attachment:
+
+- the name of the file,
+- the declared type,
+- the size in bytes,
+- whether the content of the file is really in the document (a file specification that only names a path points outside the document),
+- whether the checksum of the embedded file matches its content,
+- whether the file is dangerous to open.
+
+The risk is decided by a policy of the core: a file that can execute code (by its name or by its type), a file that is not really embedded, and a file whose checksum does not match are all risky.
+
+### SIGN-001 — The signatures of a document are reported
+A reviewer has to know whether the document is signed, who signed it, and — the decisive point — whether the document was changed after the signature. A signature that no longer covers the content of the document is worth nothing.
+
+The inspection reports for every signature field: the name of the field, whether it carries a signature, the name of the signer, the time of the signing, the reason, the place, and whether the document was changed after the signature.
+
+The determination of *whether* the document is signed and *whether* it was changed afterwards is made by the engine, because it depends on the byte range of the signature. The decision that a signature which no longer covers the document is risky is made by the core.
+
 ### SAN-001 — Optional
 Full sanitize for metadata, hidden content, attachments, actions, comments, form remnants, etc.
 

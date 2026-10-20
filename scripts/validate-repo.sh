@@ -460,6 +460,39 @@ if ! grep -q "the_inspection_of_a_document_shows_where_the_links_lead_and_what_t
   echo "ERROR (M2.2 Gate): no end-to-end test of the inspection over the FFI boundary!" >&2
   exit 1
 fi
+
+# --- M2.3 Gate: the inspection of the attachments and the signatures ---
+if ! grep -q "fn document_attachments" core/vocument-core/src/pdf_engine.rs; then
+  echo "ERROR (M2.3 Gate): the engine interface has no inspection of the attachments!" >&2
+  exit 1
+fi
+if ! grep -q "fn document_signatures" core/vocument-core/src/pdf_engine.rs; then
+  echo "ERROR (M2.3 Gate): the engine interface has no inspection of the signatures!" >&2
+  exit 1
+fi
+if ! grep -q "changed_since_signing" core/vocument-core/src/document_inspection.rs; then
+  echo "ERROR (M2.3 Gate): the core does not report a signature that no longer covers the document!" >&2
+  exit 1
+fi
+if ! grep -q "is_risky_attachment" core/vocument-core/src/document_inspection.rs; then
+  echo "ERROR (M2.3 Gate): the risk policy for the attachments does not live in the core!" >&2
+  exit 1
+fi
+if ! grep -q "a_document_that_was_changed_after_the_signature_is_reported" \
+    engines/pdf-mupdf/src/attachment_signature_tests.rs; then
+  echo "ERROR (M2.3 Gate): no test that a document changed after the signature is reported!" >&2
+  exit 1
+fi
+if ! grep -q "the_embedded_file_of_the_document_is_reported" \
+    engines/pdf-mupdf/src/attachment_signature_tests.rs; then
+  echo "ERROR (M2.3 Gate): no test that the embedded file of a document is reported!" >&2
+  exit 1
+fi
+if ! grep -q "a_document_that_was_changed_after_the_signature_is_reported_as_such" \
+    platform/vocument-ffi/tests/document_inspection_e2e_tests.rs; then
+  echo "ERROR (M2.3 Gate): no end-to-end test of the signature inspection!" >&2
+  exit 1
+fi
 if ! grep -q "a_redaction_removes_the_text_of_the_region_from_the_document" \
     engines/pdf-mupdf/src/mutate.rs; then
   echo "ERROR (M2.1 Gate): the engine has no test that the text of the region is removed!" >&2
@@ -476,6 +509,7 @@ if ! grep -q "A redaction cannot be undone" core/vocument-core/src/transactions.
 fi
 echo "✓ M2.1 Gate verified: secure redaction removes the content, verifies the removal and refuses the undo."
 echo "✓ M2.2 Gate verified: the links and actions of a document are reported, the risk is decided in the core."
+echo "✓ M2.3 Gate verified: the attachments and the signatures of a document are reported."
 
 # Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
 if ! grep -q "QA-003" REQUIREMENTS.md; then

@@ -486,7 +486,13 @@ impl SessionRegistry {
     pub fn inspect_document(&self, session_id: &str) -> Result<DocumentInspection, SessionError> {
         let actor = self.session_actor_and_meta(session_id)?.0;
         let actions = actor.document_actions()?;
-        Ok(DocumentInspection::from_actions(actions))
+        let attachments = actor.document_attachments()?;
+        let signatures = actor.document_signatures()?;
+        Ok(DocumentInspection::from_findings(
+            actions,
+            attachments,
+            signatures,
+        ))
     }
 
     /// Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around

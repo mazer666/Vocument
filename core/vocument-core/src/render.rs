@@ -8,7 +8,7 @@
 //! - Visible tiles run at `JobPriority::VisiblePageRender`; neighbouring-page prefetch runs at
 //!   `JobPriority::NearbyPagePrefetch`; thumbnails run at `JobPriority::ThumbnailGeneration` (`ARCHITECTURE.md` §8).
 
-use crate::document_inspection::PdfActionInfo;
+use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
     PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
@@ -126,6 +126,24 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.document_actions()?)
+    }
+
+    /// Reports the embedded files of the document (`ATTACH-001`).
+    pub fn document_attachments(&self) -> Result<Vec<PdfAttachmentInfo>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.document_attachments()?)
+    }
+
+    /// Reports the signature fields of the document (`SIGN-001`).
+    pub fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.document_signatures()?)
     }
 
     /// Extracts structured text lines and bounding boxes for `page_index` (`0`-based) under serialized actor access (`ROADMAP.md` M0.3).

@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::document_inspection::PdfActionInfo;
+use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 
 /// Basic PDF metadata and page summary read when opening a `DocumentSession` (`ROADMAP.md` M0.1, `INSPECT-001`, `META-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -280,6 +280,26 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// the document is opened. The engine reports the facts; the risk policy
     /// lives in the core.
     fn document_actions(&self) -> Result<Vec<PdfActionInfo>, PdfEngineError> {
+        let _ = &self;
+        Ok(Vec::new())
+    }
+
+    /// Reports the embedded files of the document (`ATTACH-001`).
+    ///
+    /// The engine reports the facts: the name, the type, the size, whether
+    /// the content is really in the document and whether the checksum of the
+    /// embedded file matches. The risk policy lives in the core.
+    fn document_attachments(&self) -> Result<Vec<PdfAttachmentInfo>, PdfEngineError> {
+        let _ = &self;
+        Ok(Vec::new())
+    }
+
+    /// Reports the signature fields of the document (`SIGN-001`).
+    ///
+    /// The decisive finding is whether the document was changed after it was
+    /// signed: a signature that no longer covers the content of the document
+    /// is worth nothing.
+    fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, PdfEngineError> {
         let _ = &self;
         Ok(Vec::new())
     }

@@ -14,7 +14,9 @@
 //! the platform shell only presents the finding to the user.
 
 use crate::{DocumentCoreError, FfiPdfRectMilliPt, session_registry};
-use vocument_core::document_inspection::{DocumentInspection, PdfActionInfo, PdfActionKind};
+use vocument_core::document_inspection::{
+    DocumentInspection, PdfActionInfo, PdfActionKind, PdfAttachmentInfo, PdfSignatureInfo,
+};
 
 /// The type of a link or action of a document (`INSPECT-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -102,23 +104,106 @@ impl From<PdfActionInfo> for FfiPdfActionInfo {
     }
 }
 
+/// An embedded file of a document (`ATTACH-001`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FfiPdfAttachmentInfo {
+    /// The name of the file.
+    pub file_name: String,
+    /// The declared type of the file.
+    pub mime_type: String,
+    /// The size of the file in bytes.
+    pub size_bytes: i64,
+    /// True if the content of the file is really in the document. A file
+    /// specification that only names a path points outside the document.
+    pub is_embedded: bool,
+    /// True if the checksum of the embedded file matches its content.
+    pub checksum_is_valid: bool,
+    /// True if the file is dangerous to open.
+    pub is_risky: bool,
+}
+
+impl From<PdfAttachmentInfo> for FfiPdfAttachmentInfo {
+    fn from(attachment: PdfAttachmentInfo) -> Self {
+        Self {
+            file_name: attachment.file_name,
+            mime_type: attachment.mime_type,
+            size_bytes: attachment.size_bytes,
+            is_embedded: attachment.is_embedded,
+            checksum_is_valid: attachment.checksum_is_valid,
+            is_risky: attachment.is_risky,
+        }
+    }
+}
+
+/// A signature field of a document (`SIGN-001`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FfiPdfSignatureInfo {
+    /// The name of the signature field.
+    pub field_name: String,
+    /// True if the field carries a signature.
+    pub is_signed: bool,
+    /// The name of the signer.
+    pub signer: String,
+    /// The time of the signing, in UTC (`2026-01-31T12:00:00Z`).
+    pub signed_at: String,
+    /// The reason of the signing.
+    pub reason: String,
+    /// The place of the signing.
+    pub location: String,
+    /// True if the document was changed after it was signed. The signature
+    /// then no longer covers the content of the document.
+    pub changed_since_signing: bool,
+    /// True if the signature is worth nothing: the document was changed after
+    /// it was signed.
+    pub is_risky: bool,
+}
+
+impl From<PdfSignatureInfo> for FfiPdfSignatureInfo {
+    fn from(signature: PdfSignatureInfo) -> Self {
+        Self {
+            field_name: signature.field_name,
+            is_signed: signature.is_signed,
+            signer: signature.signer,
+            signed_at: signature.signed_at,
+            reason: signature.reason,
+            location: signature.location,
+            changed_since_signing: signature.changed_since_signing,
+            is_risky: signature.is_risky,
+        }
+    }
+}
+
 /// The report of an inspection of a document (`INSPECT-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiDocumentInspection {
     /// All links and actions of the document.
     pub actions: Vec<FfiPdfActionInfo>,
-    /// The number of the actions that the policy marks as risky.
+    /// The embedded files of the document.
+    pub attachments: Vec<FfiPdfAttachmentInfo>,
+    /// The signature fields of the document.
+    pub signatures: Vec<FfiPdfSignatureInfo>,
+    /// The number of the findings that the policy marks as risky.
     pub risky_count: u32,
     /// The number of the actions that leave the document.
     pub external_count: u32,
+    /// True if the document carries at least one signature.
+    pub is_signed: bool,
+    /// True if the document was not changed after it was signed.
+    pub is_unchanged_since_signing: bool,
 }
 
 impl From<DocumentInspection> for FfiDocumentInspection {
     fn from(inspection: DocumentInspection) -> Self {
+        let is_signed = inspection.is_signed();
+        let is_unchanged_since_signing = inspection.is_unchanged_since_signing();
         Self {
             actions: inspection.actions.into_iter().map(Into::into).collect(),
+            attachments: inspection.attachments.into_iter().map(Into::into).collect(),
+            signatures: inspection.signatures.into_iter().map(Into::into).collect(),
             risky_count: inspection.risky_count as u32,
             external_count: inspection.external_count as u32,
+            is_signed,
+            is_unchanged_since_signing,
         }
     }
 }

@@ -2,11 +2,14 @@
 //!
 //! No UI layer may depend on this crate directly.
 
+pub mod attach;
 pub mod inspect;
 pub mod mutate;
 pub mod render_page;
 pub mod text_extract;
 
+#[cfg(test)]
+mod attachment_signature_tests;
 #[cfg(test)]
 mod difficult_tests;
 #[cfg(test)]
@@ -18,7 +21,7 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
 use std::ptr::NonNull;
 use std::sync::Mutex;
-use vocument_core::document_inspection::PdfActionInfo;
+use vocument_core::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
     PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt,
@@ -418,6 +421,14 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
 
     fn document_actions(&self) -> Result<Vec<PdfActionInfo>, PdfEngineError> {
         inspect::document_actions(&self.pdf_bytes)
+    }
+
+    fn document_attachments(&self) -> Result<Vec<PdfAttachmentInfo>, PdfEngineError> {
+        attach::document_attachments(&self.pdf_bytes)
+    }
+
+    fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, PdfEngineError> {
+        attach::document_signatures(&self.pdf_bytes)
     }
 }
 
