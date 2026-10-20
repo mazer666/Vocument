@@ -62,13 +62,13 @@ fn resolve_sample_pdf() -> Result<Vec<u8>, DocumentCoreError> {
 }
 
 /// Returns the first available executable from `candidates` that runs successfully with `-v`.
-fn resolve_available_tool(candidates: &[&str]) -> Option<String> {
+fn resolve_available_tool(candidates: &[String]) -> Option<String> {
     for candidate in candidates {
         let probe = Command::new(candidate).arg("-v").output();
         if let Ok(output) = probe
             && output.status.success()
         {
-            return Some((*candidate).to_owned());
+            return Some(candidate.clone());
         }
     }
     None
@@ -91,6 +91,21 @@ fn mupdf_runtime_prefix(tool_path: &str) -> Option<String> {
     let library_directory = prefix.join("lib");
     if library_directory.is_dir() {
         Some(prefix.to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
+/// Returns the path of a tool inside the MuPDF prefix of the build.
+///
+/// The prefix comes from `MUPDF_DIR`, the same variable that the build uses to
+/// find the library. A hard coded path would break as soon as the installation
+/// lives somewhere else.
+fn mupdf_prefix_bin(tool: &str) -> Option<String> {
+    let prefix = std::env::var("MUPDF_DIR").ok()?;
+    let candidate = std::path::Path::new(&prefix).join("bin").join(tool);
+    if candidate.is_file() {
+        Some(candidate.to_string_lossy().into_owned())
     } else {
         None
     }
@@ -229,17 +244,23 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
     // `mutool` is the cross-platform reference renderer: it must actually produce a
     // rendered PNG, not merely exit successfully.
     let mut mutool_verified = false;
-    let mutool_candidates = [
-        "/opt/homebrew/bin/mutool",
-        "/usr/local/bin/mutool",
-        "/usr/bin/mutool",
+    let mut mutool_candidates: Vec<String> = vec![
+        "/opt/homebrew/bin/mutool".to_owned(),
+        "/usr/local/bin/mutool".to_owned(),
+        "/usr/bin/mutool".to_owned(),
         // MuPDF installations that are not in the default search path. The
         // interop gate must find the reference renderer on a developer host that
         // installed MuPDF into a custom prefix.
-        "/opt/mupdf-shared/bin/mutool",
-        "/opt/mupdf/bin/mutool",
-        "mutool",
+        "/opt/mupdf-shared/bin/mutool".to_owned(),
+        "/opt/mupdf/bin/mutool".to_owned(),
+        "mutool".to_owned(),
     ];
+    // The prefix of the MuPDF installation that is actually used for the
+    // build (`MUPDF_DIR`), so that the reference renderer and the linked
+    // library always belong together.
+    if let Some(path) = mupdf_prefix_bin("mutool") {
+        mutool_candidates.insert(0, path);
+    }
     let mutool_bin = resolve_available_tool(&mutool_candidates);
     if let Some(mutool_bin) = mutool_bin.as_deref() {
         let draw_out = temp_dir.join("mutool_render_%d.png");

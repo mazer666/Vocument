@@ -851,6 +851,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -930,8 +932,6 @@ fun uniffi_vocument_ffi_checksum_func_document_core_job_statuses(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_job_submit(
 ): Short
-fun uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder(
-): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame(
@@ -952,6 +952,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_page_highlight_annotations(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_power_limits(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_redo(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation(
@@ -961,6 +963,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_render_page_thumbnail(
 fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_report_power_state(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
 ): Short
@@ -1115,8 +1119,6 @@ fun uniffi_vocument_ffi_fn_func_document_core_job_statuses(uniffi_out_err: Uniff
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_job_submit(`sessionId`: RustBuffer.ByValue,`documentRevision`: Long,`kind`: RustBuffer.ByValue,`resumable`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-fun uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(`sessionId`: RustBuffer.ByValue,`documentRevision`: Long,`kind`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): Long
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1137,6 +1139,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_page_highlight_annotations(`sessio
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+fun uniffi_vocument_ffi_fn_func_document_core_power_limits(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_redo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_remove_highlight_annotation(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`annotationId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1146,6 +1150,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_render_page_thumbnail(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_report_power_state(`state`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1413,9 +1419,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder() != 57466.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1446,6 +1449,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1459,6 +1465,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137.toShort()) {
@@ -2966,6 +2975,116 @@ public object FfiConverterTypeFfiPoint2D: FfiConverterRustBuffer<FfiPoint2D> {
     override fun write(value: FfiPoint2D, buf: ByteBuffer) {
             FfiConverterFloat.write(value.`x`, buf)
             FfiConverterFloat.write(value.`y`, buf)
+    }
+}
+
+
+
+/**
+ * The limits that the current power state implies.
+ */
+data class FfiPowerLimits (
+    /**
+     * How many jobs may run at the same time.
+     */
+    var `maxConcurrentJobs`: kotlin.UInt, 
+    /**
+     * Whether background work may run at all.
+     */
+    var `allowBackgroundJobs`: kotlin.Boolean, 
+    /**
+     * Whether the background work has to yield to an interactive request.
+     */
+    var `yieldBackgroundOnInteraction`: kotlin.Boolean, 
+    /**
+     * A short description of the active restriction, for the user interface.
+     */
+    var `reason`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPowerLimits: FfiConverterRustBuffer<FfiPowerLimits> {
+    override fun read(buf: ByteBuffer): FfiPowerLimits {
+        return FfiPowerLimits(
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPowerLimits) = (
+            FfiConverterUInt.allocationSize(value.`maxConcurrentJobs`) +
+            FfiConverterBoolean.allocationSize(value.`allowBackgroundJobs`) +
+            FfiConverterBoolean.allocationSize(value.`yieldBackgroundOnInteraction`) +
+            FfiConverterString.allocationSize(value.`reason`)
+    )
+
+    override fun write(value: FfiPowerLimits, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`maxConcurrentJobs`, buf)
+            FfiConverterBoolean.write(value.`allowBackgroundJobs`, buf)
+            FfiConverterBoolean.write(value.`yieldBackgroundOnInteraction`, buf)
+            FfiConverterString.write(value.`reason`, buf)
+    }
+}
+
+
+
+/**
+ * The energy and thermal state of the device, as reported by the platform.
+ */
+data class FfiPowerState (
+    /**
+     * Remaining battery charge in percent, `0..=100`.
+     */
+    var `batteryPercent`: kotlin.UByte, 
+    /**
+     * Whether the device is currently charging.
+     */
+    var `isCharging`: kotlin.Boolean, 
+    /**
+     * The thermal level of the platform, `0..=4` (Android `THERMAL_STATUS_*`).
+     */
+    var `thermalLevel`: kotlin.Int, 
+    /**
+     * Whether the platform power saving mode is active.
+     */
+    var `powerSaveMode`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPowerState: FfiConverterRustBuffer<FfiPowerState> {
+    override fun read(buf: ByteBuffer): FfiPowerState {
+        return FfiPowerState(
+            FfiConverterUByte.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPowerState) = (
+            FfiConverterUByte.allocationSize(value.`batteryPercent`) +
+            FfiConverterBoolean.allocationSize(value.`isCharging`) +
+            FfiConverterInt.allocationSize(value.`thermalLevel`) +
+            FfiConverterBoolean.allocationSize(value.`powerSaveMode`)
+    )
+
+    override fun write(value: FfiPowerState, buf: ByteBuffer) {
+            FfiConverterUByte.write(value.`batteryPercent`, buf)
+            FfiConverterBoolean.write(value.`isCharging`, buf)
+            FfiConverterInt.write(value.`thermalLevel`, buf)
+            FfiConverterBoolean.write(value.`powerSaveMode`, buf)
     }
 }
 
@@ -5750,22 +5869,6 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
-         * Submits background work with a caller supplied completion marker.
-         *
-         * The Rust core cannot call into the UI, so the result of a job is polled
-         * instead of pushed. The returned job id identifies the job.
-         */
-    @Throws(DocumentCoreException::class) fun `documentCoreJobSubmitPlaceholder`(`sessionId`: kotlin.String, `documentRevision`: kotlin.ULong, `kind`: kotlin.String): kotlin.ULong {
-            return FfiConverterULong.lift(
-    uniffiRustCallWithError(DocumentCoreException) { _status ->
-    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(
-        FfiConverterString.lower(`sessionId`),FfiConverterULong.lower(`documentRevision`),FfiConverterString.lower(`kind`),_status)
-}
-    )
-    }
-    
-
-        /**
          * Marks a document's recovery container clean shutdown.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreMarkRecoveryCleanShutdown`(`documentId`: kotlin.String)
@@ -5896,6 +5999,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Returns the limits that the current power state implies.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePowerLimits`(): FfiPowerLimits {
+            return FfiConverterTypeFfiPowerLimits.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_power_limits(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Redoes the last undone transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRedo`(`sessionId`: kotlin.String): FfiTransactionHistorySnapshot {
@@ -5955,6 +6071,23 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
         FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiTileRenderRequest.lower(`request`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Reports the energy and thermal state of the device (`POWER-001`).
+         *
+         * The platform shell calls this when the state changes. The background work is
+         * suspended while the device is hot or almost empty; the work that the user
+         * is waiting for continues, with a reduced parallelism on a hot device.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreReportPowerState`(`state`: FfiPowerState): FfiPowerLimits {
+            return FfiConverterTypeFfiPowerLimits.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_report_power_state(
+        FfiConverterTypeFfiPowerState.lower(`state`),_status)
 }
     )
     }

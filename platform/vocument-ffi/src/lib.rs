@@ -8,6 +8,7 @@ pub mod job_dto;
 pub mod mutation_dto;
 pub mod navigation_search_dto;
 pub mod ocr_dto;
+pub mod power_dto;
 pub mod recovery_dto;
 pub mod render_dto;
 pub mod save_dto;

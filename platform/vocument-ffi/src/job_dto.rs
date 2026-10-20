@@ -76,7 +76,7 @@ impl From<JobStatus> for FfiJobStatus {
 /// The pool is started lazily with the central configuration
 /// (`config/performance-budgets.toml`, `[jobs]`), so the worker count and the
 /// queue limits are identical on macOS and Android.
-fn job_executor() -> Result<&'static Arc<JobExecutor>, DocumentCoreError> {
+pub(crate) fn job_executor() -> Result<&'static Arc<JobExecutor>, DocumentCoreError> {
     static EXECUTOR: std::sync::OnceLock<Result<Arc<JobExecutor>, String>> =
         std::sync::OnceLock::new();
     let result = EXECUTOR.get_or_init(|| {
@@ -144,7 +144,7 @@ pub fn document_core_job_submit(
 /// becomes a `Failed` job, so the platform shells can distinguish "the work
 /// failed" from "the work succeeded".
 fn build_job_task(session_id: String, job_kind: JobKind) -> JobTask {
-    Box::new(
+    Arc::new(
         move |job_id: u64, token: &CancellationToken| -> JobOutcome {
             if token.is_cancelled() {
                 return JobOutcome::Cancelled;

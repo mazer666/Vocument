@@ -2895,6 +2895,232 @@ public func FfiConverterTypeFfiPoint2D_lower(_ value: FfiPoint2D) -> RustBuffer 
 
 
 /**
+ * The limits that the current power state implies.
+ */
+public struct FfiPowerLimits {
+    /**
+     * How many jobs may run at the same time.
+     */
+    public var maxConcurrentJobs: UInt32
+    /**
+     * Whether background work may run at all.
+     */
+    public var allowBackgroundJobs: Bool
+    /**
+     * Whether the background work has to yield to an interactive request.
+     */
+    public var yieldBackgroundOnInteraction: Bool
+    /**
+     * A short description of the active restriction, for the user interface.
+     */
+    public var reason: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * How many jobs may run at the same time.
+         */maxConcurrentJobs: UInt32, 
+        /**
+         * Whether background work may run at all.
+         */allowBackgroundJobs: Bool, 
+        /**
+         * Whether the background work has to yield to an interactive request.
+         */yieldBackgroundOnInteraction: Bool, 
+        /**
+         * A short description of the active restriction, for the user interface.
+         */reason: String) {
+        self.maxConcurrentJobs = maxConcurrentJobs
+        self.allowBackgroundJobs = allowBackgroundJobs
+        self.yieldBackgroundOnInteraction = yieldBackgroundOnInteraction
+        self.reason = reason
+    }
+}
+
+#if compiler(>=6)
+extension FfiPowerLimits: Sendable {}
+#endif
+
+
+extension FfiPowerLimits: Equatable, Hashable {
+    public static func ==(lhs: FfiPowerLimits, rhs: FfiPowerLimits) -> Bool {
+        if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {
+            return false
+        }
+        if lhs.allowBackgroundJobs != rhs.allowBackgroundJobs {
+            return false
+        }
+        if lhs.yieldBackgroundOnInteraction != rhs.yieldBackgroundOnInteraction {
+            return false
+        }
+        if lhs.reason != rhs.reason {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxConcurrentJobs)
+        hasher.combine(allowBackgroundJobs)
+        hasher.combine(yieldBackgroundOnInteraction)
+        hasher.combine(reason)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPowerLimits: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowerLimits {
+        return
+            try FfiPowerLimits(
+                maxConcurrentJobs: FfiConverterUInt32.read(from: &buf), 
+                allowBackgroundJobs: FfiConverterBool.read(from: &buf), 
+                yieldBackgroundOnInteraction: FfiConverterBool.read(from: &buf), 
+                reason: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPowerLimits, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.maxConcurrentJobs, into: &buf)
+        FfiConverterBool.write(value.allowBackgroundJobs, into: &buf)
+        FfiConverterBool.write(value.yieldBackgroundOnInteraction, into: &buf)
+        FfiConverterString.write(value.reason, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPowerLimits_lift(_ buf: RustBuffer) throws -> FfiPowerLimits {
+    return try FfiConverterTypeFfiPowerLimits.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPowerLimits_lower(_ value: FfiPowerLimits) -> RustBuffer {
+    return FfiConverterTypeFfiPowerLimits.lower(value)
+}
+
+
+/**
+ * The energy and thermal state of the device, as reported by the platform.
+ */
+public struct FfiPowerState {
+    /**
+     * Remaining battery charge in percent, `0..=100`.
+     */
+    public var batteryPercent: UInt8
+    /**
+     * Whether the device is currently charging.
+     */
+    public var isCharging: Bool
+    /**
+     * The thermal level of the platform, `0..=4` (Android `THERMAL_STATUS_*`).
+     */
+    public var thermalLevel: Int32
+    /**
+     * Whether the platform power saving mode is active.
+     */
+    public var powerSaveMode: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Remaining battery charge in percent, `0..=100`.
+         */batteryPercent: UInt8, 
+        /**
+         * Whether the device is currently charging.
+         */isCharging: Bool, 
+        /**
+         * The thermal level of the platform, `0..=4` (Android `THERMAL_STATUS_*`).
+         */thermalLevel: Int32, 
+        /**
+         * Whether the platform power saving mode is active.
+         */powerSaveMode: Bool) {
+        self.batteryPercent = batteryPercent
+        self.isCharging = isCharging
+        self.thermalLevel = thermalLevel
+        self.powerSaveMode = powerSaveMode
+    }
+}
+
+#if compiler(>=6)
+extension FfiPowerState: Sendable {}
+#endif
+
+
+extension FfiPowerState: Equatable, Hashable {
+    public static func ==(lhs: FfiPowerState, rhs: FfiPowerState) -> Bool {
+        if lhs.batteryPercent != rhs.batteryPercent {
+            return false
+        }
+        if lhs.isCharging != rhs.isCharging {
+            return false
+        }
+        if lhs.thermalLevel != rhs.thermalLevel {
+            return false
+        }
+        if lhs.powerSaveMode != rhs.powerSaveMode {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(batteryPercent)
+        hasher.combine(isCharging)
+        hasher.combine(thermalLevel)
+        hasher.combine(powerSaveMode)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPowerState: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowerState {
+        return
+            try FfiPowerState(
+                batteryPercent: FfiConverterUInt8.read(from: &buf), 
+                isCharging: FfiConverterBool.read(from: &buf), 
+                thermalLevel: FfiConverterInt32.read(from: &buf), 
+                powerSaveMode: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPowerState, into buf: inout [UInt8]) {
+        FfiConverterUInt8.write(value.batteryPercent, into: &buf)
+        FfiConverterBool.write(value.isCharging, into: &buf)
+        FfiConverterInt32.write(value.thermalLevel, into: &buf)
+        FfiConverterBool.write(value.powerSaveMode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPowerState_lift(_ buf: RustBuffer) throws -> FfiPowerState {
+    return try FfiConverterTypeFfiPowerState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPowerState_lower(_ value: FfiPowerState) -> RustBuffer {
+    return FfiConverterTypeFfiPowerState.lower(value)
+}
+
+
+/**
  * Quadrilateral corner coordinates defining a document outline in normalized coordinates `[0.0, 1.0]`.
  */
 public struct FfiQuadCorners {
@@ -6830,21 +7056,6 @@ public func documentCoreJobSubmit(sessionId: String, documentRevision: UInt64, k
 })
 }
 /**
- * Submits background work with a caller supplied completion marker.
- *
- * The Rust core cannot call into the UI, so the result of a job is polled
- * instead of pushed. The returned job id identifies the job.
- */
-public func documentCoreJobSubmitPlaceholder(sessionId: String, documentRevision: UInt64, kind: String)throws  -> UInt64  {
-    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
-    uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(
-        FfiConverterString.lower(sessionId),
-        FfiConverterUInt64.lower(documentRevision),
-        FfiConverterString.lower(kind),$0
-    )
-})
-}
-/**
  * Marks a document's recovery container clean shutdown.
  */
 public func documentCoreMarkRecoveryCleanShutdown(documentId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -6955,6 +7166,15 @@ public func documentCorePageRotationDegrees(sessionId: String, pageIndex: UInt32
 })
 }
 /**
+ * Returns the limits that the current power state implies.
+ */
+public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
+    return try  FfiConverterTypeFfiPowerLimits_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_power_limits($0
+    )
+})
+}
+/**
  * Redoes the last undone transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
  */
 public func documentCoreRedo(sessionId: String)throws  -> FfiTransactionHistorySnapshot  {
@@ -7007,6 +7227,20 @@ public func documentCoreRenderVisibleTile(sessionId: String, request: FfiTileRen
     uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(
         FfiConverterString.lower(sessionId),
         FfiConverterTypeFfiTileRenderRequest_lower(request),$0
+    )
+})
+}
+/**
+ * Reports the energy and thermal state of the device (`POWER-001`).
+ *
+ * The platform shell calls this when the state changes. The background work is
+ * suspended while the device is hot or almost empty; the work that the user
+ * is waiting for continues, with a reduced parallelism on a hot device.
+ */
+public func documentCoreReportPowerState(state: FfiPowerState)throws  -> FfiPowerLimits  {
+    return try  FfiConverterTypeFfiPowerLimits_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_report_power_state(
+        FfiConverterTypeFfiPowerState_lower(state),$0
     )
 })
 }
@@ -7354,9 +7588,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder() != 57466) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7387,6 +7618,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7400,6 +7634,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation() != 1137) {
