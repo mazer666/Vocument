@@ -4,7 +4,7 @@ project:
   product_status: "m1-in-progress"
   current_milestone: "M1"
   current_milestone_name: "Android Scan & OCR"
-  current_submilestone: "M1.5"
+  current_submilestone: "M1.6"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -22,6 +22,7 @@ project:
     - "M1.3"
     - "M1.4"
     - "M1.4b"
+    - "M1.5"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 
@@ -42,6 +43,11 @@ platforms:
       minimum_api_family: "Android 13+"
       primary_abi: "arm64-v8a"
       status: "active"
+      # M1.6: the native build, the Gradle build, the dependency closure and the
+      # 16 KB page alignment are verified. The on-device run and the release
+      # package inspection are still NOT RUN, see docs/acceptance/M1.6-ACCEPTANCE.md.
+      verified: "qemu"
+      pending: ["on_device_run", "release_package_inspection"]
   phase_2:
     windows:
       minimum: "11"

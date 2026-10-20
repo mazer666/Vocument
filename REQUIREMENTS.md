@@ -57,6 +57,12 @@ The exported `DocumentCore` surface must not contain platform-specific functions
 ### PLATFORM-005 — Native engine per platform
 Every platform links a real native engine build of the same engine version. A placeholder engine may not be linked into a production build on any platform; the build must be verifiable from the produced binary (for example by inspecting the dynamic dependencies of the shipped library).
 
+### PLATFORM-006 — Resolvable native dependency closure
+Every `DT_NEEDED` entry of a shipped native library must be resolvable **by its exact file name** inside the package. The Android dynamic linker resolves a dependency by the exact name, and the Android packaging step only includes files whose name ends in `.so`. A versioned shared object name therefore never reaches the package, and the process fails to start. The shared objects must therefore carry an unversioned `SONAME` on Android. `scripts/verify-android-native-libs.sh` verifies the closure, the agreement between the requested name and the `SONAME`, and the architecture of every shipped library.
+
+### PLATFORM-007 — 16 KB memory page compatibility
+Every `PT_LOAD` segment of a shipped native library must be aligned to at least `0x4000` bytes. Android 15 and later devices may use 16 KB memory pages, and a library with a smaller alignment does not start on such a device. The links must therefore request `-Wl,-z,max-page-size=16384`. `scripts/verify-android-native-libs.sh` rejects a library with a smaller alignment.
+
 ### UI-001 — Native platform UX
 Shared core, platform-adapted interfaces.
 
@@ -80,6 +86,9 @@ Light/dark/system, UI scaling, reduced motion.
 
 ### UI-008 — Status/feedback
 Subtle contextual status by default; ultra-quiet optional; safety warnings remain available.
+
+### UI-009 — The interface never blocks on native work
+No native call may run on the user interface thread. This applies to **every** path, not only to the capture pipeline: the viewport rendering, the prefetch of neighbouring pages, the page thumbnails, the text extraction and the index search. The work runs on a background executor, and only the finished result is published to the interface state. A request whose result is outdated because a newer request was started in the meantime must be discarded rather than displayed.
 
 ### CMD-001 — Command palette
 Search commands, settings and actions, e.g. Cmd+K.
