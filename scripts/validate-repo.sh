@@ -513,6 +513,28 @@ for proof in \
   fi
 done
 
+# --- The callers: the apps have to reach the functions of M2 ---
+if ! grep -q "redactPageRegions" apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift; then
+  echo "ERROR (M2.1 Gate): the macOS client has to call the redaction — the chain must not end in the generated code!" >&2
+  exit 1
+fi
+if ! grep -q "redactPageRegions" apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt; then
+  echo "ERROR (M2.1 Gate): the Android bridge has to call the redaction — the chain must not end in the generated code!" >&2
+  exit 1
+fi
+if ! grep -q "requireVerifiedRedaction" apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt; then
+  echo "ERROR (M2.1 Gate): the caller has to check the report itself — the 'verified' flag is not a check!" >&2
+  exit 1
+fi
+if ! grep -q "inspectDocument" apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift; then
+  echo "ERROR (M2.2 Gate): the macOS client has to call the inspection of the document!" >&2
+  exit 1
+fi
+if ! grep -q "inspectDocument" apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt; then
+  echo "ERROR (M2.2 Gate): the Android bridge has to call the inspection of the document!" >&2
+  exit 1
+fi
+
 # --- M2.2 Gate: the inspection of the links and actions of a document ---
 if ! grep -q "fn document_actions" core/vocument-core/src/pdf_engine.rs; then
   echo "ERROR (M2.2 Gate): the engine interface has no inspection of the actions of a document!" >&2
