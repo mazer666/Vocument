@@ -67,6 +67,36 @@ Do not call MuPDF directly from Swift/Kotlin UI.
 
 ---
 
+## I want to change how background work is scheduled
+
+- scheduling model, job classes, typed state machine, bounded queue:
+  `core/vocument-core/src/jobs/scheduler.rs`
+- bounded worker pool, cancellation, progress, panic isolation:
+  `core/vocument-core/src/jobs/executor.rs`
+- worker pool tests: `core/vocument-core/src/jobs/executor/executor_tests.rs`
+- the UniFFI surface and the mapping of a job kind to a real core operation:
+  `platform/vocument-ffi/src/job_dto.rs`
+- worker count, queue length, starvation threshold:
+  `config/performance-budgets.toml`, section `[jobs]`
+
+A new job kind needs two things: a variant in `JobKind` (with its class and
+base priority) **and** a real core operation in
+`platform/vocument-ffi/src/job_dto.rs`. A job kind without a core operation
+reports a `Failed` job; it must never report success without doing the work
+(`JOB-010`).
+
+---
+
+## I want to build the Android native engine
+
+- cross build of MuPDF for `arm64-v8a`: `scripts/prepare-android-mupdf.sh`
+- cross build of Tesseract for `arm64-v8a`: `scripts/prepare-android-tesseract.sh`
+- cross build of the Rust core and the FFI library: `scripts/build-android-rust.sh`
+- verification of the produced binaries and of the rendering:
+  `scripts/verify-android-arm64-pdf.sh`
+
+---
+
 ## I want to change macOS UI
 
 - `apps/macos/Sources/VocumentMacApp/` and `apps/macos/Sources/VocumentMacKit/`

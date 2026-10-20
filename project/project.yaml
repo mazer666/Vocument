@@ -4,7 +4,7 @@ project:
   product_status: "m1-in-progress"
   current_milestone: "M1"
   current_milestone_name: "Android Scan & OCR"
-  current_submilestone: "M1.4"
+  current_submilestone: "M1.5"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -20,26 +20,52 @@ project:
     - "M1.1"
     - "M1.2"
     - "M1.3"
+    - "M1.4"
+    - "M1.4b"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 
 platforms:
+  # The platform order is binding: a new platform track only starts when the
+  # previous one has a green release candidate. See CR-0003.
+  track_order:
+    - "macos"
+    - "android"
+    - "windows"
+    - "linux"
   phase_1:
     macos:
       minimum: "15"
       architecture: "arm64"
+      status: "active"
     android:
       minimum_api_family: "Android 13+"
       primary_abi: "arm64-v8a"
+      status: "active"
+  phase_2:
+    windows:
+      minimum: "11"
+      architecture: "x86_64"
+      status: "planned"
+      change_request: "CR-0003"
+    linux:
+      minimum: "glibc 2.31+"
+      architecture: "x86_64"
+      display_servers: ["wayland", "x11"]
+      status: "planned"
+      change_request: "CR-0003"
 
 architecture:
   shared_core: "Rust"
   macos_ui: "SwiftUI + AppKit"
   android_ui: "Kotlin + Jetpack Compose"
+  windows_ui: "TBD via ADR-0017 (CR-0003)"
+  linux_ui: "TBD via ADR-0018 (CR-0003)"
   native_bridge: "UniFFI"
   pdf_engine: "MuPDF 1.28.5 via PdfEngine adapter"
   ocr_engine: "Tesseract via OcrProvider"
   office_engine: "TBD via fidelity bake-off"
+  job_execution: "Bounded worker pool in vocument-core (ARCHITECTURE.md §8)"
 
 milestones:
   M0: "Foundation / Trustworthy Viewer"
@@ -47,6 +73,8 @@ milestones:
   M2: "macOS Professional Review"
   M3: "Page Workbench"
   M4: "Authoring / FlowDocument / .pdoc / DOCX / ODT"
+  M5: "Windows Shell"
+  M6: "Linux Shell"
 
 documentation:
   requirements_version: "0.1"

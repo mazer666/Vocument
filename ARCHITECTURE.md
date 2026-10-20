@@ -226,18 +226,64 @@ The design may later evolve into a task graph/DAG scheduler.
 
 ### 8.1 Current implementation status
 
-`JobManager` currently implements the **job bookkeeping and prioritisation** layer:
-enqueueing, priority ordering, cancellation of queued prefetch jobs, state
-transitions and progress tracking (`core/vocument-core/src/jobs.rs`).
+The `JobManager` is implemented in the shared core and is **platform independent**.
+macOS and Android use the same implementation; there is no second, divergent
+scheduler.
 
-The **worker execution layer described in §7 is not implemented yet**. All
-rendering, thumbnailing and indexing work currently executes synchronously on the
-calling thread. The background worker pool, job pause/resume, job dependencies and
-resumability are planned for M1.5 (`ROADMAP.md` M1.5) and are tracked in
-`docs/project/RISKS.md` (`RISK-007`).
+| Concern | Implementation | File |
+|---|---|---|
+| Scheduling model, job classes, typed state machine, bounded queue | `jobs::scheduler` | `core/vocument-core/src/jobs/scheduler.rs` |
+| Bounded worker pool, cancellation, progress, panic isolation | `jobs::executor` | `core/vocument-core/src/jobs/executor.rs` |
+| Bookkeeping-only manager kept for API compatibility | `jobs::legacy` | `core/vocument-core/src/jobs/legacy.rs` |
+| UniFFI surface (submit / poll / cancel) | `job_dto` | `platform/vocument-ffi/src/job_dto.rs` |
 
-This section intentionally documents the current state so that the architecture
-baseline is not mistaken for an implemented capability.
+**Scheduling rules.**
+
+1. A job belongs to exactly one class. The class determines the base priority:
+   *interactive* (visible page rendering) before *user-initiated* (OCR, import,
+   export) before *background* (preprocessing, caching).
+2. Within one class, jobs are served first-in-first-out, so equal priority never
+   depends on timing.
+3. **Anti-starvation:** a job that has waited longer than
+   `jobs.starvation_promotion_ms` is promoted by one priority level. Background work
+   therefore keeps making progress even while interactive work keeps arriving, and a
+   background job can never overtake an interactive one.
+4. The queue is bounded by `jobs.max_queued_jobs`. Submitting beyond the bound fails
+   with a typed error instead of growing memory without limit.
+
+**Execution model.**
+
+* The pool runs at most `jobs.max_concurrent_workers` jobs at the same time. The
+  worker count and the queue length come from the central configuration
+  (`config/performance-budgets.toml`, `[jobs]`), so the same limits apply on every
+  platform.
+* Long-running work receives a `CancellationToken` and stops at the next safe point.
+  Engines that cannot be interrupted safely (MuPDF, Tesseract) run to completion and
+  their result is discarded instead of being applied. **No forceful thread
+  termination is used anywhere.**
+* A job cancelled while running can never report success: the tracker converts a
+  late `Completed` into `Cancelled`. A job cancelled while queued never starts.
+* A panic inside a job body is caught and turned into a `Failed` job, so a single
+  faulty job cannot terminate a worker thread.
+* Closing a document cancels every job of that session before the session is
+  destroyed, so a result of a closed document can never be applied.
+
+**Progress reporting.** The core never calls back into the user interface. Progress
+and terminal state are polled through the job status surface
+(`document_core_job_status`), which is why no callback can ever block a UI thread.
+
+**Job payloads.** A submitted job performs an actual core operation. The
+`document_core_job_submit` boundary maps the job kind to a real operation
+(`render_thumbnail` renders the thumbnail of the session, `index_search` runs the
+search index query). A job kind that has no core operation attached reports a
+`Failed` job with a description; it never reports success without doing the work.
+This is enforced by `JOB-010` and by the integration tests in
+`platform/vocument-ffi/src/job_dto.rs`.
+
+**Still open.** Job pause/resume, job dependencies and resumability across process
+restarts require a task graph rather than a priority queue, and are tracked for a
+later milestone (`ROADMAP.md` M1.5, `RISK-007`). Battery and thermal adaptation
+(`BIGMOBILE-001`, `POWER-001`) is also still open.
 
 ---
 

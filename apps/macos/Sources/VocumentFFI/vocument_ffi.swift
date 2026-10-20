@@ -1742,6 +1742,173 @@ public func FfiConverterTypeFfiInteropReport_lower(_ value: FfiInteropReport) ->
 
 
 /**
+ * Job status exposed across the UniFFI boundary.
+ */
+public struct FfiJobStatus {
+    public var jobId: UInt64
+    public var sessionId: String
+    public var documentRevision: UInt64
+    /**
+     * `visible_page_render`, `user_triggered_search`, `background_ocr_index`, ...
+     */
+    public var kind: String
+    /**
+     * `interactive`, `user_initiated` or `background`.
+     */
+    public var `class`: String
+    /**
+     * `visible_page_render`, `user_triggered_search`, ...
+     */
+    public var priority: String
+    /**
+     * `queued`, `running`, `completed`, `failed` or `cancelled`.
+     */
+    public var state: String
+    public var progressPercent: UInt8
+    public var resumable: Bool
+    /**
+     * Present when the job failed.
+     */
+    public var failure: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(jobId: UInt64, sessionId: String, documentRevision: UInt64, 
+        /**
+         * `visible_page_render`, `user_triggered_search`, `background_ocr_index`, ...
+         */kind: String, 
+        /**
+         * `interactive`, `user_initiated` or `background`.
+         */`class`: String, 
+        /**
+         * `visible_page_render`, `user_triggered_search`, ...
+         */priority: String, 
+        /**
+         * `queued`, `running`, `completed`, `failed` or `cancelled`.
+         */state: String, progressPercent: UInt8, resumable: Bool, 
+        /**
+         * Present when the job failed.
+         */failure: String?) {
+        self.jobId = jobId
+        self.sessionId = sessionId
+        self.documentRevision = documentRevision
+        self.kind = kind
+        self.`class` = `class`
+        self.priority = priority
+        self.state = state
+        self.progressPercent = progressPercent
+        self.resumable = resumable
+        self.failure = failure
+    }
+}
+
+#if compiler(>=6)
+extension FfiJobStatus: Sendable {}
+#endif
+
+
+extension FfiJobStatus: Equatable, Hashable {
+    public static func ==(lhs: FfiJobStatus, rhs: FfiJobStatus) -> Bool {
+        if lhs.jobId != rhs.jobId {
+            return false
+        }
+        if lhs.sessionId != rhs.sessionId {
+            return false
+        }
+        if lhs.documentRevision != rhs.documentRevision {
+            return false
+        }
+        if lhs.kind != rhs.kind {
+            return false
+        }
+        if lhs.`class` != rhs.`class` {
+            return false
+        }
+        if lhs.priority != rhs.priority {
+            return false
+        }
+        if lhs.state != rhs.state {
+            return false
+        }
+        if lhs.progressPercent != rhs.progressPercent {
+            return false
+        }
+        if lhs.resumable != rhs.resumable {
+            return false
+        }
+        if lhs.failure != rhs.failure {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(jobId)
+        hasher.combine(sessionId)
+        hasher.combine(documentRevision)
+        hasher.combine(kind)
+        hasher.combine(`class`)
+        hasher.combine(priority)
+        hasher.combine(state)
+        hasher.combine(progressPercent)
+        hasher.combine(resumable)
+        hasher.combine(failure)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiJobStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiJobStatus {
+        return
+            try FfiJobStatus(
+                jobId: FfiConverterUInt64.read(from: &buf), 
+                sessionId: FfiConverterString.read(from: &buf), 
+                documentRevision: FfiConverterUInt64.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf), 
+                class: FfiConverterString.read(from: &buf), 
+                priority: FfiConverterString.read(from: &buf), 
+                state: FfiConverterString.read(from: &buf), 
+                progressPercent: FfiConverterUInt8.read(from: &buf), 
+                resumable: FfiConverterBool.read(from: &buf), 
+                failure: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiJobStatus, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.jobId, into: &buf)
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterUInt64.write(value.documentRevision, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterString.write(value.`class`, into: &buf)
+        FfiConverterString.write(value.priority, into: &buf)
+        FfiConverterString.write(value.state, into: &buf)
+        FfiConverterUInt8.write(value.progressPercent, into: &buf)
+        FfiConverterBool.write(value.resumable, into: &buf)
+        FfiConverterOptionString.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiJobStatus_lift(_ buf: RustBuffer) throws -> FfiJobStatus {
+    return try FfiConverterTypeFfiJobStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiJobStatus_lower(_ value: FfiJobStatus) -> RustBuffer {
+    return FfiConverterTypeFfiJobStatus.lower(value)
+}
+
+
+/**
  * A recognized single character glyph with spatial bounding box and confidence score.
  */
 public struct FfiOcrCharacter {
@@ -6055,6 +6222,31 @@ fileprivate struct FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiJobStatus: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiJobStatus]
+
+    public static func write(_ value: [FfiJobStatus], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiJobStatus.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiJobStatus] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiJobStatus]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiJobStatus.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiOcrCharacter: FfiConverterRustBuffer {
     typealias SwiftType = [FfiOcrCharacter]
 
@@ -6342,6 +6534,9 @@ public func documentCoreCloseScanSession(sessionId: String)throws   {try rustCal
 }
 /**
  * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
+ *
+ * Every background job of the session is cancelled first, so that a result of a
+ * closed document can never be applied afterwards (`ARCHITECTURE.md` §8.4).
  */
 public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_close_session(
@@ -6528,6 +6723,124 @@ public func documentCoreIngestScanAsDocumentSession(scanSessionId: String, clean
         FfiConverterTypeFfiScanCleanupProfile_lower(cleanupProfile),
         FfiConverterSequenceString.lower(languages),
         FfiConverterString.lower(displayName),$0
+    )
+})
+}
+/**
+ * Requests a cooperative cancellation of a job.
+ *
+ * Returns the state of the job after the request. A job that is already
+ * finished keeps its terminal state.
+ */
+public func documentCoreJobCancel(jobId: UInt64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_cancel(
+        FfiConverterUInt64.lower(jobId),$0
+    )
+})
+}
+/**
+ * Cancels every job of a session and returns how many jobs were cancelled.
+ */
+public func documentCoreJobCancelSession(sessionId: String)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_cancel_session(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Removes finished jobs from the tracker and returns how many were removed.
+ */
+public func documentCoreJobPurgeFinished()throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_purge_finished($0
+    )
+})
+}
+/**
+ * Returns the number of jobs waiting in the queue.
+ */
+public func documentCoreJobQueuedCount()throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_queued_count($0
+    )
+})
+}
+/**
+ * Returns the number of jobs currently executing.
+ */
+public func documentCoreJobRunningCount()throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_running_count($0
+    )
+})
+}
+/**
+ * Returns the current status of a job.
+ */
+public func documentCoreJobStatus(jobId: UInt64)throws  -> FfiJobStatus  {
+    return try  FfiConverterTypeFfiJobStatus_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_status(
+        FfiConverterUInt64.lower(jobId),$0
+    )
+})
+}
+/**
+ * Returns the status of every known job.
+ */
+public func documentCoreJobStatuses()throws  -> [FfiJobStatus]  {
+    return try  FfiConverterSequenceTypeFfiJobStatus.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_statuses($0
+    )
+})
+}
+/**
+ * Submits background work for a document.
+ *
+ * The work runs on the bounded worker pool. The caller receives the job id
+ * immediately and can poll [`document_core_job_status`] for progress.
+ *
+ * `kind` is one of `render_visible_tile`, `prefetch_neighbor_tile`,
+ * `render_thumbnail`, `index_search`, `run_ocr` or `optimize_document`.
+ *
+ * The submitted work is a **real** core operation, not a no-op: the job runs on
+ * the worker pool and the resulting state reflects the actual outcome. Which
+ * operation runs is determined by `kind`:
+ *
+ * * `render_thumbnail` renders the thumbnail of page `0` into the thumbnail
+ * cache, exactly like the synchronous
+ * [`crate::document_core_render_page_thumbnail`] call does.
+ * * `index_search` runs the search index query of the session.
+ * * `run_ocr` and `optimize_document` are not backed by a core operation yet
+ * and therefore fail with a typed error instead of pretending to succeed.
+ *
+ * The `document_revision` is the revision the caller believes to be current.
+ * The job is rejected with a typed error if the session moved on, so that a
+ * result of a stale revision is never applied.
+ */
+public func documentCoreJobSubmit(sessionId: String, documentRevision: UInt64, kind: String, resumable: Bool)throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_submit(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt64.lower(documentRevision),
+        FfiConverterString.lower(kind),
+        FfiConverterBool.lower(resumable),$0
+    )
+})
+}
+/**
+ * Submits background work with a caller supplied completion marker.
+ *
+ * The Rust core cannot call into the UI, so the result of a job is polled
+ * instead of pushed. The returned job id identifies the job.
+ */
+public func documentCoreJobSubmitPlaceholder(sessionId: String, documentRevision: UInt64, kind: String)throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt64.lower(documentRevision),
+        FfiConverterString.lower(kind),$0
     )
 })
 }
@@ -6963,7 +7276,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795) {
+    if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856) {
@@ -7015,6 +7328,33 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_cancel_session() != 26191) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_purge_finished() != 29024) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_queued_count() != 9005) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_running_count() != 5134) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_status() != 10707) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_statuses() != 37163) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder() != 57466) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {

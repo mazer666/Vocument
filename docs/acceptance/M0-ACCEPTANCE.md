@@ -66,9 +66,9 @@ The product establishes:
    - `./scripts/verify-kotlin-handshake.sh`: All M0.1–M0.7 Kotlin bridge handshakes passed.
    - **Evidence scope:** the Kotlin handshake links the **host** `libvocument_ffi` build
      through JNA, so it verifies the shared Rust core and the UniFFI boundary, not an
-     on-device Android PDF engine. Android PDF rendering is backed by a documented
-     placeholder bridge (`ADR-0016`, `RISK-006`) and is **not** claimed as verified on
-     device.
+     on-device Android PDF engine. The Android build now links the **real** MuPDF
+     engine (cross-compiled with the NDK, `ADR-0017`, `RISK-006`); the on-device
+     verification is recorded separately by `scripts/verify-android-runtime.sh`.
 5. **Governance & Size Limits (`CODE-001`):**
    - `./scripts/validate-repo.sh`: All required files present; all source files within $\le 600$ target ($\le 900$ hard max).
 

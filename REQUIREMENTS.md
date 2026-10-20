@@ -42,7 +42,20 @@ Complex functionality exists without forcing expert UI on normal users.
 Phase 1 supports macOS 15+ on Apple Silicon and Android 13+.
 
 ### PLATFORM-002
-Later platforms: Windows, Linux, then iPadOS/iOS subject to a later distribution/licensing gate.
+Later platforms in the fixed order Windows, then Linux, then iPadOS/iOS subject to a later distribution/licensing gate. The order is binding (`project/project.yaml` → `platforms.track_order`, `CR-0003`): a platform track only starts when the previous one has a green release candidate.
+
+### PLATFORM-003 — Platform abstraction
+The platform-specific differences are expressed by implementations of core traits, never by target-specific branches inside the shared core. The following traits are mandatory before the Windows track starts:
+- `PlatformFileBroker` — scoped file access (macOS security-scoped URL, Android SAF, Windows Common Item Dialog, Linux XDG portal).
+- `PlatformSettingsStore` — persistent user settings and central configuration overrides.
+- `PlatformAppLifecycle` — foreground/background transitions and shutdown requests, so that background work is suspended or cancelled at the right moment.
+- `PlatformFontProvider` — enumeration of the fonts available on the platform, required by the deterministic pagination of the `.pdoc` authoring milestone (M4).
+
+### PLATFORM-004 — Platform-neutral FFI surface
+The exported `DocumentCore` surface must not contain platform-specific functions. A platform difference is expressed by selecting a different implementation of a core trait, never by adding an exported function. `scripts/validate-repo.sh` verifies that the exported function set does not grow per platform.
+
+### PLATFORM-005 — Native engine per platform
+Every platform links a real native engine build of the same engine version. A placeholder engine may not be linked into a production build on any platform; the build must be verifiable from the produced binary (for example by inspecting the dynamic dependencies of the shipped library).
 
 ### UI-001 — Native platform UX
 Shared core, platform-adapted interfaces.
@@ -1021,6 +1034,27 @@ Preview/page ranges/save new file/warn about signature and editability.
 
 ### JOB-001
 Central JobManager with queue/priority/pause/resume/cancel/dependencies/resumability.
+
+### JOB-004 — Bounded execution
+The job execution layer has a bounded number of worker threads and a bounded queue length, both centrally configurable (`config/performance-budgets.toml`, `[jobs]`). Submitting beyond the queue bound must fail with a typed error instead of growing memory without limit. No feature may create its own thread pool.
+
+### JOB-005 — Priority classes and fairness
+Jobs belong to a class: interactive (visible page rendering), user-initiated (OCR, import, export) or background (preprocessing, caching). Interactive work is preferred, but a job that waits beyond the configured starvation threshold is promoted by one priority level so that background work cannot starve permanently.
+
+### JOB-006 — Typed state machine and race handling
+A job moves `Queued → Running → Completed | Failed | Cancelled`. A job cancelled while running must never report success afterwards; its late result is discarded. A job cancelled while queued must never start.
+
+### JOB-007 — Cooperative cancellation
+Long-running work receives a cancellation token and stops at the next safe point. Engines that cannot be interrupted safely (MuPDF, Tesseract) run to completion and their result is discarded instead of being applied. No forceful thread termination is used anywhere.
+
+### JOB-008 — Session lifecycle
+Closing a document cancels every job of that session. A result of a closed or changed document must never be applied. Temporary resources of a cancelled job are released.
+
+### JOB-009 — Progress and error reporting
+Progress and terminal state are reported through polling of the shared job status surface. The core never calls back into the user interface, so no callback can block a UI thread. Errors are typed, never panics.
+
+### JOB-010 — Real job payloads
+A submitted job performs an actual core operation. A job kind that has no core operation attached must report a `Failed` job with a description; it must never report success without doing the work. A job that was submitted for a document revision that is no longer current is rejected with a typed error, so that a result of a stale revision is never applied.
 
 ### JOB-002 — Android preset
 OS-compliant background continuation for OCR/export/indexing/compression where appropriate.

@@ -1,9 +1,20 @@
-# ADR-0016 — Android MuPDF Engine Uses a Documented Placeholder Bridge
+# ADR-0016 — Android MuPDF Engine: From Placeholder Bridge to Real Cross-Build
 
-**Status:** accepted
+**Status:** superseded by ADR-0017
 **Date:** 2026-10-20
 **Deciders:** ROLE-02 (Chief Architect), ROLE-04 (PDF/MuPDF Engineer), ROLE-13 (QA & Test Engineer), ROLE-20 (Project / Release Manager)
-**Requirement IDs:** `QA-003`, `PLATFORM-001`, `INTEROP-001`
+**Requirement IDs:** `QA-003`, `PLATFORM-001`, `PLATFORM-005`, `INTEROP-001`
+
+---
+
+> **Superseded (2026-10-20).** This ADR originally documented the Android
+> placeholder MuPDF bridge as an accepted, documented limitation. The placeholder
+> has since been **removed from the tree**: MuPDF 1.28.5 is now cross-compiled for
+> `aarch64-linux-android` with the Android NDK and linked into the Android build.
+> The decision that still holds is the *rule* this ADR established: a placeholder
+> engine may never be linked into a production build, and the build must be
+> verifiable from the produced binary. See **ADR-0017** for the implementation and
+> the verification evidence.
 
 ---
 

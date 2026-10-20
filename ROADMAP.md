@@ -314,13 +314,110 @@ Searchable PDF 1.7 documents are synthesized directly from rectified/cleaned sca
 
 ---
 
-## M1.5 — Background Job Processing, Battery & Thermal Adaptation *(Next)*
+## M1.5 — Background Job Processing, Battery & Thermal Adaptation *(In Progress)*
 
 Deliver:
 
 - `JobManager` asynchronous background OCR worker
 - battery-level and thermal-throttling integration (`BIGMOBILE-001`)
 - cancellation, pause, and resumable OCR job queues
+
+### Implemented in this milestone
+
+- **Bounded worker pool** in the shared core (`core/vocument-core/src/jobs/executor.rs`).
+  The worker count and the queue length come from the central configuration
+  (`config/performance-budgets.toml`, `[jobs]`), so macOS and Android use the same
+  limits. No unbounded thread creation anywhere.
+- **Scheduling model** (`core/vocument-core/src/jobs/scheduler.rs`): job classes
+  (interactive / user-initiated / background), a typed state machine
+  (`Queued → Running → Completed | Failed | Cancelled`), FIFO ordering within a
+  priority level and anti-starvation promotion of long-waiting jobs.
+- **Cooperative cancellation** through a shared `CancellationToken`. A job that was
+  cancelled while running can never report success afterwards: the late result is
+  discarded by the tracker.
+- **Panic isolation**: a panic inside a job body is caught and turned into a `Failed`
+  job, so one faulty job cannot kill a worker thread.
+- **UniFFI surface** (`platform/vocument-ffi/src/job_dto.rs`): submit, poll status,
+  cancel, cancel-session, queue/running counters. The core never calls back into the
+  UI, so no callback can block a UI thread.
+- **Android offloading** (`apps/android/app/src/main/java/org/vocument/app/ScanCaptureScreen.kt`):
+  the capture pipeline (edge detection, perspective correction, cleanup, OCR) runs on
+  a background executor; only the status strings are published to the Compose state.
+- **macOS integration** (`apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift`):
+  the same core job manager is exposed to the Swift shell, so both platforms share one
+  scheduling implementation.
+- **Real job payloads** (`platform/vocument-ffi/src/job_dto.rs`): a submitted job
+  performs an actual core operation. `render_thumbnail` renders the thumbnail of
+  the session into the thumbnail cache, `index_search` runs the search index
+  query. A job kind without a core operation reports a `Failed` job with a
+  description instead of pretending to have succeeded. The revision check rejects
+  a submission for a session that moved on, so a result of a stale revision can
+  never be applied.
+
+### Verification evidence for this milestone
+
+- `cargo test --workspace`: 18 test suites, 0 failures. This includes 18 job
+  manager tests (priority ordering, anti-starvation, bounded queue, overflow
+  rejection, cancellation before/during/after the start, session cancellation,
+  repeated start/stop of the pool, panic isolation, running counter) and 5 job
+  integration tests at the UniFFI boundary.
+- `cargo clippy --workspace --all-targets -- -D warnings`: clean.
+- `cargo fmt --all -- --check`: clean.
+- `scripts/validate-repo.sh`: passed.
+
+### Still open in this milestone
+
+- Battery-level and thermal-throttling integration (`BIGMOBILE-001`, `POWER-001`).
+- Job pause/resume and job dependencies, which require a task graph rather than a
+  priority queue.
+- On-device verification of the background job manager. The job manager itself is
+  verified through the UniFFI boundary on the host and through the ARM64
+  execution of the PDF engine; the on-device part is covered by
+  `scripts/verify-android-runtime.sh`, which requires an Android device or
+  emulator and is therefore **NOT RUN** in the current environment.
+
+---
+
+## M1.4b — Real MuPDF Engine on Android *(Complete)*
+
+Deliver:
+
+- a reproducible MuPDF 1.28.5 cross build for `arm64-v8a`
+- removal of the Android placeholder bridge
+- runtime proof that the Android engine opens and renders real PDFs
+
+### Implemented in this milestone
+
+- **Cross build** (`scripts/prepare-android-mupdf.sh`): MuPDF 1.28.5 is compiled
+  with the Android NDK for `aarch64-linux-android` (API 24) as a shared library.
+  The `mutool` command line tool is not built, because it requires a POSIX
+  pthread library that Bionic does not provide in that form; Vocument needs the
+  library, not the tool.
+- **Build integration** (`engines/pdf-mupdf/build.rs`): the MuPDF installation is
+  resolved through `MUPDF_ANDROID_DIR` for Android targets and through `MUPDF_DIR`
+  for host targets. A missing header or library **fails the build** with a clear
+  message. There is no fallback to a different engine.
+- **Runtime engine identifier**: the bridge reports `mupdf-1.28.5-aarch64-android`,
+  so a running instance proves which engine and which platform produced the
+  document. A placeholder engine cannot report this.
+- **Governance**: `scripts/validate-repo.sh` fails if the placeholder bridge
+  reappears or if the Android MuPDF is not resolved through `MUPDF_ANDROID_DIR`.
+  `ADR-0017` documents the decision, `ADR-0016` is superseded.
+
+### Verification evidence for this milestone
+
+- `scripts/verify-android-arm64-pdf.sh`: **passed**. The script builds the same C
+  bridge that the Android application links, for `aarch64-linux-android`, and
+  executes it under `qemu-aarch64` against a real PDF:
+  - the produced `libmupdf.so.28.5` is an ARM64 ELF with the correct SONAME,
+  - the engine links against the real MuPDF, not against a stub,
+  - the PDF is opened, the real page count (4) and the page geometry (A4) are
+    detected, the text is extracted, all 4 pages are rendered, a malformed PDF is
+    rejected with a typed error, and a rotation produces a valid document,
+  - the rendering is compared **pixel by pixel** against the reference rendering
+    of the host build: mean difference 0.000, maximum difference 0.
+- The comparison itself is verified: a deliberately manipulated rendering is
+  detected (`mean_diff=3.600`), so the gate is not a no-op.
 
 ---
 
@@ -440,10 +537,61 @@ These are intentionally not scheduled before core maturity:
 - chain of custody/evidence packages
 - handwriting intelligence
 - advanced damaged-PDF forensics
-- Windows/Linux
 - iPadOS/iOS licensing/distribution gate
 - legal source modules
 - CLI/automation server mode
+
+---
+
+# M5 — Windows Shell *(Planned, see `CR-0003`)*
+
+**Entry criterion:** macOS and Android release candidates are green.
+
+Deliver:
+
+- `apps/windows` application shell on the idiomatic Windows toolkit
+  (decision pending in ADR-0017)
+- `PlatformFileBroker` implementation on top of the Common Item Dialog
+- `PlatformSettingsStore` implementation on top of the Windows user settings store
+- `PlatformAppLifecycle` implementation for suspend/resume and shutdown
+- native MuPDF build for `x86_64-pc-windows-msvc`
+  (`scripts/prepare-windows-mupdf.ps1`)
+- the shared acceptance scenario on Windows:
+  `Open → search → select text → highlight → rotate → undo → redo → save → recover → reopen`
+
+---
+
+# M6 — Linux Shell *(Planned, see `CR-0003`)*
+
+**Entry criterion:** the Windows track reaches an alpha.
+
+Deliver:
+
+- `apps/linux` application shell (decision pending in ADR-0018)
+- `PlatformFileBroker` implementation on top of the XDG file chooser portal
+- `PlatformSettingsStore` implementation on top of the XDG configuration directory
+- `PlatformFontProvider` implementation, which the `.pdoc` authoring milestone (M4)
+  needs for deterministic pagination
+- native MuPDF build for `x86_64-linux-gnu`
+  (`scripts/prepare-linux-mupdf.sh`)
+- the shared acceptance scenario on Linux
+
+---
+
+# Platform order
+
+The platform order is **binding** (`project/project.yaml` → `platforms.track_order`,
+`CR-0003`):
+
+1. macOS 15+ (Apple Silicon) — active
+2. Android 13+ (`arm64-v8a`) — active
+3. Windows 11+ (`x86_64`) — planned
+4. Linux (`x86_64`, Wayland and X11) — planned
+
+A new platform track only starts when the previous one has a green release
+candidate. The platform abstraction (`PLATFORM-003` in `REQUIREMENTS.md`) must exist
+before the Windows track starts, so that the shared core does not grow
+target-specific branches.
 
 ---
 

@@ -833,6 +833,24 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -895,6 +913,24 @@ fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_cancel(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_cancel_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_purge_finished(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_queued_count(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_running_count(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_status(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_statuses(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_submit(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
 ): Short
@@ -1063,6 +1099,24 @@ fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: Ru
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(`scanSessionId`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`displayName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_job_cancel(`jobId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_job_cancel_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun uniffi_vocument_ffi_fn_func_document_core_job_purge_finished(uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun uniffi_vocument_ffi_fn_func_document_core_job_queued_count(uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun uniffi_vocument_ffi_fn_func_document_core_job_running_count(uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun uniffi_vocument_ffi_fn_func_document_core_job_status(`jobId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_job_statuses(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_job_submit(`sessionId`: RustBuffer.ByValue,`documentRevision`: Long,`kind`: RustBuffer.ByValue,`resumable`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+fun uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(`sessionId`: RustBuffer.ByValue,`documentRevision`: Long,`kind`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Long
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1281,7 +1335,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 40795.toShort()) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856.toShort()) {
@@ -1333,6 +1387,33 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_cancel_session() != 26191.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_purge_finished() != 29024.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_queued_count() != 9005.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_running_count() != 5134.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_status() != 10707.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_statuses() != 37163.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_submit_placeholder() != 57466.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
@@ -2325,6 +2406,88 @@ public object FfiConverterTypeFfiInteropReport: FfiConverterRustBuffer<FfiIntero
             FfiConverterString.write(value.`pdfXchangeStatus`, buf)
             FfiConverterString.write(value.`firefoxStatus`, buf)
             FfiConverterString.write(value.`summary`, buf)
+    }
+}
+
+
+
+/**
+ * Job status exposed across the UniFFI boundary.
+ */
+data class FfiJobStatus (
+    var `jobId`: kotlin.ULong, 
+    var `sessionId`: kotlin.String, 
+    var `documentRevision`: kotlin.ULong, 
+    /**
+     * `visible_page_render`, `user_triggered_search`, `background_ocr_index`, ...
+     */
+    var `kind`: kotlin.String, 
+    /**
+     * `interactive`, `user_initiated` or `background`.
+     */
+    var `class`: kotlin.String, 
+    /**
+     * `visible_page_render`, `user_triggered_search`, ...
+     */
+    var `priority`: kotlin.String, 
+    /**
+     * `queued`, `running`, `completed`, `failed` or `cancelled`.
+     */
+    var `state`: kotlin.String, 
+    var `progressPercent`: kotlin.UByte, 
+    var `resumable`: kotlin.Boolean, 
+    /**
+     * Present when the job failed.
+     */
+    var `failure`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiJobStatus: FfiConverterRustBuffer<FfiJobStatus> {
+    override fun read(buf: ByteBuffer): FfiJobStatus {
+        return FfiJobStatus(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiJobStatus) = (
+            FfiConverterULong.allocationSize(value.`jobId`) +
+            FfiConverterString.allocationSize(value.`sessionId`) +
+            FfiConverterULong.allocationSize(value.`documentRevision`) +
+            FfiConverterString.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`class`) +
+            FfiConverterString.allocationSize(value.`priority`) +
+            FfiConverterString.allocationSize(value.`state`) +
+            FfiConverterUByte.allocationSize(value.`progressPercent`) +
+            FfiConverterBoolean.allocationSize(value.`resumable`) +
+            FfiConverterOptionalString.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: FfiJobStatus, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`jobId`, buf)
+            FfiConverterString.write(value.`sessionId`, buf)
+            FfiConverterULong.write(value.`documentRevision`, buf)
+            FfiConverterString.write(value.`kind`, buf)
+            FfiConverterString.write(value.`class`, buf)
+            FfiConverterString.write(value.`priority`, buf)
+            FfiConverterString.write(value.`state`, buf)
+            FfiConverterUByte.write(value.`progressPercent`, buf)
+            FfiConverterBoolean.write(value.`resumable`, buf)
+            FfiConverterOptionalString.write(value.`failure`, buf)
     }
 }
 
@@ -4873,6 +5036,34 @@ public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBu
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiJobStatus: FfiConverterRustBuffer<List<FfiJobStatus>> {
+    override fun read(buf: ByteBuffer): List<FfiJobStatus> {
+        val len = buf.getInt()
+        return List<FfiJobStatus>(len) {
+            FfiConverterTypeFfiJobStatus.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiJobStatus>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiJobStatus.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiJobStatus>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiJobStatus.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiOcrCharacter: FfiConverterRustBuffer<List<FfiOcrCharacter>> {
     override fun read(buf: ByteBuffer): List<FfiOcrCharacter> {
         val len = buf.getInt()
@@ -5197,6 +5388,9 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
 
         /**
          * Closes an active `DocumentSession` and releases its underlying `PdfEngine` resources.
+         *
+         * Every background job of the session is cancelled first, so that a result of a
+         * closed document can never be applied afterwards (`ARCHITECTURE.md` §8.4).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCloseSession`(`sessionId`: kotlin.String)
         = 
@@ -5422,6 +5616,150 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(
         FfiConverterString.lower(`scanSessionId`),FfiConverterTypeFfiScanCleanupProfile.lower(`cleanupProfile`),FfiConverterSequenceString.lower(`languages`),FfiConverterString.lower(`displayName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Requests a cooperative cancellation of a job.
+         *
+         * Returns the state of the job after the request. A job that is already
+         * finished keeps its terminal state.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobCancel`(`jobId`: kotlin.ULong): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_cancel(
+        FfiConverterULong.lower(`jobId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Cancels every job of a session and returns how many jobs were cancelled.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobCancelSession`(`sessionId`: kotlin.String): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_cancel_session(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Removes finished jobs from the tracker and returns how many were removed.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobPurgeFinished`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_purge_finished(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the number of jobs waiting in the queue.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobQueuedCount`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_queued_count(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the number of jobs currently executing.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobRunningCount`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_running_count(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the current status of a job.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobStatus`(`jobId`: kotlin.ULong): FfiJobStatus {
+            return FfiConverterTypeFfiJobStatus.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_status(
+        FfiConverterULong.lower(`jobId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the status of every known job.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobStatuses`(): List<FfiJobStatus> {
+            return FfiConverterSequenceTypeFfiJobStatus.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_statuses(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Submits background work for a document.
+         *
+         * The work runs on the bounded worker pool. The caller receives the job id
+         * immediately and can poll [`document_core_job_status`] for progress.
+         *
+         * `kind` is one of `render_visible_tile`, `prefetch_neighbor_tile`,
+         * `render_thumbnail`, `index_search`, `run_ocr` or `optimize_document`.
+         *
+         * The submitted work is a **real** core operation, not a no-op: the job runs on
+         * the worker pool and the resulting state reflects the actual outcome. Which
+         * operation runs is determined by `kind`:
+         *
+         * * `render_thumbnail` renders the thumbnail of page `0` into the thumbnail
+         * cache, exactly like the synchronous
+         * [`crate::document_core_render_page_thumbnail`] call does.
+         * * `index_search` runs the search index query of the session.
+         * * `run_ocr` and `optimize_document` are not backed by a core operation yet
+         * and therefore fail with a typed error instead of pretending to succeed.
+         *
+         * The `document_revision` is the revision the caller believes to be current.
+         * The job is rejected with a typed error if the session moved on, so that a
+         * result of a stale revision is never applied.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobSubmit`(`sessionId`: kotlin.String, `documentRevision`: kotlin.ULong, `kind`: kotlin.String, `resumable`: kotlin.Boolean): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_submit(
+        FfiConverterString.lower(`sessionId`),FfiConverterULong.lower(`documentRevision`),FfiConverterString.lower(`kind`),FfiConverterBoolean.lower(`resumable`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Submits background work with a caller supplied completion marker.
+         *
+         * The Rust core cannot call into the UI, so the result of a job is polled
+         * instead of pushed. The returned job id identifies the job.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreJobSubmitPlaceholder`(`sessionId`: kotlin.String, `documentRevision`: kotlin.ULong, `kind`: kotlin.String): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_job_submit_placeholder(
+        FfiConverterString.lower(`sessionId`),FfiConverterULong.lower(`documentRevision`),FfiConverterString.lower(`kind`),_status)
 }
     )
     }
