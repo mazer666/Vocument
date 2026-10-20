@@ -18,12 +18,20 @@
 //!
 //! A panic inside a job body is caught and converted into a `Failed` job. One
 //! faulty job therefore cannot terminate a worker thread or the pool.
+//!
+//! # Bounded shutdown
+//!
+//! The shutdown signals every running job and then waits a bounded time for the
+//! workers to end. A worker that is stuck inside an engine call cannot be
+//! stopped from the outside; it is detached after the grace period, so that the
+//! shutdown — and with it the exit of the application — never blocks forever.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::scheduler::{
     CancellationToken, JobDescriptor, JobError, JobOutcome, JobQueue, JobState, JobTask,
@@ -143,6 +151,22 @@ impl JobTracker {
         self.lock().ok()?.tokens.get(&job_id).cloned()
     }
 
+    /// Signals the cancellation token of every job that is currently running.
+    ///
+    /// This is used when the pool is shut down. Without it, a running job would
+    /// never be asked to stop, and the shutdown would block until the job
+    /// finished on its own.
+    pub fn cancel_all_running(&self) -> Result<usize, JobError> {
+        let guard = self.lock()?;
+        let tokens: Vec<CancellationToken> = guard.tokens.values().cloned().collect();
+        let count = tokens.len();
+        drop(guard);
+        for token in tokens {
+            token.cancel();
+        }
+        Ok(count)
+    }
+
     /// Records the terminal state of a job.
     ///
     /// A job that was cancelled while running always ends as `Cancelled`, never as
@@ -217,13 +241,31 @@ impl JobTracker {
     }
 }
 
+/// A worker thread together with the signal that reports its end.
+struct Worker {
+    join: JoinHandle<()>,
+    exit: mpsc::Receiver<()>,
+}
+
+impl std::fmt::Debug for Worker {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Worker")
+            .field("join", &"JoinHandle")
+            .field("exit", &"Receiver")
+            .finish()
+    }
+}
+
 /// Bounded worker pool that executes queued jobs.
 #[derive(Debug)]
 pub struct JobExecutor {
     queue: Arc<JobQueue>,
     tracker: Arc<JobTracker>,
-    workers: Mutex<Vec<JoinHandle<()>>>,
+    workers: Mutex<Vec<Worker>>,
     shutdown: AtomicBool,
+    /// Longest time `shutdown` waits for a worker to end before detaching it.
+    shutdown_grace: Duration,
     /// Number of jobs that are currently executing inside a worker.
     ///
     /// Shared with the worker threads, so that the count stays correct even while
@@ -243,11 +285,13 @@ impl JobExecutor {
     /// fewer workers than configured.
     pub fn start(budgets: JobBudgets) -> Result<Arc<Self>, JobError> {
         let worker_count = budgets.max_concurrent_workers.max(1);
+        let shutdown_grace = Duration::from_millis(budgets.shutdown_grace_ms);
         let executor = Arc::new(Self {
             queue: Arc::new(JobQueue::new(budgets)),
             tracker: Arc::new(JobTracker::default()),
             workers: Mutex::new(Vec::with_capacity(worker_count)),
             shutdown: AtomicBool::new(false),
+            shutdown_grace,
             running_jobs: Arc::new(AtomicU64::new(0)),
         });
 
@@ -256,17 +300,25 @@ impl JobExecutor {
             let queue = Arc::clone(&executor.queue);
             let tracker = Arc::clone(&executor.tracker);
             let running_jobs = Arc::clone(&executor.running_jobs);
+            let (exit_tx, exit_rx) = mpsc::channel();
             match std::thread::Builder::new()
                 .name(format!("vocument-job-worker-{index}"))
-                .spawn(move || worker_loop(queue, tracker, running_jobs))
-            {
-                Ok(handle) => handles.push(handle),
+                .spawn(move || {
+                    worker_loop(queue, tracker, running_jobs);
+                    // The signal is sent even when the worker panics, because the
+                    // sender is dropped with the closure.
+                    let _ = exit_tx.send(());
+                }) {
+                Ok(handle) => handles.push(Worker {
+                    join: handle,
+                    exit: exit_rx,
+                }),
                 Err(error) => {
                     // Stop the workers that were already started, so that no
                     // orphaned thread keeps running without a pool owner.
                     let _ = executor.queue.shutdown();
-                    for handle in handles {
-                        let _ = handle.join();
+                    for worker in handles {
+                        let _ = worker.join.join();
                     }
                     return Err(JobError::WorkerSpawnFailed {
                         details: format!("worker {index} could not be started: {error}"),
@@ -361,12 +413,29 @@ impl JobExecutor {
     }
 
     /// Stops the pool: queued work is dropped, running work is asked to stop.
+    ///
+    /// The cancellation token of every running job is signalled first, so that a
+    /// cooperative job stops at its next safe point. The shutdown then joins the
+    /// worker threads, so that no worker outlives the pool.
+    ///
+    /// The wait is bounded by `shutdown_grace_ms`. A job body that ignores its
+    /// cancellation token and never returns cannot be stopped from the outside;
+    /// after the grace period the worker is detached instead of blocking the
+    /// shutdown forever. The detached worker keeps its own references to the
+    /// queue and the tracker and ends by itself as soon as the job body returns.
+    ///
+    /// A job body therefore still has to observe the token, and an engine call
+    /// that cannot be interrupted has to be bounded by its own timeout. The grace
+    /// period is only the last resort that keeps the application able to exit.
     pub fn shutdown(&self) {
         if self.shutdown.swap(true, Ordering::AcqRel) {
             return;
         }
         let _ = self.queue.shutdown();
-        let handles = match self.workers.lock() {
+        // Ask the running jobs to stop before joining the workers. Without this,
+        // a running job would only be noticed when it finished on its own.
+        let _ = self.tracker.cancel_all_running();
+        let workers = match self.workers.lock() {
             Ok(mut guard) => std::mem::take(&mut *guard),
             Err(poisoned) => {
                 // A poisoned lock still owns the handles: recover them instead of
@@ -375,8 +444,28 @@ impl JobExecutor {
                 std::mem::take(&mut *guard)
             }
         };
-        for handle in handles {
-            let _ = handle.join();
+        // The wait is bounded. A worker that is stuck inside an engine call
+        // cannot be stopped from the outside; joining it without a limit would
+        // block the shutdown — and with it the exit of the whole application —
+        // for as long as the engine call lasts.
+        let deadline = Instant::now() + self.shutdown_grace;
+        for worker in workers {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                // The grace period is over: let the worker go. It owns its own
+                // references to the queue and the tracker, so it cleans itself up
+                // as soon as the job body returns.
+                drop(worker.join);
+                continue;
+            }
+            match worker.exit.recv_timeout(remaining) {
+                Ok(()) | Err(RecvTimeoutError::Disconnected) => {
+                    let _ = worker.join.join();
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    drop(worker.join);
+                }
+            }
         }
     }
 }

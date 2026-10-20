@@ -139,6 +139,14 @@ pub struct JobBudgets {
     pub max_queued_jobs: usize,
     pub starvation_promotion_ms: u64,
     pub idle_shutdown_timeout_ms: u64,
+    /// Longest time the pool waits for a worker to end before it lets it go.
+    ///
+    /// A worker that is stuck inside an engine call cannot be stopped from the
+    /// outside. The pool therefore does not wait for it forever: after the grace
+    /// period the worker is detached and the shutdown continues. Without this
+    /// limit, dropping the executor — and with it the application — could block
+    /// indefinitely.
+    pub shutdown_grace_ms: u64,
 }
 
 impl PerformanceBudgetsConfig {

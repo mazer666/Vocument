@@ -6,6 +6,35 @@
 use super::*;
 use crate::jobs::scheduler::JobKind;
 
+/// Releases the blocker of a worker even when the test fails.
+///
+/// Without this guard a failing assertion would panic while a worker is still
+/// blocked. The panic unwinds, the executor is dropped, and its `shutdown`
+/// joins the blocked worker: the test run would hang instead of reporting the
+/// failure. A test that hangs is far worse than a test that fails, because it
+/// burns the whole CI timeout without naming the defect.
+struct BlockerGuard {
+    flag: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl BlockerGuard {
+    fn new(flag: &Arc<std::sync::atomic::AtomicBool>) -> Self {
+        Self {
+            flag: Arc::clone(flag),
+        }
+    }
+
+    fn release(&self) {
+        self.flag.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+impl Drop for BlockerGuard {
+    fn drop(&mut self) {
+        self.release();
+    }
+}
+
 fn test_budgets(workers: usize, queued: usize) -> JobBudgets {
     JobBudgets {
         max_concurrent_render_workers: workers,
@@ -15,6 +44,7 @@ fn test_budgets(workers: usize, queued: usize) -> JobBudgets {
         max_queued_jobs: queued,
         starvation_promotion_ms: 50,
         idle_shutdown_timeout_ms: 20,
+        shutdown_grace_ms: 200,
     }
 }
 
@@ -210,6 +240,7 @@ fn running_count_reflects_the_jobs_that_execute() {
     );
 
     let release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let release_guard = BlockerGuard::new(&release);
     let mut ids = Vec::new();
     for _ in 0..2 {
         let release = Arc::clone(&release);
@@ -245,7 +276,7 @@ fn running_count_reflects_the_jobs_that_execute() {
         "both jobs must be counted as running while they execute"
     );
 
-    release.store(true, std::sync::atomic::Ordering::SeqCst);
+    release_guard.release();
     for id in ids {
         wait_for_terminal(&executor.tracker, id.job_id, Duration::from_secs(5))
             .expect("job must finish");
@@ -264,6 +295,7 @@ fn a_job_cancelled_before_it_starts_never_executes_its_body() {
     // Block the single worker so that the next job stays queued.
     let blocker = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let blocker_flag = Arc::clone(&blocker);
+    let blocker_guard = BlockerGuard::new(&blocker);
     let blocking_job = executor
         .submit(
             "sess_1".to_owned(),
@@ -295,7 +327,7 @@ fn a_job_cancelled_before_it_starts_never_executes_its_body() {
         .expect("submit");
 
     executor.cancel_and_signal(queued.job_id).expect("cancel");
-    blocker.store(true, std::sync::atomic::Ordering::SeqCst);
+    blocker_guard.release();
 
     let status = wait_for_terminal(&executor.tracker, queued.job_id, Duration::from_secs(5))
         .expect("job must finish");
@@ -381,12 +413,138 @@ fn starting_and_stopping_the_pool_repeatedly_keeps_it_usable() {
         executor.shutdown();
     }
 }
+#[test]
+fn shutting_the_pool_down_asks_the_running_jobs_to_stop() {
+    let executor = JobExecutor::start(test_budgets(1, 16)).expect("executor must start");
+    let observed_cancellation = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let observed_flag = Arc::clone(&observed_cancellation);
+    let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let started_flag = Arc::clone(&started);
+    // The job body stops when the token is signalled. The force flag is only
+    // used to release the job if the shutdown failed, so that the test can
+    // report the defect instead of blocking the whole test run.
+    let force_release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let force_release_flag = Arc::clone(&force_release);
 
+    executor
+        .submit(
+            "sess_1".to_owned(),
+            1,
+            JobKind::RenderVisibleTile,
+            false,
+            Box::new(move |_, token| {
+                started_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                while !token.is_cancelled()
+                    && !force_release_flag.load(std::sync::atomic::Ordering::SeqCst)
+                {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                observed_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                JobOutcome::Cancelled
+            }),
+        )
+        .expect("submit");
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while !started.load(std::sync::atomic::Ordering::SeqCst) && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(
+        started.load(std::sync::atomic::Ordering::SeqCst),
+        "the job must have started"
+    );
+
+    // The shutdown runs in a separate thread, so that a shutdown that does not
+    // ask the job to stop is reported as a failure instead of blocking the
+    // whole test run.
+    let shutdown_finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let shutdown_flag = Arc::clone(&shutdown_finished);
+    let executor_for_shutdown = Arc::clone(&executor);
+    let shutdown_thread = std::thread::spawn(move || {
+        executor_for_shutdown.shutdown();
+        shutdown_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+    });
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while !shutdown_finished.load(std::sync::atomic::Ordering::SeqCst)
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let shutdown_returned = shutdown_finished.load(std::sync::atomic::Ordering::SeqCst);
+
+    // Release the job in any case, so that no thread is left behind.
+    force_release.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = shutdown_thread.join();
+
+    assert!(
+        shutdown_returned,
+        "the shutdown must return: it has to ask the running job to stop"
+    );
+    assert!(
+        observed_cancellation.load(std::sync::atomic::Ordering::SeqCst),
+        "the shutdown must ask the running job to stop"
+    );
+}
+
+#[test]
+fn a_job_that_ignores_the_cancellation_does_not_block_the_shutdown_forever() {
+    // A job body that neither observes the token nor returns models an engine
+    // call that cannot be interrupted. The shutdown must not wait for it
+    // forever, because the application has to be able to exit.
+    let mut budgets = test_budgets(1, 16);
+    budgets.shutdown_grace_ms = 200;
+    let executor = JobExecutor::start(budgets).expect("executor must start");
+
+    let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let started_flag = Arc::clone(&started);
+    let release = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let release_flag = Arc::clone(&release);
+    executor
+        .submit(
+            "sess_1".to_owned(),
+            1,
+            JobKind::RenderVisibleTile,
+            false,
+            Box::new(move |_, _| {
+                started_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                // Deliberately ignores the cancellation token.
+                while !release_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                JobOutcome::Completed
+            }),
+        )
+        .expect("submit");
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while !started.load(std::sync::atomic::Ordering::SeqCst) && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(
+        started.load(std::sync::atomic::Ordering::SeqCst),
+        "the job must have started"
+    );
+
+    let begin = std::time::Instant::now();
+    executor.shutdown();
+    let elapsed = begin.elapsed();
+    // The job is released afterwards, so that no thread is left behind.
+    release.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "the shutdown must be bounded by the grace period, it took {elapsed:?}"
+    );
+}
 #[test]
 fn the_queue_reports_the_number_of_waiting_jobs() {
     let executor = JobExecutor::start(test_budgets(1, 16)).expect("executor must start");
     let blocker = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let blocker_flag = Arc::clone(&blocker);
+    let blocker_guard = BlockerGuard::new(&blocker);
     // The flag is set as soon as the worker picked the blocking job up, so
     // that the measurement does not depend on a timing guess.
     let blocker_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -434,6 +592,6 @@ fn the_queue_reports_the_number_of_waiting_jobs() {
         3,
         "the queue must report the waiting jobs"
     );
-    blocker.store(true, std::sync::atomic::Ordering::SeqCst);
+    blocker_guard.release();
     executor.shutdown();
 }

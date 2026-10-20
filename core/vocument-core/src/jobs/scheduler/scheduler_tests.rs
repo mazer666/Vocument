@@ -15,6 +15,7 @@ fn budgets(max_queued: usize, promotion_ms: u64) -> JobBudgets {
         max_queued_jobs: max_queued,
         starvation_promotion_ms: promotion_ms,
         idle_shutdown_timeout_ms: 50,
+        shutdown_grace_ms: 200,
     }
 }
 

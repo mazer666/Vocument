@@ -40,6 +40,11 @@ starvation_promotion_ms = 250
 # pool is idle. Keeps shutdown responsive without busy waiting.
 idle_shutdown_timeout_ms = 500
 
+# Longest time the pool waits for a worker to end when the pool is shut down.
+# A worker that is stuck inside an engine call cannot be stopped from the outside;
+# after this grace period it is detached, so that the application can still exit.
+shutdown_grace_ms = 2000
+
 [code_limits]
 target_max_lines_per_file = 600
 hard_max_lines_per_file = 900
