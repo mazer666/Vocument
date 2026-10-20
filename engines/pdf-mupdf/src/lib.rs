@@ -2,6 +2,7 @@
 //!
 //! No UI layer may depend on this crate directly.
 
+pub mod inspect;
 pub mod mutate;
 pub mod render_page;
 pub mod text_extract;
@@ -9,12 +10,15 @@ pub mod text_extract;
 #[cfg(test)]
 mod difficult_tests;
 #[cfg(test)]
+mod inspection_tests;
+#[cfg(test)]
 mod redaction_image_tests;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
 use std::ptr::NonNull;
 use std::sync::Mutex;
+use vocument_core::document_inspection::PdfActionInfo;
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
     PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt,
@@ -410,6 +414,10 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
             page_index,
             scale_milli,
         )
+    }
+
+    fn document_actions(&self) -> Result<Vec<PdfActionInfo>, PdfEngineError> {
+        inspect::document_actions(&self.pdf_bytes)
     }
 }
 

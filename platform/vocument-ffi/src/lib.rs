@@ -3,6 +3,7 @@
 //! Exposes only opaque session/document IDs and immutable DTO snapshots.
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
+pub mod inspection_dto;
 pub mod interop_dto;
 pub mod job_dto;
 pub mod mutation_dto;
@@ -25,6 +26,9 @@ use vocument_core::pdf_engine::PdfEngineError;
 use vocument_core::session::{SessionError, SessionRegistry};
 use vocument_pdf_mupdf::MuPdfEngineAdapter;
 
+pub use inspection_dto::{
+    FfiDocumentInspection, FfiPdfActionInfo, FfiPdfActionKind, document_core_inspect_document,
+};
 pub use interop_dto::{FfiInteropReport, document_core_run_interop_gate_suite};
 pub use mutation_dto::{
     FfiHighlightAnnotation, FfiTransactionHistorySnapshot, FfiTransactionRecord,

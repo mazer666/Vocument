@@ -427,6 +427,39 @@ if ! grep -q "the_redacted_region_is_empty_in_the_picture_of_the_page" \
   echo "ERROR (M2.1 Gate): no test that the redacted region is empty in the picture of the page!" >&2
   exit 1
 fi
+
+# --- M2.2 Gate: the inspection of the links and actions of a document ---
+if ! grep -q "fn document_actions" core/vocument-core/src/pdf_engine.rs; then
+  echo "ERROR (M2.2 Gate): the engine interface has no inspection of the actions of a document!" >&2
+  exit 1
+fi
+if ! grep -q "fn inspect_document" core/vocument-core/src/session.rs; then
+  echo "ERROR (M2.2 Gate): the core has no service for the inspection of a document!" >&2
+  exit 1
+fi
+if ! grep -q "is_risky_kind" core/vocument-core/src/document_inspection.rs; then
+  echo "ERROR (M2.2 Gate): the risk policy does not live in the core!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_inspect_document" platform/vocument-ffi/src/inspection_dto.rs; then
+  echo "ERROR (M2.2 Gate): the inspection is not available over the FFI boundary!" >&2
+  exit 1
+fi
+if ! grep -q "the_inspection_reports_every_action_of_the_document" \
+    engines/pdf-mupdf/src/inspection_tests.rs; then
+  echo "ERROR (M2.2 Gate): no test that the inspection reports every action of a document!" >&2
+  exit 1
+fi
+if ! grep -q "the_position_of_a_link_is_reported_in_the_space_of_the_page" \
+    engines/pdf-mupdf/src/inspection_tests.rs; then
+  echo "ERROR (M2.2 Gate): no test that the position of a link is reported in the space of the page!" >&2
+  exit 1
+fi
+if ! grep -q "the_inspection_of_a_document_shows_where_the_links_lead_and_what_they_do" \
+    platform/vocument-ffi/tests/document_inspection_e2e_tests.rs; then
+  echo "ERROR (M2.2 Gate): no end-to-end test of the inspection over the FFI boundary!" >&2
+  exit 1
+fi
 if ! grep -q "a_redaction_removes_the_text_of_the_region_from_the_document" \
     engines/pdf-mupdf/src/mutate.rs; then
   echo "ERROR (M2.1 Gate): the engine has no test that the text of the region is removed!" >&2
@@ -442,6 +475,7 @@ if ! grep -q "A redaction cannot be undone" core/vocument-core/src/transactions.
   exit 1
 fi
 echo "✓ M2.1 Gate verified: secure redaction removes the content, verifies the removal and refuses the undo."
+echo "✓ M2.2 Gate verified: the links and actions of a document are reported, the risk is decided in the core."
 
 # Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
 if ! grep -q "QA-003" REQUIREMENTS.md; then

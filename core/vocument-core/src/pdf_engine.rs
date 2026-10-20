@@ -6,6 +6,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::document_inspection::PdfActionInfo;
+
 /// Basic PDF metadata and page summary read when opening a `DocumentSession` (`ROADMAP.md` M0.1, `INSPECT-001`, `META-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfDocumentSummary {
@@ -269,6 +271,17 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support redaction".to_owned(),
         })
+    }
+
+    /// Reports the links and actions of the document (`INSPECT-001`).
+    ///
+    /// The report contains the actions of the pages (the links) and the
+    /// actions of the document itself, for example the action that runs when
+    /// the document is opened. The engine reports the facts; the risk policy
+    /// lives in the core.
+    fn document_actions(&self) -> Result<Vec<PdfActionInfo>, PdfEngineError> {
+        let _ = &self;
+        Ok(Vec::new())
     }
 
     /// Renders the whole page into a grayscale raster (`REDACT-002`).

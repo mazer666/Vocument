@@ -674,6 +674,21 @@ Search-assisted candidate selection.
 ### REDACT-004 — Later
 Local smart entity suggestions, never auto-apply.
 
+### INSPECT-001 — The links and actions of a document are reported
+Before a user follows a link in a document, the application must be able to show where the link leads and what it does. The inspection reports for every link and every action of the document:
+
+- the type of the action: a link into the document, a link to an address, a link to another document, an action that runs a script, an action that opens a file, an action that submits a form, an action that imports data, and the remaining types of the PDF specification,
+- the target: the address, the file, the script or the destination,
+- the position of the link on its page, in the same space in which the words and the rendered page are reported (milli-points, origin at the top left of the page, y descending),
+- whether the action is risky.
+
+The action that runs when the document is opened is part of the report: it happens without the user asking for it.
+
+The risk is decided by a policy of the core, not by the engine and not by the platform: a script, a started file, a submitted form and an imported data set are risky, and so is a link that leaves the machine (a `file:`, `http:`, `https:` or `javascript:` address). The platform shell only presents the finding.
+
+### INSPECT-002 — A link is never followed without the user
+The inspection is a precondition for following a link. A risky action has to be shown to the user before it is carried out. The core does not follow links itself; it only reports them.
+
 ### SAN-001 — Optional
 Full sanitize for metadata, hidden content, attachments, actions, comments, form remnants, etc.
 

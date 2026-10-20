@@ -859,6 +859,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -923,6 +925,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_handshake(
 fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_inspect_document(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_job_cancel(
 ): Short
@@ -1116,6 +1120,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_handshake(uniffi_out_err: UniffiRu
 fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: RustBuffer.ByValue,`preferredStartPage`: Int,`maxPages`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(`scanSessionId`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`displayName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_inspect_document(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_job_cancel(`jobId`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1414,6 +1420,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 39983.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879.toShort()) {
@@ -2169,6 +2178,54 @@ public object FfiConverterTypeFfiDeskewResult: FfiConverterRustBuffer<FfiDeskewR
 
 
 /**
+ * The report of an inspection of a document (`INSPECT-001`).
+ */
+data class FfiDocumentInspection (
+    /**
+     * All links and actions of the document.
+     */
+    var `actions`: List<FfiPdfActionInfo>, 
+    /**
+     * The number of the actions that the policy marks as risky.
+     */
+    var `riskyCount`: kotlin.UInt, 
+    /**
+     * The number of the actions that leave the document.
+     */
+    var `externalCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDocumentInspection: FfiConverterRustBuffer<FfiDocumentInspection> {
+    override fun read(buf: ByteBuffer): FfiDocumentInspection {
+        return FfiDocumentInspection(
+            FfiConverterSequenceTypeFfiPdfActionInfo.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiDocumentInspection) = (
+            FfiConverterSequenceTypeFfiPdfActionInfo.allocationSize(value.`actions`) +
+            FfiConverterUInt.allocationSize(value.`riskyCount`) +
+            FfiConverterUInt.allocationSize(value.`externalCount`)
+    )
+
+    override fun write(value: FfiDocumentInspection, buf: ByteBuffer) {
+            FfiConverterSequenceTypeFfiPdfActionInfo.write(value.`actions`, buf)
+            FfiConverterUInt.write(value.`riskyCount`, buf)
+            FfiConverterUInt.write(value.`externalCount`, buf)
+    }
+}
+
+
+
+/**
  * Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
  */
 data class FfiDocumentSessionSnapshot (
@@ -2856,6 +2913,71 @@ public object FfiConverterTypeFfiPageWord: FfiConverterRustBuffer<FfiPageWord> {
     override fun write(value: FfiPageWord, buf: ByteBuffer) {
             FfiConverterString.write(value.`text`, buf)
             FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+    }
+}
+
+
+
+/**
+ * One link or action of a document (`INSPECT-001`).
+ */
+data class FfiPdfActionInfo (
+    /**
+     * The page the action lies on. `None` for an action of the document
+     * itself, for example the action that runs when the document is opened.
+     */
+    var `pageIndex`: kotlin.UInt?, 
+    /**
+     * The area that can be clicked. `None` for an action of the document
+     * itself.
+     */
+    var `rect`: FfiPdfRectMilliPt?, 
+    /**
+     * The type of the action.
+     */
+    var `kind`: FfiPdfActionKind, 
+    /**
+     * The target of the action: the address, the file, the script or the
+     * destination.
+     */
+    var `target`: kotlin.String, 
+    /**
+     * True if the action leaves the document, runs code or sends data.
+     */
+    var `isRisky`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfActionInfo: FfiConverterRustBuffer<FfiPdfActionInfo> {
+    override fun read(buf: ByteBuffer): FfiPdfActionInfo {
+        return FfiPdfActionInfo(
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterTypeFfiPdfActionKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfActionInfo) = (
+            FfiConverterOptionalUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`rect`) +
+            FfiConverterTypeFfiPdfActionKind.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`target`) +
+            FfiConverterBoolean.allocationSize(value.`isRisky`)
+    )
+
+    override fun write(value: FfiPdfActionInfo, buf: ByteBuffer) {
+            FfiConverterOptionalUInt.write(value.`pageIndex`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+            FfiConverterTypeFfiPdfActionKind.write(value.`kind`, buf)
+            FfiConverterString.write(value.`target`, buf)
+            FfiConverterBoolean.write(value.`isRisky`, buf)
     }
 }
 
@@ -4771,6 +4893,266 @@ public object FfiConverterTypeFfiPageLabelStyle: FfiConverterRustBuffer<FfiPageL
 
 
 /**
+ * The type of a link or action of a document (`INSPECT-001`).
+ */
+sealed class FfiPdfActionKind {
+    
+    /**
+     * A link to another page of the same document.
+     */
+    object InternalDestination : FfiPdfActionKind()
+    
+    
+    /**
+     * A link to an address (`http`, `https`, `mailto`, ...).
+     */
+    object Uri : FfiPdfActionKind()
+    
+    
+    /**
+     * A link to another document.
+     */
+    object ExternalDestination : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that opens a file or starts a program.
+     */
+    object LaunchFile : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that runs JavaScript.
+     */
+    object JavaScript : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that sends the content of a form to a server.
+     */
+    object FormSubmission : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that imports data into the document.
+     */
+    object ImportData : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that runs a named action.
+     */
+    object NamedAction : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that resets a form.
+     */
+    object ResetForm : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that hides annotations.
+     */
+    object HideAnnotations : FfiPdfActionKind()
+    
+    
+    /**
+     * A media action (`/Movie`, `/Sound`, `/Rendition`).
+     */
+    object Media : FfiPdfActionKind()
+    
+    
+    /**
+     * An action that changes the state of the layers.
+     */
+    object LayerState : FfiPdfActionKind()
+    
+    
+    /**
+     * An action of an unknown type.
+     */
+    data class Other(
+        val v1: kotlin.String) : FfiPdfActionKind() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfActionKind : FfiConverterRustBuffer<FfiPdfActionKind>{
+    override fun read(buf: ByteBuffer): FfiPdfActionKind {
+        return when(buf.getInt()) {
+            1 -> FfiPdfActionKind.InternalDestination
+            2 -> FfiPdfActionKind.Uri
+            3 -> FfiPdfActionKind.ExternalDestination
+            4 -> FfiPdfActionKind.LaunchFile
+            5 -> FfiPdfActionKind.JavaScript
+            6 -> FfiPdfActionKind.FormSubmission
+            7 -> FfiPdfActionKind.ImportData
+            8 -> FfiPdfActionKind.NamedAction
+            9 -> FfiPdfActionKind.ResetForm
+            10 -> FfiPdfActionKind.HideAnnotations
+            11 -> FfiPdfActionKind.Media
+            12 -> FfiPdfActionKind.LayerState
+            13 -> FfiPdfActionKind.Other(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiPdfActionKind) = when(value) {
+        is FfiPdfActionKind.InternalDestination -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.Uri -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.ExternalDestination -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.LaunchFile -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.JavaScript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.FormSubmission -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.ImportData -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.NamedAction -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.ResetForm -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.HideAnnotations -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.Media -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.LayerState -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiPdfActionKind.Other -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.v1)
+            )
+        }
+    }
+
+    override fun write(value: FfiPdfActionKind, buf: ByteBuffer) {
+        when(value) {
+            is FfiPdfActionKind.InternalDestination -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiPdfActionKind.Uri -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiPdfActionKind.ExternalDestination -> {
+                buf.putInt(3)
+                Unit
+            }
+            is FfiPdfActionKind.LaunchFile -> {
+                buf.putInt(4)
+                Unit
+            }
+            is FfiPdfActionKind.JavaScript -> {
+                buf.putInt(5)
+                Unit
+            }
+            is FfiPdfActionKind.FormSubmission -> {
+                buf.putInt(6)
+                Unit
+            }
+            is FfiPdfActionKind.ImportData -> {
+                buf.putInt(7)
+                Unit
+            }
+            is FfiPdfActionKind.NamedAction -> {
+                buf.putInt(8)
+                Unit
+            }
+            is FfiPdfActionKind.ResetForm -> {
+                buf.putInt(9)
+                Unit
+            }
+            is FfiPdfActionKind.HideAnnotations -> {
+                buf.putInt(10)
+                Unit
+            }
+            is FfiPdfActionKind.Media -> {
+                buf.putInt(11)
+                Unit
+            }
+            is FfiPdfActionKind.LayerState -> {
+                buf.putInt(12)
+                Unit
+            }
+            is FfiPdfActionKind.Other -> {
+                buf.putInt(13)
+                FfiConverterString.write(value.v1, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
  * Recovery action choices crossing the UniFFI boundary (`ROADMAP.md` M0.6, `RECOVERY-001` Preset).
  */
 
@@ -5047,6 +5429,38 @@ public object FfiConverterTypeFfiScanPixelFormat: FfiConverterRustBuffer<FfiScan
 }
 
 
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
+    override fun read(buf: ByteBuffer): kotlin.UInt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UInt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UInt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUInt.write(value, buf)
+        }
+    }
+}
 
 
 
@@ -5682,6 +6096,34 @@ public object FfiConverterSequenceTypeFfiPageWord: FfiConverterRustBuffer<List<F
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiPdfActionInfo: FfiConverterRustBuffer<List<FfiPdfActionInfo>> {
+    override fun read(buf: ByteBuffer): List<FfiPdfActionInfo> {
+        val len = buf.getInt()
+        return List<FfiPdfActionInfo>(len) {
+            FfiConverterTypeFfiPdfActionInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPdfActionInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPdfActionInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPdfActionInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPdfActionInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<List<FfiPdfRectMilliPt>> {
     override fun read(buf: ByteBuffer): List<FfiPdfRectMilliPt> {
         val len = buf.getInt()
@@ -6140,6 +6582,24 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(
         FfiConverterString.lower(`scanSessionId`),FfiConverterTypeFfiScanCleanupProfile.lower(`cleanupProfile`),FfiConverterSequenceString.lower(`languages`),FfiConverterString.lower(`displayName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inspects the links and actions of the document of `session_id`
+         * (`INSPECT-001`).
+         *
+         * The report is the basis of the "before you click" view of the professional
+         * review: the user sees where a link leads, and the shell can mark the
+         * actions that run code, open a file or send data out of the document.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreInspectDocument`(`sessionId`: kotlin.String): FfiDocumentInspection {
+            return FfiConverterTypeFfiDocumentInspection.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_inspect_document(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

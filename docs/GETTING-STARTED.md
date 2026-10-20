@@ -222,6 +222,36 @@ beschreibt ihn.
 
 Nachweise: `docs/acceptance/M2.1-ACCEPTANCE.md`.
 
+## 7a. Wie prüfe ich die Links und Aktionen eines Dokuments?
+
+Ein Link in einem Dokument kann eine Seite öffnen, eine Adresse aufrufen, ein
+Programm starten, ein Formular absenden — oder ein Skript ausführen. Für die
+professionelle Durchsicht zählt beides: wohin der Link führt und was er tut.
+
+**Drei Stellen, in dieser Reihenfolge:**
+
+1. **Die Engine meldet die Tatsachen** — `engines/pdf-mupdf/csrc/mupdf_inspect_bridge.c`
+   liest die Aktionen des Dokuments und der Seiten aus.
+2. **Der Core entscheidet das Risiko** — `core/vocument-core/src/document_inspection.rs`.
+   Die Policy ist eine Produktentscheidung und gehört deshalb in den Core, nicht
+   in die Engine und nicht in die Plattform.
+3. **Die FFI-Grenze macht den Bericht verfügbar** —
+   `platform/vocument-ffi/src/inspection_dto.rs`, `document_core_inspect_document`.
+
+**Zwei Fallen, die schon einmal zugeschlagen haben:**
+
+1. **MuPDF führt Link-Annotationen nicht in der Annotationsliste der Seite.**
+   `pdf_sync_annots` überspringt `/Link` und `/Popup`; sie werden separat als
+   klickbare Flächen geladen. Über `pdf_first_annot` findet man deshalb
+   **nichts**. Die Brücke liest das `/Annots`-Array der Seite direkt.
+2. **Nur so kennt man den Typ der Aktion.** Die geladenen Link-Flächen tragen
+   nur das Ziel, nicht die Aktionsart. Genau die Information, um die es geht —
+   „das ist ein Skript, kein Link“ — wäre sonst verloren.
+
+Der Katalog ist nicht der Trailer, sondern das `/Root` des Trailers.
+
+Nachweise: `docs/acceptance/M2.2-ACCEPTANCE.md`.
+
 ## 8. Wo ergänze ich neue Job-Arten?
 
 Drei Stellen, in dieser Reihenfolge:

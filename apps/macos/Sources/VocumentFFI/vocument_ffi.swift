@@ -1169,6 +1169,105 @@ public func FfiConverterTypeFfiDeskewResult_lower(_ value: FfiDeskewResult) -> R
 
 
 /**
+ * The report of an inspection of a document (`INSPECT-001`).
+ */
+public struct FfiDocumentInspection {
+    /**
+     * All links and actions of the document.
+     */
+    public var actions: [FfiPdfActionInfo]
+    /**
+     * The number of the actions that the policy marks as risky.
+     */
+    public var riskyCount: UInt32
+    /**
+     * The number of the actions that leave the document.
+     */
+    public var externalCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * All links and actions of the document.
+         */actions: [FfiPdfActionInfo], 
+        /**
+         * The number of the actions that the policy marks as risky.
+         */riskyCount: UInt32, 
+        /**
+         * The number of the actions that leave the document.
+         */externalCount: UInt32) {
+        self.actions = actions
+        self.riskyCount = riskyCount
+        self.externalCount = externalCount
+    }
+}
+
+#if compiler(>=6)
+extension FfiDocumentInspection: Sendable {}
+#endif
+
+
+extension FfiDocumentInspection: Equatable, Hashable {
+    public static func ==(lhs: FfiDocumentInspection, rhs: FfiDocumentInspection) -> Bool {
+        if lhs.actions != rhs.actions {
+            return false
+        }
+        if lhs.riskyCount != rhs.riskyCount {
+            return false
+        }
+        if lhs.externalCount != rhs.externalCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(actions)
+        hasher.combine(riskyCount)
+        hasher.combine(externalCount)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDocumentInspection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDocumentInspection {
+        return
+            try FfiDocumentInspection(
+                actions: FfiConverterSequenceTypeFfiPdfActionInfo.read(from: &buf), 
+                riskyCount: FfiConverterUInt32.read(from: &buf), 
+                externalCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiDocumentInspection, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeFfiPdfActionInfo.write(value.actions, into: &buf)
+        FfiConverterUInt32.write(value.riskyCount, into: &buf)
+        FfiConverterUInt32.write(value.externalCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDocumentInspection_lift(_ buf: RustBuffer) throws -> FfiDocumentInspection {
+    return try FfiConverterTypeFfiDocumentInspection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDocumentInspection_lower(_ value: FfiDocumentInspection) -> RustBuffer {
+    return FfiConverterTypeFfiDocumentInspection.lower(value)
+}
+
+
+/**
  * Immutable snapshot of an opened `DocumentSession` returned to Swift and Kotlin (`ARCHITECTURE.md` §§5–6).
  */
 public struct FfiDocumentSessionSnapshot {
@@ -2586,6 +2685,139 @@ public func FfiConverterTypeFfiPageWord_lift(_ buf: RustBuffer) throws -> FfiPag
 #endif
 public func FfiConverterTypeFfiPageWord_lower(_ value: FfiPageWord) -> RustBuffer {
     return FfiConverterTypeFfiPageWord.lower(value)
+}
+
+
+/**
+ * One link or action of a document (`INSPECT-001`).
+ */
+public struct FfiPdfActionInfo {
+    /**
+     * The page the action lies on. `None` for an action of the document
+     * itself, for example the action that runs when the document is opened.
+     */
+    public var pageIndex: UInt32?
+    /**
+     * The area that can be clicked. `None` for an action of the document
+     * itself.
+     */
+    public var rect: FfiPdfRectMilliPt?
+    /**
+     * The type of the action.
+     */
+    public var kind: FfiPdfActionKind
+    /**
+     * The target of the action: the address, the file, the script or the
+     * destination.
+     */
+    public var target: String
+    /**
+     * True if the action leaves the document, runs code or sends data.
+     */
+    public var isRisky: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The page the action lies on. `None` for an action of the document
+         * itself, for example the action that runs when the document is opened.
+         */pageIndex: UInt32?, 
+        /**
+         * The area that can be clicked. `None` for an action of the document
+         * itself.
+         */rect: FfiPdfRectMilliPt?, 
+        /**
+         * The type of the action.
+         */kind: FfiPdfActionKind, 
+        /**
+         * The target of the action: the address, the file, the script or the
+         * destination.
+         */target: String, 
+        /**
+         * True if the action leaves the document, runs code or sends data.
+         */isRisky: Bool) {
+        self.pageIndex = pageIndex
+        self.rect = rect
+        self.kind = kind
+        self.target = target
+        self.isRisky = isRisky
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfActionInfo: Sendable {}
+#endif
+
+
+extension FfiPdfActionInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfActionInfo, rhs: FfiPdfActionInfo) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        if lhs.kind != rhs.kind {
+            return false
+        }
+        if lhs.target != rhs.target {
+            return false
+        }
+        if lhs.isRisky != rhs.isRisky {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(rect)
+        hasher.combine(kind)
+        hasher.combine(target)
+        hasher.combine(isRisky)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfActionInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfActionInfo {
+        return
+            try FfiPdfActionInfo(
+                pageIndex: FfiConverterOptionUInt32.read(from: &buf), 
+                rect: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                kind: FfiConverterTypeFfiPdfActionKind.read(from: &buf), 
+                target: FfiConverterString.read(from: &buf), 
+                isRisky: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfActionInfo, into buf: inout [UInt8]) {
+        FfiConverterOptionUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
+        FfiConverterTypeFfiPdfActionKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.target, into: &buf)
+        FfiConverterBool.write(value.isRisky, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfActionInfo_lift(_ buf: RustBuffer) throws -> FfiPdfActionInfo {
+    return try FfiConverterTypeFfiPdfActionInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfActionInfo_lower(_ value: FfiPdfActionInfo) -> RustBuffer {
+    return FfiConverterTypeFfiPdfActionInfo.lower(value)
 }
 
 
@@ -6076,6 +6308,198 @@ extension FfiPageLabelStyle: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * The type of a link or action of a document (`INSPECT-001`).
+ */
+
+public enum FfiPdfActionKind {
+    
+    /**
+     * A link to another page of the same document.
+     */
+    case internalDestination
+    /**
+     * A link to an address (`http`, `https`, `mailto`, ...).
+     */
+    case uri
+    /**
+     * A link to another document.
+     */
+    case externalDestination
+    /**
+     * An action that opens a file or starts a program.
+     */
+    case launchFile
+    /**
+     * An action that runs JavaScript.
+     */
+    case javaScript
+    /**
+     * An action that sends the content of a form to a server.
+     */
+    case formSubmission
+    /**
+     * An action that imports data into the document.
+     */
+    case importData
+    /**
+     * An action that runs a named action.
+     */
+    case namedAction
+    /**
+     * An action that resets a form.
+     */
+    case resetForm
+    /**
+     * An action that hides annotations.
+     */
+    case hideAnnotations
+    /**
+     * A media action (`/Movie`, `/Sound`, `/Rendition`).
+     */
+    case media
+    /**
+     * An action that changes the state of the layers.
+     */
+    case layerState
+    /**
+     * An action of an unknown type.
+     */
+    case other(String
+    )
+}
+
+
+#if compiler(>=6)
+extension FfiPdfActionKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfActionKind: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPdfActionKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfActionKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .internalDestination
+        
+        case 2: return .uri
+        
+        case 3: return .externalDestination
+        
+        case 4: return .launchFile
+        
+        case 5: return .javaScript
+        
+        case 6: return .formSubmission
+        
+        case 7: return .importData
+        
+        case 8: return .namedAction
+        
+        case 9: return .resetForm
+        
+        case 10: return .hideAnnotations
+        
+        case 11: return .media
+        
+        case 12: return .layerState
+        
+        case 13: return .other(try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiPdfActionKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .internalDestination:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .uri:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .externalDestination:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .launchFile:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .javaScript:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .formSubmission:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .importData:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .namedAction:
+            writeInt(&buf, Int32(8))
+        
+        
+        case .resetForm:
+            writeInt(&buf, Int32(9))
+        
+        
+        case .hideAnnotations:
+            writeInt(&buf, Int32(10))
+        
+        
+        case .media:
+            writeInt(&buf, Int32(11))
+        
+        
+        case .layerState:
+            writeInt(&buf, Int32(12))
+        
+        
+        case let .other(v1):
+            writeInt(&buf, Int32(13))
+            FfiConverterString.write(v1, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfActionKind_lift(_ buf: RustBuffer) throws -> FfiPdfActionKind {
+    return try FfiConverterTypeFfiPdfActionKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfActionKind_lower(_ value: FfiPdfActionKind) -> RustBuffer {
+    return FfiConverterTypeFfiPdfActionKind.lower(value)
+}
+
+
+extension FfiPdfActionKind: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Recovery action choices crossing the UniFFI boundary (`ROADMAP.md` M0.6, `RECOVERY-001` Preset).
  */
 
@@ -6616,6 +7040,30 @@ extension FfiScanPixelFormat: Equatable, Hashable {}
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = UInt32?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt32.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt32.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
     typealias SwiftType = Int64?
 
@@ -7131,6 +7579,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPageWord: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiPdfActionInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPdfActionInfo]
+
+    public static func write(_ value: [FfiPdfActionInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPdfActionInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPdfActionInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPdfActionInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPdfActionInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
     typealias SwiftType = [FfiPdfRectMilliPt]
 
@@ -7522,6 +7995,21 @@ public func documentCoreIngestScanAsDocumentSession(scanSessionId: String, clean
         FfiConverterTypeFfiScanCleanupProfile_lower(cleanupProfile),
         FfiConverterSequenceString.lower(languages),
         FfiConverterString.lower(displayName),$0
+    )
+})
+}
+/**
+ * Inspects the links and actions of the document of `session_id`
+ * (`INSPECT-001`).
+ *
+ * The report is the basis of the "before you click" view of the professional
+ * review: the user sees where a link leads, and the shell can mark the
+ * actions that run code, open a file or send data out of the document.
+ */
+public func documentCoreInspectDocument(sessionId: String)throws  -> FfiDocumentInspection  {
+    return try  FfiConverterTypeFfiDocumentInspection_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_inspect_document(
+        FfiConverterString.lower(sessionId),$0
     )
 })
 }
@@ -8172,6 +8660,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 39983) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879) {

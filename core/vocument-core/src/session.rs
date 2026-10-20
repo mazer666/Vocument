@@ -5,6 +5,7 @@
 //! `PageLabelCatalog`, and progressive `SessionSearchIndex`.
 
 use crate::config::PerformanceBudgetsConfig;
+use crate::document_inspection::DocumentInspection;
 use crate::file_broker::{BrokeredFileRead, FileAccessOrigin, FileBroker, FileBrokerError};
 use crate::identity::{DocumentId, FileIdentity, FileIdentityComparison, SessionId};
 use crate::jobs::{JobKind, JobManager, JobPriority};
@@ -474,6 +475,18 @@ impl SessionRegistry {
     ) -> Result<PdfPageStructuredText, SessionError> {
         let actor = self.session_actor_and_meta(session_id)?.0;
         Ok(actor.extract_page_text(page_index)?)
+    }
+
+    /// Inspects the links and actions of the document (`INSPECT-001`).
+    ///
+    /// The report tells the user where a link leads and whether the document
+    /// does something besides showing pages — a script, a file that is
+    /// started, a form that is sent away. The risk policy lives in the core,
+    /// the engine only reports the facts.
+    pub fn inspect_document(&self, session_id: &str) -> Result<DocumentInspection, SessionError> {
+        let actor = self.session_actor_and_meta(session_id)?.0;
+        let actions = actor.document_actions()?;
+        Ok(DocumentInspection::from_actions(actions))
     }
 
     /// Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around

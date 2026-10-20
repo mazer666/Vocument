@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification** (implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md)).
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification** and **M2.2 — link and action inspection** (both implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md) and [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -476,7 +476,7 @@ The parts that need a device or a macOS host remain open and are documented as
 
 ---
 
-# M2 — macOS Professional Review *(Started — M2.1 done)*
+# M2 — macOS Professional Review *(Started — M2.1 and M2.2 done)*
 
 ## Purpose
 
@@ -513,9 +513,11 @@ Delivered:
 
 - the engine removes the content of the region — text, invisible OCR text,
   images and line art — instead of covering it with a rectangle
-- the core verifies the removal three times: the text is no longer
-  extractable, the search no longer finds it, and it is no longer in the bytes
-  of the file
+- the core verifies the removal four times: the text is no longer
+  extractable, the search no longer finds it, the rendered page no longer
+  shows it, and it is no longer in the bytes of the file
+- a removal that cannot be verified in every respect is refused — there is no
+  way to treat an unverified redaction as a success
 - the removal is reported: the text that was removed is handed back to the
   interface, so the user sees what the redaction did before saving
 - a redaction cannot be undone; the undo is refused explicitly, and the
@@ -525,7 +527,28 @@ Delivered:
 
 Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md).
 
-Open in M2: the remaining eight functions, the macOS interface, and the
+## M2.2 — Link- und Aktionsprüfung *(Implemented, host-verified)*
+
+The second cut of M2. Before a user follows a link in a document, a reviewer
+wants to know where the link leads — and whether the link does something
+besides opening a page. A link that runs a script, starts a file or sends a
+form away is not a link, it is an action of the document.
+
+Delivered:
+
+- the engine reports the actions of the document: the links of every page with
+  their position in the page space of the engine, their type and their target
+- the action that runs when the document is opened is reported as well — it is
+  the one that happens without the user asking for it
+- the core applies the risk policy: a script, a started file, a submitted form
+  and an imported data set are risky; a link to a local file or to the network
+  is risky as well, because it leaves the machine
+- the report is available over the FFI boundary, so the application can show
+  the finding before the user clicks
+
+Evidence: [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md).
+
+Open in M2: the remaining seven functions, the macOS interface, and the
 interoperability gate with the tools of other vendors.
 
 ---
