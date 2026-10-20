@@ -12,6 +12,7 @@ pub mod power_dto;
 pub mod recovery_dto;
 pub mod redaction_dto;
 pub mod render_dto;
+pub mod rendered_page_reader;
 pub mod save_dto;
 pub mod scan_dto;
 pub mod session_dto;
@@ -33,6 +34,7 @@ pub use mutation_dto::{
     document_core_restore_transaction_journal_json, document_core_rotate_pages,
     document_core_transaction_history, document_core_undo,
 };
+pub use navigation_search_dto::FfiPageWord;
 pub use navigation_search_dto::{
     FfiPageDescriptor, FfiPageLabelRange, FfiPageLabelStyle, FfiPdfRectMilliPt,
     FfiRenderedThumbnail, FfiSearchHit, FfiSearchIndexProgress, FfiSearchResponse,
@@ -80,8 +82,10 @@ uniffi::setup_scaffolding!("vocument_ffi");
 static GLOBAL_SESSION_REGISTRY: OnceLock<SessionRegistry> = OnceLock::new();
 
 pub(crate) fn session_registry() -> &'static SessionRegistry {
-    GLOBAL_SESSION_REGISTRY
-        .get_or_init(|| SessionRegistry::new(Box::new(MuPdfEngineAdapter::new())))
+    GLOBAL_SESSION_REGISTRY.get_or_init(|| {
+        SessionRegistry::new(Box::new(MuPdfEngineAdapter::new()))
+            .with_rendered_page_reader(rendered_page_reader::default_rendered_page_reader())
+    })
 }
 
 /// Error type crossing the UniFFI boundary from `DocumentCore`.
@@ -99,10 +103,14 @@ pub enum DocumentCoreError {
     SessionNotFound { session_id: String },
     #[error("the document is not stored locally and cannot be saved in place: {details}")]
     DocumentNotLocallyWritable { details: String },
-    /// The redaction could not be carried out or could not be verified
-    /// (`REDACT-001`).
+    /// The redaction could not be carried out (`REDACT-001`).
     #[error("redaction failed: {details}")]
     RedactionFailure { details: String },
+    /// The redaction was carried out, but it could not be verified in every
+    /// respect (`REDACT-002`). The document must not be presented as
+    /// redacted.
+    #[error("the redaction could not be verified: {details}")]
+    RedactionUnverified { details: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
@@ -154,8 +162,13 @@ impl From<SessionError> for DocumentCoreError {
                     "session {session_id} lives in a platform document provider; export it to a location the user owns"
                 ),
             },
-            SessionError::Redaction(redaction_err) => Self::RedactionFailure {
-                details: redaction_err.to_string(),
+            SessionError::Redaction(redaction_err) => match redaction_err {
+                vocument_core::redaction::RedactionError::VerificationFailed { details } => {
+                    Self::RedactionUnverified { details }
+                }
+                other => Self::RedactionFailure {
+                    details: other.to_string(),
+                },
             },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
@@ -332,6 +345,33 @@ pub fn document_core_render_page_thumbnail(
 pub fn document_core_thumbnail_cache_stats() -> Result<FfiThumbnailCacheStats, DocumentCoreError> {
     let stats = session_registry().thumbnail_cache_stats()?;
     Ok(stats.into())
+}
+
+/// Returns the words of `page_index` with their boxes (`REDACT-001`).
+///
+/// The words are what a professional review picks: the application redacts
+/// exactly the boxes of the words that the user has chosen.
+#[uniffi::export]
+pub fn document_core_page_words(
+    session_id: String,
+    page_index: u32,
+) -> Result<Vec<FfiPageWord>, DocumentCoreError> {
+    let registry = session_registry();
+    let structured = registry.page_text(&session_id, page_index)?;
+    let words = structured
+        .words
+        .iter()
+        .map(|word| FfiPageWord {
+            text: word.text.clone(),
+            rect: FfiPdfRectMilliPt {
+                x0_milli_pt: word.bbox.x0_milli_pt,
+                y0_milli_pt: word.bbox.y0_milli_pt,
+                x1_milli_pt: word.bbox.x1_milli_pt,
+                y1_milli_pt: word.bbox.y1_milli_pt,
+            },
+        })
+        .collect();
+    Ok(words)
 }
 
 /// Selects text on `page_index` (either full-page when `selection_rect` is `None`, or intersecting `selection_rect`),

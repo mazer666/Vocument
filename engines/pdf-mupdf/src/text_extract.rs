@@ -3,7 +3,7 @@
 use crate::c_buf_to_optional_string;
 use std::os::raw::{c_char, c_int, c_uchar};
 use vocument_core::pdf_engine::{
-    PdfEngineError, PdfPageStructuredText, PdfRectMilliPt, PdfTextLine,
+    PdfEngineError, PdfPageStructuredText, PdfRectMilliPt, PdfTextLine, PdfTextWord,
 };
 
 #[repr(C)]
@@ -30,6 +30,29 @@ impl Default for RawMuPdfTextLine {
     }
 }
 
+/// A word of a line, as reported by the engine.
+#[repr(C)]
+#[derive(Clone)]
+struct RawMuPdfTextWord {
+    x0_milli_pt: c_int,
+    y0_milli_pt: c_int,
+    x1_milli_pt: c_int,
+    y1_milli_pt: c_int,
+    text: [c_char; 128],
+}
+
+impl Default for RawMuPdfTextWord {
+    fn default() -> Self {
+        Self {
+            x0_milli_pt: 0,
+            y0_milli_pt: 0,
+            x1_milli_pt: 0,
+            y1_milli_pt: 0,
+            text: [0; 128],
+        }
+    }
+}
+
 unsafe extern "C" {
     fn vocument_mupdf_query_page_label(
         bytes: *const c_uchar,
@@ -46,6 +69,9 @@ unsafe extern "C" {
         out_lines: *mut RawMuPdfTextLine,
         max_lines: usize,
         out_line_count: *mut usize,
+        out_words: *mut RawMuPdfTextWord,
+        max_words: usize,
+        out_word_count: *mut usize,
         out_label_buf: *mut c_char,
         out_label_cap: usize,
         err_buf: *mut c_char,
@@ -54,6 +80,7 @@ unsafe extern "C" {
 }
 
 const MAX_LINES_PER_PAGE: usize = 2048;
+const MAX_WORDS_PER_PAGE: usize = 16384;
 
 pub fn query_embedded_page_label(
     pdf_bytes: &[u8],
@@ -114,7 +141,9 @@ pub fn extract_structured_page_text(
         })?;
 
     let mut raw_lines = vec![RawMuPdfTextLine::default(); MAX_LINES_PER_PAGE];
+    let mut raw_words = vec![RawMuPdfTextWord::default(); MAX_WORDS_PER_PAGE];
     let mut line_count: usize = 0;
+    let mut word_count: usize = 0;
     let mut label_buf = [0 as c_char; 128];
     let mut err_buf = [0 as c_char; 512];
 
@@ -127,6 +156,9 @@ pub fn extract_structured_page_text(
             raw_lines.as_mut_ptr(),
             raw_lines.len(),
             &raw mut line_count,
+            raw_words.as_mut_ptr(),
+            raw_words.len(),
+            &raw mut word_count,
             label_buf.as_mut_ptr(),
             label_buf.len(),
             err_buf.as_mut_ptr(),
@@ -137,6 +169,26 @@ pub fn extract_structured_page_text(
     match status {
         0 => {
             let capped = line_count.min(raw_lines.len());
+            let capped_words = word_count.min(raw_words.len());
+            let all_words: Vec<PdfTextWord> = raw_words
+                .iter()
+                .take(capped_words)
+                .filter_map(|raw| {
+                    let text = c_buf_to_optional_string(&raw.text).unwrap_or_default();
+                    if text.trim().is_empty() {
+                        return None;
+                    }
+                    Some(PdfTextWord {
+                        text,
+                        bbox: PdfRectMilliPt {
+                            x0_milli_pt: raw.x0_milli_pt,
+                            y0_milli_pt: raw.y0_milli_pt,
+                            x1_milli_pt: raw.x1_milli_pt,
+                            y1_milli_pt: raw.y1_milli_pt,
+                        },
+                    })
+                })
+                .collect();
             let mut lines = Vec::with_capacity(capped);
             for raw in raw_lines.iter().take(capped) {
                 let text = c_buf_to_optional_string(&raw.text).unwrap_or_default();
@@ -155,6 +207,7 @@ pub fn extract_structured_page_text(
                 page_index,
                 embedded_page_label: c_buf_to_optional_string(&label_buf),
                 lines,
+                words: all_words,
             })
         }
         4 => Err(PdfEngineError::PageOutOfBounds {

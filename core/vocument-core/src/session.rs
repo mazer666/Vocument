@@ -10,8 +10,8 @@ use crate::identity::{DocumentId, FileIdentity, FileIdentityComparison, SessionI
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::navigation::{PageDescriptor, PageLabelCatalog, PageLabelRange, PageNavigationError};
 use crate::pdf_engine::{
-    PdfDocumentSummary, PdfEngine, PdfEngineError, PdfPageGeometry, PdfRectMilliPt,
-    PdfTileRenderRequest,
+    PdfDocumentSummary, PdfEngine, PdfEngineError, PdfPageGeometry, PdfPageStructuredText,
+    PdfRectMilliPt, PdfTileRenderRequest,
 };
 use crate::render::{DocumentActor, RenderPipeline, RenderPipelineError, ViewportRenderResult};
 use crate::search_index::{
@@ -129,6 +129,12 @@ pub struct SessionRegistry {
     pub(crate) pdf_engine: Box<dyn PdfEngine>,
     pub(crate) file_broker: Arc<dyn FileBroker>,
     pub(crate) recovery_store: Arc<crate::recovery::RecoveryStore>,
+    /// Reads the words that are readable on a rendered page (`REDACT-002`).
+    ///
+    /// Without a reader the verification of a redaction cannot cover the
+    /// picture of the page, and such a redaction is reported as *not
+    /// verified* — never as secure.
+    pub(crate) rendered_page_reader: Option<Arc<dyn crate::rendered_page::RenderedPageReader>>,
     job_manager: JobManager,
     render_pipeline: RenderPipeline,
     next_session_number: AtomicU64,
@@ -173,6 +179,7 @@ impl SessionRegistry {
             pdf_engine,
             file_broker,
             recovery_store,
+            rendered_page_reader: None,
             job_manager: JobManager::new(yield_bg),
             render_pipeline: RenderPipeline::with_thumbnail_budget(
                 tile_mb * 1024 * 1024,
@@ -182,6 +189,37 @@ impl SessionRegistry {
             next_session_number: AtomicU64::new(1),
             sessions: Mutex::new(BTreeMap::new()),
         }
+    }
+
+    /// Wires the reader that reads the words on a rendered page.
+    ///
+    /// The platform wires the implementation: the PDF engine renders the
+    /// page, the OCR engine reads the picture (`REDACT-002`).
+    pub fn with_rendered_page_reader(
+        mut self,
+        reader: Arc<dyn crate::rendered_page::RenderedPageReader>,
+    ) -> Self {
+        self.rendered_page_reader = Some(reader);
+        self
+    }
+
+    /// Reads the words that are readable on the rendered page, if a reader is
+    /// wired (`REDACT-002`).
+    pub(crate) fn read_rendered_words(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<Option<Vec<crate::pdf_engine::PdfTextWord>>, SessionError> {
+        let Some(reader) = self.rendered_page_reader.as_ref() else {
+            return Ok(None);
+        };
+        let bytes = self.with_session(session_id, |session| {
+            Ok(session.actor.current_pdf_bytes()?.to_vec())
+        })?;
+        let words = reader
+            .read_rendered_words(&bytes, page_index)
+            .map_err(SessionError::PdfEngine)?;
+        Ok(Some(words))
     }
 
     pub fn file_broker(&self) -> Arc<dyn FileBroker> {
@@ -425,6 +463,17 @@ impl SessionRegistry {
             None => select_all_page_text(&structured),
         };
         Ok(selection)
+    }
+
+    /// Returns the structured text of `page_index` with the boxes of its words
+    /// (`REDACT-001`).
+    pub fn page_text(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<PdfPageStructuredText, SessionError> {
+        let actor = self.session_actor_and_meta(session_id)?.0;
+        Ok(actor.extract_page_text(page_index)?)
     }
 
     /// Progressively indexes up to `max_pages` into the session's SQLite FTS5 index, starting around

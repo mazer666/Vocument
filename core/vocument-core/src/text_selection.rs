@@ -152,6 +152,7 @@ mod tests {
         let page = PdfPageStructuredText {
             page_index: 1,
             embedded_page_label: Some("ii".to_owned()),
+            words: vec![],
             lines: vec![
                 PdfTextLine {
                     bbox: dummy_bbox(100_000),

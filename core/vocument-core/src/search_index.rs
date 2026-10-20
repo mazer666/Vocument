@@ -318,6 +318,7 @@ mod tests {
         PdfPageStructuredText {
             page_index,
             embedded_page_label: Some(label.to_owned()),
+            words: vec![],
             lines: vec![PdfTextLine {
                 bbox: PdfRectMilliPt {
                     x0_milli_pt: 72_000,

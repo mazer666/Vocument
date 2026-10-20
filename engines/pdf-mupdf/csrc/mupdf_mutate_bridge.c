@@ -585,11 +585,21 @@ int vocument_mupdf_redact_page_regions(
 
             pdf_redact_options opts;
             memset(&opts, 0, sizeof(opts));
-            /* The area is painted black, so that the reader sees what was
-               removed. The content under it is removed anyway. */
-            opts.black_boxes = 1;
-            /* Images that reach into the area are removed completely. */
-            opts.image_method = PDF_REDACT_IMAGE_REMOVE_UNLESS_INVISIBLE;
+            /* No black box over the removed region. The box would hide
+               content that survived the removal, and the verification has to
+               see the truth: the picture of the page is rendered and read,
+               and a covered region would look empty even when the pixels
+               under it are still there. The removed region is blank in the
+               image data and empty in the text layer — the picture of the
+               page shows what is really left. */
+            opts.black_boxes = 0;
+            /* The pixels of the image that lie in the area are replaced.
+               The image itself survives, so the page stays readable, and the
+               original pixels are gone — they are not covered by a drawn
+               rectangle but replaced in the image data. Removing the whole
+               image would destroy the page, keeping it unchanged would leave
+               the content readable. */
+            opts.image_method = PDF_REDACT_IMAGE_PIXELS;
             /* Line art that is touched by the area is removed. */
             opts.line_art = PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED;
             /* The text is removed — not hidden. This is the secure option;

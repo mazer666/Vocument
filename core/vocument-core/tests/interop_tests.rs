@@ -128,6 +128,7 @@ impl PdfEngineDocument for MockPdfDocument {
         Ok(PdfPageStructuredText {
             page_index,
             embedded_page_label: None,
+            words: vec![],
             lines: vec![],
         })
     }

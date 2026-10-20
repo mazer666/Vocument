@@ -397,6 +397,36 @@ if ! grep -q "PDF_REDACT_TEXT_REMOVE" engines/pdf-mupdf/csrc/mupdf_mutate_bridge
   echo "ERROR (M2.1 Gate): the redaction does not remove the text of the region!" >&2
   exit 1
 fi
+if ! grep -q "PDF_REDACT_IMAGE_PIXELS" engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c; then
+  echo "ERROR (M2.1 Gate): the redaction does not replace the pixels of the image in the region!" >&2
+  exit 1
+fi
+if ! grep -q "opts.black_boxes = 0" engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c; then
+  echo "ERROR (M2.1 Gate): the redaction must not cover the region with a black box — the box would hide content that survived the removal!" >&2
+  exit 1
+fi
+if ! grep -q "rendered_page_clean" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): the redaction is not verified against the picture of the page!" >&2
+  exit 1
+fi
+if ! grep -q "RenderedPageReader" core/vocument-core/src/rendered_page.rs; then
+  echo "ERROR (M2.1 Gate): the core has no port for the picture of the page!" >&2
+  exit 1
+fi
+if ! grep -q "RedactionUnverified" platform/vocument-ffi/src/redaction_dto.rs; then
+  echo "ERROR (M2.1 Gate): an unverified redaction must be refused over the FFI boundary!" >&2
+  exit 1
+fi
+if ! grep -q "a_redaction_replaces_the_pixels_of_the_image_instead_of_covering_them" \
+    engines/pdf-mupdf/src/redaction_image_tests.rs; then
+  echo "ERROR (M2.1 Gate): no test that the pixels of the image are replaced instead of covered!" >&2
+  exit 1
+fi
+if ! grep -q "the_redacted_region_is_empty_in_the_picture_of_the_page" \
+    engines/pdf-mupdf/src/redaction_image_tests.rs; then
+  echo "ERROR (M2.1 Gate): no test that the redacted region is empty in the picture of the page!" >&2
+  exit 1
+fi
 if ! grep -q "a_redaction_removes_the_text_of_the_region_from_the_document" \
     engines/pdf-mupdf/src/mutate.rs; then
   echo "ERROR (M2.1 Gate): the engine has no test that the text of the region is removed!" >&2

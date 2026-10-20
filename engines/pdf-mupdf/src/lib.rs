@@ -3,10 +3,13 @@
 //! No UI layer may depend on this crate directly.
 
 pub mod mutate;
+pub mod render_page;
 pub mod text_extract;
 
 #[cfg(test)]
 mod difficult_tests;
+#[cfg(test)]
+mod redaction_image_tests;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
@@ -14,8 +17,8 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfRectMilliPt, PdfTileBitmap,
-    PdfTileRenderRequest,
+    PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt,
+    PdfTileBitmap, PdfTileRenderRequest,
 };
 
 /// Identifier prefix of the PDF engine adapter.
@@ -394,6 +397,19 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         )?;
         self.pdf_bytes = updated.clone();
         Ok(updated)
+    }
+
+    fn render_page_gray(
+        &self,
+        page_index: u32,
+        scale_milli: u32,
+    ) -> Result<PdfPageRaster, PdfEngineError> {
+        render_page::render_page_gray(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+            scale_milli,
+        )
     }
 }
 

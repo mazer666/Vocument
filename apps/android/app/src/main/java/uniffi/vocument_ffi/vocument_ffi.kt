@@ -857,6 +857,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -957,6 +959,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_page_geometry(
 fun uniffi_vocument_ffi_checksum_func_document_core_page_highlight_annotations(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_words(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_power_limits(
 ): Short
@@ -1149,6 +1153,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_page_highlight_annotations(`sessio
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+fun uniffi_vocument_ffi_fn_func_document_core_page_words(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_power_limits(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_redact_page_regions(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`regions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1464,10 +1470,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_words() != 4786.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 8342.toShort()) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 61983.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555.toShort()) {
@@ -2807,6 +2816,52 @@ public object FfiConverterTypeFfiPageLabelRange: FfiConverterRustBuffer<FfiPageL
 
 
 /**
+ * A word of a page with its box (`REDACT-001`).
+ *
+ * The words are the unit a professional review works with: the user picks
+ * the words that shall be removed, and the application redacts exactly
+ * these boxes.
+ */
+data class FfiPageWord (
+    /**
+     * The word as it stands in the document.
+     */
+    var `text`: kotlin.String, 
+    /**
+     * The box of the word in the page space of the engine: milli-points,
+     * origin at the top left of the page, y descending.
+     */
+    var `rect`: FfiPdfRectMilliPt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageWord: FfiConverterRustBuffer<FfiPageWord> {
+    override fun read(buf: ByteBuffer): FfiPageWord {
+        return FfiPageWord(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageWord) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`rect`)
+    )
+
+    override fun write(value: FfiPageWord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+    }
+}
+
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 data class FfiPdfDocumentSummary (
@@ -3268,9 +3323,9 @@ public object FfiConverterTypeFfiRecoveryActionResult: FfiConverterRustBuffer<Ff
 /**
  * A region of a page whose content shall be removed (`REDACT-001`).
  *
- * The coordinates are in PDF user space, in milli-points, with the origin at
- * the lower left of the page — the same space in which the bounding box of a
- * text line is reported.
+ * The coordinates are in the page space of the engine: milli-points, origin
+ * at the top left of the page, y descending — the same space in which the
+ * bounding box of a text word and the rendered page are reported.
  */
 data class FfiRedactionRegion (
     var `x0MilliPt`: kotlin.Int, 
@@ -3325,25 +3380,29 @@ data class FfiRedactionReport (
      */
     var `regionCount`: kotlin.UInt, 
     /**
-     * The text that lay under the regions.
+     * The words that lay under the regions.
      */
-    var `removedFragments`: List<kotlin.String>, 
+    var `removedWords`: List<kotlin.String>, 
     /**
-     * The number of text fragments that were removed.
+     * The number of words that were removed.
      */
-    var `removedFragmentCount`: kotlin.UInt, 
+    var `removedWordCount`: kotlin.UInt, 
     /**
-     * The text is no longer extractable from the page.
+     * The words are no longer extractable from the text layer of the page.
      */
-    var `textExtractionClean`: kotlin.Boolean, 
+    var `textLayerClean`: FfiRedactionCheck, 
     /**
-     * The text is no longer found by the search over the document.
+     * The words are no longer found by the search over the document.
      */
-    var `searchIndexClean`: kotlin.Boolean, 
+    var `searchIndexClean`: FfiRedactionCheck, 
     /**
-     * The text is no longer present in the bytes of the file as plain text.
+     * The words are no longer readable on the rendered page.
      */
-    var `fileBytesClean`: kotlin.Boolean, 
+    var `renderedPageClean`: FfiRedactionCheck, 
+    /**
+     * The words are no longer present in the bytes of the file as plain text.
+     */
+    var `fileBytesClean`: FfiRedactionCheck, 
     /**
      * The removal was verified in every respect.
      */
@@ -3367,9 +3426,10 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterUInt.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterUInt.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterBoolean.read(buf),
+            FfiConverterTypeFfiRedactionCheck.read(buf),
+            FfiConverterTypeFfiRedactionCheck.read(buf),
+            FfiConverterTypeFfiRedactionCheck.read(buf),
+            FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterULong.read(buf),
         )
@@ -3378,11 +3438,12 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
     override fun allocationSize(value: FfiRedactionReport) = (
             FfiConverterUInt.allocationSize(value.`pageIndex`) +
             FfiConverterUInt.allocationSize(value.`regionCount`) +
-            FfiConverterSequenceString.allocationSize(value.`removedFragments`) +
-            FfiConverterUInt.allocationSize(value.`removedFragmentCount`) +
-            FfiConverterBoolean.allocationSize(value.`textExtractionClean`) +
-            FfiConverterBoolean.allocationSize(value.`searchIndexClean`) +
-            FfiConverterBoolean.allocationSize(value.`fileBytesClean`) +
+            FfiConverterSequenceString.allocationSize(value.`removedWords`) +
+            FfiConverterUInt.allocationSize(value.`removedWordCount`) +
+            FfiConverterTypeFfiRedactionCheck.allocationSize(value.`textLayerClean`) +
+            FfiConverterTypeFfiRedactionCheck.allocationSize(value.`searchIndexClean`) +
+            FfiConverterTypeFfiRedactionCheck.allocationSize(value.`renderedPageClean`) +
+            FfiConverterTypeFfiRedactionCheck.allocationSize(value.`fileBytesClean`) +
             FfiConverterBoolean.allocationSize(value.`verified`) +
             FfiConverterULong.allocationSize(value.`revision`)
     )
@@ -3390,11 +3451,12 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
     override fun write(value: FfiRedactionReport, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`pageIndex`, buf)
             FfiConverterUInt.write(value.`regionCount`, buf)
-            FfiConverterSequenceString.write(value.`removedFragments`, buf)
-            FfiConverterUInt.write(value.`removedFragmentCount`, buf)
-            FfiConverterBoolean.write(value.`textExtractionClean`, buf)
-            FfiConverterBoolean.write(value.`searchIndexClean`, buf)
-            FfiConverterBoolean.write(value.`fileBytesClean`, buf)
+            FfiConverterSequenceString.write(value.`removedWords`, buf)
+            FfiConverterUInt.write(value.`removedWordCount`, buf)
+            FfiConverterTypeFfiRedactionCheck.write(value.`textLayerClean`, buf)
+            FfiConverterTypeFfiRedactionCheck.write(value.`searchIndexClean`, buf)
+            FfiConverterTypeFfiRedactionCheck.write(value.`renderedPageClean`, buf)
+            FfiConverterTypeFfiRedactionCheck.write(value.`fileBytesClean`, buf)
             FfiConverterBoolean.write(value.`verified`, buf)
             FfiConverterULong.write(value.`revision`, buf)
     }
@@ -4320,10 +4382,22 @@ sealed class DocumentCoreException: kotlin.Exception() {
     }
     
     /**
-     * The redaction could not be carried out or could not be verified
-     * (`REDACT-001`).
+     * The redaction could not be carried out (`REDACT-001`).
      */
     class RedactionFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    /**
+     * The redaction was carried out, but it could not be verified in every
+     * respect (`REDACT-002`). The document must not be presented as
+     * redacted.
+     */
+    class RedactionUnverified(
         
         val `details`: kotlin.String
         ) : DocumentCoreException() {
@@ -4414,22 +4488,25 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             7 -> DocumentCoreException.RedactionFailure(
                 FfiConverterString.read(buf),
                 )
-            8 -> DocumentCoreException.NavigationFailure(
+            8 -> DocumentCoreException.RedactionUnverified(
                 FfiConverterString.read(buf),
                 )
-            9 -> DocumentCoreException.TransactionFailure(
+            9 -> DocumentCoreException.NavigationFailure(
                 FfiConverterString.read(buf),
                 )
-            10 -> DocumentCoreException.SaveFailure(
+            10 -> DocumentCoreException.TransactionFailure(
                 FfiConverterString.read(buf),
                 )
-            11 -> DocumentCoreException.RecoveryFailure(
+            11 -> DocumentCoreException.SaveFailure(
                 FfiConverterString.read(buf),
                 )
-            12 -> DocumentCoreException.ImagingFailure(
+            12 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            13 -> DocumentCoreException.InternalFailure(
+            13 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            14 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4468,6 +4545,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.RedactionFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.RedactionUnverified -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -4541,33 +4623,38 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.NavigationFailure -> {
+            is DocumentCoreException.RedactionUnverified -> {
                 buf.putInt(8)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.TransactionFailure -> {
+            is DocumentCoreException.NavigationFailure -> {
                 buf.putInt(9)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.SaveFailure -> {
+            is DocumentCoreException.TransactionFailure -> {
                 buf.putInt(10)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.RecoveryFailure -> {
+            is DocumentCoreException.SaveFailure -> {
                 buf.putInt(11)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.ImagingFailure -> {
+            is DocumentCoreException.RecoveryFailure -> {
                 buf.putInt(12)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(13)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(14)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -4722,6 +4809,49 @@ public object FfiConverterTypeFfiRecoveryAction: FfiConverterRustBuffer<FfiRecov
     override fun allocationSize(value: FfiRecoveryAction) = 4UL
 
     override fun write(value: FfiRecoveryAction, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * The result of one verification step (`REDACT-002`).
+ */
+
+enum class FfiRedactionCheck {
+    
+    /**
+     * The step was carried out and the content is gone.
+     */
+    PASSED,
+    /**
+     * The step was carried out and the content is still there.
+     */
+    FAILED,
+    /**
+     * The step could not be carried out. It is **not** a pass.
+     */
+    NOT_CHECKED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRedactionCheck: FfiConverterRustBuffer<FfiRedactionCheck> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiRedactionCheck.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiRedactionCheck) = 4UL
+
+    override fun write(value: FfiRedactionCheck, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -5524,6 +5654,34 @@ public object FfiConverterSequenceTypeFfiPageLabelRange: FfiConverterRustBuffer<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiPageWord: FfiConverterRustBuffer<List<FfiPageWord>> {
+    override fun read(buf: ByteBuffer): List<FfiPageWord> {
+        val len = buf.getInt()
+        return List<FfiPageWord>(len) {
+            FfiConverterTypeFfiPageWord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPageWord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPageWord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPageWord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPageWord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<List<FfiPdfRectMilliPt>> {
     override fun read(buf: ByteBuffer): List<FfiPdfRectMilliPt> {
         val len = buf.getInt()
@@ -6246,6 +6404,22 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Returns the words of `page_index` with their boxes (`REDACT-001`).
+         *
+         * The words are what a professional review picks: the application redacts
+         * exactly the boxes of the words that the user has chosen.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageWords`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): List<FfiPageWord> {
+            return FfiConverterSequenceTypeFfiPageWord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_words(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Returns the limits that the current power state implies.
          */
     @Throws(DocumentCoreException::class) fun `documentCorePowerLimits`(): FfiPowerLimits {
@@ -6260,10 +6434,14 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
 
         /**
          * Removes the content of the given regions of a page for good and verifies
-         * the removal (`REDACT-001`).
+         * the removal (`REDACT-001`, `REDACT-002`).
          *
-         * The redaction cannot be undone. The text under the region is removed from
-         * the document, not covered by a black rectangle.
+         * The redaction cannot be undone. The words under the region are removed
+         * from the document, not covered by a black rectangle.
+         *
+         * The function returns an error when the removal could not be verified in
+         * every respect. An unverified redaction must not be presented as a secure
+         * document.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRedactPageRegions`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `regions`: List<FfiRedactionRegion>): FfiRedactionReport {
             return FfiConverterTypeFfiRedactionReport.lift(

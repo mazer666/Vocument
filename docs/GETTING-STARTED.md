@@ -194,7 +194,7 @@ Entscheidung ist ohne Gerät prüfbar.
 | Redaction über die FFI-Grenze | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaktion und Undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Drei Fallen, die schon einmal zugeschlagen haben:**
+**Fünf Fallen, die schon einmal zugeschlagen haben:**
 
 1. **Eine Redaction, die nur überdeckt, ist keine Redaction.** Der Text muss
    aus dem Dokument entfernt werden. MuPDF bietet dafür `PDF_REDACT_TEXT_REMOVE`;
@@ -206,6 +206,19 @@ Entscheidung ist ohne Gerät prüfbar.
 3. **Die Wiederherstellung enthält ältere Stände.** Die Checkpoints des
    Recovery-Stores werden mit der Redaction gelöscht, sonst wäre der Inhalt von
    dort wiederherstellbar.
+4. **Ein Dokument trägt denselben Text zweimal.** Als Textebene und als Pixel
+   im Bild. MuPDF bietet dafür `PDF_REDACT_IMAGE_PIXELS`: die betroffenen
+   Pixel werden ersetzt, der Rest des Bildes bleibt. `PDF_REDACT_IMAGE_REMOVE`
+   würde das ganze Bild löschen und damit die Seite zerstören.
+5. **Ein schwarzer Kasten über der Region macht die Prüfung wertlos.** Er
+   verdeckt genau das, was die Prüfung sehen muss. Die Redaction zeichnet
+   deshalb nichts über die Region (`black_boxes = 0`); die Bildschirmdarstellung
+   zeigt die Wahrheit.
+
+**Die Koordinaten:** die Boxen liegen im Seitenraum der Engine — Millipunkte,
+Ursprung oben links, y nach unten. Das ist derselbe Raum, in dem die Seite
+gezeichnet wird. `PdfRectMilliPt` in `core/vocument-core/src/pdf_engine.rs`
+beschreibt ihn.
 
 Nachweise: `docs/acceptance/M2.1-ACCEPTANCE.md`.
 

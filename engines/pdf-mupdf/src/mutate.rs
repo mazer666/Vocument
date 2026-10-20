@@ -39,7 +39,8 @@ impl Default for RawMuPdfHighlight {
     }
 }
 
-/// A region of a page, in PDF user space, in milli-points.
+/// A region of a page, in the page space of the engine: milli-points, origin
+/// at the top left of the page, y descending.
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct RawMuPdfRect {

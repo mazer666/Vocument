@@ -653,7 +653,17 @@ Professional annotation system with editable jurist preset.
 Secure redaction removes underlying text/OCR/hidden relevant content.
 
 ### REDACT-002
-Verify that redacted content is no longer searchable/extractable. The verification covers three aspects: the text is no longer extractable from the page, the full-text search no longer finds it, and it is no longer present in the bytes of the file as plain text.
+Verify that redacted content is no longer searchable/extractable. The verification covers four aspects: the words are no longer extractable from the text layer of the page, the full-text search no longer finds them, they are no longer readable on the **rendered page**, and they are no longer present in the bytes of the file as plain text.
+
+The check against the rendered page is the decisive one: the page is rendered and read, exactly as a reader sees it. A redaction therefore must not cover the removed region with a drawn box — the box would hide content that survived the removal, and the verification would only see the covering.
+
+A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success.
+
+### REDACT-004a — The pixels of an image are replaced
+A document can carry the same text twice: as a text layer and as pixels in an image. For a scan the text layer is invisible and the picture carries the words. The redaction therefore has to replace the pixels of the image under the region, not cover them. The rest of the image must survive — a redaction may not destroy the page.
+
+### REDACT-004b — Only the words in the region have to disappear
+The verification is word by word. A line in which only one word was redacted keeps its other words, and the removal is not reported as a failure.
 
 ### REDACT-005 — A redaction cannot be undone
 The removed content is gone from the document. An undo that would bring it back would be a lie, so the undo is refused explicitly. The checkpoints of the recovery store, which still hold the bytes of the earlier states of the document, are deleted with the redaction. The persistent journal carries no text of the removed content.

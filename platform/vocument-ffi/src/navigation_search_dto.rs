@@ -160,6 +160,20 @@ impl From<ThumbnailCacheStats> for FfiThumbnailCacheStats {
     }
 }
 
+/// A word of a page with its box (`REDACT-001`).
+///
+/// The words are the unit a professional review works with: the user picks
+/// the words that shall be removed, and the application redacts exactly
+/// these boxes.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FfiPageWord {
+    /// The word as it stands in the document.
+    pub text: String,
+    /// The box of the word in the page space of the engine: milli-points,
+    /// origin at the top left of the page, y descending.
+    pub rect: FfiPdfRectMilliPt,
+}
+
 /// Text selection result containing both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiTextSelectionResult {

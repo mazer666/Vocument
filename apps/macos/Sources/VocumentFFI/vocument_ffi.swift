@@ -2499,6 +2499,97 @@ public func FfiConverterTypeFfiPageLabelRange_lower(_ value: FfiPageLabelRange) 
 
 
 /**
+ * A word of a page with its box (`REDACT-001`).
+ *
+ * The words are the unit a professional review works with: the user picks
+ * the words that shall be removed, and the application redacts exactly
+ * these boxes.
+ */
+public struct FfiPageWord {
+    /**
+     * The word as it stands in the document.
+     */
+    public var text: String
+    /**
+     * The box of the word in the page space of the engine: milli-points,
+     * origin at the top left of the page, y descending.
+     */
+    public var rect: FfiPdfRectMilliPt
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The word as it stands in the document.
+         */text: String, 
+        /**
+         * The box of the word in the page space of the engine: milli-points,
+         * origin at the top left of the page, y descending.
+         */rect: FfiPdfRectMilliPt) {
+        self.text = text
+        self.rect = rect
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageWord: Sendable {}
+#endif
+
+
+extension FfiPageWord: Equatable, Hashable {
+    public static func ==(lhs: FfiPageWord, rhs: FfiPageWord) -> Bool {
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(text)
+        hasher.combine(rect)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageWord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageWord {
+        return
+            try FfiPageWord(
+                text: FfiConverterString.read(from: &buf), 
+                rect: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageWord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWord_lift(_ buf: RustBuffer) throws -> FfiPageWord {
+    return try FfiConverterTypeFfiPageWord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWord_lower(_ value: FfiPageWord) -> RustBuffer {
+    return FfiConverterTypeFfiPageWord.lower(value)
+}
+
+
+/**
  * Basic PDF metadata and page count DTO exposed across UniFFI (`ROADMAP.md` M0.1).
  */
 public struct FfiPdfDocumentSummary {
@@ -3446,9 +3537,9 @@ public func FfiConverterTypeFfiRecoveryActionResult_lower(_ value: FfiRecoveryAc
 /**
  * A region of a page whose content shall be removed (`REDACT-001`).
  *
- * The coordinates are in PDF user space, in milli-points, with the origin at
- * the lower left of the page — the same space in which the bounding box of a
- * text line is reported.
+ * The coordinates are in the page space of the engine: milli-points, origin
+ * at the top left of the page, y descending — the same space in which the
+ * bounding box of a text word and the rendered page are reported.
  */
 public struct FfiRedactionRegion {
     public var x0MilliPt: Int32
@@ -3549,25 +3640,29 @@ public struct FfiRedactionReport {
      */
     public var regionCount: UInt32
     /**
-     * The text that lay under the regions.
+     * The words that lay under the regions.
      */
-    public var removedFragments: [String]
+    public var removedWords: [String]
     /**
-     * The number of text fragments that were removed.
+     * The number of words that were removed.
      */
-    public var removedFragmentCount: UInt32
+    public var removedWordCount: UInt32
     /**
-     * The text is no longer extractable from the page.
+     * The words are no longer extractable from the text layer of the page.
      */
-    public var textExtractionClean: Bool
+    public var textLayerClean: FfiRedactionCheck
     /**
-     * The text is no longer found by the search over the document.
+     * The words are no longer found by the search over the document.
      */
-    public var searchIndexClean: Bool
+    public var searchIndexClean: FfiRedactionCheck
     /**
-     * The text is no longer present in the bytes of the file as plain text.
+     * The words are no longer readable on the rendered page.
      */
-    public var fileBytesClean: Bool
+    public var renderedPageClean: FfiRedactionCheck
+    /**
+     * The words are no longer present in the bytes of the file as plain text.
+     */
+    public var fileBytesClean: FfiRedactionCheck
     /**
      * The removal was verified in every respect.
      */
@@ -3587,20 +3682,23 @@ public struct FfiRedactionReport {
          * The number of regions that were removed.
          */regionCount: UInt32, 
         /**
-         * The text that lay under the regions.
-         */removedFragments: [String], 
+         * The words that lay under the regions.
+         */removedWords: [String], 
         /**
-         * The number of text fragments that were removed.
-         */removedFragmentCount: UInt32, 
+         * The number of words that were removed.
+         */removedWordCount: UInt32, 
         /**
-         * The text is no longer extractable from the page.
-         */textExtractionClean: Bool, 
+         * The words are no longer extractable from the text layer of the page.
+         */textLayerClean: FfiRedactionCheck, 
         /**
-         * The text is no longer found by the search over the document.
-         */searchIndexClean: Bool, 
+         * The words are no longer found by the search over the document.
+         */searchIndexClean: FfiRedactionCheck, 
         /**
-         * The text is no longer present in the bytes of the file as plain text.
-         */fileBytesClean: Bool, 
+         * The words are no longer readable on the rendered page.
+         */renderedPageClean: FfiRedactionCheck, 
+        /**
+         * The words are no longer present in the bytes of the file as plain text.
+         */fileBytesClean: FfiRedactionCheck, 
         /**
          * The removal was verified in every respect.
          */verified: Bool, 
@@ -3609,10 +3707,11 @@ public struct FfiRedactionReport {
          */revision: UInt64) {
         self.pageIndex = pageIndex
         self.regionCount = regionCount
-        self.removedFragments = removedFragments
-        self.removedFragmentCount = removedFragmentCount
-        self.textExtractionClean = textExtractionClean
+        self.removedWords = removedWords
+        self.removedWordCount = removedWordCount
+        self.textLayerClean = textLayerClean
         self.searchIndexClean = searchIndexClean
+        self.renderedPageClean = renderedPageClean
         self.fileBytesClean = fileBytesClean
         self.verified = verified
         self.revision = revision
@@ -3632,16 +3731,19 @@ extension FfiRedactionReport: Equatable, Hashable {
         if lhs.regionCount != rhs.regionCount {
             return false
         }
-        if lhs.removedFragments != rhs.removedFragments {
+        if lhs.removedWords != rhs.removedWords {
             return false
         }
-        if lhs.removedFragmentCount != rhs.removedFragmentCount {
+        if lhs.removedWordCount != rhs.removedWordCount {
             return false
         }
-        if lhs.textExtractionClean != rhs.textExtractionClean {
+        if lhs.textLayerClean != rhs.textLayerClean {
             return false
         }
         if lhs.searchIndexClean != rhs.searchIndexClean {
+            return false
+        }
+        if lhs.renderedPageClean != rhs.renderedPageClean {
             return false
         }
         if lhs.fileBytesClean != rhs.fileBytesClean {
@@ -3659,10 +3761,11 @@ extension FfiRedactionReport: Equatable, Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(pageIndex)
         hasher.combine(regionCount)
-        hasher.combine(removedFragments)
-        hasher.combine(removedFragmentCount)
-        hasher.combine(textExtractionClean)
+        hasher.combine(removedWords)
+        hasher.combine(removedWordCount)
+        hasher.combine(textLayerClean)
         hasher.combine(searchIndexClean)
+        hasher.combine(renderedPageClean)
         hasher.combine(fileBytesClean)
         hasher.combine(verified)
         hasher.combine(revision)
@@ -3680,11 +3783,12 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
             try FfiRedactionReport(
                 pageIndex: FfiConverterUInt32.read(from: &buf), 
                 regionCount: FfiConverterUInt32.read(from: &buf), 
-                removedFragments: FfiConverterSequenceString.read(from: &buf), 
-                removedFragmentCount: FfiConverterUInt32.read(from: &buf), 
-                textExtractionClean: FfiConverterBool.read(from: &buf), 
-                searchIndexClean: FfiConverterBool.read(from: &buf), 
-                fileBytesClean: FfiConverterBool.read(from: &buf), 
+                removedWords: FfiConverterSequenceString.read(from: &buf), 
+                removedWordCount: FfiConverterUInt32.read(from: &buf), 
+                textLayerClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
+                searchIndexClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
+                renderedPageClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
+                fileBytesClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 verified: FfiConverterBool.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf)
         )
@@ -3693,11 +3797,12 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
     public static func write(_ value: FfiRedactionReport, into buf: inout [UInt8]) {
         FfiConverterUInt32.write(value.pageIndex, into: &buf)
         FfiConverterUInt32.write(value.regionCount, into: &buf)
-        FfiConverterSequenceString.write(value.removedFragments, into: &buf)
-        FfiConverterUInt32.write(value.removedFragmentCount, into: &buf)
-        FfiConverterBool.write(value.textExtractionClean, into: &buf)
-        FfiConverterBool.write(value.searchIndexClean, into: &buf)
-        FfiConverterBool.write(value.fileBytesClean, into: &buf)
+        FfiConverterSequenceString.write(value.removedWords, into: &buf)
+        FfiConverterUInt32.write(value.removedWordCount, into: &buf)
+        FfiConverterTypeFfiRedactionCheck.write(value.textLayerClean, into: &buf)
+        FfiConverterTypeFfiRedactionCheck.write(value.searchIndexClean, into: &buf)
+        FfiConverterTypeFfiRedactionCheck.write(value.renderedPageClean, into: &buf)
+        FfiConverterTypeFfiRedactionCheck.write(value.fileBytesClean, into: &buf)
         FfiConverterBool.write(value.verified, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)
     }
@@ -5514,10 +5619,16 @@ public enum DocumentCoreError: Swift.Error {
     case DocumentNotLocallyWritable(details: String
     )
     /**
-     * The redaction could not be carried out or could not be verified
-     * (`REDACT-001`).
+     * The redaction could not be carried out (`REDACT-001`).
      */
     case RedactionFailure(details: String
+    )
+    /**
+     * The redaction was carried out, but it could not be verified in every
+     * respect (`REDACT-002`). The document must not be presented as
+     * redacted.
+     */
+    case RedactionUnverified(details: String
     )
     case NavigationFailure(details: String
     )
@@ -5566,22 +5677,25 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 7: return .RedactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .NavigationFailure(
+        case 8: return .RedactionUnverified(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .TransactionFailure(
+        case 9: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .SaveFailure(
+        case 10: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .RecoveryFailure(
+        case 11: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 12: return .ImagingFailure(
+        case 12: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 13: return .InternalFailure(
+        case 13: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 14: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -5630,33 +5744,38 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .NavigationFailure(details):
+        case let .RedactionUnverified(details):
             writeInt(&buf, Int32(8))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .TransactionFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(9))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .SaveFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .RecoveryFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(12))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(13))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(14))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -6047,6 +6166,95 @@ public func FfiConverterTypeFfiRecoveryAction_lower(_ value: FfiRecoveryAction) 
 
 
 extension FfiRecoveryAction: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The result of one verification step (`REDACT-002`).
+ */
+
+public enum FfiRedactionCheck {
+    
+    /**
+     * The step was carried out and the content is gone.
+     */
+    case passed
+    /**
+     * The step was carried out and the content is still there.
+     */
+    case failed
+    /**
+     * The step could not be carried out. It is **not** a pass.
+     */
+    case notChecked
+}
+
+
+#if compiler(>=6)
+extension FfiRedactionCheck: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRedactionCheck: FfiConverterRustBuffer {
+    typealias SwiftType = FfiRedactionCheck
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRedactionCheck {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .passed
+        
+        case 2: return .failed
+        
+        case 3: return .notChecked
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiRedactionCheck, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .passed:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .notChecked:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionCheck_lift(_ buf: RustBuffer) throws -> FfiRedactionCheck {
+    return try FfiConverterTypeFfiRedactionCheck.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionCheck_lower(_ value: FfiRedactionCheck) -> RustBuffer {
+    return FfiConverterTypeFfiRedactionCheck.lower(value)
+}
+
+
+extension FfiRedactionCheck: Equatable, Hashable {}
 
 
 
@@ -6898,6 +7106,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPageLabelRange: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiPageWord: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPageWord]
+
+    public static func write(_ value: [FfiPageWord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPageWord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPageWord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPageWord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPageWord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiPdfRectMilliPt: FfiConverterRustBuffer {
     typealias SwiftType = [FfiPdfRectMilliPt]
 
@@ -7506,6 +7739,20 @@ public func documentCorePageRotationDegrees(sessionId: String, pageIndex: UInt32
 })
 }
 /**
+ * Returns the words of `page_index` with their boxes (`REDACT-001`).
+ *
+ * The words are what a professional review picks: the application redacts
+ * exactly the boxes of the words that the user has chosen.
+ */
+public func documentCorePageWords(sessionId: String, pageIndex: UInt32)throws  -> [FfiPageWord]  {
+    return try  FfiConverterSequenceTypeFfiPageWord.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_words(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
  * Returns the limits that the current power state implies.
  */
 public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
@@ -7516,10 +7763,14 @@ public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
 }
 /**
  * Removes the content of the given regions of a page for good and verifies
- * the removal (`REDACT-001`).
+ * the removal (`REDACT-001`, `REDACT-002`).
  *
- * The redaction cannot be undone. The text under the region is removed from
- * the document, not covered by a black rectangle.
+ * The redaction cannot be undone. The words under the region are removed
+ * from the document, not covered by a black rectangle.
+ *
+ * The function returns an error when the removal could not be verified in
+ * every respect. An unverified redaction must not be presented as a secure
+ * document.
  */
 public func documentCoreRedactPageRegions(sessionId: String, pageIndex: UInt32, regions: [FfiRedactionRegion])throws  -> FfiRedactionReport  {
     return try  FfiConverterTypeFfiRedactionReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -7977,10 +8228,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees() != 9953) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_words() != 4786) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 8342) {
+    if (uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 61983) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555) {

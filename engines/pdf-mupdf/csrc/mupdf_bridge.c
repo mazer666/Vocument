@@ -404,3 +404,98 @@ void vocument_mupdf_drop_display_list(vocument_mupdf_display_list_handle_t *hand
     }
     free(handle);
 }
+
+/**
+ * Renders a page into a grayscale raster.
+ *
+ * The raster is the picture of the page, exactly as a reader sees it. A
+ * redaction has to be verified against this picture: a document can carry the
+ * same text twice, as a text layer and as pixels in an image (`REDACT-002`).
+ */
+int vocument_mupdf_render_page_gray(
+    const unsigned char *bytes,
+    size_t len,
+    int page_index,
+    int scale_milli,
+    unsigned char **out_pixels,
+    size_t *out_width,
+    size_t *out_height,
+    char *err_buf,
+    size_t err_buf_len
+) {
+    if (!out_pixels || !out_width || !out_height) {
+        return 3;
+    }
+    *out_pixels = NULL;
+    *out_width = 0;
+    *out_height = 0;
+    if (err_buf && err_buf_len > 0) {
+        err_buf[0] = '\0';
+    }
+
+    fz_context *ctx = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
+    if (!ctx) {
+        return 3;
+    }
+
+    fz_stream *stream = NULL;
+    fz_document *doc = NULL;
+    fz_page *page = NULL;
+    fz_pixmap *pixmap = NULL;
+    int status = 0;
+
+    fz_var(stream);
+    fz_var(doc);
+    fz_var(page);
+    fz_var(pixmap);
+    fz_var(status);
+
+    fz_try(ctx) {
+        fz_register_document_handlers(ctx);
+        stream = fz_open_memory(ctx, bytes, len);
+        doc = fz_open_document_with_stream(ctx, "application/pdf", stream);
+
+        int count = fz_count_pages(ctx, doc);
+        if (page_index < 0 || page_index >= count) {
+            status = 4;
+        } else {
+            page = fz_load_page(ctx, doc, page_index);
+            float scale = (scale_milli > 0 ? scale_milli : 1000) / 1000.0f;
+            fz_matrix ctm = fz_scale(scale, scale);
+            pixmap = fz_new_pixmap_from_page(ctx, page, ctm, fz_device_gray(ctx), 0);
+            if (!pixmap || pixmap->w <= 0 || pixmap->h <= 0) {
+                status = 5;
+            } else {
+                size_t needed = (size_t)pixmap->w * (size_t)pixmap->h;
+                unsigned char *copy = (unsigned char *)malloc(needed > 0 ? needed : 1);
+                if (!copy) {
+                    fz_throw(ctx, FZ_ERROR_SYSTEM, "malloc failed for the rendered page");
+                }
+                for (int y = 0; y < pixmap->h; y++) {
+                    const unsigned char *row = pixmap->samples + (size_t)y * pixmap->stride;
+                    memcpy(copy + (size_t)y * (size_t)pixmap->w, row, (size_t)pixmap->w);
+                }
+                *out_pixels = copy;
+                *out_width = (size_t)pixmap->w;
+                *out_height = (size_t)pixmap->h;
+                status = 0;
+            }
+        }
+    }
+    fz_always(ctx) {
+        if (pixmap) fz_drop_pixmap(ctx, pixmap);
+        if (page) fz_drop_page(ctx, page);
+        if (doc) fz_drop_document(ctx, doc);
+        if (stream) fz_drop_stream(ctx, stream);
+    }
+    fz_catch(ctx) {
+        const char *msg = fz_caught_message(ctx);
+        if (msg && err_buf && err_buf_len > 0) {
+            strncpy(err_buf, msg, err_buf_len - 1);
+        }
+        status = 2;
+    }
+
+    fz_drop_context(ctx);
+    return status;
+}

@@ -12,6 +12,7 @@ pub mod pdf_engine;
 pub mod recovery;
 pub mod redaction;
 pub mod render;
+pub mod rendered_page;
 pub mod save;
 pub mod search_index;
 pub mod session;

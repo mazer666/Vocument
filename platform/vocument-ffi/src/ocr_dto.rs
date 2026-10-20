@@ -143,7 +143,7 @@ use std::sync::RwLock;
 
 static CONFIGURED_TESSDATA_PATH: RwLock<Option<String>> = RwLock::new(None);
 
-fn current_tessdata_path() -> Option<std::path::PathBuf> {
+pub(crate) fn current_tessdata_path() -> Option<std::path::PathBuf> {
     CONFIGURED_TESSDATA_PATH
         .read()
         .ok()

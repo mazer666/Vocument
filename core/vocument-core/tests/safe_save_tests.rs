@@ -95,6 +95,7 @@ impl PdfEngineDocument for MockPdfDocument {
             page_index,
             embedded_page_label: None,
             lines: vec![],
+            words: vec![],
         })
     }
     fn create_display_list(

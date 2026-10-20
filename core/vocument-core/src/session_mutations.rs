@@ -402,6 +402,7 @@ mod tests {
             Ok(PdfPageStructuredText {
                 page_index,
                 embedded_page_label: None,
+                words: vec![],
                 lines: Vec::new(),
             })
         }

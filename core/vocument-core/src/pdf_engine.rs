@@ -80,6 +80,16 @@ pub struct PdfTextLine {
     pub ends_paragraph: bool,
 }
 
+/// A word of a text line with its bounding box (`REDACT-001`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfTextWord {
+    /// The word as it stands in the document, without surrounding spaces.
+    pub text: String,
+    /// The box of the word in the page space of the engine: milli-points,
+    /// origin at the top left of the page, y descending.
+    pub bbox: PdfRectMilliPt,
+}
+
 /// Structured text and embedded page label extracted from a single PDF page (`ROADMAP.md` M0.3).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfPageStructuredText {
@@ -87,6 +97,13 @@ pub struct PdfPageStructuredText {
     /// Embedded PDF logical page label (e.g. `"i"`, `"ii"`, `"1"`), if defined in `/PageLabels`.
     pub embedded_page_label: Option<String>,
     pub lines: Vec<PdfTextLine>,
+    /// The words of the page with their own bounding boxes, in reading order.
+    ///
+    /// The word boxes are the ground truth of a redaction: only the words
+    /// that lie in the redacted region have to disappear from the document
+    /// (`REDACT-001`). A line that is only partly redacted keeps its other
+    /// words.
+    pub words: Vec<PdfTextWord>,
 }
 
 /// Request to rasterize a rectangular tile of a page at a given zoom level (`ARCHITECTURE.md` §9).
@@ -108,6 +125,20 @@ pub struct PdfTileBitmap {
     pub height_px: u32,
     pub stride_bytes: u32,
     pub rgba_bytes: Vec<u8>,
+}
+
+/// A grayscale raster of a whole page (`REDACT-002`).
+///
+/// The raster is the picture of the page, exactly as a reader sees it. A
+/// document can carry the same text twice — as a text layer and as pixels in
+/// an image — so a redaction has to be verified against this picture and not
+/// only against the text layer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfPageRaster {
+    pub width_px: u32,
+    pub height_px: u32,
+    /// One byte per pixel, row by row, without padding.
+    pub gray_bytes: Vec<u8>,
 }
 
 /// Standard PDF highlight annotation model (`ROADMAP.md` M0.4, `ANNOT-001`, `INTEROP-002`).
@@ -222,9 +253,10 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// under the region must not be recoverable from the returned bytes. A
     /// black rectangle over the content is not a redaction, it only hides it.
     ///
-    /// The coordinates are in PDF user space, in milli-points, with the origin
-    /// at the lower left of the page — the same space in which
-    /// [`PdfTextLine::bbox`] is reported.
+    /// The coordinates are in the page space of the engine: milli-points,
+    /// origin at the top left of the page, y descending — the same space in
+    /// which the bounding boxes of the text and of the rendered page are
+    /// reported.
     ///
     /// Must only be invoked through `TransactionManager`
     /// (`ROADMAP.md` M2 Gate: redaction extraction/search verification).
@@ -236,6 +268,22 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = (page_index, regions);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support redaction".to_owned(),
+        })
+    }
+
+    /// Renders the whole page into a grayscale raster (`REDACT-002`).
+    ///
+    /// The scale is in milli-units (`1000` = 1.0x / 72 DPI, `2000` = 144 DPI).
+    /// The raster is the picture of the page; it is the proof that a redacted
+    /// region no longer carries readable content.
+    fn render_page_gray(
+        &self,
+        page_index: u32,
+        scale_milli: u32,
+    ) -> Result<PdfPageRaster, PdfEngineError> {
+        let _ = (page_index, scale_milli);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine cannot render pages".to_owned(),
         })
     }
 }
