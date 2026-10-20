@@ -15,6 +15,15 @@ echo "==> Verifying the secure redaction (M2.1): the content is removed, the rem
 cargo test -p vocument-pdf-mupdf redaction_tests
 cargo test -p vocument-ffi --test scan_workflow_e2e_tests a_redaction
 
+echo "==> Verifying the inspection of the links and the actions of a document (M2.2)..."
+cargo test -p vocument-pdf-mupdf inspection_tests
+cargo test -p vocument-core document_inspection
+cargo test -p vocument-ffi --test document_inspection_e2e_tests
+
+echo "==> Verifying the inspection of the attachments and the signatures of a document (M2.3)..."
+cargo test -p vocument-pdf-mupdf attachment_signature_tests
+cargo test -p vocument-ffi --test document_inspection_e2e_tests
+
 echo "==> Generating and verifying UniFFI bindings (Swift & Kotlin)..."
 BINDING_HASH_BEFORE="$(shasum -a 256 apps/macos/Sources/VocumentFFI/* apps/macos/Sources/VocumentFFIHeaders/include/* apps/android/app/src/main/java/uniffi/vocument_ffi/* 2>/dev/null || true)"
 ./scripts/generate-bindings.sh
