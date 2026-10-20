@@ -140,6 +140,7 @@ Zusätzlich, abhängig von der Umgebung:
 |---|---|---|
 | `scripts/verify-android-arm64-pdf.sh` | Die PDF-Engine führt unter ARM64 ein echtes PDF aus (Bildvergleich) | `NOT RUN` |
 | `scripts/verify-android-native-libs.sh` | Auflösbarkeit und 16-KB-Ausrichtung der nativen Bibliotheken | `NOT RUN` |
+| `scripts/verify-android-native-libs.sh --apk <apk>` | dasselbe für die Bibliotheken **im Paket** | `NOT RUN` |
 | `scripts/verify-android-runtime.sh` | Die Anwendung auf einem Gerät/Emulator | `NOT RUN` (bindend für die Abnahme) |
 | `scripts/verify-kotlin-handshake.sh` | Die Kotlin-Seite der FFI-Grenze | `NOT RUN` |
 
@@ -244,6 +245,7 @@ Die Lizenzfrage ist ausführlich in
 - [ ] `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` sind grün
 - [ ] `./scripts/validate-repo.sh` ist grün
 - [ ] `./scripts/verify-android-native-libs.sh` ist grün (**bindend**: sonst startet die App nicht)
+- [ ] `./scripts/verify-android-native-libs.sh --apk <apk>` ist grün (**bindend**: prüft die Bibliotheken *im Paket*, nicht nur im Build-Verzeichnis)
 - [ ] `./scripts/verify-android-arm64-pdf.sh` ist grün (die Engine rendert ein echtes PDF)
 - [ ] `./scripts/verify-android-runtime.sh` ist grün (**bindend**: echtes Gerät oder Emulator)
 - [ ] Die erzeugte APK wurde **entpackt und geprüft** (`unzip -l app.apk | grep lib/`): alle vier nativen Bibliotheken sind vorhanden, keine ist doppelt, keine trägt einen alten Zeitstempel
