@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod cleanup;
+pub mod edges;
 pub mod geometry;
 pub mod perspective;
 
@@ -167,6 +168,13 @@ impl ScanFrame {
 /// Fast document edge and corner detection on an ingested scan frame (`ARCHITECTURE.md` §21).
 pub fn detect_document_edges(frame: &ScanFrame) -> Result<Option<QuadCorners>, ImagingError> {
     frame.validate()?;
+
+    // The outline of a tilted page cannot be found by looking at the centre
+    // row and the centre column alone. The detection works on the boundary of
+    // the page instead, so that a sheared or tilted page is found as well.
+    if let Some(detected) = crate::edges::detect_outline(frame) {
+        return Ok(Some(detected));
+    }
 
     // Sample a 32x32 luminance grid across the frame:
     const GRID_SIZE: usize = 32;
