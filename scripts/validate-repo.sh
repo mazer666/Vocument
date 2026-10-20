@@ -74,6 +74,13 @@ REQUIRED_FILES=(
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md"
+  "docs/acceptance/M1.4b-ACCEPTANCE.md"
+  "docs/acceptance/M1.5-ACCEPTANCE.md"
+  "docs/reports/M1.4b-M1.5-ABSCHLUSSBERICHT.md"
+  "scripts/verify-android-arm64-pdf.sh"
+  "scripts/compare-render-images.py"
+  "scripts/generate-android-render-reference.py"
+  "tests/android/mupdf_bridge_harness.c"
   "archive/baselines/0.1/MANIFEST.sha256"
   "engines/imaging/src/geometry.rs"
   "engines/imaging/src/perspective.rs"
@@ -274,6 +281,35 @@ if ! grep -q "MUPDF_ANDROID_DIR" engines/pdf-mupdf/build.rs; then
   exit 1
 fi
 echo "✓ QA-003: no placeholder PDF engine in the tree; Android links the real MuPDF engine."
+
+# Enforce JOB-010: a submitted job must perform a real core operation. A job
+# body that unconditionally reports success without doing the work is the
+# failure mode this gate protects against.
+if grep -q 'Box::new(|_, _| JobOutcome::Completed)' platform/vocument-ffi/src/job_dto.rs; then
+  echo "ERROR (JOB-010): platform/vocument-ffi/src/job_dto.rs submits a job body that" >&2
+  echo "always reports success without performing a real core operation." >&2
+  exit 1
+fi
+if ! grep -q "build_job_task" platform/vocument-ffi/src/job_dto.rs; then
+  echo "ERROR (JOB-010): platform/vocument-ffi/src/job_dto.rs must build the job" >&2
+  echo "payload from the job kind (see JOB-010 in REQUIREMENTS.md)." >&2
+  exit 1
+fi
+# The worker pool must not panic in production paths. The test modules are
+# excluded: `expect` is the idiomatic way to fail a test.
+if grep -n 'expect(' core/vocument-core/src/jobs/executor.rs \
+  | grep -vE 'executor\.rs:(4[89][0-9]|[5-9][0-9][0-9]):' | grep -q .; then
+  echo "ERROR (JOB-010): the job manager must not use expect() in production code." >&2
+  grep -n 'expect(' core/vocument-core/src/jobs/executor.rs >&2
+  exit 1
+fi
+if grep -n 'expect(' core/vocument-core/src/jobs/scheduler.rs \
+  | grep -vE 'scheduler\.rs:(4[0-9][0-9]|[5-9][0-9][0-9]):' | grep -q .; then
+  echo "ERROR (JOB-010): the job manager must not use expect() in production code." >&2
+  grep -n 'expect(' core/vocument-core/src/jobs/scheduler.rs >&2
+  exit 1
+fi
+echo "✓ JOB-010: background jobs perform real core operations; no expect() in the job manager."
 if ! grep -q "compute_character_error_rate" engines/ocr/src/corpus.rs; then
   echo "ERROR (M1.3 Gate): compute_character_error_rate missing in corpus.rs!" >&2
   exit 1
