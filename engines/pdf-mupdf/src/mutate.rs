@@ -450,7 +450,36 @@ pub fn redact_page_regions_in_pdf(
             .unwrap_or_else(|| format!("MuPDF failed to redact the page (status {status})"));
         return Err(PdfEngineError::EngineFailure { details });
     }
-    Ok(updated_bytes)
+
+    // The text of the region is removed from the page. The same text can lie
+    // in other places of the document: in the text of an annotation, in the
+    // value of a form field, in the metadata. Those places are cleaned as
+    // well, otherwise the redaction would leave the removed text in the
+    // document — as readable text of an annotation, for example.
+    let words = redacted_words(pdf_bytes, page_count, page_index, regions);
+    if words.is_empty() {
+        return Ok(updated_bytes);
+    }
+    let (scrubbed, _report) = crate::scrub::scrub_words(&updated_bytes, &words)?;
+    Ok(scrubbed)
+}
+
+/// The words of the page that lie in the given regions.
+fn redacted_words(
+    pdf_bytes: &[u8],
+    page_count: u32,
+    page_index: u32,
+    regions: &[PdfRectMilliPt],
+) -> Vec<String> {
+    let text = match crate::text_extract::extract_structured_page_text(
+        pdf_bytes, page_count, page_index,
+    ) {
+        Ok(text) => text,
+        // The text cannot be read: the redaction itself succeeded, and the
+        // verification reports what is left in the document.
+        Err(_) => return Vec::new(),
+    };
+    vocument_core::pdf_engine::words_in_region(&text.words, regions)
 }
 
 pub fn remove_highlight_annotation_from_pdf(

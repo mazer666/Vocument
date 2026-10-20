@@ -6,6 +6,7 @@ pub mod attach;
 pub mod inspect;
 pub mod mutate;
 pub mod render_page;
+pub mod scrub;
 pub mod text_extract;
 
 #[cfg(test)]
@@ -16,6 +17,10 @@ mod difficult_tests;
 mod inspection_tests;
 #[cfg(test)]
 mod redaction_image_tests;
+#[cfg(test)]
+mod redaction_rotation_tests;
+#[cfg(test)]
+mod scrub_tests;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
@@ -25,7 +30,7 @@ use vocument_core::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSi
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
     PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt,
-    PdfTileBitmap, PdfTileRenderRequest,
+    PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest,
 };
 
 /// Identifier prefix of the PDF engine adapter.
@@ -417,6 +422,25 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
             page_index,
             scale_milli,
         )
+    }
+
+    fn find_word_occurrences(
+        &self,
+        words: &[String],
+    ) -> Result<Vec<PdfTextOccurrence>, PdfEngineError> {
+        scrub::find_word_occurrences(&self.pdf_bytes, words)
+    }
+
+    fn replace_pdf_bytes(&mut self, bytes: Vec<u8>) -> Result<(), PdfEngineError> {
+        // The document is put back as it was before the attempt. The page
+        // count and the format do not change, so the summary stays valid.
+        if bytes.is_empty() {
+            return Err(PdfEngineError::EngineFailure {
+                details: "the document must not become empty".to_owned(),
+            });
+        }
+        self.pdf_bytes = bytes;
+        Ok(())
     }
 
     fn document_actions(&self) -> Result<Vec<PdfActionInfo>, PdfEngineError> {

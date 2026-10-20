@@ -468,6 +468,20 @@ impl TransactionManager {
         Ok(record)
     }
 
+    /// Removes the most recent transaction from the undo stack (`REDACT-002`).
+    ///
+    /// A redaction that cannot be verified is rolled back: the document is put
+    /// back as it was. The attempt must not leave a transaction behind — the
+    /// journal of the recovery store would otherwise replay a redaction that
+    /// never happened.
+    pub fn discard_last_transaction(&mut self) -> Option<TransactionRecord> {
+        let record = self.undo_stack.pop();
+        if record.is_some() {
+            self.redo_stack.clear();
+        }
+        record
+    }
+
     /// Exports a versioned, checksum-verified `PersistentTransactionJournal` (`ARCHITECTURE.md` §§11–12).
     pub fn export_persistent_journal(&self) -> PersistentTransactionJournal {
         let journal_checksum_sha256 = PersistentTransactionJournal::compute_journal_checksum(

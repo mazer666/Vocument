@@ -108,6 +108,58 @@ pub struct PdfPageStructuredText {
     pub words: Vec<PdfTextWord>,
 }
 
+/// A place of the document that still carries a redacted word (`REDACT-002`).
+///
+/// The redaction removes the content of a page. The text can survive in other
+/// places: in the text of an annotation, in the value of a form field, in the
+/// metadata, in the XMP packet, in the content of an embedded file. The engine
+/// reports the places; the core decides what they mean.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfTextOccurrence {
+    /// The kind of the place: `content`, `annotation`, `form`, `attachment`,
+    /// `info` or `xmp`.
+    pub kind: String,
+    /// The page the place lies on, `-1` for the document itself.
+    pub page_index: i32,
+    /// A short description of the place.
+    pub location: String,
+}
+
+/// The result of the removal of the redacted words from the places of a
+/// document that do not lie on the page (`REDACT-002`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfScrubReport {
+    /// The number of annotations whose text was emptied.
+    pub scrubbed_annotations: u32,
+    /// The number of form values that were emptied.
+    pub scrubbed_form_values: u32,
+    /// The number of metadata fields that were cleaned.
+    pub scrubbed_metadata_fields: u32,
+}
+
+/// The words of the page that lie in the given regions.
+///
+/// The centre of a word decides, the same way it decides which words a
+/// redaction removes. The words are the subject of the verification: after
+/// the removal they must not be found in the document any more.
+pub fn words_in_region(words: &[PdfTextWord], regions: &[PdfRectMilliPt]) -> Vec<String> {
+    words
+        .iter()
+        .filter(|word| {
+            let centre_x = (word.bbox.x0_milli_pt + word.bbox.x1_milli_pt) / 2;
+            let centre_y = (word.bbox.y0_milli_pt + word.bbox.y1_milli_pt) / 2;
+            regions.iter().any(|region| {
+                centre_x >= region.x0_milli_pt
+                    && centre_x <= region.x1_milli_pt
+                    && centre_y >= region.y0_milli_pt
+                    && centre_y <= region.y1_milli_pt
+            })
+        })
+        .map(|word| word.text.trim().to_owned())
+        .filter(|text| !text.is_empty())
+        .collect()
+}
+
 /// Request to rasterize a rectangular tile of a page at a given zoom level (`ARCHITECTURE.md` §9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfTileRenderRequest {
@@ -270,6 +322,40 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = (page_index, regions);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support redaction".to_owned(),
+        })
+    }
+
+    /// Replaces the bytes of the document (`REDACT-002`).
+    ///
+    /// A redaction that cannot be verified is rolled back: the document has to
+    /// be the document it was before the attempt. The caller holds the
+    /// previous bytes; the engine puts them back.
+    fn replace_pdf_bytes(&mut self, bytes: Vec<u8>) -> Result<(), PdfEngineError> {
+        let _ = bytes;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine cannot restore the previous bytes".to_owned(),
+        })
+    }
+
+    /// Reports the places of the document that still carry one of the given
+    /// words (`REDACT-002`).
+    ///
+    /// The redaction removes the content of a page. The text can survive in
+    /// other places: in the text of an annotation, in the value of a form
+    /// field, in the metadata, in the XMP packet, in the content of an
+    /// embedded file — and it does not have to be plain text: it can be stored
+    /// as UTF-16 or as the hex string of the UTF-16 bytes.
+    ///
+    /// The engine reports the places, the core decides what they mean. An
+    /// engine that cannot report the places has to say so: a redaction whose
+    /// verification is missing is not a redaction.
+    fn find_word_occurrences(
+        &self,
+        words: &[String],
+    ) -> Result<Vec<PdfTextOccurrence>, PdfEngineError> {
+        let _ = words;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine cannot report the places of a text".to_owned(),
         })
     }
 

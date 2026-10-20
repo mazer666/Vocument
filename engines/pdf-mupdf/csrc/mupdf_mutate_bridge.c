@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mupdf_serialize.h"
+
 typedef struct {
     int page_index;
     int x0_milli_pt;
@@ -22,56 +24,6 @@ void vocument_mupdf_free_bytes(unsigned char *ptr) {
     if (ptr) {
         free(ptr);
     }
-}
-
-static int serialize_pdf_doc_to_malloc(
-    fz_context *ctx,
-    pdf_document *pdf_doc,
-    unsigned char **out_pdf_bytes,
-    size_t *out_pdf_len
-) {
-    fz_buffer *buf = NULL;
-    fz_output *out = NULL;
-    fz_var(buf);
-    fz_var(out);
-
-    fz_try(ctx) {
-        buf = fz_new_buffer(ctx, 4096);
-        out = fz_new_output_with_buffer(ctx, buf);
-        pdf_write_options opts = pdf_default_write_options;
-        opts.do_appearance = 1;
-        opts.reproducible = 1;
-        /* Objects that are no longer referenced are removed. Without this a
-           removed content — the text of a redaction, for example — would stay
-           in the file as an unread object and could still be read from it. */
-        opts.do_garbage = 1;
-        pdf_write_document(ctx, pdf_doc, out, &opts);
-        fz_close_output(ctx, out);
-
-        unsigned char *storage = NULL;
-        size_t storage_len = fz_buffer_storage(ctx, buf, &storage);
-        unsigned char *copied = (unsigned char *)malloc(storage_len > 0 ? storage_len : 1);
-        if (!copied) {
-            fz_throw(ctx, FZ_ERROR_SYSTEM, "malloc failed for serialized PDF buffer");
-        }
-        if (storage_len > 0 && storage) {
-            memcpy(copied, storage, storage_len);
-        }
-        *out_pdf_bytes = copied;
-        *out_pdf_len = storage_len;
-    }
-    fz_always(ctx) {
-        if (out) {
-            fz_drop_output(ctx, out);
-        }
-        if (buf) {
-            fz_drop_buffer(ctx, buf);
-        }
-    }
-    fz_catch(ctx) {
-        fz_rethrow(ctx);
-    }
-    return 0;
 }
 
 static void extract_highlight_struct(
@@ -240,7 +192,7 @@ int vocument_mupdf_rotate_pages(
                 pdf_dict_put_int(ctx, page_obj, PDF_NAME(Rotate), (int64_t)new_deg);
             }
             if (status == 0) {
-                serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
             }
         }
     }
@@ -411,7 +363,7 @@ int vocument_mupdf_add_highlight_annot(
 
             pdf_update_annot(ctx, annot);
             pdf_update_page(ctx, page);
-            serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+            vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
             status = 0;
         }
     }
@@ -495,7 +447,7 @@ int vocument_mupdf_remove_highlight_annot(
                 extract_highlight_struct(ctx, page_index, target, out_removed);
                 pdf_delete_annot(ctx, page, target);
                 pdf_update_page(ctx, page);
-                serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
                 status = 0;
             }
         }
@@ -630,7 +582,7 @@ int vocument_mupdf_redact_page_regions(
 
             if (status == 0) {
                 pdf_update_page(ctx, page);
-                serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
             }
         }
     }

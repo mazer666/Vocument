@@ -12,7 +12,8 @@ use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureI
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
     PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTileRenderRequest,
+    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTextOccurrence,
+    PdfTileRenderRequest,
 };
 use crate::thumbnail_cache::{
     RenderedThumbnail, ThumbnailCache, ThumbnailCacheStats, ThumbnailKey,
@@ -144,6 +145,34 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.document_signatures()?)
+    }
+
+    /// Puts the bytes of the document back (`REDACT-002`).
+    ///
+    /// A redaction that cannot be verified is rolled back: the document has to
+    /// be the document it was before the attempt.
+    pub fn restore_pdf_bytes(&self, bytes: Vec<u8>) -> Result<(), RenderPipelineError> {
+        self.apply_engine_mutation_for_transaction_manager(|doc: &mut dyn PdfEngineDocument| {
+            doc.replace_pdf_bytes(bytes)
+        })
+    }
+
+    /// Reports the places of the document that still carry one of the given
+    /// words (`REDACT-002`).
+    ///
+    /// The verification of a redaction uses the report: the words that were
+    /// removed must not be found in the document any more — not in the text
+    /// layer, not in an annotation, not in a form value, not in the metadata
+    /// and not in an embedded file.
+    pub fn find_word_occurrences(
+        &self,
+        words: &[String],
+    ) -> Result<Vec<PdfTextOccurrence>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.find_word_occurrences(words)?)
     }
 
     /// Extracts structured text lines and bounding boxes for `page_index` (`0`-based) under serialized actor access (`ROADMAP.md` M0.3).

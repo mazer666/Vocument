@@ -313,6 +313,28 @@ impl SessionRegistry {
         f(session)
     }
 
+    /// Grants mutable access to a session (`REDACT-002`).
+    ///
+    /// A redaction that cannot be verified is rolled back. The rollback
+    /// removes the transaction of the attempt from the transaction manager, so
+    /// that the journal of the recovery store does not replay a redaction that
+    /// never happened.
+    pub(crate) fn with_session_mut<T, F>(&self, session_id: &str, f: F) -> Result<T, SessionError>
+    where
+        F: FnOnce(&mut DocumentSession) -> Result<T, SessionError>,
+    {
+        let mut guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get_mut(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        f(session)
+    }
+
     /// Retrieves an immutable snapshot of an existing `DocumentSession`.
     pub fn session_snapshot(
         &self,

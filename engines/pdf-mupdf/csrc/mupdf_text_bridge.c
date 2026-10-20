@@ -1,6 +1,33 @@
 #include <mupdf/fitz.h>
 #include <mupdf/pdf.h>
+#include <math.h>
 #include <string.h>
+
+/* Grows a box so that it contains the given point. */
+static void vocument_grow_box(float *x0, float *y0, float *x1, float *y1, fz_point p)
+{
+    if (p.x < *x0) *x0 = p.x;
+    if (p.x > *x1) *x1 = p.x;
+    if (p.y < *y0) *y0 = p.y;
+    if (p.y > *y1) *y1 = p.y;
+}
+
+/* Grows a box so that it contains the whole character.
+   The four corners of a character are not ordered upper-left, upper-right,
+   lower-left, lower-right on a rotated page: on a page that is turned by 90
+   degrees the "upper" corner lies on the right. Only the smallest and the
+   largest value of each axis are therefore well defined, and the box of a
+   word is the bounding box of all of its characters. A box that is built
+   from the upper-left and the lower-right corner alone becomes inverted on
+   such a page — and an inverted box matches nothing when a region is
+   redacted, so the text survives the redaction. */
+static void vocument_grow_box_for_character(float *x0, float *y0, float *x1, float *y1, const fz_quad *quad)
+{
+    vocument_grow_box(x0, y0, x1, y1, quad->ul);
+    vocument_grow_box(x0, y0, x1, y1, quad->ur);
+    vocument_grow_box(x0, y0, x1, y1, quad->ll);
+    vocument_grow_box(x0, y0, x1, y1, quad->lr);
+}
 
 typedef struct {
     int x0_milli_pt;
@@ -182,11 +209,24 @@ int vocument_mupdf_extract_page_text(
                                 int is_space = (ch->c == ' ' || ch->c == '\t' || ch->c == 0xA0);
                                 int gap = 0;
                                 if (previous && !is_space && !word_started) {
-                                    /* A character that starts far to the
-                                       right of the previous one begins a new
-                                       word. */
-                                    float previous_right = previous->quad.ul.x;
-                                    if (ch->quad.ul.x - previous_right > 0.25f * (ch->quad.lr.x - ch->quad.ul.x + 0.001f)) {
+                                    /* A character that starts far away from the
+                                       previous one begins a new word. The
+                                       distance is measured along the reading
+                                       direction of the line: on a page that is
+                                       turned by 90 degrees the text runs
+                                       downwards, and a gap that is only
+                                       measured along the x axis would be
+                                       invisible there. */
+                                    float dir_x = ch->quad.lr.x - ch->quad.ul.x;
+                                    float dir_y = ch->quad.lr.y - ch->quad.ul.y;
+                                    float dir_len = sqrtf(dir_x * dir_x + dir_y * dir_y);
+                                    if (dir_len > 0.0001f) {
+                                        dir_x /= dir_len;
+                                        dir_y /= dir_len;
+                                    }
+                                    float advance = (ch->quad.ul.x - previous->quad.ul.x) * dir_x
+                                                 + (ch->quad.ul.y - previous->quad.ul.y) * dir_y;
+                                    if (advance > 0.25f * (dir_len + 0.001f)) {
                                         gap = 1;
                                     }
                                 }
@@ -220,14 +260,12 @@ int vocument_mupdf_extract_page_text(
                                     word_started = 1;
                                     word_x0 = ch->quad.ul.x;
                                     word_y0 = ch->quad.ul.y;
-                                    word_x1 = ch->quad.lr.x;
-                                    word_y1 = ch->quad.lr.y;
-                                } else {
-                                    if (ch->quad.ul.x < word_x0) word_x0 = ch->quad.ul.x;
-                                    if (ch->quad.ll.y < word_y0) word_y0 = ch->quad.ll.y;
-                                    if (ch->quad.lr.x > word_x1) word_x1 = ch->quad.lr.x;
-                                    if (ch->quad.ur.y > word_y1) word_y1 = ch->quad.ur.y;
+                                    word_x1 = ch->quad.ul.x;
+                                    word_y1 = ch->quad.ul.y;
                                 }
+                                /* The box of the word is the bounding box of
+                                   all of its characters. */
+                                vocument_grow_box_for_character(&word_x0, &word_y0, &word_x1, &word_y1, &ch->quad);
                                 previous = ch;
                             }
 
