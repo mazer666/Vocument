@@ -29,6 +29,17 @@ if [[ -f "apps/macos/Package.swift" ]] && command -v swift >/dev/null 2>&1; then
   swift run --package-path apps/macos vocument-mac-handshake
 fi
 
+echo "==> Verifying the native Android libraries (dependency closure, SONAME, 16 KB page alignment)..."
+./scripts/verify-android-native-libs.sh
+
+echo "==> Verifying the Android PDF engine on a real ARM64 target (qemu-aarch64)..."
+if command -v qemu-aarch64-static >/dev/null 2>&1 || [[ -x /usr/bin/qemu-aarch64-static ]]; then
+  ./scripts/verify-android-arm64-pdf.sh
+else
+  echo "SKIPPED: qemu-aarch64-static is not available on this runner."
+  echo "         The ARM64 engine proof is NOT RUN here and must not be reported as passed."
+fi
+
 echo "==> Running real Android runtime & scan-capture verification (Gradle assembleDebug, apkanalyzer, unit tests, and Kotlin handshake)..."
 ./scripts/verify-android-runtime.sh
 

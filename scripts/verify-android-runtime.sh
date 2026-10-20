@@ -30,6 +30,13 @@ if [[ ! -f "$APK_PATH" ]]; then
 fi
 echo "✓ Debug APK built successfully: $APK_PATH ($(du -h "$APK_PATH" | cut -f1))"
 
+echo "==> Step 1b: Verifying the native libraries as they are packaged in the APK..."
+# The build directory and the package are not the same thing: the packaging step
+# only includes files whose name ends in `.so`, and the loader resolves a
+# dependency by its exact file name. A library that is missing from the package
+# makes the application fail to start on the device.
+./scripts/verify-android-native-libs.sh --apk "$APK_PATH"
+
 echo "==> Step 2: Inspecting APK with apkanalyzer (applicationId, version, permissions)..."
 if command -v apkanalyzer >/dev/null 2>&1; then
   APK_SUMMARY="$(apkanalyzer apk summary "$APK_PATH" 2>/dev/null || true)"
