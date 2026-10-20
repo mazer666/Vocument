@@ -503,7 +503,7 @@ Deliver:
 - interoperability with major PDF tools
 - keyboard workflow review
 
-## M2.1 — Sichere Redaction mit Verifikation *(Implemented, host-verified)*
+## M2.1 — Secure redaction with verification *(Implemented, host-verified)*
 
 The first cut of M2. The redaction is security-critical and verifiable on the
 host with the real MuPDF engine, so it comes before the parts that need a macOS
@@ -527,7 +527,7 @@ Delivered:
 
 Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md).
 
-## M2.2 — Link- und Aktionsprüfung *(Implemented, host-verified)*
+## M2.2 — Link and action inspection *(Implemented, host-verified)*
 
 The second cut of M2. Before a user follows a link in a document, a reviewer
 wants to know where the link leads — and whether the link does something
@@ -548,7 +548,7 @@ Delivered:
 
 Evidence: [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md).
 
-## M2.3 — Anhangs- und Signaturprüfung *(Implemented, host-verified)*
+## M2.3 — Attachment and signature inspection *(Implemented, host-verified)*
 
 The third cut of M2. Two questions of a professional review that a document
 can answer on its own: what files are hidden in the document, and does the

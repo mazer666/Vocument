@@ -1,151 +1,159 @@
-# Abschlussbericht — Nachbereitung von M1 und Beginn von M2
+# Final Report — Follow-up to M1 and the beginning of M2
 
-**Datum:** 2026-10-20
+**Date:** 2026-10-20
 **Branch:** `main`
-**Akzeptanz:** `docs/acceptance/M1-ACCEPTANCE.md`, `docs/acceptance/M2.1-ACCEPTANCE.md`
+**Acceptance:** `docs/acceptance/M1-ACCEPTANCE.md`, `docs/acceptance/M2.1-ACCEPTANCE.md`
 
 ---
 
-## A. Worum es ging
+## A. What it was about
 
-Der Auftrag war, die verbleibenden produktiven Mängel aus M1 zu beseitigen,
-den Nachweis für echte Dokumente zu vervollständigen, die Widersprüche
-zwischen Code, Anforderungen und Abnahmedokumentation zu beseitigen — und
-danach M2 zu beginnen, soweit die Umgebung echte Implementierung und echte
-Verifikation zulässt.
+The task was to remove the remaining product-relevant defects of M1, to
+complete the evidence for real documents, to remove the contradictions between
+code, requirements and acceptance documentation — and then to begin M2 as far
+as the environment allows real implementation and real verification.
 
-## B. Die Mängel, die beseitigt wurden
+## B. The defects that were removed
 
-### B1 — Ein Dokument aus einem Dokumentanbieter wurde zu einer Unsinnsdatei
+### B1 — A document from a document provider became a nonsense file
 
-**Befund.** Ein Dokument, das der Nutzer über die Android Storage Access
-Framework öffnet, hat keine lokale Adresse, sondern einen `content://`-URI.
-Der lokale Dateibroker behandelte den URI wie einen Pfad: aus
-`content://com.android.providers/document/1` wurde eine Datei namens `1` im
-Arbeitsverzeichnis. Das eigentliche Dokument wurde nicht gespeichert.
+**Finding.** A document that the user opens via the Android Storage Access
+Framework has no local address, but a `content://` URI. The local file broker
+treated the URI like a path: from
+`content://com.android.providers.document/1` a file named `1` was created in
+the working directory. The actual document was not saved.
 
-**Ursache.** Die Frage „kann dieses Dokument zurückgeschrieben werden?" war an
-den *Ursprung* des Dokuments gekoppelt (`FileAccessOrigin`). Das ist die
-falsche Frage: sie gehört an den *Broker*, denn nur der Broker weiß, ob er
-eine Adresse auflösen kann. Die Kopplung an den Ursprung hätte außerdem den
-macOS-Pfad gebrochen — dort ist ein Dokument über eine `file://`-Adresse
-lokal, obwohl der Ursprung `MacOsScopedUrl` heißt.
+**Cause.** The question "can this document be written back?" was coupled to
+the *origin* of the document (`FileAccessOrigin`). That is the wrong question:
+it belongs to the *broker*, because only the broker knows whether it can
+resolve an address. The coupling to the origin would also have broken the
+macOS path — there a document is local via a `file://` address, although the
+origin is called `MacOsScopedUrl`.
 
-**Behebung.** `FileBroker::can_write_back` beantwortet die Frage. Der lokale
-Broker erkennt URIs mit einem Schema, das nicht `file` ist, und verweigert
-das Rückschreiben mit dem typisierten Fehler `NotLocallyWritable`.
-`stage_write` weist solche Ziele zusätzlich ab — letzte Verteidigungslinie,
-damit nie eine Datei mit einem URI-Namen entsteht.
+**Fix.** `FileBroker::can_write_back` answers the question. The local broker
+recognises URIs with a scheme that is not `file` and refuses the write-back
+with the typed error `NotLocallyWritable`. `stage_write` rejects such targets
+in addition — the last line of defence, so that a file with a URI name never
+comes into being.
 
-**Nutzerfolge.** Die Plattform-Shell schreibt das Dokument an einen Ort, der
-dem Nutzer gehört: `document_core_export_session_bytes` übergibt die Bytes,
-die Android-Shell schreibt sie über `ACTION_CREATE_DOCUMENT` in den
-Dokumentanbieter. Der Nutzer wählt den Ort, das Dokument landet dort.
+**Consequence for the user.** The platform shell writes the document to a
+place that belongs to the user: `document_core_export_session_bytes` hands
+over the bytes, the Android shell writes them via `ACTION_CREATE_DOCUMENT`
+into the document provider. The user chooses the place, the document lands
+there.
 
-### B2 — Ein extern geändertes File wurde ohne Rückfrage überschrieben
+### B2 — An externally changed file was overwritten without asking
 
-**Befund.** Die Android-UI wertete das Ergebnis eines Speicherns nicht aus. Ein
-Konflikt — die Datei wurde zwischenzeitlich von einem anderen Programm
-geändert — blieb für den Nutzer unsichtbar.
+**Finding.** The Android UI did not evaluate the result of a save. A
+conflict — the file had been changed in the meantime by another program —
+stayed invisible to the user.
 
-**Behebung.** Die Oberfläche wertet das Ergebnis aus und zeigt bei einem
-Konflikt die vier Auflösungen: als Kollisionskopie speichern, ausdrücklich
-überschreiben, externe Version neu laden, abbrechen. Die Auflösung läuft
-über `resolve_save_conflict` im Core.
+**Fix.** The interface evaluates the result and shows the four resolutions in
+the case of a conflict: save as a collision copy, overwrite explicitly, reload
+the external version, cancel. The resolution runs via `resolve_save_conflict`
+in the core.
 
-### B3 — Dateien des Nutzers waren für andere lesbar
+### B3 — The files of the user were readable for others
 
-**Befund.** Die Staging-Datei eines Speicherns, der Recovery-Container mit
-Manifest und Journal entstanden mit den Standardrechten des Systems. Sie
-enthalten das Dokument des Nutzer bzw. dessen Pfad und Dateinamen.
+**Finding.** The staging file of a save, the recovery container with manifest
+and journal were created with the default permissions of the system. They
+contain the document of the user respectively its path and file name.
 
-**Behebung.** Staging-Datei `0600`, Recovery-Container `0700`, Manifest und
-Journal `0600`. Der Modus wird von einem Test geprüft, nicht nur behauptet.
+**Fix.** Staging file `0600`, recovery container `0700`, manifest and journal
+`0600`. The mode is checked by a test, not merely claimed.
 
-### B4 — Die Kamera blieb gebunden
+### B4 — The camera stayed bound
 
-**Befund.** Die Kamera wurde beim Verlassen der Komposition nicht freigegeben.
-Sie blieb aktiv: die Datenschutzanzeige des Systems blieb an, die Kamera
-verbrauchte Strom. Zusätzlich schrieb der Kameratread den Zustand der
-Oberfläche — der Compose-State wurde aus einem Hintergrundthread verändert.
+**Finding.** The camera was not released when the composition was left. It
+stayed active: the privacy indicator of the system stayed on, the camera
+consumed power. In addition the camera thread wrote the state of the
+interface — the Compose state was changed from a background thread.
 
-**Behebung.** Die Kamera wird in `onDispose` freigegeben. Die Kantenerkennung
-läuft weiterhin im Kameratread (sie ist eine native Rechnung), die Ergebnisse
-werden aber über den Hauptthread veröffentlicht.
+**Fix.** The camera is released in `onDispose`. The edge detection still runs
+in the camera thread (it is a native computation), but the results are
+published via the main thread.
 
-## C. Der Nachweis für echte Dokumente
+## C. The evidence for real documents
 
-Zwei Tests an der UniFFI-Grenze mit echter Engine, echter Kantenerkennung,
-echter OCR und echter Volltextsuche:
+Two tests at the UniFFI boundary with a real engine, real edge detection, real
+OCR and real full-text search:
 
-1. **Der Scan-Workflow** (unverändert grün): Kameraframe → Kanten →
-   Entzerrung → Bereinigung → OCR → durchsuchbares PDF → Session → FTS5-Suche
-   → Speichern → Wieder öffnen → Text lesbar.
-2. **Der Export** (neu): dasselbe Dokument, exportiert in eine Datei, die dem
-   Nutzer gehört. Die Datei ist ein vollständiges PDF, sie lässt sich mit der
-   MuPDF-Engine öffnen, der OCR-Text ist lesbar, und sie enthält weder einen
-   Pfad des Build-Rechners noch interne Kennungen.
+1. **The scan workflow** (unchanged green): camera frame → edges → deskew →
+   clean-up → OCR → searchable PDF → session → FTS5 search → save → open
+   again → text readable.
+2. **The export** (new): the same document, exported into a file that belongs
+   to the user. The file is a complete PDF, it can be opened with the MuPDF
+   engine, the OCR text is readable, and it contains neither a path of the
+   build machine nor internal identifiers.
 
-Ergänzend im Core: ein Dokument aus einem Dokumentanbieter wird **nicht**
-über den lokalen Broker gespeichert, der Export liefert die Bytes, und die
-Dateirechte von Staging und Recovery werden geprüft.
+In addition in the core: a document from a document provider is **not** saved
+via the local broker, the export delivers the bytes, and the file permissions
+of staging and recovery are checked.
 
-**Teststand:** 141 Tests, 21 Suites, 0 Fehler. clippy 0, fmt 0,
-`validate-repo.sh` 0, Debug-APK 108 MB gebaut, natives Gate über das Paket
-grün (Closure, SONAME, ARM64, 16-KB-Seiten).
+**Test state:** 141 tests, 21 suites, 0 failures. clippy 0, fmt 0,
+`validate-repo.sh` 0, debug APK 108 MB built, the native gate over the package
+green (closure, SONAME, ARM64, 16 KB pages).
 
-## D. M2 — erster Schnitt: sichere Redaction mit Verifikation
+## D. M2 — first slice: secure redaction with verification
 
-M2 verlangt neun Funktionen für den professionellen macOS-Arbeitsfluss. Acht
-davon brauchen eine macOS-Oberfläche und einen macOS-Host. Die **Redaction**
-ist der Teil, der sicherheitskritisch ist — und der sich auf dem Host mit
-derselben MuPDF-Engine belegen lässt, die auch auf dem Gerät läuft.
+M2 demands nine functions for the professional macOS workflow. Eight of them
+need a macOS interface and a macOS host. The **redaction** is the part that is
+security-critical — and the part that can be proven on the host with the same
+MuPDF engine that also runs on the device.
 
-**Das Problem.** Eine Redaction, die ein schwarzes Rechteck über den Text
-legt, ist keine Redaction: der Text bleibt im Dateistrom, er bleibt
-extrahierbar, er bleibt über die Suche auffindbar. Beim Scan kommt hinzu,
-dass die Textebene unsichtbar ist (`3 Tr`) — sie muss mit entfernt werden.
+**The problem.** A redaction that lays a black rectangle over the text is not
+a redaction: the text stays in the file stream, it stays extractable, it
+stays findable through the search. For a scan there is an addition: the text
+layer is invisible (`3 Tr`) — it has to be removed as well.
 
-**Die Umsetzung.** Die Engine entfernt den Inhalt der Region (Text, unsichtbarer
-Text, Bilder, Linienkunst) mit `PDF_REDACT_TEXT_REMOVE`. Der Core prüft die
-Entfernung dreifach: die Textextraktion, die Suche und die Bytes der Datei,
-und meldet, was entfernt wurde. Die Redaction lässt sich nicht rückgängig
-machen; der Undo wird ausdrücklich abgelehnt, und die Checkpoints der
-Wiederherstellung werden mitgelöscht, weil sie die Bytes früherer Stände
-enthalten.
+**The implementation.** The engine removes the content of the region (text,
+invisible text, images, line art) with `PDF_REDACT_TEXT_REMOVE`. The core
+checks the removal three times: the text extraction, the search and the bytes
+of the file, and reports what was removed. The redaction cannot be undone; the
+undo is refused explicitly, and the checkpoints of the recovery are deleted
+along with it, because they contain the bytes of earlier states.
 
-**Der Fund, der die Arbeit wert gemacht hat.** Nach der ersten
-funktionierenden Redaction war der Text nicht mehr extrahierbar — aber **noch
-in den Bytes der Datei**. MuPDF schreibt unerreichbare Objekte mit in die
-Datei, wenn die Garbage Collection nicht angefordert wird. Das alte
-Content-Stream-Objekt stand weiterhin im File. Behoben mit
-`opts.do_garbage = 1`; der Test prüft seitdem die Bytes, nicht nur die
-Extraktion.
+**The finding that made the work worth it.** After the first working redaction
+the text was no longer extractable — but **still in the bytes of the file**.
+MuPDF writes unreachable objects into the file when the garbage collection is
+not requested. The old content stream object was still in the file. Fixed with
+`opts.do_garbage = 1`; the test has checked the bytes since then, not only the
+extraction.
 
-**Nachweis:** `docs/acceptance/M2.1-ACCEPTANCE.md`, Gate M2.1 in
-`scripts/validate-repo.sh`, eigener Schritt in `scripts/local-ci.sh`.
+**Evidence:** `docs/acceptance/M2.1-ACCEPTANCE.md`, gate M2.1 in
+`scripts/validate-repo.sh`, a separate step in `scripts/local-ci.sh`.
 
-## E. Was ausdrücklich NOT RUN bleibt
+## E. What explicitly remains NOT RUN
 
-| Nachweis | Grund |
+| Evidence | Reason |
 |---|---|
-| Lauf auf einem Android-Gerät | kein Gerät, kein `/dev/kvm` |
-| On-Device-OCR-Qualität, UI-Reaktionsfähigkeit, Thermik am Gerät | kein Gerät |
-| macOS-Build, macOS-Oberfläche, macOS-Integrationstests | kein macOS-Host |
-| macOS-Oberfläche der Redaction | kein macOS-Host |
-| Interoperabilität der Redaction mit den Werkzeugen anderer Hersteller | steht aus, M2-Gate |
-| CI-Workflow (GitHub Actions) | kein Runner-Lauf, keine Änderung an Workflow-Dateien |
-| AddressSanitizer | nur mit Nightly (`-Zbuild-std`); Ersatz: valgrind memcheck, 0 Fehler / 0 Bytes verloren |
-| Die übrigen acht M2-Funktionen | nicht begonnen |
+| Run on an Android device | no device, no `/dev/kvm` |
+| On-device OCR quality, UI responsiveness, thermals on the device | no device |
+| macOS build, macOS interface, macOS integration tests | no macOS host |
+| macOS interface of the redaction | no macOS host |
+| Interoperability of the redaction with the tools of other vendors | outstanding, M2 gate |
+| CI workflow (GitHub Actions) | no runner run, no change to workflow files |
+| AddressSanitizer | only with nightly (`-Zbuild-std`); substitute: valgrind memcheck, 0 errors / 0 bytes lost |
+| The remaining eight M2 functions | not started |
 
-## F. Widersprüche, die beseitigt wurden
+## F. Contradictions that were removed
 
-- Die Meilensteinangabe war an mehreren Stellen dupliziert: `project/project.yaml`, `ROADMAP.md`, der Core-Konfiguration, dem Rust-Handshake-Test, dem Kotlin-Handshake-Test und dem Swift-Handshake-CLI. Sie stehen jetzt alle auf **M2** — abgeleitet aus `project/project.yaml` als einziger Quelle.
-- `REQUIREMENTS.md` hatte keine Anforderung für den Export in einen Ort, der dem Nutzer gehört, und keine für den Datenschutz der Dateien. `SCAN-011`, `SCAN-012`, `PRIV-001`, `PRIV-002` und `REDACT-005` sind ergänzt.
-- Die Roadmap führte M1.6 doppelt. M1.6a (Android-Gate) und M1.6b (Plattformvalidierung) sind als eine Etappe mit zwei Teilen geführt.
+- The milestone was duplicated in several places: `project/project.yaml`,
+  `ROADMAP.md`, the core configuration, the Rust handshake test, the Kotlin
+  handshake test and the Swift handshake CLI. They now all stand on **M2** —
+  derived from `project/project.yaml` as the single source.
+- `REQUIREMENTS.md` had no requirement for the export into a place that
+  belongs to the user, and none for the privacy of the files. `SCAN-011`,
+  `SCAN-012`, `PRIV-001`, `PRIV-002` and `REDACT-005` were added.
+- The roadmap listed M1.6 twice. M1.6a (Android gate) and M1.6b (platform
+  validation) are now led as one stage with two parts.
 
-## G. Offene Entscheidungen
+## G. Open decisions
 
-- **Lizenzentscheidung E1–E5** (Projektverantwortliche): offen. Ohne diese Entscheidung keine Veröffentlichung als „freigegeben".
-- **Rotation des GitHub-PAT**: empfohlen. Der Token liegt verschlüsselt im Secret-Store und wurde nur über ein temporäres Askpass-Skript in `target/` verwendet, das sofort gelöscht wurde. Er ist nicht in der Historie nachweisbar.
-- **M1.7** (Batterie- und Thermikverhalten am Gerät) und die restlichen M2-Funktionen: folgen, sobald die Umgebung sie zulässt.
+- **Licensing decision E1–E5** (project owner): open. Without this decision
+  there is no release as "approved".
+- **Rotation of the GitHub PAT**: recommended. The token lies encrypted in the
+  secret store and was used only via a temporary askpass script in `target/`,
+  which was deleted immediately. It is not detectable in the history.
+- **M1.7** (battery and thermal behaviour on the device) and the remaining M2
+  functions: follow as soon as the environment allows it.

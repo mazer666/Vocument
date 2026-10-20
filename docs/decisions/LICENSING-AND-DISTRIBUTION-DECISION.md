@@ -1,355 +1,362 @@
-# Entscheidungsvorlage: Lizenzierung und Distribution der PDF-Engine
+# Decision Template: Licensing and Distribution of the PDF Engine
 
-**Dokumenttyp:** Nicht-bindende technische Entscheidungsvorlage
-**Status:** Entwurf zur Entscheidung durch den Projektverantwortlichen
-**Datum:** 2026-10-20
-**Bezug:** `RISK-009`, `RISK-010`, `ADR-0017`, `THIRD_PARTY.md`, `project/project.yaml`
-**Erstellt im Rahmen von:** M1.6 — Plattformintegration und Release Readiness
+**Document type:** Non-binding technical decision template
+**Status:** Draft for a decision by the project owner
+**Date:** 2026-10-20
+**Reference:** `RISK-009`, `RISK-010`, `ADR-0017`, `THIRD_PARTY.md`, `project/project.yaml`
+**Created in the context of:** M1.6 — Platform integration and release readiness
 
-> **Diese Vorlage ist keine juristische Beratung und keine Lizenzentscheidung.**
-> Sie stellt die technischen und lizenzrechtlichen Randbedingungen dar, die für
-> eine Entscheidung bekannt sein müssen, und benennt die offenen Fragen. Die
-> verbindliche Freigabe bleibt eine Entscheidung des Projektverantwortlichen.
+> **This template is neither legal advice nor a licence decision.** It presents
+> the technical and legal boundary conditions that have to be known for a
+> decision, and names the open questions. The binding release remains a
+> decision of the project owner.
 
 ---
 
-## 1. Entscheidungsbedarf
+## 1. The need for a decision
 
-Vocument ist eine native Anwendung (Rust-Core, UniFFI, Swift-UI unter macOS,
-Kotlin/UI unter Android). Die PDF-Engine MuPDF 1.28.5 wird **dynamisch** in die
-Anwendung gelinkt:
+Vocument is a native application (Rust core, UniFFI, Swift UI on macOS,
+Kotlin/UI on Android). The PDF engine MuPDF 1.28.5 is linked into the
+application **dynamically**:
 
 ```text
 libvocument_ffi.so  --DT_NEEDED-->  libmupdf.so.28.5
 ```
 
-Vocument selbst steht unter **AGPL-3.0** (`LICENSE`, `project/project.yaml`,
-`THIRD_PARTY.md`). MuPDF steht unter **AGPL-3.0-or-later** *oder* ist separat
-kommerziell lizenzierbar.
+Vocument itself is under **AGPL-3.0** (`LICENSE`, `project/project.yaml`,
+`THIRD_PARTY.md`). MuPDF is under **AGPL-3.0-or-later** *or* can be licensed
+commercially separately.
 
-Damit stellt sich eine Frage, die vor jeder öffentlichen Distribution beantwortet
-werden muss: **Unter welcher Lizenz wird Vocument veröffentlicht, und wie wird
-die MuPDF-Kopplung abgesichert?**
+That raises a question that has to be answered before any public distribution:
+**Under which licence is Vocument published, and how is the coupling to MuPDF
+secured?**
 
-Auslöser: `RISK-009` („AGPL-Quelloffenlegung für die Android-Distribution ist
-nicht entschieden") und `RISK-010` (APK-Größe durch `libmupdf.so`).
+Trigger: `RISK-009` ("The AGPL source disclosure for the Android distribution
+is not decided") and `RISK-010` (APK size through `libmupdf.so`).
 
-### 1.1 Warum die dynamische Verknüpfung die Frage nicht auflöst
+### 1.1 Why the dynamic linkage does not settle the question
 
-Die dynamische Verknüpfung ändert an der Copyleft-Wirkung nichts:
+The dynamic linkage changes nothing about the effect of the copyleft:
 
-* Die AGPL betrachtet „*modify* … *to link or combine with … other works*" (§10)
-  als mögliche Auslöser der Weitergabeplicht — unabhängig davon, ob statisch
-  oder dynamisch verknüpft wird.
-* Entscheidend ist die **konkrete Nutzung** („*mere aggregation*" nach §9/§13
-  greift nur, wenn das Werk „*at arm's length* … merely links … without
-  *combining* … into a single larger work" bleibt). Ein PDF-Renderer, dessen
-  Display-Liste, Pixmaps und Fehlerbehandlung direkt durch den Anwendungscode
-  gesteuert werden, ist eine funktionale Kopplung, keine bloße Aggregation.
-* Die Kopplung ist im Projekt real: `core/vocument-core/src/pdf_engine.rs`
-  definiert das Trait `PdfEngineDocument` mit `create_display_list`,
+* The AGPL regards "*modify* … *to link or combine with … other works*" (§10)
+  as a possible trigger of the duty to convey — independently of whether the
+  work is linked statically or dynamically.
+* What counts is the **concrete use** ("*mere aggregation*" according to §9/§13
+  only applies if the work stays "*at arm's length* … merely links … without
+  *combining* … into a single larger work"). A PDF renderer whose display
+  list, pixmaps and error handling are driven directly by the application code
+  is a functional coupling, not a mere aggregation.
+* The coupling is real in the project: `core/vocument-core/src/pdf_engine.rs`
+  defines the trait `PdfEngineDocument` with `create_display_list`,
   `render_tile`, `rotate_pages`, `add_highlight_annotation`,
-  `remove_highlight_annotation` und `extract_page_text` — also Funktionalität,
-  die im Kern der Engine liegt und nicht durch eine dünne Wrapper-Schicht
-  austauschbar ist.
+  `remove_highlight_annotation` and `extract_page_text` — functionality that
+  lies in the heart of the engine and is not exchangeable by a thin wrapper
+  layer.
 
-**Folgerung:** Variante „dynamisch gelinkt, deshalb keine Copyleft-Pflicht" ist
-**nicht belastbar** und darf nicht als Argument verwendet werden.
-
----
-
-## 2. Gemeinsame Randbedingungen (gelten in allen Varianten)
-
-Diese Punkte sind variantenunabhängig und gelten heute bereits:
-
-| # | Randbedingung | Beleg / Status |
-|---|---|---|
-| R1 | MuPDF 1.28.5 wird aus dem offiziellen Quellarchiv gebaut, SHA-256 `98a5c10c…b7e934`, unabhängig bestätigt durch Homebrew und FreeBSD Ports. | `scripts/prepare-android-mupdf.sh` — **erfüllt** |
-| R2 | Die MuPDF-Lizenz (AGPL) und die Copyleft-Pflichten werden im Projekt offengelegt. | `THIRD_PARTY.md` — **erfüllt** |
-| R3 | Die Vocument-Architektur kennt die Engine nur über das Trait `PdfEngine` / `PdfEngineDocument` / `PdfEngineDisplayList`. | `core/vocument-core/src/pdf_engine.rs` — **erfüllt** |
-| R4 | Die Anwendung ruft MuPDF **nicht** aus Swift oder Kotlin, sondern ausschließlich aus dem Rust-Core. | `scripts/validate-repo.sh` (Gate M0.1) — **erfüllt** |
-| R5 | Eine öffentliche Distribution ist bis zur Entscheidung **nicht** freigegeben. | Abschnitt 7 — **anzuwenden** |
-| R6 | Bei AGPL-Betrieb sind die Attributionspflichten von Artifex zu beachten (Producer-Line in erzeugten PDFs, AGPL-Hinweis in den PDF-Metadaten). | Artifex Licensing — **offen, umzusetzen bei Variante A** |
-| R7 | Die Binärgröße (`libmupdf.so` ≈ 56 MB) ist unabhängig von der Lizenzwahl und über Build-Optionen reduzierbar (XPS/CBZ/HTML-EPUB deaktivieren, `strip`, ABI-Splits). | `RISK-010` — **umsetzbar** |
+**Consequence:** the variant "linked dynamically, therefore no copyleft
+duty" is **not sound** and may not be used as an argument.
 
 ---
 
-## 3. Variante A — AGPL-konforme Open-Source-Veröffentlichung
+## 2. Boundary conditions common to all variants
 
-### 3.1 Was offenzulegen wäre
+These points are independent of the variant and already hold today:
 
-* **MuPDF selbst:** unverändert, sofern keine Änderungen vorgenommen werden.
-  Die Cross-Build-Konfiguration (NDK, `HAVE_LIBCRYPTO=no`, 16-KB-Seitenausrichtung)
-  ist eine **Build-Konfiguration**, keine Änderung des MuPDF-Quellcodes.
-* **Der Anwendungscode:** Bei funktionaler Kopplung ist die Weitergabe des
-  **kompletten Anwendungs-Quellcodes** unter AGPL die praktische Folge. Das
-  betrifft Rust-Core, UniFFI-Bindungen, Swift- und Kotlin-UI sowie die
-  Build-Skripte.
-* **Der „Corresponding Source" der gelinkten MuPDF-Version:** Die AGPL verlangt
-  in §6 den vollständigen Quellcode der verwendeten Programmversion. Das ist
-  hier unkritisch, weil die verwendete Version bereits öffentlich ist — es
-  genügt der Verweis auf das offizielle Archiv **inklusive Checksumme**.
-
-### 3.2 Informationspflichten
-
-| Pflicht | Quelle | Umsetzung im Projekt |
+| # | Boundary condition | Evidence / status |
 |---|---|---|
-| Quellcode des Werks (AGPL) | AGPL §6 | Veröffentlichung des Repositories |
-| Quellcode der Corresponding Source der Bibliothek | AGPL §6 | Verweis auf das gepinnte MuPDF-Archiv mit SHA-256 |
-| Lizenztext | AGPL §4 | `LICENSE` |
-| Installationsinformationen | AGPL §6 | `README.md` + Build-Anleitung |
-| Hinweis auf Änderungen | AGPL §6 | Changelog |
-| „Best Corresponding Source" bei Weitergabe | AGPL §6 | Im Release-Archiv zu dokumentieren |
-| Netzwerknutzung (§13) | AGPL §13 | Vocument ist eine Desktop-/Mobile-App ohne Netzwerkdienst; §13 ist derzeit **nicht einschlägig**. Wird später ein Serverdienst gebaut, greift die Offenlegungspflicht für den gesamten Dienst. |
-| Producer-Line in erzeugten PDFs | Artifex-Lizenzhinweis | In der MuPDF-Konfiguration aktiviert lassen |
-| AGPL-Hinweis in PDF-Metadaten | Artifex-Lizenzhinweis | Über `fz_set_document_metadata` umsetzbar |
+| R1 | MuPDF 1.28.5 is built from the official source archive, SHA-256 `98a5c10c…b7e934`, independently confirmed by Homebrew and the FreeBSD ports. | `scripts/prepare-android-mupdf.sh` — **fulfilled** |
+| R2 | The MuPDF licence (AGPL) and the copyleft duties are disclosed in the project. | `THIRD_PARTY.md` — **fulfilled** |
+| R3 | The architecture of Vocument knows the engine only through the traits `PdfEngine` / `PdfEngineDocument` / `PdfEngineDisplayList`. | `core/vocument-core/src/pdf_engine.rs` — **fulfilled** |
+| R4 | The application calls MuPDF **not** from Swift or Kotlin, but exclusively from the Rust core. | `scripts/validate-repo.sh` (gate M0.1) — **fulfilled** |
+| R5 | A public distribution is **not** released until the decision is made. | Section 7 — **to be applied** |
+| R6 | In AGPL operation the attribution duties of Artifex must be observed (producer line in generated PDFs, AGPL note in the PDF metadata). | Artifex licensing — **open, to be implemented in variant A** |
+| R7 | The binary size (`libmupdf.so` ≈ 56 MB) is independent of the licence choice and reducible via build options (deactivate XPS/CBZ/HTML-EPUB, `strip`, ABI splits). | `RISK-010` — **implementable** |
 
-### 3.3 Auswirkungen auf Drittanbieterabhängigkeiten
+---
 
-| Abhängigkeit | Lizenz | Wirkung unter Variante A |
+## 3. Variant A — AGPL conforming open source publication
+
+### 3.1 What would have to be disclosed
+
+* **MuPDF itself:** unchanged, as long as no changes are made. The cross
+  build configuration (NDK, `HAVE_LIBCRYPTO=no`, 16 KB page alignment) is a
+  **build configuration**, not a change of the MuPDF source code.
+* **The application code:** with a functional coupling, the conveyance of the
+  **complete application source code** under the AGPL is the practical
+  consequence. That concerns the Rust core, the UniFFI bindings, the Swift
+  and Kotlin UI as well as the build scripts.
+* **The "Corresponding Source" of the linked MuPDF version:** the AGPL
+  demands in §6 the complete source code of the program version used. That is
+  uncritical here, because the version used is already public — the reference
+  to the official archive **including the checksum** is sufficient.
+
+### 3.2 Duties of information
+
+| Duty | Source | Implementation in the project |
 |---|---|---|
-| MuPDF | AGPL-3.0 | Bestimmt die Lizenz des Gesamtwerks |
-| Tesseract | Apache-2.0 | Permissiv, kompatibel mit AGPL-3.0 |
-| Leptonica | BSD-2-Clause | Permissiv, kompatibel |
-| SQLite / FTS5 | Public Domain | Kompatibel |
-| Rust crates (serde, rusqlite, thiserror …) | MIT / Apache-2.0 | Kompatibel |
-| UniFFI | MIT / Apache-2.0 | Kompatibel |
-| Swift-UI, Kotlin/Compose | Apache-2.0 | Kompatibel |
+| Source code of the work (AGPL) | AGPL §6 | Publication of the repository |
+| Source code of the corresponding source of the library | AGPL §6 | Reference to the pinned MuPDF archive with SHA-256 |
+| Licence text | AGPL §4 | `LICENSE` |
+| Installation information | AGPL §6 | `README.md` + build instructions |
+| Notice on modifications | AGPL §6 | Changelog |
+| "Best Corresponding Source" on conveyance | AGPL §6 | To be documented in the release archive |
+| Network use (§13) | AGPL §13 | Vocument is a desktop/mobile app without a network service; §13 is currently **not applicable**. If a server service is built later, the duty of disclosure applies to the entire service. |
+| Producer line in generated PDFs | Artifex licence notice | Leave enabled in the MuPDF configuration |
+| AGPL note in the PDF metadata | Artifex licence notice | Implementable via `fz_set_document_metadata` |
 
-**Ergebnis:** Es entsteht **keine zusätzliche Lizenz-Inkompatibilität**. Das
-Gesamtwerk steht konsistent unter AGPL-3.0.
+### 3.3 Effect on third party dependencies
 
-### 3.4 Bereitstellung von Quellcode und Build-Anleitung
+| Dependency | Licence | Effect in variant A |
+|---|---|---|
+| MuPDF | AGPL-3.0 | Determines the licence of the overall work |
+| Tesseract | Apache-2.0 | Permissive, compatible with AGPL-3.0 |
+| Leptonica | BSD-2-Clause | Permissive, compatible |
+| SQLite / FTS5 | Public domain | Compatible |
+| Rust crates (serde, rusqlite, thiserror …) | MIT / Apache-2.0 | Compatible |
+| UniFFI | MIT / Apache-2.0 | Compatible |
+| Swift UI, Kotlin/Compose | Apache-2.0 | Compatible |
 
-Für eine belastbare Weitergabe muss das Release-Artefakt enthalten:
+**Result:** **No additional licence incompatibility** arises. The overall work
+stands consistently under AGPL-3.0.
 
-1. Das vollständige Quellarchiv des Anwendungscodes (gleicher Commit wie die Binärdatei).
-2. Die Build-Anleitung, die den exakten Weg vom Quellcode zur Binärdatei beschreibt
-   — einschließlich der NDK-Version, der MuPDF-Checksumme und der Tesseract-Versionspins.
-3. Den Hinweis, dass die verwendete MuPDF-Version unter der oben genannten
-   Checksumme öffentlich verfügbar ist.
+### 3.4 Provision of the source code and the build instructions
 
-Punkt 2 ist der praktisch anspruchsvollste Teil: Die Build-Anleitung muss auf
-einer Maschine ohne Vorkenntnisse funktionieren. **Das ist heute noch nicht
-sichergestellt**, weil der native Android-Build ein NDK, ein Android SDK und
-eineCross-Build-Umgebung für Tesseract benötigt (siehe `RISK-009` und Abschnitt 6).
+For a sound conveyance the release artefact must contain:
 
-### 3.5 Bewertung
+1. The complete source archive of the application code (the same commit as
+   the binary).
+2. The build instructions that describe the exact way from the source code to
+   the binary — including the NDK version, the MuPDF checksum and the Tesseract
+   version pins.
+3. The notice that the MuPDF version used is publicly available under the
+   checksum named above.
+
+Point 2 is the practically most demanding part: the build instructions have to
+work on a machine without prior knowledge. **That is not yet ensured today**,
+because the native Android build needs an NDK, an Android SDK and a cross
+build environment for Tesseract (see `RISK-009` and section 6).
+
+### 3.5 Assessment
 
 | | |
 |---|---|
-| **Vorteile** | Keine Lizenzkosten; keine Verhandlungen; konsistente, freie Software; die bereits vorhandene AGPL-Lizenz des Projekts passt; die Offenlegung stärkt die Glaubwürdigkeit des Projekts. |
-| **Nachteile** | Der gesamte Anwendungscode muss veröffentlicht werden. Das ist eine **strategische** Entscheidung: Proprietäre Erweiterungen, die auf dem Core aufbauen, sind dann nicht möglich. Ein Endnutzer, der eine kommerziell lizenzierte Fachanwendung erwartet, kann dieSoftware nicht Closed Source weiterentwickeln. |
-| **Risiko** | Mittel bis hoch: Die Entscheidung ist praktisch nicht umkehrbar, sobald der Quellcode des Kerns öffentlich ist. |
-| **Aufwand** | Gering (Lizenz ist bereits AGPL) + mittel (Release-Prozess mit Quellcode-Bundle, Build-Anleitung, Metadaten-Attribution). |
+| **Advantages** | No licence costs; no negotiations; consistent free software; the AGPL licence the project already has fits; the disclosure strengthens the credibility of the project. |
+| **Disadvantages** | The entire application code must be published. That is a **strategic** decision: proprietary extensions built on the core are then impossible. An end user who expects a commercially licensed specialist application cannot continue to develop the software in closed source. |
+| **Risk** | Medium to high: the decision is practically irreversible once the source code of the core is public. |
+| **Effort** | Low (the licence is already AGPL) + medium (release process with source bundle, build instructions, metadata attribution). |
 
 ---
 
-## 4. Variante B — Kommerzielle MuPDF-Lizenz
+## 4. Variant B — Commercial MuPDF licence
 
-### 4.1 Öffentlich belegbare Fakten
+### 4.1 Publicly documented facts
 
-Aus den offiziellen Quellen von Artifex (`artifex.com/licensing`,
-`mupdf.com`, `mupdf.readthedocs.io`):
+From the official sources of Artifex (`artifex.com/licensing`, `mupdf.com`,
+`mupdf.readthedocs.io`):
 
-* MuPDF ist **dual lizenziert**: AGPL-3.0 **oder** kommerzielle Lizenz.
-* Artifex nennt zwei kommerzielle Modelle:
+* MuPDF is **dual licensed**: AGPL-3.0 **or** a commercial licence.
+* Artifex names two commercial models:
 
-| Modell | Öffentlich belegbare Eigenschaften |
+| Model | Publicly documented properties |
 |---|---|
-| **OEM Distribution License** | Verteilung ohne Anforderungen an die Offenlegung des eigenen Codes; **jährliche Mengenmeldung**; Support verfügbar; **Kosten pro Kopie** mit **quartalsweisem Mindestumsatz** |
-| **Subscription License** | Verteilung ohne Offenlegungspflicht; **jährliche Mengenmeldung** (keine Meldung bei interner Nutzung); Support verfügbar; **Kosten pro Kopie** mit **quartalsweisem Mindestumsatz** |
+| **OEM Distribution License** | Distribution without any requirement to disclose your own code; **annual quantity reporting**; support available; **cost per copy** with **quarterly minimum turnover** |
+| **Subscription License** | Distribution without disclosure duty; **annual quantity reporting** (no reporting for internal use); support available; **cost per copy** with **quarterly minimum turnover** |
 
-* Die kommerzielle Lizenz gilt laut Artifex für „*SaaS*, *OEM software* oder
-  *in-house*" und befreit vollständig von den AGPL-Beschränkungen.
-* Support und kostenlose Upgrades sind Teil der kommerziellen Lizenz.
+* The commercial licence applies according to Artifex to "*SaaS*, *OEM
+  software* or *in-house*" and frees completely from the AGPL restrictions.
+* Support and free upgrades are part of the commercial licence.
 
-### 4.2 Nicht öffentlich belegbare Informationen
+### 4.2 Information that is not publicly documented
 
-> **Preise sind nicht öffentlich belegt.** Artifex nennt kein Preisniveau, keine
-> Mindestabnahme in Euro und keine Laufzeit. Jede konkrete Zahl in diesem
-> Dokument wäre erfunden. Die Angaben „per-copy cost with a quarterly minimum
-> fee" sind die **einzige** öffentlich belegbare Kostenaussage; die Höhe der
-> Mindestgebühr und der Stückpreise muss erfragt werden.
+> **The prices are not publicly documented.** Artifex names no price level,
+> no minimum purchase in euros and no term. Every concrete number in this
+> document would be invented. The statements "per-copy cost with a quarterly
+> minimum fee" are the **only** publicly documented statement about costs; the
+> height of the minimum fee and of the unit prices has to be asked for.
 
-### 4.3 Mit Artifex zu klärende vertragliche Fragen
+### 4.3 Contractual questions to clarify with Artifex
 
-1. Welches Modell (OEM vs. Subscription) passt zur geplanten Distribution?
-2. Was ist die Lizenz für **Distribution an Endnutzer** (die App wird an Nutzer ausgeliefert)?
-3. Gilt die Lizenz für die **verwendete Version 1.28.5** und deckt sie Updates ab?
-4. Welche **Mengenmeldung** ist erforderlich, und ab welchem Volumen?
-5. Welche **Mindestabnahme** und Laufzeit gelten?
-6. Welche Rechte bestehen bei Weitergabe an **Drittanbieter** (Vertriebspartner, OEM)?
-7. Gibt es ein **Audit** oder Nachweisverpflichtungen?
-8. Welche **Support-SLAs** und Reaktionszeiten sind zugesagt?
-9. Enthält die Lizenz eine **Freistellung** (Indemnity)?
-10. Was passiert bei **AGPL-kompatibler** Veröffentlichung unter Variante A — gibt es eine „Dual-Use"-Klausel, die zurück in die AGPL-Welt führt?
+1. Which model (OEM vs. Subscription) fits the planned distribution?
+2. What is the licence for **distribution to end users** (the app is shipped to
+   users)?
+3. Does the licence apply to the **version 1.28.5 used** and does it cover
+   updates?
+4. Which **quantity reporting** is required, and from which volume on?
+5. Which **minimum purchase** and term apply?
+6. Which rights exist on conveyance to **third parties** (distribution
+   partners, OEM)?
+7. Is there an **audit** or a proof obligation?
+8. Which **support SLAs** and response times are promised?
+9. Does the licence include an **indemnity**?
+10. What happens in the case of an **AGPL conforming** publication under
+    variant A — is there a "dual use" clause that leads back into the AGPL
+    world?
 
-### 4.4 Auswirkungen auf die Architektur
+### 4.4 Effect on the architecture
 
-**Keine.** Die dynamische Verknüpfung bleibt bestehen. Der Build, die
-Cross-Build-Pipeline und die Trait-Grenze `PdfEngine` bleiben unverändert. Das
-ist ein wesentlicher Vorteil gegenüber Variante C.
+**None.** The dynamic linkage remains. The build, the cross build pipeline and
+the trait boundary `PdfEngine` remain unchanged. That is a decisive advantage
+over variant C.
 
-### 4.5 Bewertung
+### 4.5 Assessment
 
 | | |
 |---|---|
-| **Vorteile** | Keine Offenlegung des eigenen Codes. Kein strategisch irreversibler Schritt. Der Quellcode des Kerns bleibt proprietär. Support und Updates sind Teil der Lizenz. Die Architektur bleibt unverändert. |
-| **Nachteile** | Laufende Kosten, deren Höhe erst nach einer Anfrage bekannt ist. Mengenmeldung und Mindestumsatz binden auch bei geringem Absatz. Ein Anbieter-Sonderwunsch bindet das Projekt an einen Hersteller. |
-| **Risiko** | Finanziell (Kostenhöhe unbekannt) und strategisch (Abhängigkeit von einem einzelnen Anbieter). |
-| **Aufwand** | Verhandlung, Vertragsprüfung, Umstellung der Distribution auf eine lizenzierte MuPDF-Version, Anpassung der Attributionspflichten. |
+| **Advantages** | No disclosure of your own code. No strategically irreversible step. The source code of the core remains proprietary. Support and updates are part of the licence. The architecture remains unchanged. |
+| **Disadvantages** | Running costs whose height only becomes known after an enquiry. Quantity reporting and minimum turnover bind even with low sales. A special request to one vendor ties the project to a single manufacturer. |
+| **Risk** | Financial (height of the costs unknown) and strategic (dependence on a single vendor). |
+| **Effort** | Negotiation, contract review, conversion of the distribution to a licensed MuPDF version, adjustment of the attribution duties. |
 
 ---
 
-## 5. Variante C — Alternative Rendering-Engine
+## 5. Variant C — Alternative rendering engine
 
-### 5.1 Ist ein späterer Austausch technisch realistisch?
+### 5.1 Is a later exchange technically realistic?
 
-**Ja, aber nicht ohne Aufwand.** Die Austauschgrenze existiert und ist
-sauber gezogen:
+**Yes, but not without effort.** The exchange boundary exists and is drawn
+cleanly:
 
-* `core/vocument-core/src/pdf_engine.rs` definiert `PdfEngineDisplayList`,
-  `PdfEngineDocument` und das Fehler-Trait `PdfEngineError`.
-* `engines/pdf-mupdf/` enthält die einzige MuPDF-Implementierung.
-* `platform/vocument-ffi/src/lib.rs` registriert sie über
-  `SessionRegistry::new(Box::new(MuPdfEngineAdapter::new()))` — eine einzige
-  Austauschstelle.
+* `core/vocument-core/src/pdf_engine.rs` defines `PdfEngineDisplayList`,
+  `PdfEngineDocument` and the error trait `PdfEngineError`.
+* `engines/pdf-mupdf/` contains the only MuPDF implementation.
+* `platform/vocument-ffi/src/lib.rs` registers it via
+  `SessionRegistry::new(Box::new(MuPdfEngineAdapter::new()))` — a single point
+  of exchange.
 
-Der Aufwand liegt nicht im Trait, sondern im **Funktionsumfang**: Das Trait
-verlangt `rotate_pages`, `add_highlight_annotation`, `remove_highlight_annotation`
-und `extract_page_text` — also **PDF-Mutation** und nicht nur Rendering. Die
-meisten Alternativen sind reine Renderer.
+The effort does not lie in the trait, but in the **range of functions**: the
+trait demands `rotate_pages`, `add_highlight_annotation`,
+`remove_highlight_annotation` and `extract_page_text` — thus **PDF mutation**
+and not only rendering. Most alternatives are pure renderers.
 
-### 5.2 Kandidaten
+### 5.2 Candidates
 
-| Engine | Lizenz | Rendering | Mutation | Text | Bewertung |
+| Engine | Licence | Rendering | Mutation | Text | Assessment |
 |---|---|---|---|---|---|
-| **PDFium** | BSD-3-Clause **und** Apache-2.0 (dual) | Ja, sehr gut | Nein (nur Annotationen-API) | Ja | **Beste Lizenzoption.** Permissiv, keine Copyleft-Pflicht. Aber: keine Mutations-API, die Vocument für `rotate_pages` braucht; zusätzliche C++-Abhängigkeit, die in den Rust-Core eingebunden werden muss (Fremdcode-Sicherheitsrisiko). |
-| **pdf.js** | Apache-2.0 | Ja (Browser/Canvas) | Nein | Ja | Renderer, kein natives Core-Library. Für eine native App ungeeignet. |
-| **PDFBox** | Apache-2.0 | Java | Ja | Ja | Java-Abhängigkeit in einer Rust-Architektur; nur als Nebenpfad sinnvoll. |
-| **Poppler** | GPL-2.0+ | Ja | Begrenzt | Ja | **GPL**: Kopplung erzwingt GPL des Gesamtwerks — löst das Problem nicht. |
-| **Ghostscript** | AGPL-3.0 / kommerziell | Ja | Begrenzt | Ja | Wie MuPDF: AGPL-Problem bleibt, plus ImageMagick-typische Ghostscript-Anachronismen und schlechtere Unicode-/Textqualität. |
-| **Xpdf** | GPL / kommerziell | Ja | Nein | Ja | GPL-Problem + Funktionsumfang. |
+| **PDFium** | BSD-3-Clause **and** Apache-2.0 (dual) | Yes, very good | No (only an annotations API) | Yes | **Best licence option.** Permissive, no copyleft duty. But: no mutation API that Vocument needs for `rotate_pages`; additional C++ dependency that has to be integrated into the Rust core (risk in terms of foreign code security). |
+| **pdf.js** | Apache-2.0 | Yes (browser/canvas) | No | Yes | Renderer, no native core library. Unsuitable for a native app. |
+| **PDFBox** | Apache-2.0 | Java | Yes | Yes | Java dependency in a Rust architecture; only sensible as a secondary path. |
+| **Poppler** | GPL-2.0+ | Yes | Limited | Yes | **GPL**: the coupling forces the GPL onto the overall work — does not solve the problem. |
+| **Ghostscript** | AGPL-3.0 / commercial | Yes | Limited | Yes | Like MuPDF: the AGPL problem remains, plus Ghostscript anachronisms of the ImageMagick type and a worse Unicode/text quality. |
+| **Xpdf** | GPL / commercial | Yes | No | Yes | GPL problem + range of functions. |
 
-### 5.3 Migrationskosten und -risiken
+### 5.3 Migration costs and risks
 
-| Risiko | Bewertung |
+| Risk | Assessment |
 |---|---|
-| Funktionsverlust bei `rotate_pages` / Annotation-Mutation | **Hoch.** Das ist Kernfunktionalität von M0.4/M0.7. PDFium bietet keine Seitenrotation in veränderbarer Form; sie müsste im Anwendungscode auf PDF-Objektebene implementiert werden. |
-| Textqualität | Mittel. Die vorhandenen OCR- und Extraktionstests (`M1.3`, `M1.4`) müssten neu kalibriert werden. |
-| Build-Komplexität | Mittel bis hoch. PDFium ist ein großes C++-Projekt mit eigenen Build-Abhängigkeiten; die Android- und macOS-Cross-Builds müssten neu etabliert werden. |
-| Sicherheitsprofil | Mittel. Ein C++-Fremdprojekt vergrößert die Angriffsfläche, die Rust nicht abdeckt. |
-| Aufwand für den jetzigen Stand | **Hoch** (Wochen). |
+| Loss of function with `rotate_pages` / annotation mutation | **High.** That is core functionality of M0.4/M0.7. PDFium offers no page rotation in modifiable form; it would have to be implemented in the application code at the level of PDF objects. |
+| Text quality | Medium. The existing OCR and extraction tests (`M1.3`, `M1.4`) would have to be recalibrated. |
+| Build complexity | Medium to high. PDFium is a large C++ project with its own build dependencies; the Android and macOS cross builds would have to be re-established. |
+| Security profile | Medium. A foreign C++ project enlarges the attack surface that Rust does not cover. |
+| Effort for the current state | **High** (weeks). |
 
-### 5.4 Bewertung
+### 5.4 Assessment
 
 | | |
 |---|---|
-| **Vorteile** | PDFium würde das Copyleft-Problem **technisch** lösen (permissive Lizenz). |
-| **Nachteile** | Löst das Problem nur durch Verlust der Kernfunktionalität oder durch hohen Neuaufwand. Der strategische Gewinn ist begrenzt, weil das Projekt bereits AGPL-lizenziert ist. |
-| **Risiko** | Hoch: Funktionsverlust in der Mutation, Regression in Textqualität und OCR-Gate, vollständiger Neuaufbau der Cross-Build-Pipeline. |
-| **Empfehlung** | **Nicht jetzt.** Variante C ist der Ausweg, falls sich später eineproprietäre Distributionsstrategie als zwingend erweist und Variante B nicht verfügbar ist. Der Trait-Schnittpunkt ist bewusst so geschnitten, dass dieser Weg offen bleibt. |
+| **Advantages** | PDFium would solve the copyleft problem **technically** (permissive licence). |
+| **Disadvantages** | It solves the problem only by loss of core functionality or by high new effort. The strategic gain is limited, because the project is already AGPL licensed. |
+| **Risk** | High: loss of function in the mutation, regression in text quality and the OCR gate, complete rebuild of the cross build pipeline. |
+| **Recommendation** | **Not now.** Variant C is the way out if a proprietary distribution strategy later proves mandatory and variant B is not available. The trait cut-off is deliberately drawn in such a way that this way stays open. |
 
 ---
 
-## 6. Vergleich
+## 6. Comparison
 
-| Kriterium | A: AGPL-konform | B: Kommerziell | C: PDFium (später) |
+| Criterion | A: AGPL conforming | B: Commercial | C: PDFium (later) |
 |---|---|---|---|
-| Eigener Quellcode muss offen | **Ja** | Nein | Nein |
-| Laufende Kosten | Keine | **Ja, Höhe unbekannt** | Keine |
-| Strategische Umkehrbarkeit | **Schlecht** (Code einmal öffentlich) | Gut | Gut |
-| Architekturänderung | Keine | Keine | **Groß** |
-| Funktionsumfang bleibt | Ja | Ja | **Einschränkungen bei Mutation** |
-| Verhandlungsbedarf | Keiner | **Ja, mit Anbieter** | Keiner |
-| Sicherheitsprofil | Unverändert | Unverändert | **Neue C++-Abhängigkeit** |
-| Aufwand | Gering–mittel | Mittel | Hoch |
-| Restrisiko | Mittel | Finanziell | Hoch |
+| Own source code must be open | **Yes** | No | No |
+| Running costs | None | **Yes, height unknown** | None |
+| Strategic reversibility | **Poor** (code once public) | Good | Good |
+| Change of the architecture | None | None | **Large** |
+| Range of functions preserved | Yes | Yes | **Restrictions in the mutation** |
+| Need for negotiations | None | **Yes, with the vendor** | None |
+| Security profile | Unchanged | Unchanged | **New C++ dependency** |
+| Effort | Low–medium | Medium | High |
+| Residual risk | Medium | Financial | High |
 
 ---
 
-## 7. Empfehlung und offene Entscheidungsfragen
+## 7. Recommendation and open questions of the decision
 
-### 7.1 Empfehlung
+### 7.1 Recommendation
 
-**Variante A (AGPL-konforme Open-Source-Veröffentlichung) wird technisch
-empfohlen**, unter zwei ausdrücklichen Bedingungen:
+**Variant A (AGPL conforming open source publication) is technically
+recommended**, under two explicit conditions:
 
-1. **Nur wenn** die Offenlegung des Anwendungsquellcodes strategisch gewollt
-   ist. Das ist eine Geschäftsentscheidung, keine technische. Der
-   Projektverantwortliche entscheidet das.
-2. **Nur wenn** vor der Veröffentlichung die Release-Kette steht (siehe 7.3).
+1. **Only if** the disclosure of the application source code is strategically
+   desired. That is a business decision, not a technical one. The project
+   owner decides it.
+2. **Only if** the release chain is in place before the publication (see
+   7.3).
 
-**Variante B** ist die empfohlene Alternative, wenn der Anwendungscode
-proprietär bleiben soll. Sie ist **vor** einer öffentlichen Distribution
-anzustoßen, weil die Anfrage Zeit braucht und die Antwort die
-Entscheidungsgrundlage verändert.
+**Variant B** is the recommended alternative if the application code is to
+remain proprietary. It is to be initiated **before** a public distribution,
+because the enquiry takes time and the answer changes the basis of the
+decision.
 
-**Variante C wird nicht jetzt empfohlen.** Der Funktionsverlust bei der
-PDF-Mutation ist mit dem aktuellen Produktstand (M0.4/M0.7) nicht vereinbar.
+**Variant C is not recommended now.** The loss of function in the PDF mutation
+is not compatible with the current state of the product (M0.4/M0.7).
 
-Diese Empfehlung ist **bewusst als vorläufig** markiert: Sie basiert auf den
-öffentlich belegbaren Fakten zu den drei Varianten, nicht auf einer
-Kostenschätzung, die es derzeit nicht gibt.
+This recommendation is **deliberately marked as provisional**: it is based on
+the publicly documented facts about the three variants, not on a cost estimate,
+which does not exist at the moment.
 
-### 7.2 Offene Entscheidungsfragen an den Projektverantwortlichen
+### 7.2 Open questions for the project owner
 
-| # | Frage | Warum sie blockiert |
+| # | Question | Why it blocks |
 |---|---|---|
-| E1 | Soll der Quellcode des Anwendungscores öffentlich werden? | Bestimmt Variante A vs. B vs. C. |
-| E2 | Ist eine proprietäre Verteilung der Ziel (Fachanwendung, Closed Source)? | Bestimmt Variante A vs. B. |
-| E3 | Welches Mengengerüst ist realistisch? | Bestimmt die kommerziellen Kosten in Variante B. |
-| E4 | Soll ein Serverdienst entstehen? | Bei Variante A greift AGPL §13 und verpflichtet zur Offenlegung des Dienstes. |
-| E5 | Wer haftet für die rechtliche Prüfung? | Diese Vorlage ist keine Beratung. |
+| E1 | Should the source code of the application core become public? | Determines variant A vs. B vs. C. |
+| E2 | Is a proprietary distribution the goal (specialist application, closed source)? | Determines variant A vs. B. |
+| E3 | Which order of magnitude is realistic? | Determines the commercial costs in variant B. |
+| E4 | Should a server service arise? | In variant A AGPL §13 applies and obliges to disclose the service. |
+| E5 | Who is liable for the legal review? | This template is not advice. |
 
-### 7.3 Was bis zur Freigabe nicht passieren darf
+### 7.3 What must not happen until the release
 
-* **Keine öffentliche Distribution** von APK, AAB, DMG oder Installer, die MuPDF
-  enthält, als „freigegeben" behandeln.
-* **Keine Aufnahme in App-Stores** ohne die jeweils passende Variante.
-* **Keine proprietären Erweiterungen** aufbauen, solange E1 offen ist — sonst
-  entsteht eine Mischlage, die später nicht sauber auflösbar ist.
-* **Keine Engine-Migration** beginnen (Variante C), solange E1 und E2 offen sind.
-* Die **Producer-Line** und die **AGPL-Informationen in den PDF-Metadaten** sind
-  unabhängig von der Variantenentscheidung umzusetzen, sobald AGPL-Betrieb
-  vorgesehen ist (R6).
+* **No public distribution** of APK, AAB, DMG or installer that contains
+  MuPDF may be treated as "released".
+* **No inclusion in app stores** without the respectively applicable variant.
+* **No proprietary extensions** may be built while E1 is open — otherwise a
+  mixture arises that cannot later be resolved cleanly.
+* **No engine migration** (variant C) may be started while E1 and E2 are open.
+* The **producer line** and the **AGPL information in the PDF metadata** are to
+  be implemented independently of the variant decision, as soon as AGPL
+  operation is intended (R6).
 
-### 7.4 Unabhängig von der Entscheidung sofort umsetzbar
+### 7.4 Independently of the decision, immediately implementable
 
-Diese Punkte verbessern den Zustand in jeder Variante:
+These points improve the state in every variant:
 
-1. **Release-Prozess für Variante A vorbereiten** (Quellcode-Bundle, Checksummen,
-   Build-Anleitung inkl. NDK-/SDK-/MuPDF-Pins).
-2. **Attribution in den PDF-Metadaten** ergänzen (Producer-Line, AGPL-Hinweis).
-3. **`RISK-010` (Größe) reduzieren**: MuPDF-Build-Optionen für ungenutzte
-   Formate (XPS, CBZ, HTML/EPUB) deaktivieren, `strip` verwenden, ABI-Splits
-   anbieten. Das ist **reproduzierbar** und ohne funktionale Regression
-   nachweisbar — der Pixelvergleich gegen die Referenzrendering ist der
-   Nachweis dafür.
-4. **Antwort von Artifex einholen**, um E3 mit belastbaren Zahlen zu
-   unterlegen (auch bei einer späteren Entscheidung für Variante A ist das
-   eine sinnvolle Grundlage).
+1. **Prepare the release process for variant A** (source bundle, checksums,
+   build instructions including the NDK/SDK/MuPDF pins).
+2. **Add the attribution in the PDF metadata** (producer line, AGPL note).
+3. **Reduce `RISK-010` (size)**: deactivate the MuPDF build options for unused
+   formats (XPS, CBZ, HTML/EPUB), use `strip`, offer ABI splits. That is
+   **reproducible** and provable without a functional regression — the pixel
+   comparison against the reference rendering is the proof of it.
+4. **Obtain an answer from Artifex** in order to underpin E3 with sound figures
+   (that is also a sensible basis even for a later decision in favour of
+   variant A).
 
 ---
 
-## 8. Quellen
+## 8. Sources
 
-| # | Quelle | URL | Verwendet für |
+| # | Source | URL | Used for |
 |---|---|---|---|
-| Q1 | Artifex — Licensing | https://artifex.com/licensing | Modelle, Pflichten, Attributionshinweise, „Can't comply with AGPLv3?" |
-| Q2 | Artifex — Products | https://artifex.com/products | MuPDF (Core) als Produkt, kommerzielle Lizenzierung |
-| Q3 | Artifex Software — GitHub | https://github.com/ArtifexSoftware | Dual-Lizenzierung, Zweck der kommerziellen Lizenz |
-| Q4 | MuPDF — Lizenzdokumentation | https://mupdf.readthedocs.io/en/1.28.3/license.html | „GNU AGPL", „commercial license", kein Garantie-/Support-Versprechen |
-| Q5 | Artifex — MuPDF-Downloads (Release 1.28.5) | https://github.com/ArtifexSoftware/mupdf-downloads/commit/c3c899f29d0640b6b23f4d5d45cf8c99074cb295 | Versionierung der verwendeten Version |
-| Q6 | GNU AGPL v3 (Canonical) | https://www.gnu.org/licenses/agpl-3.0.html | §6 (Weitergabe), §9/§10 (Kopplung), §13 (Netzwerk) |
-| Q7 | PDFium — LICENSE | https://pdfium.googlesource.com/pdfium/+/refs/heads/main/LICENSE | BSD-3-Clause + Apache-2.0, permissiv |
-| Q8 | pdf.js — Vergleichswerkzeug mit Lizenzübersicht | https://github.com/mozilla/pdf.js.comparator/blob/main/README.md | Lizenzvergleich der Alternativ-Engines (Poppler GPL, Ghostscript AGPL, Xpdf GPL, PDFBox/pdf.js/PDFium Apache) |
-| Q9 | PDF Association — Survey of Open-Source PDF Solutions | https://pdfa.org/wp-content/uploads/2021/06/Survey-of-OpenSource-Solutions.pdf | Funktionsumfang der Alternativen (Overprint, AcroForms, Annotationen, Text) |
-| Q10 | Homebrew — `mupdf-tools` Formula | https://github.com/Homebrew/homebrew-core/blob/cbd0c8ddb11909fb209f06e08677973c0f211848/Formula/m/mupdf-tools.rb | Unabhängige Bestätigung der MuPDF-1.28.5-SHA-256 |
-| Q11 | FreeBSD Ports — `graphics/mupdf` | https://github.com/FreeBSD/freebsd-ports/commit/602c6870f02e89e175ee855bff0e26c1a42b2970 | Unabhängige Bestätigung der MuPDF-1.28.5-SHA-256 und -Dateigröße |
+| Q1 | Artifex — Licensing | https://artifex.com/licensing | Models, duties, attribution notices, "Can't comply with AGPLv3?" |
+| Q2 | Artifex — Products | https://artifex.com/products | MuPDF (core) as a product, commercial licensing |
+| Q3 | Artifex Software — GitHub | https://github.com/ArtifexSoftware | Dual licensing, purpose of the commercial licence |
+| Q4 | MuPDF — Licence documentation | https://mupdf.readthedocs.io/en/1.28.3/license.html | "GNU AGPL", "commercial license", no guarantee/support promise |
+| Q5 | Artifex — MuPDF downloads (release 1.28.5) | https://github.com/ArtifexSoftware/mupdf-downloads/commit/c3c899f29d0640b6b23f4d5d45cf8c99074cb295 | Versioning of the version used |
+| Q6 | GNU AGPL v3 (Canonical) | https://www.gnu.org/licenses/agpl-3.0.html | §6 (conveyance), §9/§10 (coupling), §13 (network) |
+| Q7 | PDFium — LICENSE | https://pdfium.googlesource.com/pdfium/+/refs/heads/main/LICENSE | BSD-3-Clause + Apache-2.0, permissive |
+| Q8 | pdf.js — comparison tool with licence overview | https://github.com/mozilla/pdf.js.comparator/blob/main/README.md | Licence comparison of the alternative engines (Poppler GPL, Ghostscript AGPL, Xpdf GPL, PDFBox/pdf.js/PDFium Apache) |
+| Q9 | PDF Association — Survey of Open-Source PDF Solutions | https://pdfa.org/wp-content/uploads/2021/06/Survey-of-OpenSource-Solutions.pdf | Range of functions of the alternatives (overprint, AcroForms, annotations, text) |
+| Q10 | Homebrew — `mupdf-tools` formula | https://github.com/Homebrew/homebrew-core/blob/cbd0c8ddb11909fb209f06e08677973c0f211848/Formula/m/mupdf-tools.rb | Independent confirmation of the MuPDF 1.28.5 SHA-256 |
+| Q11 | FreeBSD Ports — `graphics/mupdf` | https://github.com/FreeBSD/freebsd-ports/commit/602c6870f02e89e175ee855bff0e26c1a42b2970 | Independent confirmation of the MuPDF 1.28.5 SHA-256 and file size |
 
-**Projektinterne Belege:** `THIRD_PARTY.md`, `LICENSE`, `project/project.yaml`,
-`docs/project/RISKS.md` (`RISK-009`, `RISK-010`),
+**Internal evidence of the project:** `THIRD_PARTY.md`, `LICENSE`,
+`project/project.yaml`, `docs/project/RISKS.md` (`RISK-009`, `RISK-010`),
 `docs/adr/ADR-0017-real-android-mupdf-cross-build.md`,
 `core/vocument-core/src/pdf_engine.rs`, `scripts/validate-repo.sh`.

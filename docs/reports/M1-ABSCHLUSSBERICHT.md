@@ -1,157 +1,156 @@
-# Abschlussbericht — M1: Android Scan & OCR
+# Final Report — M1: Android Scan & OCR
 
-**Datum:** 2026-10-20
+**Date:** 2026-10-20
 **Branch:** `main`
-**Akzeptanz:** `docs/acceptance/M1-ACCEPTANCE.md`
-**Unterstufen:** M1.0 … M1.6
+**Acceptance:** `docs/acceptance/M1-ACCEPTANCE.md`
+**Sub-milestones:** M1.0 … M1.6
 
 ---
 
-## A. Erreichter Stand
+## A. State reached
 
-M1 liefert die mobile Kernfunktion: **Scannen → Bildkorrektur → OCR →
-durchsuchbares, speicherbares PDF**. Die Kette ist jetzt als **ein**
-End-to-End-Test an der UniFFI-Grenze nachgewiesen, mit echter Engine, echter
-Kantenerkennung, echter OCR und echter Volltextsuche:
+M1 delivers the mobile core function: **scan → image correction → OCR →
+searchable, savable PDF**. The chain is now proven as **one** end-to-end test
+at the UniFFI boundary, with a real engine, real edge detection, real OCR and
+real full-text search:
 
 ```
-Kameraframe → Kanten → Entzerrung → Bereinigung → OCR → durchsuchbares PDF
-             → Session → FTS5-Suche → Speichern → Wieder öffnen → Text lesbar
+camera frame → edges → deskew → clean-up → OCR → searchable PDF
+             → session → FTS5 search → save → open again → text readable
 ```
 
-Laufzeit **4,2 s** auf dem Host.
+Runtime **4.2 s** on the host.
 
-### Was in dieser Ausbaustufe dazugekommen ist
+### What this stage added
 
-| Bereich | Vorher | Nachher |
+| Area | Before | After |
 |---|---|---|
-| Kantenerkennung | achsenausgerichtetes Rechteck, geneigte Seiten blieben falsch | Konturerkennung mit robustem Linienausgleich, Tilt wird erfasst |
-| Throughput des Scans | PDF-Erzeugung lief **auf dem UI-Thread** | Aufnahme **und** PDF-Erzeugung laufen auf dem Executor |
-| Speichern | es gab **keine** Speichern-Funktion in der Android-UI | „Save PDF" mit Kollisionsvermeidung, Pfad wird angezeigt |
-| Hintergrundarbeit | keine Energieregelung | Kern entscheidet: Hintergrundarbeit ruht bei Hitze und leerem Akku, Parallelität sinkt |
-| Abbruch / Fortsetzen | nur Abbruch | Pause und Fortsetzung, resumierbare Jobs laufen erneut |
-| Throughput-Nachweis | keine vollständige Kette | End-to-End-Test über die UniFFI-Grenze |
-| Speicher | ungemessen | Peak-Speicher und valgrind-Lauf des pathologischen Korpus |
+| Edge detection | axis-aligned rectangle, tilted pages stayed wrong | contour detection with a robust line fit, the tilt is captured |
+| Throughput of the scan | the PDF creation ran **on the UI thread** | capture **and** PDF creation run on the executor |
+| Saving | there was **no** save function in the Android UI | "Save PDF" with collision avoidance, the path is displayed |
+| Background work | no energy rule | the core decides: background work rests in the heat and on an empty battery, the parallelism drops |
+| Cancellation / resume | only cancellation | pause and resume, resumable jobs run again |
+| Throughput proof | no complete chain | end-to-end test across the UniFFI boundary |
+| Memory | not measured | peak memory and a valgrind run of the pathological corpus |
 
 ---
 
-## B. Die drei Befunde, die den Weg freigelegt haben
+## B. The three findings that cleared the way
 
-### B1 — Die Kantenerkennung konnte keine geneigte Seite finden
+### B1 — The edge detection could not find a tilted page
 
-Die Erkennung suchte in der **Mittellinie** des Bildes nach den Kanten und
-konnne deshalb nur ein **achsenausgerichtetes Rechteck** liefern. Die Seite im
-Korpus ist aber ein gescherter Parallelogramm; die Entzerrung war damit
-falsch, und der OCR-Text war unbrauchbar. Der End-to-End-Test schlug genau
-daran fehl — an der **Suche**, nicht an der Suche selbst.
+The detection searched for the edges along the **centre line** of the image and
+could therefore only deliver an **axis-aligned rectangle**. The page in the
+corpus, however, is a sheared parallelogram; the deskew was therefore wrong
+and the OCR text was unusable. The end-to-end test failed precisely there — at
+the **search**, not at the search itself.
 
-Die Erkennung arbeitet jetzt auf der **Seitenkontur**: für jede Zeile das
-äußerste, für jede Spalte das oberste bzw. unterste Seitenzelle; daraus je
-Kante eine Gerade, mit dem **Theil–Sen-Schätzer** (robust gegen bis zu 29 %
-Ausreißer — die Ecken liegen oft im Schatten), und schließlich der Schnittpunkt
-der vier Geraden.
+The detection now works on the **page contour**: for every row the outermost
+cell, for every column the topmost respectively lowest cell; from that one
+straight line per edge, with the **Theil–Sen estimator** (robust against up to
+29 % outliers — the corners often lie in the shadow), and finally the
+intersection of the four lines.
 
-Ergebnis: die erkannten Ecken liegen innerhalb von **0,014** von der Referenz
-(Toleranz im Test: 0,05), der Neigungsgrad wird korrekt übernommen.
+Result: the detected corners lie within **0.014** of the reference (tolerance in
+the test: 0.05), the degree of the tilt is taken over correctly.
 
-### B2 — Die PDF-Erzeugung blockierte die Oberfläche
+### B2 — The PDF creation blocked the interface
 
-Der Aufnahmepfad lief korrekt auf einem Executor. Der **Ingest-Pfad**
-(PDF-Erzeugung mit OCR) lief dagegen direkt im Klick-Handler — auf dem
-UI-Thread, sekundenlang. Das widersprach der Zusage „OCR blockiert den
-UI-Thread nicht". Der Pfad läuft jetzt über denselben Executor; die
-Oberfläche zeigt währenddessen „Preparing PDF…".
+The capture path ran correctly on an executor. The **ingest path** (PDF
+creation with OCR), on the other hand, ran directly in the click handler — on
+the UI thread, for seconds. That contradicted the promise "the OCR does not
+block the UI thread". The path now runs through the same executor; the
+interface shows "Preparing PDF…" in the meantime.
 
-### B3 — Ein hängender Job konnte die Anwendung am Beenden hindern
+### B3 — A hanging job could prevent the application from exiting
 
-`shutdown()` wartete unbegrenzt auf die Worker. Ein Job-Body, der sein
-Cancellation-Token ignoriert, blockierte damit auch das `Drop` des Executors —
-die Anwendung konnte in diesem Zustand **nicht beenden**. Der Shutdown ist
-jetzt befristet (`shutdown_grace_ms`, 2 s); ein festhängender Worker wird
-detachiert.
+`shutdown()` waited for the workers without a limit. A job body that ignores
+its cancellation token therefore also blocked the `Drop` of the executor — in
+that state the application **could not exit**. The shutdown is now bounded
+(`shutdown_grace_ms`, 2 s); a stuck worker is detached.
 
-Der Befund kam nicht aus einem grünen Testlauf, sondern aus einem
-**fehlgeschlagenen**: der Panic löste das `Drop` aus, das Shutdown wartete, der
-Testprozess beendete sich nicht. Ein hängender Test ist ein Befund.
+The finding did not come from a green test run, but from a **failed** one: the
+panic triggered the `Drop`, the shutdown waited, the test process did not
+terminate. A hanging test is a finding.
 
 ---
 
-## C. Nachweisstand
+## C. State of the evidence
 
-### Bestätigt (PASS)
+### Confirmed (PASS)
 
-| Nachweis | Ergebnis |
+| Evidence | Result |
 |---|---|
-| `cargo test --workspace` | **132 Tests, 0 Fehler** |
+| `cargo test --workspace` | **132 tests, 0 failures** |
 | `cargo clippy --workspace --all-targets -- -D warnings` | **0** |
 | `cargo fmt --all -- --check` | **0** |
 | `scripts/validate-repo.sh` | **0** |
-| End-to-End-Scan-Workflow | **PASS**, 4,2 s |
-| Kantenerkennung auf geneigter Seite | **PASS**, Toleranz 0,05 |
-| Energie- und Thermiklogik | **PASS**, 10 Tests |
-| Pause und Fortsetzung | **PASS**, 3 Tests |
-| Schwierige PDFs (8 Fixtures) | **PASS** |
-| Peak-Speicher des Korpus | **5,9 MB → 8,3 MB** |
-| valgrind memcheck | **0 Fehler, 0 Bytes verloren** |
-| Android-Kotlin-Kompilierung | **PASS** (`compileDebugKotlin`) |
+| End-to-end scan workflow | **PASS**, 4.2 s |
+| Edge detection on a tilted page | **PASS**, tolerance 0.05 |
+| Energy and thermal logic | **PASS**, 10 tests |
+| Pause and resume | **PASS**, 3 tests |
+| Difficult PDFs (8 fixtures) | **PASS** |
+| Peak memory of the corpus | **5.9 MB → 8.3 MB** |
+| valgrind memcheck | **0 errors, 0 bytes lost** |
+| Android Kotlin compilation | **PASS** (`compileDebugKotlin`) |
 
-### Nicht verifiziert (NOT RUN)
+### Not verified (NOT RUN)
 
-| Nachweis | Grund |
+| Evidence | Reason |
 |---|---|
-| Lauf auf einem echten Gerät | Kein Gerät; der Emulator bootet ohne `/dev/kvm` nur per Software-Emulation |
-| On-Device-OCR-Qualität | Wie oben |
-| UI-Reaktionsfähigkeit zur Laufzeit | Erfordert ein Gerät |
-| Energie- und Thermikverhalten auf dem Gerät | Erfordert ein Gerät |
-| macOS-Build und -Integrationstests | Kein macOS-Host |
-| AddressSanitizer | Nur mit dem Nightly-Toolchain (`-Zbuild-std`); Ersatz: valgrind |
-| CI-Lauf | Kein Workflow ausgeführt |
+| Run on a real device | No device; the emulator boots without `/dev/kvm` only in software emulation |
+| On-device OCR quality | Same as above |
+| Responsiveness of the interface at runtime | Requires a device |
+| Energy and thermal behaviour on the device | Requires a device |
+| macOS build and integration tests | No macOS host |
+| AddressSanitizer | Only with the nightly toolchain (`-Zbuild-std`); substitute: valgrind |
+| CI run | No workflow executed |
 
-Diese Punkte sind **offen** und werden nicht als bestanden geführt.
+These items are **open** and are not carried as passed.
 
 ---
 
-## D. Inkonsistenzen, die beseitigt wurden
+## D. Inconsistencies that were removed
 
-| Inkonsistenz | Korrektur |
+| Inconsistency | Correction |
 |---|---|
-| Roadmap-Kopfzeile nannte M1.5 als „next", obwohl M1.5 implementiert war | Kopfzeile, M1.5-Status und M1.6-Definition aktualisiert |
-| Zwei verschiedene „M1.6" (Plattformvalidierung und Android-Gate) | zu **M1.6a** (Android-Gate) und **M1.6b** (Plattformvalidierung) zusammengeführt |
-| Die APK-Größe in der Roadmap war mit 23 MB angegeben | gemessene Werte (250 MB Debug, 95 MB Release) |
-| `project.yaml` nannte ein offenes „release_package_inspection", obwohl das Paket geprüft war | Prüfstand und offene Punkte aktualisiert |
-| Der Interop-Test suchte `mutool` nur an fest verdrahteten Pfaden | Suche über `MUPDF_DIR`, denselben Mechanismus wie der Build |
-| `REQUIREMENTS.md` kannte die neuen Zusagen nicht | `SCAN-009`, `SCAN-010`, `JOB-011`, `UI-010`, `POWER-001` präzisiert |
-| Die Toolchain-Pfade waren im Build fest verdrahtet | Tesseract-Cross-Build erkennt einen geänderten NDK und baut neu auf |
+| The headline of the roadmap named M1.5 as "next", although M1.5 was already implemented | Headline, status of M1.5 and the definition of M1.6 updated |
+| Two different "M1.6" (platform validation and Android gate) | merged into **M1.6a** (Android gate) and **M1.6b** (platform validation) |
+| The size of the APK was given as 23 MB in the roadmap | measured values (250 MB debug, 95 MB release) |
+| `project.yaml` named an open "release_package_inspection", although the package had been checked | test bench and open items updated |
+| The interop test looked for `mutool` only at hard-coded paths | search via `MUPDF_DIR`, the same mechanism as the build |
+| `REQUIREMENTS.md` did not know the new promises | `SCAN-009`, `SCAN-010`, `JOB-011`, `UI-010`, `POWER-001` specified |
+| The toolchain paths were hard-wired in the build | the Tesseract cross build recognises a changed NDK and rebuilds |
 
 ---
 
-## E. Verbleibende Blocker
+## E. Remaining blockers
 
-| Blocker | Art | Wer |
+| Blocker | Kind | Owner |
 |---|---|---|
-| Kein Android-Gerät und kein `/dev/kvm` | Umgebung | Bereitstellung eines Geräts oder eines KVM-fähigen Runners |
-| Kein macOS-Host | Umgebung | macOS-Runner für die Desktop-Spur |
-| Lizenzentscheidung E1–E5 offen | Entscheidung | Projektverantwortlicher |
-| CI nicht ausgeführt | Infrastruktur | Lauffähiger Workflow-Runner |
-| AddressSanitizer nur mit Nightly | Werkzeug | Nightly-Toolchain im Build-Image |
+| No Android device and no `/dev/kvm` | Environment | Provisioning of a device or a KVM-capable runner |
+| No macOS host | Environment | macOS runner for the desktop track |
+| Licensing decision E1–E5 open | Decision | Project owner |
+| CI not executed | Infrastructure | A runnable workflow runner |
+| AddressSanitizer only with nightly | Tooling | Nightly toolchain in the build image |
 
-Keiner dieser Blocker ist eine Codefrage.
+None of these blockers is a question of code.
 
 ---
 
-## F. Empfehlung für den nächsten Meilenstein
+## F. Recommendation for the next milestone
 
-**M1.7 — Battie- und Thermikanpassung auf dem Gerät** (`BIGMOBILE-001`,
-`POWER-001`), sobald ein Gerät verfügbar ist. Die Entscheidungslogik steht und
-ist geprüft; offen ist ausschließlich die Messung auf dem Ziel.
+**M1.7 — battery and thermal adaptation on the device** (`BIGMOBILE-001`,
+`POWER-001`), as soon as a device is available. The decision logic exists and
+is checked; what is open is exclusively the measurement on the target.
 
-Danach folgt **M2 — macOS Professional Review**: die macOS-Spur braucht
-einen Host, und die Review-Funktionen (Kommentare, Highlights, Stempel,
-Redaktion, Vergleich) sind der größere inhaltliche Schritt. Die
-Windows-/Linux-Spur bleibt bis dahin geblockt, weil die Reihenfolge
-macOS → Android → Windows → Linux bindend ist.
+After that follows **M2 — macOS Professional Review**: the macOS track needs a
+host, and the review functions (comments, highlights, stamps, redaction,
+comparison) are the larger step in terms of substance. The Windows/Linux track
+stays blocked until then, because the order macOS → Android → Windows → Linux
+is binding.
 
-**Nicht** empfohlen: eine Engine-Migration (PDFium). Sie wäre eine Reaktion auf
-eine noch nicht getroffene Lizenzentscheidung und würde die PDF-Mutation
-(Rotation, Annotationen) schwächen, ohne ein Problem zu lösen, das nicht
-bereits entschieden ist.
+**Not** recommended: a migration of the engine (PDFium). It would be a
+reaction to a licensing decision that has not been made and would weaken the
+PDF mutation (rotation, annotations) without solving a problem that has not
+already been decided.

@@ -1,7 +1,7 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-started"
+  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host"
   current_milestone: "M2"
   current_milestone_name: "macOS Professional Review"
   current_submilestone: "M2.3"

@@ -11,7 +11,7 @@
 
 Document corruption or silent data loss caused by unsafe saving or simultaneous external edits is catastrophic for user trust.
 Milestone M0.5 introduces a safe saving subsystem governed by the strict gate:
-> **Gate:** *Nie still extern geänderte Inhalte überschreiben.* (Never silently overwrite externally changed content.)
+> **Gate:** *Never silently overwrite externally changed content.*
 
 Specific technical challenges:
 1. Save must be atomic: crashes during write must leave the existing file intact.
