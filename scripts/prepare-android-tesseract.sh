@@ -1,37 +1,148 @@
 #!/usr/bin/env bash
+# Cross-builds Tesseract OCR and Leptonica for Android arm64-v8a.
+#
+# The Android build of Vocument links against the real Tesseract engine. The
+# prebuilt AAR (`cz.adaptech.tesseract4android`) is not reachable from every
+# build environment, so the engine can also be built from source with the
+# Android NDK. This script implements that path.
+#
+# The result is written to `engines/ocr/android-libs/arm64-v8a`, which is the
+# directory `engines/ocr/build.rs` searches on Android targets.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk}"
-export ANDROID_HOME="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
+cd "$REPO_ROOT"
 
-TARGET_DIR="$REPO_ROOT/engines/ocr/android-libs/arm64-v8a"
-mkdir -p "$TARGET_DIR"
+NDK_ROOT="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-/opt/android-ndk/android-ndk-r27c}}"
+TOOLCHAIN_HOST="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
+BIN="${TOOLCHAIN_HOST}/bin"
+TARGET_API=24
+TARGET_TRIPLE="aarch64-linux-android"
 
-if [[ ! -f "$TARGET_DIR/libtesseract.so" ]] || [[ ! -f "$TARGET_DIR/libleptonica.so" ]]; then
-  echo "==> Extracting Android Tesseract native dependencies from AAR via Gradle..."
-  (cd "$REPO_ROOT/apps/android" && ./gradlew :app:extractTesseractNativeLibs --quiet)
-fi
+TESSERACT_VERSION="${TESSERACT_VERSION:-5.3.0}"
+LEPTONICA_VERSION="${LEPTONICA_VERSION:-1.82.0}"
 
-if [[ ! -f "$TARGET_DIR/libtesseract.so" ]] || [[ ! -f "$TARGET_DIR/libleptonica.so" ]]; then
-  echo "ERROR: Failed to extract Android Tesseract native dependencies to $TARGET_DIR" >&2
+WORK_DIR="${WORK_DIR:-$REPO_ROOT/target/tesseract-android-build}"
+INSTALL_DIR="${INSTALL_DIR:-$REPO_ROOT/target/tesseract-android}"
+OUTPUT_DIR="$REPO_ROOT/engines/ocr/android-libs/arm64-v8a"
+
+CC="${BIN}/${TARGET_TRIPLE}${TARGET_API}-clang"
+CXX="${BIN}/${TARGET_TRIPLE}${TARGET_API}-clang++"
+AR="${BIN}/llvm-ar"
+RANLIB="${BIN}/llvm-ranlib"
+STRIP="${BIN}/llvm-strip"
+
+if [[ ! -x "$CC" ]]; then
+  echo "ERROR: Android NDK compiler not found at $CC" >&2
   exit 1
 fi
 
-EXPECTED_TESS_SHA256="bce8dcca1544d9f8708ac126c1e920bfa92481509672d8472470e8c2eebcd43c"
-EXPECTED_LEPT_SHA256="00436d8562bc833a22111a1451cf46147f05aecf8a257751e127689a1ee6e3c4"
+mkdir -p "$WORK_DIR" "$INSTALL_DIR" "$OUTPUT_DIR"
 
-ACTUAL_TESS_SHA="$(shasum -a 256 "$TARGET_DIR/libtesseract.so" | awk '{print $1}')"
-ACTUAL_LEPT_SHA="$(shasum -a 256 "$TARGET_DIR/libleptonica.so" | awk '{print $1}')"
+fetch() {
+  local url="$1" target="$2"
+  if [[ ! -f "$WORK_DIR/$target" ]]; then
+    echo "    Fetching $target"
+    curl -fsSL -o "$WORK_DIR/$target" "$url"
+  fi
+}
 
-if [[ "$ACTUAL_TESS_SHA" != "$EXPECTED_TESS_SHA256" ]]; then
-  echo "ERROR: libtesseract.so checksum mismatch! Expected $EXPECTED_TESS_SHA256, got $ACTUAL_TESS_SHA" >&2
-  exit 1
-fi
+echo "==> Fetching the Tesseract and Leptonica sources"
+fetch "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/${TESSERACT_VERSION}.tar.gz" \
+  "tesseract-${TESSERACT_VERSION}.tar.gz"
+fetch "https://github.com/DanBloomberg/leptonica/archive/refs/tags/${LEPTONICA_VERSION}.tar.gz" \
+  "leptonica-${LEPTONICA_VERSION}.tar.gz"
 
-if [[ "$ACTUAL_LEPT_SHA" != "$EXPECTED_LEPT_SHA256" ]]; then
-  echo "ERROR: libleptonica.so checksum mismatch! Expected $EXPECTED_LEPT_SHA256, got $ACTUAL_LEPT_SHA" >&2
-  exit 1
-fi
+extract() {
+  local archive="$1" directory="$2"
+  if [[ ! -d "$WORK_DIR/$directory" ]]; then
+    tar -xzf "$WORK_DIR/$archive" -C "$WORK_DIR"
+  fi
+}
 
-echo "✓ Android Tesseract native dependencies and pinned SHA-256 checksums verified at $TARGET_DIR"
+extract "leptonica-${LEPTONICA_VERSION}.tar.gz" "leptonica-${LEPTONICA_VERSION}"
+extract "tesseract-${TESSERACT_VERSION}.tar.gz" "tesseract-${TESSERACT_VERSION}"
+
+# The cross compilation of Leptonica and Tesseract uses autotools. The host
+# tools are used to *configure* the build; the NDK toolchain compiles and links
+# the result.
+export CC="$CC"
+export CXX="$CXX"
+export AR="$AR"
+export RANLIB="$RANLIB"
+export STRIP="$STRIP"
+export LD="${BIN}/ld.lld -m aarch64linux"
+export PKG_CONFIG_PATH="$INSTALL_DIR/lib/pkgconfig"
+export CFLAGS="-fPIC -D__ANDROID__ -I$INSTALL_DIR/include"
+export CXXFLAGS="-fPIC -D__ANDROID__ -I$INSTALL_DIR/include"
+export LDFLAGS="-L$INSTALL_DIR/lib"
+
+echo "==> Building Leptonica $LEPTONICA_VERSION for $TARGET_TRIPLE"
+(
+  cd "$WORK_DIR/leptonica-${LEPTONICA_VERSION}"
+  if [[ ! -f Makefile ]]; then
+    # The release tarball of Leptonica has no `configure` script; it is generated
+    # with the autotools.
+    if [[ ! -f configure ]]; then
+      ./autogen.sh >/dev/null 2>&1 || autoreconf -i >/dev/null 2>&1
+    fi
+    # `--host` is mandatory for a cross compilation: without it, the configure
+    # script tries to run the freshly built programs on the build host.
+    #
+    # JPEG, PNG and TIFF support is disabled: the Android NDK does not ship
+    # those development headers, and the OCR pipeline works on the raw bitmaps
+    # that the imaging engine produces. The image *file* formats are handled by
+    # the imaging engine of Vocument, not by Tesseract.
+    ./configure --host="$TARGET_TRIPLE" --prefix="$INSTALL_DIR" \
+      --disable-shared --enable-static \
+      --without-jpeg --without-libpng --without-libtiff \
+      --without-libwebp --without-libwebpmux --without-gif \
+      --without-libopenjpeg >/dev/null
+  fi
+  make -j"$(nproc)" >/dev/null
+  # Only the library is needed. The Leptonica command line tools pull in
+  # additional image format libraries that the OCR engine does not use.
+  make -C src install >/dev/null
+)
+
+echo "==> Building Tesseract $TESSERACT_VERSION for $TARGET_TRIPLE"
+(
+  cd "$WORK_DIR/tesseract-${TESSERACT_VERSION}"
+  if [[ ! -f Makefile ]]; then
+    ./autogen.sh >/dev/null 2>&1 || autoreconf -i >/dev/null 2>&1
+    # `--host` is mandatory for a cross compilation.
+    ./configure --host="$TARGET_TRIPLE" --prefix="$INSTALL_DIR" \
+      --disable-shared --enable-static \
+      --disable-graphics --disable-openmp --disable-luajit \
+      --with-leptonica="$INSTALL_DIR" --without-curl --without-archive \
+      --without-libarchive --without-tcl --without-icu >/dev/null
+  fi
+  make -j"$(nproc)" >/dev/null
+  make install >/dev/null
+)
+
+echo "==> Installing the runtime libraries into $OUTPUT_DIR"
+for library in libtesseract libleptonica; do
+  source_file="$(find "$INSTALL_DIR/lib" -maxdepth 1 -name "${library}.a" | head -n1)"
+  if [[ -z "$source_file" ]]; then
+    echo "ERROR: ${library}.a was not produced" >&2
+    exit 1
+  fi
+  # The Android build links the engine dynamically, so a shared library is
+  # required. The static archive is turned into a shared library with the NDK
+  # compiler, which keeps the build free of an external download.
+  shared_file="$(find "$INSTALL_DIR/lib" -maxdepth 1 -name "${library}.so.*" | head -n1)"
+  if [[ -n "$shared_file" ]]; then
+    install -m 644 "$shared_file" "$OUTPUT_DIR/${library}.so"
+  else
+    echo "    Linking ${library}.so from the static archive"
+    # Bionic provides the threading primitives as part of libc; there is no
+    # separate `-lpthread` on Android.
+    "$CC" -shared -o "$OUTPUT_DIR/${library}.so" \
+      -Wl,--whole-archive "$source_file" -Wl,--no-whole-archive \
+      -llog -lz
+  fi
+done
+
+echo "✓ Android Tesseract libraries installed in $OUTPUT_DIR"
+ls -la "$OUTPUT_DIR"
