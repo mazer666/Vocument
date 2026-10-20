@@ -23,6 +23,23 @@ max_concurrent_render_workers = 4
 max_concurrent_background_ocr_workers = 2
 yield_background_on_interaction = true
 
+# M1.5 JobManager capacity limits.
+#
+# The worker pool is bounded: at most `max_concurrent_workers` jobs run at the same
+# time, and at most `max_queued_jobs` may wait in the queue. Submitting beyond
+# that limit is rejected with a typed error instead of silently growing memory.
+max_concurrent_workers = 4
+max_queued_jobs = 256
+
+# A queued job that waits longer than this is promoted by one priority level, so
+# that low-priority background work cannot starve indefinitely while interactive
+# work keeps arriving (`ARCHITECTURE.md` §8.2).
+starvation_promotion_ms = 250
+
+# Longest time a worker waits for new queue entries before shutting down when the
+# pool is idle. Keeps shutdown responsive without busy waiting.
+idle_shutdown_timeout_ms = 500
+
 [code_limits]
 target_max_lines_per_file = 600
 hard_max_lines_per_file = 900

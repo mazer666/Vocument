@@ -135,6 +135,10 @@ pub struct JobBudgets {
     pub max_concurrent_render_workers: usize,
     pub max_concurrent_background_ocr_workers: usize,
     pub yield_background_on_interaction: bool,
+    pub max_concurrent_workers: usize,
+    pub max_queued_jobs: usize,
+    pub starvation_promotion_ms: u64,
+    pub idle_shutdown_timeout_ms: u64,
 }
 
 impl PerformanceBudgetsConfig {
