@@ -95,6 +95,19 @@ pub(crate) fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
     if text.is_empty() { None } else { Some(text) }
 }
 
+/// Builds the runtime engine identifier from the version string reported by the bridge.
+///
+/// The bridge reports the real MuPDF version together with the build target, for
+/// example `1.28.5-aarch64-android`. The identifier is therefore
+/// `mupdf-1.28.5-aarch64-android`, which proves at runtime which engine and which
+/// platform produced the document. A placeholder engine cannot report this.
+fn engine_identifier_from_version(engine_version: &str) -> String {
+    if engine_version.starts_with("mupdf-") {
+        return engine_version.to_owned();
+    }
+    format!("mupdf-{engine_version}")
+}
+
 /// Safe wrapper around the C `vocument_mupdf_display_list_handle_t` pointer.
 struct OwnedDisplayListPtr(NonNull<RawMuPdfDisplayListHandle>);
 
@@ -427,7 +440,7 @@ impl PdfEngine for MuPdfEngineAdapter {
                     creation_date: c_buf_to_optional_string(&raw.creation_date),
                     modification_date: c_buf_to_optional_string(&raw.modification_date),
                     needs_password: raw.needs_password != 0,
-                    engine_identifier: format!("mupdf-{engine_version}"),
+                    engine_identifier: engine_identifier_from_version(&engine_version),
                 };
 
                 Ok(Box::new(MuPdfDocumentHandle {

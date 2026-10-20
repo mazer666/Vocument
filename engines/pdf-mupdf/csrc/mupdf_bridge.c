@@ -1,6 +1,16 @@
 #include <mupdf/fitz.h>
 #include <string.h>
 
+/* Engine identifier reported at runtime.
+ *
+ * The value is composed of the real MuPDF version (FZ_VERSION) and the build
+ * target, so that a runtime inspection can prove which engine and which platform
+ * produced the document. A placeholder engine can never report this identifier.
+ */
+#ifndef VOCRUMENT_MUPDF_ENGINE_ID
+#define VOCRUMENT_MUPDF_ENGINE_ID FZ_VERSION
+#endif
+
 typedef struct {
     int status_code;
     int page_count;
@@ -62,7 +72,7 @@ int vocument_mupdf_inspect_pdf_bytes(
         return 3;
     }
     memset(out_summary, 0, sizeof(vocument_mupdf_summary_t));
-    strncpy(out_summary->engine_version, FZ_VERSION, sizeof(out_summary->engine_version) - 1);
+    strncpy(out_summary->engine_version, VOCRUMENT_MUPDF_ENGINE_ID, sizeof(out_summary->engine_version) - 1);
 
     if (!bytes || len < 5) {
         strncpy(out_summary->error_message, "buffer too small to be a valid PDF", sizeof(out_summary->error_message) - 1);

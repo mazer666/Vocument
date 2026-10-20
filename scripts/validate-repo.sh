@@ -67,6 +67,10 @@ REQUIRED_FILES=(
   "docs/adr/ADR-0012-m1-1-perspective-correction-deskew-and-adaptive-rotation.md"
   "docs/adr/ADR-0013-m1-2-intelligent-scan-cleanup-and-enhancement.md"
   "docs/adr/ADR-0014-m1-3-tesseract-ocr-and-text-layer-generation.md"
+  "docs/adr/ADR-0015-searchable-pdf-synthesis-and-session-ingestion.md"
+  "docs/adr/ADR-0016-android-mupdf-placeholder-bridge.md"
+  "docs/adr/ADR-0017-real-android-mupdf-cross-build.md"
+  "docs/cr/CR-0003-windows-and-linux-platform-support.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md"
@@ -252,21 +256,24 @@ if [[ -f "engines/ocr/csrc/tesseract_stub_bridge.c" ]]; then
   exit 1
 fi
 
-# Enforce QA-003 for the PDF engine: the Android placeholder MuPDF bridge may only
-# exist while it is explicitly documented by ADR-0016 (see RISK-006).
+# Enforce QA-003 for the PDF engine: the Android build must link the real MuPDF
+# engine. A placeholder bridge is not acceptable any more (ADR-0017, RISK-006).
 if [[ -f "engines/pdf-mupdf/csrc/mupdf_stub_bridge.c" ]]; then
-  if [[ ! -f "docs/adr/ADR-0016-android-mupdf-placeholder-bridge.md" ]]; then
-    echo "ERROR (QA-003): engines/pdf-mupdf/csrc/mupdf_stub_bridge.c detected without ADR-0016!" >&2
-    echo "A placeholder PDF engine must never be presented as accepted functionality." >&2
-    exit 1
-  fi
-  if ! grep -q "mupdf-stub-1.28" engines/pdf-mupdf/csrc/mupdf_stub_bridge.c; then
-    echo "ERROR (QA-003): the Android MuPDF placeholder must report the distinguishable" >&2
-    echo "engine identifier 'mupdf-stub-1.28' (ADR-0016)." >&2
-    exit 1
-  fi
-  echo "✓ QA-003: Android MuPDF placeholder present and documented by ADR-0016."
+  echo "ERROR (QA-003): engines/pdf-mupdf/csrc/mupdf_stub_bridge.c detected!" >&2
+  echo "Android must link the real MuPDF engine, not a placeholder bridge." >&2
+  echo "See ADR-0017 and scripts/prepare-android-mupdf.sh." >&2
+  exit 1
 fi
+if grep -q 'mupdf_stub_bridge.c' engines/pdf-mupdf/build.rs; then
+  echo "ERROR (QA-003): engines/pdf-mupdf/build.rs must not reference the placeholder bridge!" >&2
+  exit 1
+fi
+if ! grep -q "MUPDF_ANDROID_DIR" engines/pdf-mupdf/build.rs; then
+  echo "ERROR (QA-003): engines/pdf-mupdf/build.rs must resolve the Android MuPDF installation" >&2
+  echo "through MUPDF_ANDROID_DIR (see scripts/prepare-android-mupdf.sh)." >&2
+  exit 1
+fi
+echo "✓ QA-003: no placeholder PDF engine in the tree; Android links the real MuPDF engine."
 if ! grep -q "compute_character_error_rate" engines/ocr/src/corpus.rs; then
   echo "ERROR (M1.3 Gate): compute_character_error_rate missing in corpus.rs!" >&2
   exit 1
