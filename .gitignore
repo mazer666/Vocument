@@ -45,3 +45,6 @@ tmp/
 # Python (corpus generator)
 __pycache__/
 *.pyc
+
+# Android / Kotlin build cache
+.kotlin/

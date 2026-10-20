@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.TaskProvider
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -65,42 +67,52 @@ dependencies {
     testImplementation("net.java.dev.jna:jna:5.15.0")
 }
 
-val buildRustCore = tasks.register<Exec>("buildRustCore") {
-    description = "Compiles native Rust core library (libvocument_ffi.so) for Android ARM64"
-    val repoRoot = rootProject.projectDir.parentFile.parentFile
-    val jniArm64File = projectDir.resolve("src/main/jniLibs/arm64-v8a/libvocument_ffi.so")
+/**
+ * Compiles the native Rust core library for Android ARM64.
+ *
+ * Every variant gets its **own** task. A single shared task cannot work: the
+ * build profile is an environment variable of the task, and the environment of
+ * a task that is configured for several variants is the one of the last
+ * variant that was configured. The debug build would then ship the release
+ * library, or the other way round.
+ */
+fun registerBuildRustCore(name: String, profile: String): TaskProvider<Exec> {
+    return tasks.register<Exec>(name) {
+        description = "Compiles native Rust core library (libvocument_ffi.so) for Android ARM64 ($profile)"
+        val repoRoot = rootProject.projectDir.parentFile.parentFile
+        val jniArm64File = projectDir.resolve("src/main/jniLibs/arm64-v8a/libvocument_ffi.so")
 
-    inputs.dir(repoRoot.resolve("engines"))
-    inputs.dir(repoRoot.resolve("core"))
-    inputs.dir(repoRoot.resolve("platform"))
-    inputs.file(repoRoot.resolve("Cargo.toml"))
-    outputs.file(jniArm64File)
+        inputs.dir(repoRoot.resolve("engines"))
+        inputs.dir(repoRoot.resolve("core"))
+        inputs.dir(repoRoot.resolve("platform"))
+        inputs.file(repoRoot.resolve("Cargo.toml"))
+        // The profile is an input, so that switching the variant rebuilds the
+        // library instead of reusing the one of the other profile.
+        inputs.property("buildProfile", profile)
+        outputs.file(jniArm64File)
 
-    workingDir(repoRoot)
-    commandLine(repoRoot.resolve("scripts/build-android-rust.sh").absolutePath)
+        workingDir(repoRoot)
+        commandLine(repoRoot.resolve("scripts/build-android-rust.sh").absolutePath)
+        environment("BUILD_PROFILE", profile)
+        environment("ANDROID_MAX_PAGE_SIZE", "16384")
+    }
 }
 
 /**
  * The build profile of the native library follows the variant that is built.
  *
  * A release build must not ship the debug library: the DWARF debug
- * information alone accounts for roughly 90 MB of the 101 MB library. The
- * profile is therefore part of the task inputs, so that switching the variant
- * invalidates the task instead of reusing the library of the other profile.
+ * information alone accounts for roughly 90 MB of the 101 MB library.
  */
 androidComponents {
     onVariants { variant ->
         val profile = if (variant.buildType == "release") "release" else "debug"
-        buildRustCore.configure {
-            inputs.property("buildProfile", profile)
-            environment("BUILD_PROFILE", profile)
-            environment("ANDROID_MAX_PAGE_SIZE", "16384")
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val task = registerBuildRustCore("buildRustCore$variantName", profile)
+        tasks.matching { it.name == "merge${variantName}JniLibFolders" }.configureEach {
+            dependsOn(task)
         }
     }
-}
-
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
-    dependsOn(buildRustCore)
 }
 
 tasks.withType<Test> {

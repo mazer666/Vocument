@@ -80,6 +80,37 @@ export CXXFLAGS="-fPIC -D__ANDROID__ -I$INSTALL_DIR/include"
 # defaults to 4 KB.
 export LDFLAGS="-L$INSTALL_DIR/lib -Wl,-z,max-page-size=${ANDROID_MAX_PAGE_SIZE:-16384}"
 
+# The autotools build system writes the absolute path of the compiler into the
+# generated Makefiles. A build tree therefore only works with the toolchain it
+# was configured with. When the NDK sits somewhere else, the build tree is
+# removed and configured again.
+TOOLCHAIN_MARKER="$WORK_DIR/.toolchain"
+stale_toolchain=0
+if [[ -f "$TOOLCHAIN_MARKER" ]] && [[ "$(cat "$TOOLCHAIN_MARKER")" != "$NDK_ROOT" ]]; then
+  stale_toolchain=1
+fi
+# A build tree that was configured with a different toolchain still contains
+# the old absolute compiler path in its generated `libtool`.
+for stale_libtool in \
+  "$WORK_DIR/leptonica-${LEPTONICA_VERSION}/libtool" \
+  "$WORK_DIR/tesseract-${TESSERACT_VERSION}/libtool"; do
+  if [[ -f "$stale_libtool" ]] && ! grep -q "$NDK_ROOT" "$stale_libtool"; then
+    stale_toolchain=1
+  fi
+done
+if [[ $stale_toolchain -eq 1 ]]; then
+  echo "    The toolchain changed ($NDK_ROOT), the build tree is rebuilt"
+  rm -rf "$WORK_DIR/leptonica-${LEPTONICA_VERSION}/Makefile" \
+         "$WORK_DIR/leptonica-${LEPTONICA_VERSION}/config.status" \
+         "$WORK_DIR/leptonica-${LEPTONICA_VERSION}/config.log" \
+         "$WORK_DIR/leptonica-${LEPTONICA_VERSION}/libtool" \
+         "$WORK_DIR/tesseract-${TESSERACT_VERSION}/Makefile" \
+         "$WORK_DIR/tesseract-${TESSERACT_VERSION}/config.status" \
+         "$WORK_DIR/tesseract-${TESSERACT_VERSION}/config.log" \
+         "$WORK_DIR/tesseract-${TESSERACT_VERSION}/libtool"
+fi
+printf '%s' "$NDK_ROOT" > "$TOOLCHAIN_MARKER"
+
 echo "==> Building Leptonica $LEPTONICA_VERSION for $TARGET_TRIPLE"
 (
   cd "$WORK_DIR/leptonica-${LEPTONICA_VERSION}"
