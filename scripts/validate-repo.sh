@@ -251,6 +251,22 @@ if [[ -f "engines/ocr/csrc/tesseract_stub_bridge.c" ]]; then
   echo "ERROR (M1.3 Gate): tesseract_stub_bridge.c detected! Android must use real embedded Tesseract." >&2
   exit 1
 fi
+
+# Enforce QA-003 for the PDF engine: the Android placeholder MuPDF bridge may only
+# exist while it is explicitly documented by ADR-0016 (see RISK-006).
+if [[ -f "engines/pdf-mupdf/csrc/mupdf_stub_bridge.c" ]]; then
+  if [[ ! -f "docs/adr/ADR-0016-android-mupdf-placeholder-bridge.md" ]]; then
+    echo "ERROR (QA-003): engines/pdf-mupdf/csrc/mupdf_stub_bridge.c detected without ADR-0016!" >&2
+    echo "A placeholder PDF engine must never be presented as accepted functionality." >&2
+    exit 1
+  fi
+  if ! grep -q "mupdf-stub-1.28" engines/pdf-mupdf/csrc/mupdf_stub_bridge.c; then
+    echo "ERROR (QA-003): the Android MuPDF placeholder must report the distinguishable" >&2
+    echo "engine identifier 'mupdf-stub-1.28' (ADR-0016)." >&2
+    exit 1
+  fi
+  echo "✓ QA-003: Android MuPDF placeholder present and documented by ADR-0016."
+fi
 if ! grep -q "compute_character_error_rate" engines/ocr/src/corpus.rs; then
   echo "ERROR (M1.3 Gate): compute_character_error_rate missing in corpus.rs!" >&2
   exit 1
@@ -260,6 +276,21 @@ if ! grep -q "test_realistic_camera_distorted_scan_and_cleanup_pipeline" engines
   exit 1
 fi
 echo "✓ M1.3 Gate verified: Real offline embedded Tesseract OCR, CER/WER >= 95% & realistic camera distortion corpus verified."
+
+# Enforce corpus reproducibility: the committed OCR corpus frames must be
+# regenerable from their generator, so the M1.3 quality numbers stay auditable.
+if [[ -f "scripts/generate-ocr-corpus-frames.py" ]]; then
+  if python3 -c "import PIL, numpy" >/dev/null 2>&1; then
+    if ! python3 scripts/generate-ocr-corpus-frames.py --check; then
+      echo "ERROR (M1.3 Gate): committed OCR corpus frames do not match the generator!" >&2
+      echo "Run 'python3 scripts/generate-ocr-corpus-frames.py' and commit the result." >&2
+      exit 1
+    fi
+    echo "✓ M1.3 Gate verified: OCR corpus frames are reproducible from their generator."
+  else
+    echo "WARNING: Pillow/NumPy not available; skipping OCR corpus reproducibility check."
+  fi
+fi
 
 # Enforce M1.4 Gate: Searchable PDF synthesis, invisible text layer & DocumentSession ingestion verified
 if [[ ! -f "engines/ocr/src/synthesis.rs" ]]; then

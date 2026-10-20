@@ -376,7 +376,7 @@ mod tests {
     fn ffi_handshake_returns_verified_core_snapshot() {
         let handshake = document_core_handshake().expect("handshake must succeed");
         assert_eq!(handshake.baseline_version, "0.1");
-        assert_eq!(handshake.milestone, "M0");
+        assert_eq!(handshake.milestone, "M1");
         assert!(handshake.strict_offline_default);
         assert!(!handshake.telemetry_enabled);
         assert_eq!(handshake.target_fps, 60);

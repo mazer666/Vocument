@@ -200,11 +200,22 @@ fn test_realistic_camera_distorted_scan_and_cleanup_pipeline() {
     };
 
     // 1. Verifiably demonstrate that raw OCR directly on the distorted, tilted camera frame fails:
+    //
+    // The gate asserts that the *unprocessed* capture does not meet the quality
+    // target, so that rectification plus cleanup is demonstrably required. Both
+    // quality dimensions are checked explicitly, because the raw capture can miss
+    // the target on either axis depending on the engine's layout analysis.
     let raw_res = recognize_scan_frame(&cam_doc.frame, &options).expect("Raw OCR failed");
     let raw_verif = verify_corpus_document_result(cam_doc, &raw_res);
     assert!(
-        !raw_verif.passed || raw_verif.character_accuracy < 0.95,
-        "Raw camera frame unexpectedly passed without perspective correction or cleanup"
+        !raw_verif.passed
+            || raw_verif.character_accuracy < 0.95
+            || raw_verif.keyword_hit_rate < 0.95,
+        "Raw camera frame unexpectedly passed without perspective correction or cleanup: \
+         char_acc={:.2}%, kw_hit={:.1}%, conf={:.1}%",
+        raw_verif.character_accuracy * 100.0,
+        raw_verif.keyword_hit_rate * 100.0,
+        raw_verif.mean_confidence
     );
 
     // 2. Apply M1.1 perspective warp and rectification:

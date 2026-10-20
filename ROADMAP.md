@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M0 — Foundation / Trustworthy Viewer
+**Current milestone:** M1 — Android Scan & OCR (M1.0–M1.4 complete; M1.5 next)
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 

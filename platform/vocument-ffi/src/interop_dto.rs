@@ -61,6 +61,41 @@ fn resolve_sample_pdf() -> Result<Vec<u8>, DocumentCoreError> {
     Ok(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000060 00000 n \n0000000119 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n193\n%%EOF\n".to_vec())
 }
 
+/// Returns the first available executable from `candidates` that runs successfully with `-v`.
+fn resolve_available_tool(candidates: &[&str]) -> Option<String> {
+    for candidate in candidates {
+        let probe = Command::new(candidate).arg("-v").output();
+        if let Ok(output) = probe
+            && output.status.success()
+        {
+            return Some((*candidate).to_owned());
+        }
+    }
+    None
+}
+
+/// Returns the path of an installed Google Chrome / Chromium binary, if any.
+///
+/// Used for the PDFium (Chromium) interoperability check. The lookup is
+/// platform-aware so the gate can verify a foreign viewer on Linux CI hosts as
+/// well as on macOS.
+fn resolve_chromium_binary() -> Option<String> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Ok(path) = std::env::var("CHROME_BIN") {
+        candidates.push(path);
+    }
+    candidates.push("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome".to_owned());
+    candidates.push("/usr/bin/google-chrome".to_owned());
+    candidates.push("/usr/bin/google-chrome-stable".to_owned());
+    candidates.push("/usr/bin/chromium".to_owned());
+    candidates.push("/usr/bin/chromium-browser".to_owned());
+    candidates.push("/snap/bin/chromium".to_owned());
+
+    candidates
+        .into_iter()
+        .find(|candidate| Path::new(candidate).exists())
+}
+
 /// Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers.
 #[uniffi::export]
 pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, DocumentCoreError> {
@@ -168,22 +203,37 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
     let _ = document_core_close_session(fresh_mupdf.session_id);
 
     // Step 13: Test mutool CLI (if installed)
+    //
+    // `mutool` is the cross-platform reference renderer: it must actually produce a
+    // rendered PNG, not merely exit successfully.
     let mut mutool_verified = false;
     let mutool_candidates = [
         "/opt/homebrew/bin/mutool",
         "/usr/local/bin/mutool",
+        "/usr/bin/mutool",
         "mutool",
     ];
-    for candidate in &mutool_candidates {
+    let mutool_bin = resolve_available_tool(&mutool_candidates);
+    if let Some(mutool_bin) = mutool_bin.as_deref() {
         let draw_out = temp_dir.join("mutool_render_%d.png");
-        let status = Command::new(candidate)
+        let status = Command::new(mutool_bin)
             .args(["draw", "-o", &draw_out.to_string_lossy(), &test_pdf_str])
             .output();
         if let Ok(output) = status
             && output.status.success()
         {
-            mutool_verified = true;
-            break;
+            let rendered_any_page = fs::read_dir(&temp_dir)
+                .map(|entries| {
+                    entries.filter_map(|entry| entry.ok()).any(|entry| {
+                        entry
+                            .file_name()
+                            .to_string_lossy()
+                            .starts_with("mutool_render_")
+                            && entry.metadata().map(|meta| meta.len() > 0).unwrap_or(false)
+                    })
+                })
+                .unwrap_or(false);
+            mutool_verified = rendered_any_page;
         }
     }
 
@@ -202,25 +252,33 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
         .output()
         && output.status.success()
         && sips_out.exists()
+        && sips_out
+            .metadata()
+            .map(|meta| meta.len() > 0)
+            .unwrap_or(false)
     {
         coregraphics_sips_verified = true;
     }
 
     // Step 15: Test Google Chrome PDFium (headless)
     let mut chrome_pdfium_verified = false;
-    let chrome_bin = Path::new("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
     let chrome_out = temp_dir.join("chrome_screenshot.png");
-    if chrome_bin.exists()
-        && let Ok(output) = Command::new(chrome_bin)
+    if let Some(chrome_bin) = resolve_chromium_binary()
+        && let Ok(output) = Command::new(&chrome_bin)
             .args([
                 "--headless",
                 "--disable-gpu",
+                "--no-sandbox",
                 &format!("--screenshot={}", chrome_out.to_string_lossy()),
                 &test_pdf_str,
             ])
             .output()
         && output.status.success()
         && chrome_out.exists()
+        && chrome_out
+            .metadata()
+            .map(|meta| meta.len() > 0)
+            .unwrap_or(false)
     {
         chrome_pdfium_verified = true;
     }
@@ -246,11 +304,22 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
     // Cleanup:
     let _ = fs::remove_dir_all(&temp_dir);
 
-    let m0_scenario_passed =
-        mupdf_reopen_verified && (coregraphics_sips_verified || mutool_verified);
+    // The M0 scenario passes when the document survives a reopen in a fresh MuPDF
+    // session **and** at least one foreign reference renderer could open it.
+    //
+    // `mutool` is the portable reference renderer and is available on every
+    // supported development host. `sips` (macOS CoreGraphics/Quartz) and Chrome
+    // PDFium are platform-specific additions that are additionally required on
+    // macOS hosts, where the M0.7 acceptance record was produced.
+    let is_macos = cfg!(target_os = "macos");
+    let foreign_viewer_verified =
+        mutool_verified || coregraphics_sips_verified || chrome_pdfium_verified;
+    let m0_scenario_passed = mupdf_reopen_verified && foreign_viewer_verified;
+    let macos_viewer_gate_passed =
+        !is_macos || (coregraphics_sips_verified && chrome_pdfium_verified);
 
     let summary = format!(
-        "M0 DoD Workflow verified: MuPDF={mupdf_reopen_verified}, mutool={mutool_verified}, CoreGraphics/sips={coregraphics_sips_verified}, Chrome/PDFium={chrome_pdfium_verified}"
+        "M0 DoD Workflow verified: MuPDF={mupdf_reopen_verified}, mutool={mutool_verified}, CoreGraphics/sips={coregraphics_sips_verified}, Chrome/PDFium={chrome_pdfium_verified}, macos_viewer_gate={macos_viewer_gate_passed}"
     );
 
     Ok(FfiInteropReport {
@@ -275,8 +344,22 @@ mod tests {
         let report = document_core_run_interop_gate_suite().expect("interop gate suite execution");
         assert!(report.m0_scenario_passed);
         assert!(report.mupdf_reopen_verified);
-        assert!(report.coregraphics_sips_verified);
-        assert!(report.chrome_pdfium_verified);
+
+        // At least one foreign reference renderer must have opened the document.
+        assert!(
+            report.mutool_verified
+                || report.coregraphics_sips_verified
+                || report.chrome_pdfium_verified,
+            "No foreign reference renderer could open the generated PDF"
+        );
+
+        // macOS-specific viewers are only required on macOS hosts.
+        if cfg!(target_os = "macos") {
+            assert!(report.coregraphics_sips_verified);
+            assert!(report.chrome_pdfium_verified);
+        }
+
+        // Unavailable viewers must be reported honestly, never simulated.
         assert!(report.acrobat_status.contains("Not installed"));
         assert!(report.pdf_xchange_status.contains("Windows-only"));
         assert!(report.firefox_status.contains("Not installed"));

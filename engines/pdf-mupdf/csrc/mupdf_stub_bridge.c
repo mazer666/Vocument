@@ -1,3 +1,22 @@
+/*
+ * Android placeholder MuPDF bridge.
+ *
+ * IMPORTANT — this is NOT a MuPDF implementation.
+ *
+ * The Android ARM64 target currently links this placeholder instead of a real MuPDF
+ * build, because cross-compiling MuPDF for `aarch64-linux-android` is not yet part of
+ * the build (`ROADMAP.md` M1.5 / `docs/project/RISKS.md`).
+ *
+ * Every function below returns deterministic placeholder data instead of parsing or
+ * rendering a real PDF. Callers can detect this state via the engine identifier
+ * `mupdf-stub-1.28`, which is deliberately distinct from the real engine identifier
+ * `mupdf-<version>`.
+ *
+ * Per `QA-003` / `CR-0002`, functionality that is only a placeholder must not be
+ * presented as accepted functionality. `scripts/validate-repo.sh` enforces that this
+ * placeholder is explicitly acknowledged in the project documentation.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 

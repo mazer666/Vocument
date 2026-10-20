@@ -224,6 +224,21 @@ Priority example:
 
 The design may later evolve into a task graph/DAG scheduler.
 
+### 8.1 Current implementation status
+
+`JobManager` currently implements the **job bookkeeping and prioritisation** layer:
+enqueueing, priority ordering, cancellation of queued prefetch jobs, state
+transitions and progress tracking (`core/vocument-core/src/jobs.rs`).
+
+The **worker execution layer described in §7 is not implemented yet**. All
+rendering, thumbnailing and indexing work currently executes synchronously on the
+calling thread. The background worker pool, job pause/resume, job dependencies and
+resumability are planned for M1.5 (`ROADMAP.md` M1.5) and are tracked in
+`docs/project/RISKS.md` (`RISK-007`).
+
+This section intentionally documents the current state so that the architecture
+baseline is not mistaken for an implemented capability.
+
 ---
 
 ## 9. Rendering

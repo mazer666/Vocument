@@ -43,6 +43,8 @@ pub enum RecoveryError {
     Transaction { details: String },
     #[error("Session registry error during recovery: {details}")]
     Session { details: String },
+    #[error("Recovery restore for document '{document_id}' produced no session snapshot")]
+    MissingSessionSnapshot { document_id: String },
 }
 
 impl From<std::io::Error> for RecoveryError {
@@ -566,7 +568,11 @@ impl SessionRegistry {
     ) -> Result<RecoveryActionResult, SessionError> {
         // First restore state into session:
         let restored = self.execute_recovery_restore(container, manifest.clone())?;
-        let restored_snap = restored.session_snapshot.expect("session snapshot present");
+        let restored_snap = restored.session_snapshot.ok_or_else(|| {
+            SessionError::Recovery(RecoveryError::MissingSessionSnapshot {
+                document_id: manifest.document_id.clone(),
+            })
+        })?;
 
         // Generate collision-free path for recovered file:
         let normalized = manifest

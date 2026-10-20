@@ -7,6 +7,7 @@
 //! - Multi-page scan capture session management (`ScanCaptureSession`, `ScanCaptureSessionRegistry`)
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -64,6 +65,8 @@ pub enum ImagingError {
         page_index: usize,
         total_pages: usize,
     },
+    #[error("scan capture session registry lock poisoned")]
+    RegistryLockPoisoned,
 }
 
 /// Metadata captured with an input camera scan frame.
@@ -265,12 +268,16 @@ impl ScanCaptureSession {
         }
     }
 
+    /// Appends a captured page to this session and returns the stored page.
+    ///
+    /// The page is returned by value so that callers do not need to clone the
+    /// (potentially large) warped and enhanced pixel buffers a second time.
     pub fn append_page(
         &mut self,
         frame: &ScanFrame,
         corners: Option<QuadCorners>,
         profile: ScanCleanupProfile,
-    ) -> Result<&CapturedScanPage, ImagingError> {
+    ) -> Result<CapturedScanPage, ImagingError> {
         frame.validate()?;
         let resolved_corners = match corners {
             Some(c) if c.is_valid_document_quad() => c,
@@ -296,7 +303,7 @@ impl ScanCaptureSession {
             enhanced_frame: enhanced,
         };
         self.pages.push(page);
-        Ok(self.pages.last().expect("just pushed"))
+        Ok(self.pages[self.pages.len() - 1].clone())
     }
 
     pub fn get_warped_page(&self, page_index: usize) -> Result<ScanFrame, ImagingError> {
@@ -361,9 +368,12 @@ impl ScanCaptureSessionRegistry {
     }
 
     pub fn create_session(&self) -> String {
-        let id = format!("scan_sess_{}", current_unix_ms());
+        let id = next_scan_session_id();
         let session = ScanCaptureSession::new(id.clone());
-        let mut map = self.sessions.lock().expect("lock registry");
+        let mut map = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         map.insert(id.clone(), session);
         id
     }
@@ -375,13 +385,16 @@ impl ScanCaptureSessionRegistry {
         corners: Option<QuadCorners>,
         profile: ScanCleanupProfile,
     ) -> Result<CapturedScanPage, ImagingError> {
-        let mut map = self.sessions.lock().expect("lock registry");
+        let mut map = self
+            .sessions
+            .lock()
+            .map_err(|_| ImagingError::RegistryLockPoisoned)?;
         let session = map
             .get_mut(session_id)
             .ok_or_else(|| ImagingError::SessionNotFound {
                 session_id: session_id.to_owned(),
             })?;
-        let page = session.append_page(frame, corners, profile)?.clone();
+        let page = session.append_page(frame, corners, profile)?;
         Ok(page)
     }
 
@@ -390,7 +403,10 @@ impl ScanCaptureSessionRegistry {
         session_id: &str,
         page_index: usize,
     ) -> Result<ScanFrame, ImagingError> {
-        let map = self.sessions.lock().expect("lock registry");
+        let map = self
+            .sessions
+            .lock()
+            .map_err(|_| ImagingError::RegistryLockPoisoned)?;
         let session = map
             .get(session_id)
             .ok_or_else(|| ImagingError::SessionNotFound {
@@ -404,7 +420,10 @@ impl ScanCaptureSessionRegistry {
         session_id: &str,
         page_index: usize,
     ) -> Result<ScanFrame, ImagingError> {
-        let map = self.sessions.lock().expect("lock registry");
+        let map = self
+            .sessions
+            .lock()
+            .map_err(|_| ImagingError::RegistryLockPoisoned)?;
         let session = map
             .get(session_id)
             .ok_or_else(|| ImagingError::SessionNotFound {
@@ -417,7 +436,10 @@ impl ScanCaptureSessionRegistry {
         &self,
         session_id: &str,
     ) -> Result<ScanCaptureSession, ImagingError> {
-        let map = self.sessions.lock().expect("lock registry");
+        let map = self
+            .sessions
+            .lock()
+            .map_err(|_| ImagingError::RegistryLockPoisoned)?;
         map.get(session_id)
             .cloned()
             .ok_or_else(|| ImagingError::SessionNotFound {
@@ -426,13 +448,29 @@ impl ScanCaptureSessionRegistry {
     }
 
     pub fn close_session(&self, session_id: &str) -> Result<(), ImagingError> {
-        let mut map = self.sessions.lock().expect("lock registry");
+        let mut map = self
+            .sessions
+            .lock()
+            .map_err(|_| ImagingError::RegistryLockPoisoned)?;
         map.remove(session_id)
             .map(|_| ())
             .ok_or_else(|| ImagingError::SessionNotFound {
                 session_id: session_id.to_owned(),
             })
     }
+}
+
+/// Monotonic counter guaranteeing collision-free scan session identifiers.
+///
+/// Session IDs must stay unique even when two sessions are created within the same
+/// millisecond (fast successive captures), so the millisecond timestamp alone is not
+/// sufficient as an identifier.
+static SCAN_SESSION_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// Generates a collision-free scan session identifier (`scan_sess_<ms>_<seq>`).
+fn next_scan_session_id() -> String {
+    let sequence = SCAN_SESSION_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    format!("scan_sess_{}_{sequence}", current_unix_ms())
 }
 
 fn current_unix_ms() -> u64 {
@@ -541,5 +579,32 @@ mod tests {
 
         registry.close_session(&session_id).expect("close session");
         assert!(registry.get_session_snapshot(&session_id).is_err());
+    }
+
+    #[test]
+    fn test_scan_session_ids_are_unique_even_within_the_same_millisecond() {
+        let registry = ScanCaptureSessionRegistry::default();
+
+        // Two captures started back to back can land in the same millisecond, so the
+        // identifier must not be derived from the timestamp alone.
+        let first = registry.create_session();
+        let second = registry.create_session();
+
+        assert_ne!(first, second, "scan session identifiers must be unique");
+        assert!(first.starts_with("scan_sess_"));
+        assert!(second.starts_with("scan_sess_"));
+
+        // Both sessions must remain independently addressable.
+        assert!(registry.get_session_snapshot(&first).is_ok());
+        assert!(registry.get_session_snapshot(&second).is_ok());
+    }
+
+    #[test]
+    fn test_missing_scan_session_returns_typed_error() {
+        let registry = ScanCaptureSessionRegistry::default();
+        let error = registry
+            .get_session_snapshot("scan_sess_does_not_exist")
+            .expect_err("missing session must fail");
+        assert!(matches!(error, ImagingError::SessionNotFound { .. }));
     }
 }

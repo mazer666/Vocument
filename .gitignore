@@ -41,3 +41,7 @@ captures/
 tmp/
 *.tmp
 *.bak
+
+# Python (corpus generator)
+__pycache__/
+*.pyc

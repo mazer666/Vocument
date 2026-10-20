@@ -13,6 +13,8 @@ pub enum ConfigError {
     TomlParse(#[from] toml::de::Error),
     #[error("security policy invariant violated: {0}")]
     SecurityInvariantViolation(&'static str),
+    #[error("invalid central configuration: {details}")]
+    Invalid { details: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
