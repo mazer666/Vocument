@@ -29,6 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
@@ -94,21 +98,48 @@ fun MinimalReaderSessionScreen(
     var activeTab by remember { mutableStateOf(0) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // The viewport rendering runs on a background thread. The UI thread only
+    // receives the finished result.
+    val viewportExecutor = remember { Executors.newSingleThreadExecutor() }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    // A plain counter, not a Compose state: it is read on the background
+    // thread and must not trigger a recomposition.
+    val viewportRequestCounter = remember { AtomicInteger(0) }
+
     fun refreshViewport(
         session: FfiDocumentSessionSnapshot,
         pageIndex: UInt,
         scale: UInt
     ) {
-        runCatching {
-            val req = buildViewportRenderRequest(coreBridge, session.sessionId, pageIndex, scale)
-            coreBridge.renderViewportWithPrefetch(session.sessionId, req)
-        }.onSuccess { rendered ->
-            currentPageIndex = pageIndex
-            scaleMilli = scale
-            viewportResult = rendered
-            errorMessage = null
-        }.onFailure { err ->
-            errorMessage = err.message
+        // The viewport render and the prefetch of the neighbouring pages call
+        // into MuPDF and block until the rendering is finished. They must not
+        // run on the UI thread: a page change would freeze the interface for
+        // the whole rendering.
+        //
+        // The request counter makes the result of an outdated request
+        // obsolete. A fast page change therefore cannot show the result of a
+        // previous page.
+        val requestId = viewportRequestCounter.incrementAndGet()
+        viewportExecutor.execute {
+            val rendered = runCatching {
+                val req = buildViewportRenderRequest(coreBridge, session.sessionId, pageIndex, scale)
+                coreBridge.renderViewportWithPrefetch(session.sessionId, req)
+            }
+            mainHandler.post {
+                if (requestId != viewportRequestCounter.get()) {
+                    // A newer request was started in the meantime: its result
+                    // is the one that matters.
+                    return@post
+                }
+                rendered.onSuccess { result ->
+                    currentPageIndex = pageIndex
+                    scaleMilli = scale
+                    viewportResult = result
+                    errorMessage = null
+                }.onFailure { err ->
+                    errorMessage = err.message
+                }
+            }
         }
     }
 

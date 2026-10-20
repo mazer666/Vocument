@@ -23,11 +23,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -223,18 +226,25 @@ private fun ThumbnailRowItem(
     coreBridge: DocumentCoreBridge,
     onClick: () -> Unit
 ) {
-    val thumbBitmap = remember(sessionId, descriptor.pageIndex) {
-        runCatching {
-            val thumb = coreBridge.renderPageThumbnail(sessionId, descriptor.pageIndex, 120u)
-            val pixels = coreBridge.decodeThumbnailToArgbPixels(thumb)
-            Bitmap.createBitmap(
-                pixels,
-                thumb.widthPx.toInt(),
-                thumb.heightPx.toInt(),
-                Bitmap.Config.ARGB_8888
-            )
-        }.getOrNull()
-    }
+    // The thumbnail is rendered by MuPDF. Rendering it inside `remember` would
+    // run the native call during the composition, on the UI thread, and would
+    // freeze the interface for every page of the list. The rendering therefore
+    // happens on a background thread, and the finished bitmap is published to
+    // the composition.
+    val thumbBitmap = produceState<Bitmap?>(initialValue = null, sessionId, descriptor.pageIndex) {
+        value = withContext(Dispatchers.Default) {
+            runCatching {
+                val thumb = coreBridge.renderPageThumbnail(sessionId, descriptor.pageIndex, 120u)
+                val pixels = coreBridge.decodeThumbnailToArgbPixels(thumb)
+                Bitmap.createBitmap(
+                    pixels,
+                    thumb.widthPx.toInt(),
+                    thumb.heightPx.toInt(),
+                    Bitmap.Config.ARGB_8888
+                )
+            }.getOrNull()
+        }
+    }.value
 
     Card(
         modifier = Modifier

@@ -464,8 +464,6 @@ fun ScanCaptureScreen(
     }
 }
 
-}
-
 @Composable
 fun CapturedPageThumbnail(page: FfiCapturedScanPage) {
     Card(
