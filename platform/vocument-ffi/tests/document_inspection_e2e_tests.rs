@@ -1,5 +1,5 @@
 //! End-to-end test of the inspection of the links and actions of a document
-//! (`INSPECT-001`).
+//! (`LINKSEC-001`).
 //!
 //! The document is a real PDF with the actions that a reviewer has to see
 //! before a click: a link into the document, a link to an address, a link

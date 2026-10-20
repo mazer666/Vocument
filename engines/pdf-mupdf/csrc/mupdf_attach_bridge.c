@@ -16,7 +16,7 @@ typedef struct {
     int checksum_is_valid;
 } vocument_mupdf_attachment_t;
 
-/* One signature field of a document (`SIGN-001`).
+/* One signature field of a document (`SIGREV-001`).
    The decisive field is `changed_since_signing`: a document that was changed
    after it was signed carries a signature that no longer covers its content. */
 typedef struct {

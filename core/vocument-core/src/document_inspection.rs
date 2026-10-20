@@ -1,4 +1,4 @@
-//! Inspection of the links and actions of a document (`INSPECT-001`).
+//! Inspection of the links and actions of a document (`LINKSEC-001`).
 //!
 //! A professional review asks two questions about a link: where does it lead,
 //! and does it do something besides opening a page? A link that runs
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::pdf_engine::PdfRectMilliPt;
 
-/// The type of a link or action of a document (`INSPECT-001`).
+/// The type of a link or action of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PdfActionKind {
@@ -83,7 +83,7 @@ impl PdfActionKind {
     }
 }
 
-/// One link or action of a document (`INSPECT-001`).
+/// One link or action of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfActionInfo {
     /// The page the action lies on. `None` for an action of the document
@@ -203,7 +203,7 @@ pub fn is_risky_attachment(file_name: &str, mime_type: &str) -> bool {
         || lowered_type.contains("x-msdownload")
 }
 
-/// A signature field of a document (`SIGN-001`).
+/// A signature field of a document (`SIGREV-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfSignatureInfo {
     /// The name of the signature field.
@@ -250,7 +250,7 @@ impl PdfSignatureInfo {
     }
 }
 
-/// The report of an inspection of a document (`INSPECT-001`).
+/// The report of an inspection of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocumentInspection {
     /// All links and actions of the document.

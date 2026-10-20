@@ -674,40 +674,6 @@ Search-assisted candidate selection.
 ### REDACT-004 — Later
 Local smart entity suggestions, never auto-apply.
 
-### INSPECT-001 — The links and actions of a document are reported
-Before a user follows a link in a document, the application must be able to show where the link leads and what it does. The inspection reports for every link and every action of the document:
-
-- the type of the action: a link into the document, a link to an address, a link to another document, an action that runs a script, an action that opens a file, an action that submits a form, an action that imports data, and the remaining types of the PDF specification,
-- the target: the address, the file, the script or the destination,
-- the position of the link on its page, in the same space in which the words and the rendered page are reported (milli-points, origin at the top left of the page, y descending),
-- whether the action is risky.
-
-The action that runs when the document is opened is part of the report: it happens without the user asking for it.
-
-The risk is decided by a policy of the core, not by the engine and not by the platform: a script, a started file, a submitted form and an imported data set are risky, and so is a link that leaves the machine (a `file:`, `http:`, `https:` or `javascript:` address). The platform shell only presents the finding.
-
-### INSPECT-002 — A link is never followed without the user
-The inspection is a precondition for following a link. A risky action has to be shown to the user before it is carried out. The core does not follow links itself; it only reports them.
-
-### ATTACH-001 — The attachments of a document are reported
-A document can carry files inside it. Before a user opens such a file, the application must show what it is. The inspection reports for every attachment:
-
-- the name of the file,
-- the declared type,
-- the size in bytes,
-- whether the content of the file is really in the document (a file specification that only names a path points outside the document),
-- whether the checksum of the embedded file matches its content,
-- whether the file is dangerous to open.
-
-The risk is decided by a policy of the core: a file that can execute code (by its name or by its type), a file that is not really embedded, and a file whose checksum does not match are all risky.
-
-### SIGN-001 — The signatures of a document are reported
-A reviewer has to know whether the document is signed, who signed it, and — the decisive point — whether the document was changed after the signature. A signature that no longer covers the content of the document is worth nothing.
-
-The inspection reports for every signature field: the name of the field, whether it carries a signature, the name of the signer, the time of the signing, the reason, the place, and whether the document was changed after the signature.
-
-The determination of *whether* the document is signed and *whether* it was changed afterwards is made by the engine, because it depends on the byte range of the signature. The decision that a signature which no longer covers the document is risky is made by the core.
-
 ### SAN-001 — Optional
 Full sanitize for metadata, hidden content, attachments, actions, comments, form remnants, etc.
 
@@ -761,8 +727,18 @@ Trust profiles and network logs.
 ### LINKSEC-001
 Advanced external-link analysis including actual URL, Unicode/Punycode, HTTP/HTTPS and local/private targets.
 
+The first implementation covers the local/private part of this requirement: the inspection of a document reports, for every link and every action, the type of the action, its target, its position on the page and whether it is risky. Risky are the actions that run code, start a file, submit a form or import data, and every link that leaves the machine (a `file:`, `http:`, `https:` or `javascript:` address).
+
+The action that runs when the document is opened is part of the report: it happens without the user asking for it.
+
+Not yet covered: the Unicode/Punycode analysis of the address and the resolution of the target against a reputation list (LINKSEC-003 forbids a silent cloud check anyway).
+
 ### LINKSEC-002
 Document-wide link list.
+
+The list covers the links of every page and the actions of the document itself. The position of a link is reported in the space of the page (milli-points, origin at the top left, y descending) — the same space in which the words and the rendered page are reported.
+
+The core does not follow a link; it only reports it. A risky action has to be shown to the user before it is carried out.
 
 ### LINKSEC-003
 No silent cloud reputation check.
@@ -775,6 +751,10 @@ Full script/action inspector.
 
 ### ATTACH-001 — Preset
 Local safety inspection of embedded files; never auto-open.
+
+The report states for every embedded file: the name of the file, the declared type, the size in bytes, whether the content of the file is really in the document (a file specification that only names a path points outside the document), whether the checksum of the embedded file matches its content, and whether the file is dangerous to open.
+
+The risk is decided by a policy of the core: a file that can execute code (by its name or by its type), a file that is not really embedded, and a file whose checksum does not match are all risky. The engine reports the facts; the platform shell only presents the finding. An embedded file is never opened automatically.
 
 ### ATTACH-002 — Optional
 Controlled extraction/analysis/hash-list/bulk export.
@@ -801,11 +781,21 @@ Detailed certificate/timestamp/revision/algorithm/eIDAS inspector.
 ### SIGREV-001 — Preset
 Simple signature status.
 
+The status is not only "signed" or "unsigned": a reviewer has to know **who** signed, **when**, **why** and **where**, and — the decisive point — whether the document was changed after the signature. A signature that no longer covers the content of the document is worth nothing, and the application must say so.
+
+The report contains for every signature field: the name of the field, whether it carries a signature, the name of the signer, the time of the signing, the reason and the place.
+
+**The determination of whether the document was changed after the signature is made by the engine**, because only the engine can read the byte range of the signature and compare it with the size of the file. The decision that a signature which no longer covers the document is a finding is made by the core.
+
+The determination of the *validity* of the signature itself (the chain, the certificate, the timestamp) is not part of this requirement.
+
 ### SIGREV-002 — Optional
 Revision history.
 
 ### SIGREV-003 — Optional
 Signed revision vs current comparison.
+
+The comparison against the current state of the document is what makes the finding of SIGREV-001 possible: the engine reports whether the bytes of the document have changed since the signature was made.
 
 ---
 
@@ -847,6 +837,8 @@ Toggle/states/rename/object assignment where feasible/print-export inclusion.
 
 ### PORT-001
 Safe detection/list/open/extract of PDF portfolios.
+
+The list of the embedded files is part of the inspection of a document; what it contains and how it is judged is specified in `ATTACH-001`.
 
 ### PORT-002 — Optional
 Professional management.

@@ -1169,7 +1169,7 @@ public func FfiConverterTypeFfiDeskewResult_lower(_ value: FfiDeskewResult) -> R
 
 
 /**
- * The report of an inspection of a document (`INSPECT-001`).
+ * The report of an inspection of a document (`LINKSEC-001`).
  */
 public struct FfiDocumentInspection {
     /**
@@ -2745,7 +2745,7 @@ public func FfiConverterTypeFfiPageWord_lower(_ value: FfiPageWord) -> RustBuffe
 
 
 /**
- * One link or action of a document (`INSPECT-001`).
+ * One link or action of a document (`LINKSEC-001`).
  */
 public struct FfiPdfActionInfo {
     /**
@@ -3344,7 +3344,7 @@ public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) 
 
 
 /**
- * A signature field of a document (`SIGN-001`).
+ * A signature field of a document (`SIGREV-001`).
  */
 public struct FfiPdfSignatureInfo {
     /**
@@ -6680,7 +6680,7 @@ extension FfiPageLabelStyle: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
- * The type of a link or action of a document (`INSPECT-001`).
+ * The type of a link or action of a document (`LINKSEC-001`).
  */
 
 public enum FfiPdfActionKind {
@@ -8422,7 +8422,7 @@ public func documentCoreIngestScanAsDocumentSession(scanSessionId: String, clean
 }
 /**
  * Inspects the links and actions of the document of `session_id`
- * (`INSPECT-001`).
+ * (`LINKSEC-001`).
  *
  * The report is the basis of the "before you click" view of the professional
  * review: the user sees where a link leads, and the shell can mark the
@@ -9084,7 +9084,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 39983) {
+    if (uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 10976) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879) {

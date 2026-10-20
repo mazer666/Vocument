@@ -1422,7 +1422,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 39983.toShort()) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 10976.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_cancel() != 14879.toShort()) {
@@ -2178,7 +2178,7 @@ public object FfiConverterTypeFfiDeskewResult: FfiConverterRustBuffer<FfiDeskewR
 
 
 /**
- * The report of an inspection of a document (`INSPECT-001`).
+ * The report of an inspection of a document (`LINKSEC-001`).
  */
 data class FfiDocumentInspection (
     /**
@@ -2947,7 +2947,7 @@ public object FfiConverterTypeFfiPageWord: FfiConverterRustBuffer<FfiPageWord> {
 
 
 /**
- * One link or action of a document (`INSPECT-001`).
+ * One link or action of a document (`LINKSEC-001`).
  */
 data class FfiPdfActionInfo (
     /**
@@ -3239,7 +3239,7 @@ public object FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRe
 
 
 /**
- * A signature field of a document (`SIGN-001`).
+ * A signature field of a document (`SIGREV-001`).
  */
 data class FfiPdfSignatureInfo (
     /**
@@ -5076,7 +5076,7 @@ public object FfiConverterTypeFfiPageLabelStyle: FfiConverterRustBuffer<FfiPageL
 
 
 /**
- * The type of a link or action of a document (`INSPECT-001`).
+ * The type of a link or action of a document (`LINKSEC-001`).
  */
 sealed class FfiPdfActionKind {
     
@@ -6828,7 +6828,7 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
 
         /**
          * Inspects the links and actions of the document of `session_id`
-         * (`INSPECT-001`).
+         * (`LINKSEC-001`).
          *
          * The report is the basis of the "before you click" view of the professional
          * review: the user sees where a link leads, and the shell can mark the

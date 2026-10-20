@@ -477,7 +477,7 @@ impl SessionRegistry {
         Ok(actor.extract_page_text(page_index)?)
     }
 
-    /// Inspects the links and actions of the document (`INSPECT-001`).
+    /// Inspects the links and actions of the document (`LINKSEC-001`).
     ///
     /// The report tells the user where a link leads and whether the document
     /// does something besides showing pages — a script, a file that is

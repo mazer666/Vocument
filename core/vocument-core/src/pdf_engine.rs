@@ -273,7 +273,7 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         })
     }
 
-    /// Reports the links and actions of the document (`INSPECT-001`).
+    /// Reports the links and actions of the document (`LINKSEC-001`).
     ///
     /// The report contains the actions of the pages (the links) and the
     /// actions of the document itself, for example the action that runs when
@@ -294,7 +294,7 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         Ok(Vec::new())
     }
 
-    /// Reports the signature fields of the document (`SIGN-001`).
+    /// Reports the signature fields of the document (`SIGREV-001`).
     ///
     /// The decisive finding is whether the document was changed after it was
     /// signed: a signature that no longer covers the content of the document

@@ -1,5 +1,5 @@
 //! Inspection of the embedded files and the signatures of a document
-//! (`ATTACH-001`, `SIGN-001`).
+//! (`ATTACH-001`, `SIGREV-001`).
 //!
 //! The engine reports the facts; the risk policy lives in the core.
 

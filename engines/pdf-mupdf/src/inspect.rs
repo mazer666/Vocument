@@ -1,4 +1,4 @@
-//! Inspection of the links and actions of a document (`INSPECT-001`).
+//! Inspection of the links and actions of a document (`LINKSEC-001`).
 //!
 //! The engine reports the facts: which action lies where, of which type it
 //! is, and what it points at. Whether an action is dangerous is a decision of

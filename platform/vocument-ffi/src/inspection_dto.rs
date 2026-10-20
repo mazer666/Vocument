@@ -1,5 +1,5 @@
 //! UniFFI DTOs and exported functions for the inspection of the links and
-//! actions of a document (`INSPECT-001`).
+//! actions of a document (`LINKSEC-001`).
 //!
 //! A professional review asks two questions about a link: where does it lead,
 //! and does it do something besides opening a page? A link that runs a script
@@ -18,7 +18,7 @@ use vocument_core::document_inspection::{
     DocumentInspection, PdfActionInfo, PdfActionKind, PdfAttachmentInfo, PdfSignatureInfo,
 };
 
-/// The type of a link or action of a document (`INSPECT-001`).
+/// The type of a link or action of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum FfiPdfActionKind {
     /// A link to another page of the same document.
@@ -69,7 +69,7 @@ impl From<PdfActionKind> for FfiPdfActionKind {
     }
 }
 
-/// One link or action of a document (`INSPECT-001`).
+/// One link or action of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiPdfActionInfo {
     /// The page the action lies on. `None` for an action of the document
@@ -135,7 +135,7 @@ impl From<PdfAttachmentInfo> for FfiPdfAttachmentInfo {
     }
 }
 
-/// A signature field of a document (`SIGN-001`).
+/// A signature field of a document (`SIGREV-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiPdfSignatureInfo {
     /// The name of the signature field.
@@ -173,7 +173,7 @@ impl From<PdfSignatureInfo> for FfiPdfSignatureInfo {
     }
 }
 
-/// The report of an inspection of a document (`INSPECT-001`).
+/// The report of an inspection of a document (`LINKSEC-001`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FfiDocumentInspection {
     /// All links and actions of the document.
@@ -209,7 +209,7 @@ impl From<DocumentInspection> for FfiDocumentInspection {
 }
 
 /// Inspects the links and actions of the document of `session_id`
-/// (`INSPECT-001`).
+/// (`LINKSEC-001`).
 ///
 /// The report is the basis of the "before you click" view of the professional
 /// review: the user sees where a link leads, and the shell can mark the

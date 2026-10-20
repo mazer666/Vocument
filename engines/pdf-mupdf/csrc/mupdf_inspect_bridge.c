@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* One link or action of a document (`INSPECT-001`).
+/* One link or action of a document (`LINKSEC-001`).
    The kind is the name of the action type in the PDF, the target is the
    address, the file, the script or the destination. */
 typedef struct {
@@ -141,7 +141,7 @@ static void describe_action(
 /* Collects the actions of the document and of its pages.
    The result is what a professional review needs before a user follows a
    link or opens a document: where does it lead, and does it run code
-   (`INSPECT-001`). */
+   (`LINKSEC-001`). */
 int vocument_mupdf_inspect_document_actions(
     const unsigned char *bytes,
     size_t len,

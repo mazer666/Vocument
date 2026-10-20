@@ -1,5 +1,5 @@
 //! Tests of the inspection of the embedded files and the signatures of a
-//! document (`ATTACH-001`, `SIGN-001`).
+//! document (`ATTACH-001`, `SIGREV-001`).
 //!
 //! The fixture is a real PDF with an embedded file and a signed form. The
 //! signature covers the whole file in one case and only a part of it in the

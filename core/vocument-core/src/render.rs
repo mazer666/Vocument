@@ -119,7 +119,7 @@ impl DocumentActor {
         Ok(guard.page_label(page_index)?)
     }
 
-    /// Reports the links and actions of the document (`INSPECT-001`).
+    /// Reports the links and actions of the document (`LINKSEC-001`).
     pub fn document_actions(&self) -> Result<Vec<PdfActionInfo>, RenderPipelineError> {
         let guard = self
             .engine_document
@@ -137,7 +137,7 @@ impl DocumentActor {
         Ok(guard.document_attachments()?)
     }
 
-    /// Reports the signature fields of the document (`SIGN-001`).
+    /// Reports the signature fields of the document (`SIGREV-001`).
     pub fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, RenderPipelineError> {
         let guard = self
             .engine_document
