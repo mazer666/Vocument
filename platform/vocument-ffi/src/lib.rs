@@ -93,6 +93,8 @@ pub enum DocumentCoreError {
     InvalidPdf { details: String },
     #[error("session not found: {session_id}")]
     SessionNotFound { session_id: String },
+    #[error("the document is not stored locally and cannot be saved in place: {details}")]
+    DocumentNotLocallyWritable { details: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
@@ -139,6 +141,11 @@ impl From<SessionError> for DocumentCoreError {
                 details: rec_err.to_string(),
             },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
+            SessionError::NotLocallyWritable { session_id } => Self::DocumentNotLocallyWritable {
+                details: format!(
+                    "session {session_id} lives in a platform document provider; export it to a location the user owns"
+                ),
+            },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
             },

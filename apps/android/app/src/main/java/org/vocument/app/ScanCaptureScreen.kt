@@ -334,12 +334,22 @@ fun ScanCaptureScreen(
                     CameraPreviewView(
                         modifier = Modifier.fillMaxSize(),
                         onFrameAnalyzed = { liveFrame ->
-                            latestLiveFrame = liveFrame
-                            if (!isManualAdjustmentActive) {
-                                val corners = runCatching { coreBridge.detectDocumentEdges(liveFrame) }.getOrNull()
-                                detectedCorners = corners
-                                if (corners != null && corners.confidenceMilli >= 650u) {
-                                    statusMessage = "Document detected (${corners.confidenceMilli}‰) — steady"
+                            // The callback runs on the camera thread. The edge
+                            // detection is a native call and belongs there;
+                            // the state of the interface may only be changed
+                            // on the main thread.
+                            val corners = if (isManualAdjustmentActive) {
+                                null
+                            } else {
+                                runCatching { coreBridge.detectDocumentEdges(liveFrame) }.getOrNull()
+                            }
+                            mainHandler.post {
+                                latestLiveFrame = liveFrame
+                                if (!isManualAdjustmentActive) {
+                                    detectedCorners = corners
+                                    if (corners != null && corners.confidenceMilli >= 650u) {
+                                        statusMessage = "Document detected (${corners.confidenceMilli}‰) — steady"
+                                    }
                                 }
                             }
                         }

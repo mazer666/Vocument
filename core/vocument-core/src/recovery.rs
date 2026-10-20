@@ -195,13 +195,46 @@ impl RecoveryContainer {
         self.container_dir.join("journal.json")
     }
 
+    /// Creates the container directory with restrictive permissions.
+    ///
+    /// The container holds the name and the path of the document of the user.
+    /// It must not be readable for anyone else on the machine.
+    fn ensure_container_dir(&self) -> Result<(), RecoveryError> {
+        fs::create_dir_all(&self.container_dir)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&self.container_dir)?.permissions();
+            if permissions.mode() & 0o077 != 0 {
+                permissions.set_mode(0o700);
+                fs::set_permissions(&self.container_dir, permissions)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Creates a file that only the owner may read.
+    ///
+    /// The recovery container holds the name and the path of the document of the
+    /// user. The files must not be readable for anyone else on the machine.
+    fn create_private_file(path: &Path) -> std::io::Result<File> {
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        options.open(path)
+    }
+
     fn checkpoints_dir(&self) -> PathBuf {
         self.container_dir.join("checkpoints")
     }
 
     /// Atomically writes the recovery manifest to disk via sibling staging and rename.
     pub fn write_manifest(&self, manifest: &RecoveryManifest) -> Result<(), RecoveryError> {
-        fs::create_dir_all(&self.container_dir)?;
+        self.ensure_container_dir()?;
         let json = serde_json::to_string_pretty(manifest)?;
         let temp_path = self.container_dir.join(format!(
             ".tmp_manifest_{}_{}.json",
@@ -212,7 +245,7 @@ impl RecoveryContainer {
                 .unwrap_or(0)
         ));
 
-        let mut file = File::create(&temp_path)?;
+        let mut file = Self::create_private_file(&temp_path)?;
         file.write_all(json.as_bytes())?;
         file.sync_all()?;
         fs::rename(temp_path, self.manifest_path())?;
@@ -243,7 +276,7 @@ impl RecoveryContainer {
         &self,
         journal: &PersistentTransactionJournal,
     ) -> Result<(), RecoveryError> {
-        fs::create_dir_all(&self.container_dir)?;
+        self.ensure_container_dir()?;
         let json = journal.to_json_pretty()?;
         let temp_path = self.container_dir.join(format!(
             ".tmp_journal_{}_{}.json",
@@ -254,7 +287,7 @@ impl RecoveryContainer {
                 .unwrap_or(0)
         ));
 
-        let mut file = File::create(&temp_path)?;
+        let mut file = Self::create_private_file(&temp_path)?;
         file.write_all(json.as_bytes())?;
         file.sync_all()?;
         fs::rename(temp_path, self.journal_path())?;

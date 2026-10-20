@@ -5235,6 +5235,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case SessionNotFound(sessionId: String
     )
+    case DocumentNotLocallyWritable(details: String
+    )
     case NavigationFailure(details: String
     )
     case TransactionFailure(details: String
@@ -5276,22 +5278,25 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 5: return .SessionNotFound(
             sessionId: try FfiConverterString.read(from: &buf)
             )
-        case 6: return .NavigationFailure(
+        case 6: return .DocumentNotLocallyWritable(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .TransactionFailure(
+        case 7: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .SaveFailure(
+        case 8: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .RecoveryFailure(
+        case 9: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .ImagingFailure(
+        case 10: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .InternalFailure(
+        case 11: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 12: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -5330,33 +5335,38 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(sessionId, into: &buf)
             
         
-        case let .NavigationFailure(details):
+        case let .DocumentNotLocallyWritable(details):
             writeInt(&buf, Int32(6))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .TransactionFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(7))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .SaveFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(8))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .RecoveryFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(9))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(11))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(12))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -6845,6 +6855,21 @@ public func documentCoreExecuteRecoveryAction(documentId: String, action: FfiRec
 })
 }
 /**
+ * Returns the current bytes of the document of `session_id`.
+ *
+ * The platform shell writes them into a location that the user owns: the
+ * Android document provider (`content://` URI), a macOS save panel, a share
+ * sheet. The core has no access to such a location, so it hands the bytes
+ * over instead of writing them itself.
+ */
+public func documentCoreExportSessionBytes(sessionId: String)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_export_session_bytes(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
  * Exports the verified `PersistentTransactionJournal` as pretty-printed JSON (`ARCHITECTURE.md` §§11–12, `ROADMAP.md` M0.4).
  */
 public func documentCoreExportTransactionJournalJson(sessionId: String)throws  -> String  {
@@ -7532,6 +7557,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_export_session_bytes() != 27186) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {

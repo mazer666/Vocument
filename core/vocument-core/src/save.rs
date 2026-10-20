@@ -30,6 +30,8 @@ pub enum SaveError {
     },
     #[error("invalid save operation: {details}")]
     InvalidOperation { details: String },
+    #[error("the document could not be exported: {details}")]
+    ExportFailed { details: String },
 }
 
 /// Conflict contract generated when an on-disk file was modified externally (`FILELOCK-003`, `FILELOCK-004`).
@@ -293,6 +295,21 @@ impl SessionRegistry {
                 session_id: session_id.to_owned(),
             })?;
 
+        // A document that lives in a platform document provider (an Android
+        // `content://` URI) has no local path. The local file broker would
+        // turn the URI into a nonsense file name and write a file with that
+        // name. The platform shell writes the document itself, through the
+        // export (`export_session_bytes`).
+        if !self
+            .file_broker
+            .as_ref()
+            .can_write_back(&session.file_identity.source_token)
+        {
+            return Err(SessionError::NotLocallyWritable {
+                session_id: session_id.to_owned(),
+            });
+        }
+
         let doc_id = session.document_id.clone();
         let target_token = session.file_identity.source_token.clone();
         let outcome = SaveCoordinator::execute_safe_save(
@@ -311,6 +328,30 @@ impl SessionRegistry {
         Ok(outcome)
     }
 
+    /// Returns the current bytes of the document of `session_id`.
+    ///
+    /// The platform shell uses this to write the document into a location that
+    /// the user owns: the Android document provider (`content://` URI), a
+    /// macOS open or save panel, a share sheet. The core does not write such
+    /// a location itself — it has no access to it.
+    pub fn export_session_bytes(&self, session_id: &str) -> Result<Vec<u8>, SessionError> {
+        let guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        let bytes = session.actor.current_pdf_bytes().map_err(|error| {
+            SessionError::Save(crate::save::SaveError::ExportFailed {
+                details: error.to_string(),
+            })
+        })?;
+        Ok(bytes)
+    }
+
     /// 'Save As' of active `session_id` to `target_token` (`SAVE-002`).
     pub fn save_session_as(
         &self,
@@ -326,6 +367,14 @@ impl SessionRegistry {
             .ok_or_else(|| SessionError::SessionNotFound {
                 session_id: session_id.to_owned(),
             })?;
+
+        // The target of a save must be a local file. A URI of a document
+        // provider is written by the platform shell, through the export.
+        if !self.file_broker.as_ref().can_write_back(target_token) {
+            return Err(SessionError::NotLocallyWritable {
+                session_id: session_id.to_owned(),
+            });
+        }
 
         let doc_id = session.document_id.clone();
         let outcome = SaveCoordinator::execute_safe_save(

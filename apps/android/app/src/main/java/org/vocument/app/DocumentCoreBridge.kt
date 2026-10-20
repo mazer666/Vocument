@@ -276,6 +276,17 @@ class DocumentCoreBridge {
         return documentCoreReportPowerState(state)
     }
 
+    /**
+     * Returns the current bytes of the document.
+     *
+     * The shell writes them into a location that the user owns: the Android
+     * document provider (`content://` URI) or a share sheet. The core has no
+     * access to such a location.
+     */
+    fun exportSessionBytes(sessionId: String): ByteArray {
+        return documentCoreExportSessionBytes(sessionId)
+    }
+
     fun saveSession(sessionId: String): FfiSaveOutcome {
         return documentCoreSaveSession(sessionId)
     }

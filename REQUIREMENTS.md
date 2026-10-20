@@ -279,6 +279,12 @@ The automatic detection has to find the **tilted** outline of the page, not a re
 ### SCAN-010 — The scanned document can be saved
 A scan that cannot be saved is a scan that is lost. The searchable PDF that the scan produces has to be savable through the platform, and the saved file has to be a complete PDF whose text can be read back.
 
+### SCAN-011 — The document can be exported into a location that the user owns
+A document that lives in a document provider — an Android `content://` URI, a macOS open panel — has no local path. The application must never turn such a URI into a file name on the disk. The core hands the bytes of the document over, the platform shell writes them into a place the user has chosen.
+
+### SCAN-012 — A file that was changed outside the application is never overwritten silently
+If the file of the document was changed by another program, the application must report the conflict and let the user decide: save as a collision-free copy, overwrite explicitly, reload the external version, or cancel. The check happens before the file is replaced, not afterwards.
+
 ### SCANNER-001
 External scanner support planned through ICA/WIA/TWAIN/SANE depending platform.
 
@@ -1253,7 +1259,17 @@ Vocument does not default to:
 
 ---
 
-# 45. Best-in-class requirement
+# 45. Privacy of the files of the user
+
+### PRIV-001 — The files of the application are not readable for anyone else on the machine
+The staging file of a save, the recovery container with its manifest and journal and every other file that the application writes for a document of the user must have restrictive permissions: `0600` for files, `0700` for directories.
+
+### PRIV-002 — The camera is released when it is not needed
+A camera that stays bound keeps the privacy indicator of the system on and drains the battery. The camera must be released when the view leaves the interface. The state of the interface may only be changed on the main thread.
+
+---
+
+# 46. Best-in-class requirement
 
 A feature is not accepted solely because it exists.
 

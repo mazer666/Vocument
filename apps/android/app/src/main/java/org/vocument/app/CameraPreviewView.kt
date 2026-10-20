@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import uniffi.vocument_ffi.FfiScanFrame
 import uniffi.vocument_ffi.FfiScanPixelFormat
+import androidx.compose.runtime.mutableStateOf
 import java.util.concurrent.Executors
 
 private const val TAG = "CameraPreviewView"
@@ -27,6 +28,13 @@ private const val TAG = "CameraPreviewView"
 /**
  * CameraX Live Preview & Frame Ingestion View (`SCAN-001`, `SCAN-004`).
  * Feeds live camera frames directly into the shared Rust `ImagingEngine` for real-time edge detection.
+ *
+ * The callback runs on the **camera thread**, so that the analysis of the
+ * frame does not block the interface. The caller publishes its result on the
+ * main thread, because the state of the interface may only be changed there.
+ *
+ * The camera is unbound when the view leaves: a camera that stays bound keeps
+ * the privacy indicator of the system on and drains the battery.
  */
 @Composable
 fun CameraPreviewView(
@@ -36,10 +44,17 @@ fun CameraPreviewView(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    // The camera provider is needed to unbind the camera again. A camera that
+    // stays bound keeps the privacy indicator of the system on and drains the
+    // battery, even though the view is gone.
+    val cameraProviderRef = remember { mutableStateOf<ProcessCameraProvider?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
             cameraExecutor.shutdown()
+            // The camera is released when the view leaves. The privacy
+            // indicator of the system goes out with it.
+            runCatching { cameraProviderRef.value?.unbindAll() }
         }
     }
 
@@ -58,6 +73,7 @@ fun CameraPreviewView(
             cameraProviderFuture.addListener({
                 runCatching {
                     val cameraProvider = cameraProviderFuture.get()
+                    cameraProviderRef.value = cameraProvider
 
                     val preview = Preview.Builder().build().also {
                         it.surfaceProvider = previewView.surfaceProvider
@@ -77,6 +93,11 @@ fun CameraPreviewView(
                                         lastAnalysisTimestamp = now
                                         val frame = extractFrameFromImageProxy(imageProxy)
                                         if (frame != null) {
+                                            // The callback runs on the camera
+                                            // thread, so that the analysis of
+                                            // the frame does not block the
+                                            // interface. The caller publishes
+                                            // its result on the main thread.
                                             onFrameAnalyzed(frame)
                                         }
                                     }

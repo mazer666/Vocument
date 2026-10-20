@@ -176,6 +176,20 @@ pub fn document_core_resolve_save_conflict(
     Ok(res.map(Into::into))
 }
 
+/// Returns the current bytes of the document of `session_id`.
+///
+/// The platform shell writes them into a location that the user owns: the
+/// Android document provider (`content://` URI), a macOS save panel, a share
+/// sheet. The core has no access to such a location, so it hands the bytes
+/// over instead of writing them itself.
+#[uniffi::export]
+pub fn document_core_export_session_bytes(
+    session_id: String,
+) -> Result<Vec<u8>, DocumentCoreError> {
+    let bytes = session_registry().export_session_bytes(&session_id)?;
+    Ok(bytes)
+}
+
 /// Generates a collision-free file path for `base_path` and `suffix` (`FILELOCK-004`).
 #[uniffi::export]
 pub fn document_core_generate_collision_free_path(base_path: String, suffix: String) -> String {

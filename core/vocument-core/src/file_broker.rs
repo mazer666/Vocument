@@ -108,6 +108,19 @@ pub trait FileBroker: Send + Sync + std::fmt::Debug {
 
     /// Discards a staged write, removing any temporary staged artifacts.
     fn discard_staged_write(&self, staged: BrokeredStagedWrite) -> Result<(), FileBrokerError>;
+
+    /// Answers whether the broker can write a file back to `source_token`.
+    ///
+    /// A document that lives in a platform document provider — an Android
+    /// `content://` URI of the storage access framework — has no local path.
+    /// The local broker would turn the URI into a nonsense file name and
+    /// write a file with that name. Such a document is exported by the
+    /// platform shell instead (`SAVE-002`).
+    ///
+    /// The default is `true`: a broker that knows no better is trusted.
+    fn can_write_back(&self, _source_token: &str) -> bool {
+        true
+    }
 }
 
 /// Scoped local `FileBroker` implementation used by macOS scoped file URLs and headless tests.
@@ -119,6 +132,33 @@ static STAGING_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::Atomic
 impl ScopedLocalFileBroker {
     pub fn new() -> Self {
         Self
+    }
+
+    /// Answers whether `source_token` names a local file.
+    ///
+    /// A token with a scheme that is not `file` — for example the
+    /// `content://` URI of the Android storage access framework — belongs to a
+    /// document provider. The local broker cannot write it.
+    pub fn is_local_token(source_token: &str) -> bool {
+        let normalized = source_token.strip_prefix("file://").unwrap_or(source_token);
+        // A scheme is a letter followed by letters, digits, `+`, `-` or `.`,
+        // followed by a colon. A Windows path `C:\...` is not a scheme.
+        let bytes = normalized.as_bytes();
+        if bytes.len() < 2 || !bytes[0].is_ascii_alphabetic() {
+            return true;
+        }
+        let mut index = 1;
+        while index < bytes.len() {
+            let byte = bytes[index];
+            if byte == b':' {
+                return false;
+            }
+            if !(byte.is_ascii_alphanumeric() || byte == b'+' || byte == b'-' || byte == b'.') {
+                return true;
+            }
+            index += 1;
+        }
+        true
     }
 
     /// Reads a local path that was explicitly granted by the user via Finder / Open With (`MacOsScopedUrl`).
@@ -185,12 +225,24 @@ impl FileBroker for ScopedLocalFileBroker {
         Ok(Some(read.compute_identity()))
     }
 
+    fn can_write_back(&self, source_token: &str) -> bool {
+        Self::is_local_token(source_token)
+    }
+
     fn stage_write(
         &self,
         target_token: &str,
         bytes: &[u8],
     ) -> Result<BrokeredStagedWrite, FileBrokerError> {
         use std::io::Write as _;
+        if !Self::is_local_token(target_token) {
+            // Last line of defence: a URI of a document provider must never
+            // become a file name on the disk of the machine.
+            return Err(FileBrokerError::StagingFailed {
+                target_token: target_token.to_owned(),
+                details: "the target belongs to a document provider and cannot be written as a local file; export the document instead".to_owned(),
+            });
+        }
         let normalized = target_token.strip_prefix("file://").unwrap_or(target_token);
         let target_path = std::path::PathBuf::from(normalized);
         let parent_dir = target_path
@@ -214,14 +266,22 @@ impl FileBroker for ScopedLocalFileBroker {
         let staging_name = format!(".{stem}.vocument_staging_{pid}_{counter}.tmp");
         let staging_path = parent_dir.join(staging_name);
 
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&staging_path)
-            .map_err(|err| FileBrokerError::StagingFailed {
-                target_token: target_token.to_owned(),
-                details: format!("failed to open staging file '{staging_path:?}': {err}"),
-            })?;
+        // The staged file contains the whole document of the user. It must not
+        // be readable for anyone else, not even while it is being written.
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file =
+            options
+                .open(&staging_path)
+                .map_err(|err| FileBrokerError::StagingFailed {
+                    target_token: target_token.to_owned(),
+                    details: format!("failed to open staging file '{staging_path:?}': {err}"),
+                })?;
 
         file.write_all(bytes)
             .map_err(|err| FileBrokerError::StagingFailed {

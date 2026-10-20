@@ -47,6 +47,10 @@ pub enum SessionError {
     Recovery(#[from] crate::recovery::RecoveryError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
+    #[error(
+        "the document of session '{session_id}' lives in a platform document provider and cannot be written through the local file broker; export it instead"
+    )]
+    NotLocallyWritable { session_id: String },
     #[error("session registry lock poisoned")]
     RegistryPoisoned,
 }

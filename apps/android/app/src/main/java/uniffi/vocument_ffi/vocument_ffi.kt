@@ -853,6 +853,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -895,6 +897,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
 fun uniffi_vocument_ffi_checksum_func_document_core_evaluate_cleanup_quality(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_export_session_bytes(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
 ): Short
@@ -1082,6 +1086,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBu
 fun uniffi_vocument_ffi_fn_func_document_core_evaluate_cleanup_quality(`original`: RustBuffer.ByValue,`enhanced`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(`documentId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_export_session_bytes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1363,6 +1369,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action() != 49722.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_session_bytes() != 27186.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789.toShort()) {
@@ -4156,6 +4165,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "sessionId=${ `sessionId` }"
     }
     
+    class DocumentNotLocallyWritable(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class NavigationFailure(
         
         val `details`: kotlin.String
@@ -4233,22 +4250,25 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             5 -> DocumentCoreException.SessionNotFound(
                 FfiConverterString.read(buf),
                 )
-            6 -> DocumentCoreException.NavigationFailure(
+            6 -> DocumentCoreException.DocumentNotLocallyWritable(
                 FfiConverterString.read(buf),
                 )
-            7 -> DocumentCoreException.TransactionFailure(
+            7 -> DocumentCoreException.NavigationFailure(
                 FfiConverterString.read(buf),
                 )
-            8 -> DocumentCoreException.SaveFailure(
+            8 -> DocumentCoreException.TransactionFailure(
                 FfiConverterString.read(buf),
                 )
-            9 -> DocumentCoreException.RecoveryFailure(
+            9 -> DocumentCoreException.SaveFailure(
                 FfiConverterString.read(buf),
                 )
-            10 -> DocumentCoreException.ImagingFailure(
+            10 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            11 -> DocumentCoreException.InternalFailure(
+            11 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            12 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4280,6 +4300,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`sessionId`)
+            )
+            is DocumentCoreException.DocumentNotLocallyWritable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.NavigationFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -4340,33 +4365,38 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`sessionId`, buf)
                 Unit
             }
-            is DocumentCoreException.NavigationFailure -> {
+            is DocumentCoreException.DocumentNotLocallyWritable -> {
                 buf.putInt(6)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.TransactionFailure -> {
+            is DocumentCoreException.NavigationFailure -> {
                 buf.putInt(7)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.SaveFailure -> {
+            is DocumentCoreException.TransactionFailure -> {
                 buf.putInt(8)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.RecoveryFailure -> {
+            is DocumentCoreException.SaveFailure -> {
                 buf.putInt(9)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.ImagingFailure -> {
+            is DocumentCoreException.RecoveryFailure -> {
                 buf.putInt(10)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(11)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(12)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -5605,6 +5635,24 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(
         FfiConverterString.lower(`documentId`),FfiConverterTypeFfiRecoveryAction.lower(`action`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the current bytes of the document of `session_id`.
+         *
+         * The platform shell writes them into a location that the user owns: the
+         * Android document provider (`content://` URI), a macOS save panel, a share
+         * sheet. The core has no access to such a location, so it hands the bytes
+         * over instead of writing them itself.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreExportSessionBytes`(`sessionId`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_export_session_bytes(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

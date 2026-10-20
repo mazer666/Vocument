@@ -10,7 +10,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,9 +41,22 @@ import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiPageDescriptor
+import uniffi.vocument_ffi.FfiSaveConflict
+import uniffi.vocument_ffi.FfiSaveConflictResolution
 import uniffi.vocument_ffi.FfiSaveOutcome
+import uniffi.vocument_ffi.FfiSaveSuccessSnapshot
 import uniffi.vocument_ffi.FfiSearchIndexProgress
 import uniffi.vocument_ffi.FfiViewportRenderResult
+
+/**
+ * The result of a save: either the path of the written file, or the conflict
+ * that the user has to resolve.
+ */
+private data class SaveResult(
+    val path: String?,
+    val message: String?,
+    val conflict: FfiSaveConflict?
+)
 
 /**
  * Interval in which the energy and thermal state of the device is reported to
@@ -142,6 +158,9 @@ fun MinimalReaderSessionScreen(
     var lastSavedPath by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    // The conflict of a save, if the file was changed outside the application.
+    // The user decides how it is resolved (`FILELOCK-004`).
+    var saveConflict by remember { mutableStateOf<FfiSaveConflict?>(null) }
 
     // The viewport rendering runs on a background thread. The UI thread only
     // receives the finished result.
@@ -202,6 +221,13 @@ fun MinimalReaderSessionScreen(
         onDispose { saveExecutor.shutdown() }
     }
 
+    /**
+     * Saves the active session into the documents directory of the application.
+     *
+     * A file that was changed outside the application is never overwritten
+     * silently. The conflict is reported and the user decides how it is
+     * resolved (`FILELOCK-004`).
+     */
     fun saveActiveSession(context: Context) {
         val session = activeSession ?: return
         isSaving = true
@@ -216,22 +242,77 @@ fun MinimalReaderSessionScreen(
                     .format(java.util.Date())
                 val target = java.io.File(documents, "Vocument_Scan_$stamp.pdf")
                 val outcome = coreBridge.saveSessionAs(session.sessionId, target.absolutePath)
-                val description = when (outcome) {
-                    is FfiSaveOutcome.Success ->
-                        "Saved ${outcome.snapshot.bytesWritten} bytes to ${outcome.snapshot.targetToken}"
-                    is FfiSaveOutcome.Conflict ->
-                        "Save conflict: the file changed on disk"
+                when (outcome) {
+                    is FfiSaveOutcome.Success -> SaveResult(
+                        target.absolutePath,
+                        "Saved ${outcome.snapshot.bytesWritten} bytes to ${outcome.snapshot.targetToken}",
+                        null
+                    )
+                    is FfiSaveOutcome.Conflict -> SaveResult(
+                        null,
+                        null,
+                        outcome.conflict
+                    )
                 }
-                target to description
             }
             mainHandler.post {
                 isSaving = false
-                result.onSuccess { (file, description) ->
-                    lastSavedPath = file.absolutePath
+                result.onSuccess { outcome ->
+                    lastSavedPath = outcome.path
                     errorMessage = null
-                    statusMessage = description
+                    statusMessage = outcome.message
+                    saveConflict = outcome.conflict
                 }.onFailure { err ->
                     errorMessage = "Save error: ${err.message}"
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves a save conflict in the way the user chose.
+     */
+    fun resolveConflict(resolution: FfiSaveConflictResolution) {
+        val session = activeSession ?: return
+        val conflict = saveConflict ?: return
+        isSaving = true
+        saveExecutor.execute {
+            val result = runCatching {
+                coreBridge.resolveSaveConflict(session.sessionId, resolution)
+            }
+            mainHandler.post {
+                isSaving = false
+                saveConflict = null
+                result.onSuccess { snapshot ->
+                    if (snapshot != null) {
+                        lastSavedPath = snapshot.targetToken
+                        statusMessage = "Saved ${snapshot.bytesWritten} bytes to ${snapshot.targetToken}"
+                        errorMessage = null
+                    } else {
+                        statusMessage = "The save was cancelled; the document stays unchanged."
+                    }
+                }.onFailure { err ->
+                    errorMessage = "Conflict resolution failed: ${err.message}"
+                }
+            }
+        }
+    }
+
+    // The export writes the document into a location that the user owns. The
+    // user chooses the place, the application writes the bytes into the
+    // document provider.
+    val exportPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        val session = activeSession
+        if (uri != null && session != null) {
+            exportSessionToSaf(context, coreBridge, session.sessionId, uri) { path, message ->
+                if (path != null) {
+                    lastSavedPath = path
+                    statusMessage = message
+                    errorMessage = null
+                } else {
+                    errorMessage = message
                 }
             }
         }
@@ -308,11 +389,21 @@ fun MinimalReaderSessionScreen(
             // result of a scan would only exist in memory.
             if (activeSession != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    enabled = !isSaving,
-                    onClick = { saveActiveSession(context) }
-                ) {
-                    Text(if (isSaving) "Saving…" else "Save PDF")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        enabled = !isSaving,
+                        onClick = { saveActiveSession(context) }
+                    ) {
+                        Text(if (isSaving) "Saving…" else "Save PDF")
+                    }
+                    // The export writes the document into a place that the user
+                    // owns: a file the user chose, in their own storage.
+                    OutlinedButton(
+                        enabled = !isSaving,
+                        onClick = { exportPdfLauncher.launch("Vocument_Scan.pdf") }
+                    ) {
+                        Text("Export PDF…")
+                    }
                 }
                 lastSavedPath?.let { path ->
                     Spacer(modifier = Modifier.height(4.dp))
@@ -332,6 +423,47 @@ fun MinimalReaderSessionScreen(
             errorMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = msg, color = MaterialTheme.colorScheme.error)
+            }
+
+            // A file that was changed outside the application is never
+            // overwritten silently. The user decides how the conflict is
+            // resolved (`FILELOCK-004`).
+            saveConflict?.let { conflict ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "The file was changed outside the application (${conflict.comparisonSummary}). How should it be handled?",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            resolveConflict(
+                                FfiSaveConflictResolution.SAVE_LOCAL_AS_COLLISION_FREE_COPY
+                            )
+                        }
+                    ) {
+                        Text("Save as copy")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            resolveConflict(
+                                FfiSaveConflictResolution.OVERWRITE_EXTERNAL_EXPLICITLY
+                            )
+                        }
+                    ) {
+                        Text("Overwrite")
+                    }
+                    OutlinedButton(
+                        onClick = { resolveConflict(FfiSaveConflictResolution.RELOAD_EXTERNAL_VERSION) }
+                    ) {
+                        Text("Reload")
+                    }
+                    OutlinedButton(
+                        onClick = { resolveConflict(FfiSaveConflictResolution.CANCEL) }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
             }
 
             if (activeTab == 3) {
@@ -403,6 +535,39 @@ fun MinimalReaderSessionScreen(
             }
         }
     }
+}
+
+/**
+ * Writes the document of the active session into a location that the user
+ * chose.
+ *
+ * The bytes come from the core, the document provider does the writing. The
+ * core has no access to a `content://` URI, so it hands the bytes over.
+ */
+private fun exportSessionToSaf(
+    context: Context,
+    coreBridge: DocumentCoreBridge,
+    sessionId: String,
+    uri: Uri,
+    onResult: (String?, String?) -> Unit = { _, _ -> }
+) {
+    Thread {
+        val result = runCatching {
+            val bytes = coreBridge.exportSessionBytes(sessionId)
+            context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+                stream.write(bytes)
+                stream.flush()
+            } ?: error("The document provider did not open the file for writing")
+            bytes.size
+        }
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            result.onSuccess { size ->
+                onResult(uri.toString(), "Exported $size bytes to $uri")
+            }.onFailure { err ->
+                onResult(null, "Export failed: ${err.message}")
+            }
+        }
+    }.start()
 }
 
 private fun openUriViaSafBroker(

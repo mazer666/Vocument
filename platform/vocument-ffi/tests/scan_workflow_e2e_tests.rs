@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 use vocument_core::pdf_engine::PdfEngine;
 use vocument_ffi::navigation_search_dto::FfiSearchResponse;
 use vocument_ffi::ocr_dto::document_core_ingest_scan_as_document_session;
+use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::save_dto::document_core_save_session_as;
 use vocument_ffi::scan_dto::{
     FfiQuadCorners, FfiScanCleanupProfile, FfiScanFrame, FfiScanPixelFormat,
@@ -291,5 +292,87 @@ fn the_mobile_scan_workflow_produces_a_saved_searchable_pdf() {
     assert!(
         elapsed < WORKFLOW_BUDGET,
         "the workflow took {elapsed:?}, which is over the budget of {WORKFLOW_BUDGET:?}"
+    );
+}
+
+#[test]
+fn the_scanned_document_can_be_exported_and_opened_again() {
+    // The same chain as the workflow test, but the document leaves the
+    // application through the export: the bytes go to a place that the user
+    // owns, and the file that is written there must be a complete PDF that
+    // can be opened again with its text.
+    let frame = camera_frame();
+    let detected = document_core_detect_document_edges(frame.clone())
+        .expect("the edge detection must not fail")
+        .expect("the page must be found in the frame");
+
+    let scan_session_id = document_core_start_scan_session();
+    document_core_append_scan_page(
+        scan_session_id.clone(),
+        frame,
+        Some(detected),
+        Some(FfiScanCleanupProfile::DocumentAuto),
+    )
+    .expect("the captured page must be appended");
+
+    let snapshot = document_core_ingest_scan_as_document_session(
+        scan_session_id,
+        FfiScanCleanupProfile::DocumentAuto,
+        vec!["deu".to_owned()],
+        "Export.pdf".to_owned(),
+    )
+    .expect("the scan must be ingestable as a document session");
+    let session_id = snapshot.session_id.clone();
+
+    // The export: the bytes for a location that the user owns.
+    let bytes =
+        document_core_export_session_bytes(session_id.clone()).expect("the export must succeed");
+    assert!(
+        bytes.starts_with(b"%PDF-"),
+        "the exported bytes must be a PDF"
+    );
+    assert!(
+        bytes.ends_with(b"%%EOF\n"),
+        "the exported bytes must be a complete PDF"
+    );
+
+    let target = temp_dir("export").join("exported_scan.pdf");
+    std::fs::write(&target, &bytes).expect("the exported bytes must be writable");
+
+    // The file that the user owns must be openable again, with its text.
+    let saved_bytes = std::fs::read(&target).expect("the exported file must be readable");
+    let engine = vocument_pdf_mupdf::MuPdfEngineAdapter::new();
+    let document = engine
+        .open_pdf_bytes(&saved_bytes)
+        .expect("the exported PDF must be openable by the engine");
+    assert_eq!(
+        document.summary().page_count,
+        snapshot.pdf_summary.page_count,
+        "the exported document must have the same number of pages as the session"
+    );
+    let text = document
+        .extract_page_text(0)
+        .expect("the text of the exported page must be extractable");
+    let joined = text
+        .lines
+        .iter()
+        .map(|line| line.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        joined.to_lowercase().contains("vertraulich"),
+        "the exported PDF must contain the OCR text, it starts with {:?}",
+        joined.chars().take(120).collect::<String>()
+    );
+
+    // The exported file must not contain the internals of the application.
+    let as_text = String::from_utf8_lossy(&bytes);
+    assert!(
+        !as_text.contains("/workspace/"),
+        "the exported document must not contain a path of the build machine"
+    );
+    assert!(
+        !as_text.contains("sess_") && !as_text.contains("vocument_recovery"),
+        "the exported document must not contain internal identifiers"
     );
 }
