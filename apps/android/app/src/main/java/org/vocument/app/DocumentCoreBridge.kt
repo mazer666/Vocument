@@ -261,6 +261,19 @@ class DocumentCoreBridge {
     }
 
     /**
+     * Inspects the links and the actions, the attachments and the signatures
+     * of a document (`LINKSEC-001`, `ATTACH-001`, `SIGREV-001`).
+     *
+     * The report tells the shell where a document tries to do something the
+     * user should know about: a script, a link that leaves the document, a
+     * form that sends data away, an embedded file, a signature that the
+     * document changed after it was signed.
+     */
+    fun inspectDocument(sessionId: String): FfiDocumentInspection {
+        return documentCoreInspectDocument(sessionId)
+    }
+
+    /**
      * Removes the content of the marked regions of a page for good
      * (`REDACT-001`, `REDACT-002`).
      *

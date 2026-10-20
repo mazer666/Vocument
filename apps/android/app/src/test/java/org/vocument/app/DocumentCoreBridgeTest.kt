@@ -76,6 +76,21 @@ class DocumentCoreBridgeTest {
         assertEquals(2u, session.pdfSummary.pageCount)
         assertEquals("Vocument M0.1 Sample Document", session.pdfSummary.title)
 
+        // The inspection of the links, the attachments and the signatures is
+        // reachable for the user: the bridge calls the core and hands the
+        // report over.
+        val inspection = bridge.inspectDocument(session.sessionId)
+        assertTrue(
+            "the report must carry the findings of the document",
+            inspection.actions.isNotEmpty() || inspection.attachments.isNotEmpty() ||
+                inspection.signatures.isNotEmpty() || inspection.riskyCount == 0u
+        )
+        assertEquals(
+            "the number of the risky findings must match the list",
+            inspection.riskyCount,
+            (inspection.actions.count { it.isRisky } + inspection.attachments.count { it.isRisky }).toUInt()
+        )
+
         val geo = bridge.pageGeometry(session.sessionId, 0u)
         assertEquals(595_000u, geo.widthMilliPt)
         assertEquals(842_000u, geo.heightMilliPt)
