@@ -268,6 +268,14 @@ class DocumentCoreBridge {
     /**
      * Safe save of active [sessionId] back to its original file (`ROADMAP.md` M0.5, `SAVE-001`).
      */
+    /**
+     * Reports the energy and thermal state of the device to the shared core
+     * (`POWER-001`).
+     */
+    fun reportPowerState(state: FfiPowerState): FfiPowerLimits {
+        return documentCoreReportPowerState(state)
+    }
+
     fun saveSession(sessionId: String): FfiSaveOutcome {
         return documentCoreSaveSession(sessionId)
     }

@@ -240,23 +240,43 @@ fun ScanCaptureScreen(
         }
     }
 
+    /**
+     * Turns the captured pages into a searchable PDF and opens it as a document.
+     *
+     * The synthesis runs the OCR over every captured page and writes the PDF.
+     * That takes seconds, so it happens on the background executor. The button
+     * handler must never block the interface: the user has to see that the
+     * document is being prepared.
+     */
     fun handleIngestAsDocumentSession() {
         val sessionId = activeSessionId ?: return
-        runCatching {
-            val sessionSnap = coreBridge.ingestScanAsDocumentSession(
-                scanSessionId = sessionId,
-                cleanupProfile = selectedProfile,
-                languages = listOf("deu", "eng"),
-                displayName = "Scan_${System.currentTimeMillis()}.pdf"
-            )
-            activeSessionId = null
-            capturedPages = emptyList()
-            detectedCorners = null
-            isManualAdjustmentActive = false
-            statusMessage = "PDF synthesized (${sessionSnap.pdfSummary.pageCount} p.) & opened in session"
-            onDocumentSessionOpened(sessionSnap)
-        }.onFailure { err ->
-            errorMessage = "PDF Ingestion error: ${err.message}"
+        isProcessingFrame = true
+        scanExecutor.execute {
+            val result = runCatching {
+                coreBridge.ingestScanAsDocumentSession(
+                    scanSessionId = sessionId,
+                    cleanupProfile = selectedProfile,
+                    languages = listOf("deu", "eng"),
+                    displayName = "Scan_${System.currentTimeMillis()}.pdf"
+                )
+            }
+            // The Compose state is only touched on the main thread.
+            mainHandler.post {
+                isProcessingFrame = false
+                result
+                    .onSuccess { sessionSnap ->
+                        activeSessionId = null
+                        capturedPages = emptyList()
+                        detectedCorners = null
+                        isManualAdjustmentActive = false
+                        statusMessage = "PDF synthesized (${sessionSnap.pdfSummary.pageCount} p.) & opened in session"
+                        errorMessage = null
+                        onDocumentSessionOpened(sessionSnap)
+                    }
+                    .onFailure { err ->
+                        errorMessage = "PDF Ingestion error: ${err.message}"
+                    }
+            }
         }
     }
 
@@ -448,9 +468,10 @@ fun ScanCaptureScreen(
             }
             if (activeSessionId != null && capturedPages.isNotEmpty()) {
                 Button(
+                    enabled = !isProcessingFrame,
                     onClick = { handleIngestAsDocumentSession() }
                 ) {
-                    Text("Open as PDF")
+                    Text(if (isProcessingFrame) "Preparing PDF…" else "Open as PDF")
                 }
             }
             if (activeSessionId != null) {

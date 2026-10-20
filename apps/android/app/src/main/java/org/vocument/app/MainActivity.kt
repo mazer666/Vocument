@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,8 +38,18 @@ import uniffi.vocument_ffi.DocumentCoreHandshake
 import uniffi.vocument_ffi.FfiDocumentSessionSnapshot
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiPageDescriptor
+import uniffi.vocument_ffi.FfiSaveOutcome
 import uniffi.vocument_ffi.FfiSearchIndexProgress
 import uniffi.vocument_ffi.FfiViewportRenderResult
+
+/**
+ * Interval in which the energy and thermal state of the device is reported to
+ * the core (`POWER-001`).
+ *
+ * The state changes rarely; a minute is enough to notice that the device is
+ * charging or that it got hot, without waking the device up all the time.
+ */
+private const val POWER_REPORT_INTERVAL_MS = 60_000L
 
 /**
  * Native Android 13+ Activity using Jetpack Compose (`MOBILE-001`, `MOBILE-002`, `BIGMOBILE-001`, `VIEW-001`).
@@ -48,6 +59,13 @@ import uniffi.vocument_ffi.FfiViewportRenderResult
  */
 class MainActivity : ComponentActivity() {
     private val coreBridge = DocumentCoreBridge()
+    private val powerReporterHandler = Handler(Looper.getMainLooper())
+    private val powerReporterRunnable = object : Runnable {
+        override fun run() {
+            reportPowerState()
+            powerReporterHandler.postDelayed(this, POWER_REPORT_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +84,28 @@ class MainActivity : ComponentActivity() {
                 MinimalReaderSessionScreen(handshake = handshake, coreBridge = coreBridge)
             }
         }
+    }
+
+    /**
+     * Reports the energy and thermal state of the device to the shared core.
+     *
+     * The state is reported when the application comes to the foreground and
+     * then periodically, because a device that is charging or that gets hot
+     * does not announce itself.
+     */
+    override fun onStart() {
+        super.onStart()
+        reportPowerState()
+        powerReporterHandler.postDelayed(powerReporterRunnable, POWER_REPORT_INTERVAL_MS)
+    }
+
+    override fun onStop() {
+        powerReporterHandler.removeCallbacks(powerReporterRunnable)
+        super.onStop()
+    }
+
+    private fun reportPowerState() {
+        runCatching { AndroidPowerReporter.report(this) }
     }
 
     override fun onTrimMemory(level: Int) {
@@ -97,10 +137,21 @@ fun MinimalReaderSessionScreen(
     var indexProgress by remember { mutableStateOf<FfiSearchIndexProgress?>(null) }
     var activeTab by remember { mutableStateOf(0) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // The path of the last successful save, shown to the user. A scan that
+    // cannot be saved is a scan that is lost, so the result has to be visible.
+    var lastSavedPath by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
 
     // The viewport rendering runs on a background thread. The UI thread only
     // receives the finished result.
     val viewportExecutor = remember { Executors.newSingleThreadExecutor() }
+    // The executor owns a thread. It has to be shut down when the composition
+    // leaves, otherwise every recreation of the activity leaves a thread
+    // behind.
+    DisposableEffect(Unit) {
+        onDispose { viewportExecutor.shutdown() }
+    }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     // A plain counter, not a Compose state: it is read on the background
     // thread and must not trigger a recomposition.
@@ -138,6 +189,49 @@ fun MinimalReaderSessionScreen(
                     errorMessage = null
                 }.onFailure { err ->
                     errorMessage = err.message
+                }
+            }
+        }
+    }
+
+    // The save writes the file and syncs it to the disk. Both block, so the
+    // work happens on a background executor and only the result reaches the
+    // interface.
+    val saveExecutor = remember { Executors.newSingleThreadExecutor() }
+    DisposableEffect(Unit) {
+        onDispose { saveExecutor.shutdown() }
+    }
+
+    fun saveActiveSession(context: Context) {
+        val session = activeSession ?: return
+        isSaving = true
+        saveExecutor.execute {
+            val result = runCatching {
+                // The scan is saved into the documents directory of the
+                // application, with a name that cannot collide with an
+                // existing file.
+                val documents = context.getExternalFilesDir(null)
+                    ?: context.filesDir
+                val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+                    .format(java.util.Date())
+                val target = java.io.File(documents, "Vocument_Scan_$stamp.pdf")
+                val outcome = coreBridge.saveSessionAs(session.sessionId, target.absolutePath)
+                val description = when (outcome) {
+                    is FfiSaveOutcome.Success ->
+                        "Saved ${outcome.snapshot.bytesWritten} bytes to ${outcome.snapshot.targetToken}"
+                    is FfiSaveOutcome.Conflict ->
+                        "Save conflict: the file changed on disk"
+                }
+                target to description
+            }
+            mainHandler.post {
+                isSaving = false
+                result.onSuccess { (file, description) ->
+                    lastSavedPath = file.absolutePath
+                    errorMessage = null
+                    statusMessage = description
+                }.onFailure { err ->
+                    errorMessage = "Save error: ${err.message}"
                 }
             }
         }
@@ -208,6 +302,31 @@ fun MinimalReaderSessionScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = { openPdfLauncher.launch(arrayOf("application/pdf")) }) {
                 Text("Open PDF (SAF)…")
+            }
+
+            // A scanned document must be savable. Without this action the
+            // result of a scan would only exist in memory.
+            if (activeSession != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    enabled = !isSaving,
+                    onClick = { saveActiveSession(context) }
+                ) {
+                    Text(if (isSaving) "Saving…" else "Save PDF")
+                }
+                lastSavedPath?.let { path ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Saved: $path",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                statusMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             errorMessage?.let { msg ->
