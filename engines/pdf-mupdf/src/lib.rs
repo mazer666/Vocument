@@ -5,6 +5,9 @@
 pub mod mutate;
 pub mod text_extract;
 
+#[cfg(test)]
+mod difficult_tests;
+
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
 use std::ptr::NonNull;

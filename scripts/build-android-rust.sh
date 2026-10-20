@@ -187,6 +187,25 @@ for library in libtesseract.so libleptonica.so; do
   fi
 done
 
+# 5b. Remove the debug information from the deployed libraries in a release
+# build. The engine libraries are built with the NDK and keep their symbol
+# table, which is not needed on the device and dominates the package size.
+# `--strip-debug` keeps the dynamic symbol table, so the dependency closure
+# stays intact and the library remains loadable.
+if [[ "$BUILD_PROFILE" == "release" && -n "$STRIP_BIN" ]]; then
+  echo "==> Removing the debug information from the deployed libraries..."
+  for library in "$JNI_ARM64_DIR"/*.so; do
+    name="$(basename "$library")"
+    before="$(stat -c %s "$library")"
+    if "$STRIP_BIN" --strip-debug "$library" 2>/dev/null; then
+      after="$(stat -c %s "$library")"
+      echo "    $name: $((before / 1024)) KB -> $((after / 1024)) KB"
+    else
+      echo "    WARNING: $name could not be stripped and stays larger than needed." >&2
+    fi
+  done
+fi
+
 # 6. Verify that every native dependency can actually be resolved by the Android
 # dynamic linker, and that the libraries are 16 KB page compatible.
 echo "==> Verifying the native library closure and the page alignment..."

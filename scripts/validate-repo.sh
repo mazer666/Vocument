@@ -320,6 +320,23 @@ if ! grep -q "test_realistic_camera_distorted_scan_and_cleanup_pipeline" engines
 fi
 echo "✓ M1.3 Gate verified: Real offline embedded Tesseract OCR, CER/WER >= 95% & realistic camera distortion corpus verified."
 
+# Enforce the robustness corpus: the committed difficult PDF fixtures must be
+# regenerable from their generator, and the engine must have a test that opens
+# every one of them without crashing, hanging or reporting a fake success.
+if [[ -f "scripts/generate-difficult-pdf-corpus.py" ]]; then
+  if ! python3 scripts/generate-difficult-pdf-corpus.py --check; then
+    echo "ERROR (M1.6 Gate): committed difficult PDF corpus does not match the generator!" >&2
+    echo "Run 'python3 scripts/generate-difficult-pdf-corpus.py' and commit the result." >&2
+    exit 1
+  fi
+  if ! grep -q "the_engine_keeps_the_memory_usage_of_the_difficult_corpus_bounded" \
+      engines/pdf-mupdf/src/difficult_tests.rs; then
+    echo "ERROR (M1.6 Gate): the difficult corpus has no memory bound test!" >&2
+    exit 1
+  fi
+  echo "✓ M1.6 Gate verified: the difficult PDF corpus is reproducible and the engine is bounded against it."
+fi
+
 # Enforce corpus reproducibility: the committed OCR corpus frames must be
 # regenerable from their generator, so the M1.3 quality numbers stay auditable.
 if [[ -f "scripts/generate-ocr-corpus-frames.py" ]]; then
