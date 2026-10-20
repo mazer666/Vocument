@@ -121,8 +121,14 @@ echo "==> Cross-compiling MuPDF ${MUPDF_VERSION} for aarch64-linux-android..."
 # is `libmupdf.so.28.5`, and the SONAME is `libmupdf.so.28.5`. The name is
 # therefore derived from the *shared object* version of the release, not from the
 # first component of the marketing version.
-MUPDF_SO_VERSION="28.5"
-MUPDF_SO_NAME="libmupdf.so.${MUPDF_SO_VERSION}"
+#
+# **Android needs an unversioned SONAME.** The Android dynamic linker resolves
+# a `DT_NEEDED` entry by the exact file name, and the Android build system only
+# packages files that end in `.so`. A versioned name such as `libmupdf.so.28.5`
+# would therefore never be found: the process would fail to start. The linker
+# derives the SONAME from the output file name, so the library is linked as
+# `libmupdf.so` and gets the SONAME `libmupdf.so`.
+MUPDF_SO_NAME="libmupdf.so"
 
 make -C "$SOURCE_DIR" -j"$(nproc)" \
   shared=yes build=release \
@@ -132,6 +138,7 @@ make -C "$SOURCE_DIR" -j"$(nproc)" \
   RANLIB="$RANLIB_BIN" \
   LD="${LD_BIN} -m ${LD_EMULATION}" \
   OS=Linux \
+  XLDFLAGS="-Wl,-soname,${MUPDF_SO_NAME} -Wl,-z,max-page-size=${ANDROID_MAX_PAGE_SIZE:-16384}" \
   HAVE_LIBCRYPTO=no \
   HAVE_X11=no \
   HAVE_GLUT=no \
@@ -139,14 +146,11 @@ make -C "$SOURCE_DIR" -j"$(nproc)" \
   HAVE_LEPTONICA=no \
   prefix="$INSTALL_DIR" \
   "build/shared-release/${MUPDF_SO_NAME}"
-
 # Install the produced library and the headers manually: the upstream `install`
 # target also installs the command line tools, which cannot be built for Android.
 mkdir -p "${INSTALL_DIR}/lib" "${INSTALL_DIR}/include" "${INSTALL_DIR}/share/doc/mupdf"
 install -m 644 "$SOURCE_DIR/build/shared-release/${MUPDF_SO_NAME}" \
   "${INSTALL_DIR}/lib/${MUPDF_SO_NAME}"
-ln -sf "${MUPDF_SO_NAME}" "${INSTALL_DIR}/lib/libmupdf.so.28"
-ln -sf "${MUPDF_SO_NAME}" "${INSTALL_DIR}/lib/libmupdf.so"
 cp -R "$SOURCE_DIR/include/mupdf" "${INSTALL_DIR}/include/"
 if [[ -f "$SOURCE_DIR/COPYING" ]]; then
   install -m 644 "$SOURCE_DIR/COPYING" "${INSTALL_DIR}/share/doc/mupdf/COPYING"
@@ -178,6 +182,16 @@ if command -v readelf >/dev/null 2>&1; then
   fi
   echo "    NEEDED:"
   readelf -d "${INSTALL_DIR}/lib/${MUPDF_SO_NAME}" | grep NEEDED | sed 's/^/      /'
+
+  # 16 KB memory page compatibility: every PT_LOAD segment must be aligned to
+  # at least 0x4000 bytes.
+  MIN_ALIGNMENT="$(readelf -lW "${INSTALL_DIR}/lib/${MUPDF_SO_NAME}" | awk '/LOAD/ {print $NF}' | sort -u | head -n1)"
+  echo "    Smallest PT_LOAD alignment: ${MIN_ALIGNMENT}"
+  if [[ -z "$MIN_ALIGNMENT" || $((MIN_ALIGNMENT)) -lt 0x4000 ]]; then
+    echo "ERROR: The MuPDF library is not 16 KB page compatible (p_align ${MIN_ALIGNMENT})." >&2
+    echo "       Build it with -Wl,-z,max-page-size=16384." >&2
+    exit 1
+  fi
 fi
 
 echo "==> Verifying the source archive checksum..."

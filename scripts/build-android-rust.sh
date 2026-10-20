@@ -55,6 +55,15 @@ export AR_aarch64_linux_android="${TOOLCHAIN}/bin/llvm-ar"
 export RANLIB_aarch64_linux_android="${TOOLCHAIN}/bin/llvm-ranlib"
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_TARGET"
 
+# 16 KB memory page compatibility (ANDROID-16K-PAGES).
+#
+# Android 15 and later devices may use 16 KB memory pages. Every LOAD segment of
+# a native library must then be aligned to at least 0x4000. The NDK linker
+# defaults to 4 KB, so the alignment has to be requested explicitly.
+export ANDROID_MAX_PAGE_SIZE="${ANDROID_MAX_PAGE_SIZE:-16384}"
+MAX_PAGE_SIZE_FLAG="-Wl,-z,max-page-size=${ANDROID_MAX_PAGE_SIZE}"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=${MAX_PAGE_SIZE_FLAG}"
+
 # 1. Deterministically ensure native Android Tesseract dependencies are extracted
 "$REPO_ROOT/scripts/prepare-android-tesseract.sh"
 
@@ -67,8 +76,23 @@ echo "==> Preparing the Android MuPDF engine (aarch64-v8a)..."
 export MUPDF_ANDROID_DIR="${MUPDF_ANDROID_DIR:-$REPO_ROOT/target/mupdf-android}"
 
 # 3. Build native Android libvocument_ffi.so
-echo "==> Compiling native Android libvocument_ffi.so (target: aarch64-linux-android)..."
-cargo build -p vocument-ffi --target aarch64-linux-android
+#
+# The build profile decides the size of the shipped library. The debug profile
+# keeps the DWARF debug information, which is useful while developing but adds
+# roughly 90 MB to the library. The release profile builds without debug
+# information and is what a distributable build uses.
+BUILD_PROFILE="${BUILD_PROFILE:-debug}"
+case "$BUILD_PROFILE" in
+  debug) CARGO_PROFILE_ARGS=() ; CARGO_PROFILE_DIR="debug" ;;
+  release) CARGO_PROFILE_ARGS=(--release) ; CARGO_PROFILE_DIR="release" ;;
+  *)
+    echo "ERROR: Unknown BUILD_PROFILE '$BUILD_PROFILE' (expected 'debug' or 'release')" >&2
+    exit 1
+    ;;
+esac
+
+echo "==> Compiling native Android libvocument_ffi.so (target: aarch64-linux-android, profile: $BUILD_PROFILE)..."
+cargo build -p vocument-ffi --target aarch64-linux-android "${CARGO_PROFILE_ARGS[@]}"
 
 # 4. Verify that the produced library really contains the MuPDF engine.
 #
@@ -76,7 +100,30 @@ cargo build -p vocument-ffi --target aarch64-linux-android
 # that silently fell back to a placeholder would not depend on libmupdf.
 JNI_ARM64_DIR="$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
 mkdir -p "$JNI_ARM64_DIR"
-cp "$REPO_ROOT/target/aarch64-linux-android/debug/libvocument_ffi.so" "$JNI_ARM64_DIR/libvocument_ffi.so"
+# Remove the previously deployed libraries. A stale file would otherwise be
+# shipped inside the APK: it would waste space, and an outdated library could
+# shadow the current one. The removal is not limited to `*.so`, because a
+# versioned library name such as `libmupdf.so.28.5` would not be matched by it
+# and would still end up in the APK.
+find "$JNI_ARM64_DIR" -maxdepth 1 -type f -delete
+BUILT_LIBRARY="$REPO_ROOT/target/aarch64-linux-android/${CARGO_PROFILE_DIR}/libvocument_ffi.so"
+cp "$BUILT_LIBRARY" "$JNI_ARM64_DIR/libvocument_ffi.so"
+
+# The debug symbols are not needed at runtime. They are removed so that the
+# library does not ship ~90 MB of DWARF information.
+if command -v "${TOOLCHAIN}/bin/llvm-strip" >/dev/null 2>&1; then
+  STRIP_BIN="${TOOLCHAIN}/bin/llvm-strip"
+elif command -v strip >/dev/null 2>&1; then
+  STRIP_BIN="strip"
+else
+  STRIP_BIN=""
+fi
+if [[ -n "$STRIP_BIN" ]]; then
+  BEFORE="$(stat -c%s "$JNI_ARM64_DIR/libvocument_ffi.so")"
+  "$STRIP_BIN" --strip-debug "$JNI_ARM64_DIR/libvocument_ffi.so"
+  AFTER="$(stat -c%s "$JNI_ARM64_DIR/libvocument_ffi.so")"
+  echo "    Debug information removed: $((BEFORE / 1024 / 1024)) MB -> $((AFTER / 1024 / 1024)) MB"
+fi
 
 if [[ ! -s "$JNI_ARM64_DIR/libvocument_ffi.so" ]]; then
   echo "ERROR: Output $JNI_ARM64_DIR/libvocument_ffi.so is missing or empty!" >&2
@@ -111,14 +158,23 @@ fi
 #
 # Android packages native libraries per ABI in `jniLibs/<abi>/`, so the MuPDF and
 # the Tesseract shared objects have to be placed there as well.
-MUPDF_RUNTIME_SRC="${MUPDF_ANDROID_DIR}/lib/libmupdf.so"
-if [[ -f "$MUPDF_RUNTIME_SRC" ]]; then
-  cp "$MUPDF_RUNTIME_SRC" "$JNI_ARM64_DIR/libmupdf.so"
-  echo "✓ MuPDF runtime library deployed to $JNI_ARM64_DIR/libmupdf.so ($(du -h "$JNI_ARM64_DIR/libmupdf.so" | cut -f1))"
-else
+#
+# The file name in the APK must be the name that the dynamic linker looks up.
+# The linker resolves a `DT_NEEDED` entry by the *exact* name, so a library
+# whose SONAME is `libmupdf.so.28.5` has to be shipped under that name. A file
+# named `libmupdf.so` would NOT be found, and the process would fail to start.
+MUPDF_SONAME="$(readelf -d "${MUPDF_ANDROID_DIR}/lib/libmupdf.so" 2>/dev/null | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
+if [[ -z "$MUPDF_SONAME" ]]; then
+  echo "ERROR: The MuPDF library has no SONAME; the Android linker could not resolve it." >&2
+  exit 1
+fi
+MUPDF_RUNTIME_SRC="${MUPDF_ANDROID_DIR}/lib/${MUPDF_SONAME}"
+if [[ ! -f "$MUPDF_RUNTIME_SRC" ]]; then
   echo "ERROR: MuPDF runtime library not found at $MUPDF_RUNTIME_SRC" >&2
   exit 1
 fi
+cp "$MUPDF_RUNTIME_SRC" "$JNI_ARM64_DIR/${MUPDF_SONAME}"
+echo "✓ MuPDF runtime library deployed to $JNI_ARM64_DIR/${MUPDF_SONAME} ($(du -h "$JNI_ARM64_DIR/${MUPDF_SONAME}" | cut -f1))"
 
 TESSERACT_LIB_DIR="$REPO_ROOT/engines/ocr/android-libs/arm64-v8a"
 for library in libtesseract.so libleptonica.so; do
@@ -130,5 +186,10 @@ for library in libtesseract.so libleptonica.so; do
     exit 1
   fi
 done
+
+# 6. Verify that every native dependency can actually be resolved by the Android
+# dynamic linker, and that the libraries are 16 KB page compatible.
+echo "==> Verifying the native library closure and the page alignment..."
+"$REPO_ROOT/scripts/verify-android-native-libs.sh" "$JNI_ARM64_DIR"
 
 echo "✓ Native libvocument_ffi.so rebuilt and deployed to $JNI_ARM64_DIR/libvocument_ffi.so ($(du -h "$JNI_ARM64_DIR/libvocument_ffi.so" | cut -f1))"

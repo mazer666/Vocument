@@ -75,7 +75,10 @@ export LD="${BIN}/ld.lld -m aarch64linux"
 export PKG_CONFIG_PATH="$INSTALL_DIR/lib/pkgconfig"
 export CFLAGS="-fPIC -D__ANDROID__ -I$INSTALL_DIR/include"
 export CXXFLAGS="-fPIC -D__ANDROID__ -I$INSTALL_DIR/include"
-export LDFLAGS="-L$INSTALL_DIR/lib"
+# 16 KB memory page compatibility (ANDROID-16K-PAGES): every PT_LOAD segment of
+# a shipped native library must be aligned to at least 0x4000. The NDK linker
+# defaults to 4 KB.
+export LDFLAGS="-L$INSTALL_DIR/lib -Wl,-z,max-page-size=${ANDROID_MAX_PAGE_SIZE:-16384}"
 
 echo "==> Building Leptonica $LEPTONICA_VERSION for $TARGET_TRIPLE"
 (
@@ -137,9 +140,11 @@ for library in libtesseract libleptonica; do
   else
     echo "    Linking ${library}.so from the static archive"
     # Bionic provides the threading primitives as part of libc; there is no
-    # separate `-lpthread` on Android.
+    # separate `-lpthread` on Android. The 16 KB page alignment is requested
+    # explicitly, because the NDK linker defaults to 4 KB.
     "$CC" -shared -o "$OUTPUT_DIR/${library}.so" \
       -Wl,--whole-archive "$source_file" -Wl,--no-whole-archive \
+      -Wl,-z,max-page-size="${ANDROID_MAX_PAGE_SIZE:-16384}" \
       -llog -lz
   fi
 done

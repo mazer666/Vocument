@@ -35,16 +35,25 @@ android {
     }
 }
 
-val tesseractAar: Configuration = configurations.create("tesseractAar")
-
 dependencies {
-    tesseractAar("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    // The Tesseract engine is **not** taken from a prebuilt AAR.
+    //
+    // The OCR runs through the Rust core (`document_core_ocr_frame`), the AAR
+    // Java API was never used by the application. Shipping the AAR would have
+    // three drawbacks: it duplicated the native library (the AAR and the
+    // source build both provide `libtesseract.so`, which the packaging step
+    // rejects as a conflict), it was an unpinned external download that was
+    // not reachable from every build environment, and its libraries were not
+    // built for 16 KB memory pages.
+    //
+    // `scripts/prepare-android-tesseract.sh` now cross-builds Tesseract and
+    // Leptonica from source with the NDK, with a pinned version and with the
+    // 16 KB page alignment.
     implementation(platform("androidx.compose:compose-bom:2024.10.01"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("net.java.dev.jna:jna:5.15.0@aar")
-    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
 
     val cameraVersion = "1.4.1"
     implementation("androidx.camera:camera-core:$cameraVersion")
@@ -54,34 +63,6 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("net.java.dev.jna:jna:5.15.0")
-}
-
-tasks.register("extractTesseractNativeLibs") {
-    description = "Extracts native .so libraries from tesseract4android AAR for Rust linking"
-    val outputDir = rootProject.projectDir.parentFile.parentFile.resolve("engines/ocr/android-libs/arm64-v8a")
-    inputs.files(tesseractAar)
-    outputs.dir(outputDir)
-    doLast {
-        outputDir.mkdirs()
-        tesseractAar.resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
-            if (artifact.name == "tesseract4android") {
-                copy {
-                    from(zipTree(artifact.file)) {
-                        include("jni/arm64-v8a/*.so")
-                        eachFile {
-                            path = name
-                        }
-                        includeEmptyDirs = false
-                    }
-                    into(outputDir)
-                }
-            }
-        }
-    }
-}
-
-tasks.named("preBuild").configure {
-    dependsOn("extractTesseractNativeLibs")
 }
 
 val buildRustCore = tasks.register<Exec>("buildRustCore") {
@@ -95,10 +76,27 @@ val buildRustCore = tasks.register<Exec>("buildRustCore") {
     inputs.file(repoRoot.resolve("Cargo.toml"))
     outputs.file(jniArm64File)
 
-    dependsOn("extractTesseractNativeLibs")
-
     workingDir(repoRoot)
     commandLine(repoRoot.resolve("scripts/build-android-rust.sh").absolutePath)
+}
+
+/**
+ * The build profile of the native library follows the variant that is built.
+ *
+ * A release build must not ship the debug library: the DWARF debug
+ * information alone accounts for roughly 90 MB of the 101 MB library. The
+ * profile is therefore part of the task inputs, so that switching the variant
+ * invalidates the task instead of reusing the library of the other profile.
+ */
+androidComponents {
+    onVariants { variant ->
+        val profile = if (variant.buildType == "release") "release" else "debug"
+        buildRustCore.configure {
+            inputs.property("buildProfile", profile)
+            environment("BUILD_PROFILE", profile)
+            environment("ANDROID_MAX_PAGE_SIZE", "16384")
+        }
+    }
 }
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
