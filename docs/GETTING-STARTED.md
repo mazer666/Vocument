@@ -171,6 +171,20 @@ Statuswerte `PASS`, `FAIL`, `NOT RUN`, `BLOCKED`.
 
 ---
 
+## 7a. Wo ändere ich die Kanten- und die Energiesteuerung?
+
+| Thema | Datei |
+|---|---|
+| Kanten- und Konturerkennung | `engines/imaging/src/edges.rs` |
+| Energie- und Thermikgrenzen | `core/vocument-core/src/jobs/power.rs` |
+| Meldung des Gerätezustands aus der App | `apps/android/app/src/main/java/org/vocument/app/AndroidPowerReporter.kt` |
+| Pause und Fortsetzung | `core/vocument-core/src/jobs/executor.rs` (`pause`, `resume`) |
+
+**Die Energiesteuerung liegt bewusst im Core.** Die App meldet nur den
+Zustand des Geräts (`document_core_report_power_state`), das Core entscheidet,
+was laufen darf. So gilt auf macOS und auf Android dieselbe Regel, und die
+Entscheidung ist ohne Gerät prüfbar.
+
 ## 8. Wo ergänze ich neue Job-Arten?
 
 Drei Stellen, in dieser Reihenfolge:

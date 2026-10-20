@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (M1.0–M1.4 complete; M1.5 next)
+**Current milestone:** M1 — Android Scan & OCR (M1.0–M1.4 and M1.5 implemented; M1.6 in progress — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md))
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -231,7 +231,7 @@ Pipeline:
 Deliver:
 
 - [x] real Android build & runtime test harness (`apps/android/gradlew`, Android SDK 35, Build-Tools 35.0.0, Gradle 9.8.1, `scripts/verify-android-runtime.sh`)
-- [x] authentic debug APK packaging (`apps/android/app/build/outputs/apk/debug/app-debug.apk`, 23 MB)
+- [x] authentic debug APK packaging (`apps/android/app/build/outputs/apk/debug/app-debug.apk`; 250 MB with the debug symbols, 95 MB as a release package)
 - [x] APK manifest & security gate: declares `android.permission.CAMERA` (`SCAN-001`), strictly excludes `android.permission.INTERNET` (`NET-001`, strict offline-first), verified via `apkanalyzer`
 - [x] shared Rust `ImagingEngine` (`vocument-imaging`): raw camera frame ingestion (`Rgb8`, `Rgba8`, `Gray8`, `Nv21`, `Yuv420`), real-time document edge detection, quadrilateral geometry validation (`QuadCorners`, `Point2D`, convexity and area validation)
 - [x] multi-page scan capture session state registry (`ScanCaptureSessionRegistry`, `ScanCaptureSession`, `CapturedScanPage`)
@@ -314,13 +314,13 @@ Searchable PDF 1.7 documents are synthesized directly from rectified/cleaned sca
 
 ---
 
-## M1.5 — Background Job Processing, Battery & Thermal Adaptation *(In Progress)*
+## M1.5 — Background Job Processing, Battery & Thermal Adaptation *(Implemented — the on-device verification is still open, see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md))*
 
 Deliver:
 
-- `JobManager` asynchronous background OCR worker
-- battery-level and thermal-throttling integration (`BIGMOBILE-001`)
-- cancellation, pause, and resumable OCR job queues
+- [x] `JobManager` asynchronous background OCR worker
+- [x] battery-level and thermal-throttling integration (`BIGMOBILE-001`, `POWER-001`)
+- [x] cancellation, pause, and resumable OCR job queues
 
 ### Implemented in this milestone
 
@@ -356,20 +356,44 @@ Deliver:
 
 ### Verification evidence for this milestone
 
-- `cargo test --workspace`: 18 test suites, 0 failures. This includes 18 job
-  manager tests (priority ordering, anti-starvation, bounded queue, overflow
-  rejection, cancellation before/during/after the start, session cancellation,
-  repeated start/stop of the pool, panic isolation, running counter) and 5 job
-  integration tests at the UniFFI boundary.
+- `cargo test --workspace`: 0 failures. This includes the job manager tests
+  (priority ordering, anti-starvation, bounded queue, overflow rejection,
+  cancellation before/during/after the start, session cancellation, repeated
+  start/stop of the pool, panic isolation, running counter), the energy and
+  thermal tests, the pause and resume tests and the job integration tests at
+  the UniFFI boundary.
 - `cargo clippy --workspace --all-targets -- -D warnings`: clean.
 - `cargo fmt --all -- --check`: clean.
 - `scripts/validate-repo.sh`: passed.
 
+### Energy and thermal adaptation
+
+The **decision** belongs into the shared core, the **state** is reported by the
+platform shell (`core/vocument-core/src/jobs/power.rs`,
+`platform/vocument-ffi/src/power_dto.rs`,
+`apps/android/app/src/main/java/org/vocument/app/AndroidPowerReporter.kt`):
+
+| Situation | Effect |
+|---|---|
+| Critical thermal status | only interactive work, one job at a time |
+| Severe thermal status | no background work, at most two jobs at a time |
+| Moderate thermal status | no background work, the normal worker count |
+| Battery below 15 % and not charging | no background work |
+| Power saving mode | no background work, the worker count is halved |
+
+The background work is never cancelled by the policy: a suspended job stays
+queued and runs as soon as the device allows it again.
+
+### Pause and resume
+
+The pool can be paused and resumed (`JobExecutor::pause` / `resume`). The
+running jobs are asked to stop; a job that was submitted as **resumable** goes
+back into the queue and runs again after the resume, a job that the user
+cancelled stays cancelled. The job body is shared instead of consumed, so that
+it can be called more than once.
+
 ### Still open in this milestone
 
-- Battery-level and thermal-throttling integration (`BIGMOBILE-001`, `POWER-001`).
-- Job pause/resume and job dependencies, which require a task graph rather than a
-  priority queue.
 - On-device verification of the background job manager. The job manager itself is
   verified through the UniFFI boundary on the host and through the ARM64
   execution of the PDF engine; the on-device part is covered by
@@ -421,14 +445,34 @@ Deliver:
 
 ---
 
-## M1.6 — Android Scan & OCR Gate & Quality Abnahme
+## M1.6 — Android Scan & OCR Gate, Platform Validation & Release Readiness *(In Progress)*
+
+M1.6 carries the two scopes that were still open at the end of M1.5: the
+**quality gate of the mobile workflow** and the **validation of the platform
+integration**. Both belong to the same milestone, because the gate cannot be
+judged without knowing on which platform it runs.
+
+### M1.6a — Android Scan & OCR Gate & Quality Abnahme
 
 Deliver:
 
-- end-to-end mobile scan workflow test (camera capture → warp → cleanup → OCR → search → save)
-- evaluation against standardized legal/invoicing scan corpus
-- OCR accuracy gate: $\ge 95\%$ character accuracy on standard German legal texts
-- verification that OCR never blocks the UI thread
+- [x] end-to-end mobile scan workflow test (camera capture → warp → cleanup → OCR → search → save)
+- [x] evaluation against standardized legal/invoicing scan corpus
+- [x] OCR accuracy gate: $\ge 95\%$ character accuracy on standard German legal texts
+- [x] verification that OCR never blocks the UI thread
+
+### M1.6b — Platform Validation & Release Readiness
+
+Deliver:
+
+- [x] independent review of the M1.4b/M1.5 commits, implementation and acceptance separated
+- [x] real Gradle APK build, packaged native libraries verified (closure, SONAME, 16 KB pages)
+- [x] job manager end-to-end path and measured UI responsiveness
+- [x] stability, memory and licensing decisions
+- [x] extended CI gates, beginner documentation, acceptance records
+
+The parts that need a device or a macOS host remain open and are documented as
+**NOT RUN** in the acceptance record. They are not presented as passed.
 
 ---
 

@@ -273,6 +273,12 @@ Intelligent batch: auto capture, duplicate detection, blur warning, reorder, bla
 ### SCAN-008 — Later
 Document segmentation via blanks/separators/barcodes/QR.
 
+### SCAN-009 — Outline detection
+The automatic detection has to find the **tilted** outline of the page, not a rectangle around it. A detection that ignores the tilt rectifies the page wrongly and the text recognition fails afterwards. The detection therefore works on the boundary of the page and tolerates outliers at the corners, which are often covered by a shadow.
+
+### SCAN-010 — The scanned document can be saved
+A scan that cannot be saved is a scan that is lost. The searchable PDF that the scan produces has to be savable through the platform, and the saved file has to be a complete PDF whose text can be read back.
+
 ### SCANNER-001
 External scanner support planned through ICA/WIA/TWAIN/SANE depending platform.
 
@@ -1079,6 +1085,14 @@ Extreme low-resource mode.
 
 ### POWER-001 — Preset
 Adaptive mobile energy/thermal behaviour.
+
+The decision belongs into the shared core, the platform shell only reports the state of the device. The background work is suspended while the device is hot or almost empty; the work that the user is waiting for continues, with a reduced parallelism on a hot device. A suspended job is not lost: it stays queued and runs as soon as the device allows it again.
+
+### JOB-011 — Pause and resume
+The background work can be paused and resumed. The running jobs are asked to stop; a job that was submitted as **resumable** goes back into the queue and runs again afterwards, a job that the user cancelled stays cancelled. The job body is shared instead of consumed, so that it can be called more than once.
+
+### UI-010 — The scan does not block the interface
+The complete chain of the scan runs off the interface thread: the edge detection, the rectification, the cleanup, the OCR **and** the synthesis of the searchable PDF. Only the finished result is published to the interface state.
 
 ### POWER-002 — Optional
 Energy Saving / Balanced / Maximum Performance.

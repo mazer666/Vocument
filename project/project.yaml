@@ -1,7 +1,7 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-in-progress"
+  product_status: "m1-implemented-not-device-verified"
   current_milestone: "M1"
   current_milestone_name: "Android Scan & OCR"
   current_submilestone: "M1.6"
@@ -43,11 +43,11 @@ platforms:
       minimum_api_family: "Android 13+"
       primary_abi: "arm64-v8a"
       status: "active"
-      # M1.6: the native build, the Gradle build, the dependency closure and the
-      # 16 KB page alignment are verified. The on-device run and the release
-      # package inspection are still NOT RUN, see docs/acceptance/M1.6-ACCEPTANCE.md.
+      # M1.6: the native build, the Gradle build, the dependency closure, the
+      # 16 KB page alignment and the release package are verified. The on-device
+      # run is still NOT RUN, see docs/acceptance/M1-ACCEPTANCE.md.
       verified: "qemu"
-      pending: ["on_device_run", "release_package_inspection"]
+      pending: ["on_device_run", "on_device_ocr_quality", "thermal_behaviour"]
   phase_2:
     windows:
       minimum: "11"
