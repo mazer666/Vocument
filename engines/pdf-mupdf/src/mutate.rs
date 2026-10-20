@@ -39,6 +39,17 @@ impl Default for RawMuPdfHighlight {
     }
 }
 
+/// A region of a page, in PDF user space, in milli-points.
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RawMuPdfRect {
+    page_index: c_int,
+    x0_milli_pt: c_int,
+    y0_milli_pt: c_int,
+    x1_milli_pt: c_int,
+    y1_milli_pt: c_int,
+}
+
 unsafe extern "C" {
     fn vocument_mupdf_free_bytes(ptr: *mut u8);
 
@@ -76,6 +87,17 @@ unsafe extern "C" {
         bytes: *const u8,
         len: usize,
         spec: *const RawMuPdfHighlight,
+        out_pdf_bytes: *mut *mut u8,
+        out_pdf_len: *mut usize,
+        err_buf: *mut c_char,
+        err_buf_len: usize,
+    ) -> c_int;
+
+    fn vocument_mupdf_redact_page_regions(
+        bytes: *const u8,
+        len: usize,
+        rects: *const RawMuPdfRect,
+        rects_len: usize,
         out_pdf_bytes: *mut *mut u8,
         out_pdf_len: *mut usize,
         err_buf: *mut c_char,
@@ -361,6 +383,75 @@ pub fn add_highlight_annotation_to_pdf(
     Ok(updated_bytes)
 }
 
+/// Removes the content of the given regions of a page from the document
+/// (`REDACT-001`).
+///
+/// The text, the images and the line art under the region are removed from
+/// the page, not covered by a black rectangle. A rectangle would leave the
+/// content readable in the file.
+pub fn redact_page_regions_in_pdf(
+    pdf_bytes: &[u8],
+    page_count: u32,
+    page_index: u32,
+    regions: &[PdfRectMilliPt],
+) -> Result<Vec<u8>, PdfEngineError> {
+    if page_index >= page_count {
+        return Err(PdfEngineError::PageOutOfBounds {
+            page_index,
+            page_count,
+        });
+    }
+    if regions.is_empty() {
+        return Err(PdfEngineError::EngineFailure {
+            details: "a redaction without a region would change nothing".to_owned(),
+        });
+    }
+    let page_idx_int =
+        c_int::try_from(page_index).map_err(|_| PdfEngineError::PageOutOfBounds {
+            page_index,
+            page_count,
+        })?;
+
+    let raw_rects: Vec<RawMuPdfRect> = regions
+        .iter()
+        .map(|region| RawMuPdfRect {
+            page_index: page_idx_int,
+            x0_milli_pt: region.x0_milli_pt,
+            y0_milli_pt: region.y0_milli_pt,
+            x1_milli_pt: region.x1_milli_pt,
+            y1_milli_pt: region.y1_milli_pt,
+        })
+        .collect();
+
+    let mut out_ptr: *mut u8 = std::ptr::null_mut();
+    let mut out_len: usize = 0;
+    let mut err_buf = [0 as c_char; 512];
+
+    // SAFETY: `raw_rects` and the output pointers are valid.
+    let status = unsafe {
+        vocument_mupdf_redact_page_regions(
+            pdf_bytes.as_ptr(),
+            pdf_bytes.len(),
+            raw_rects.as_ptr(),
+            raw_rects.len(),
+            &raw mut out_ptr,
+            &raw mut out_len,
+            err_buf.as_mut_ptr(),
+            err_buf.len(),
+        )
+    };
+
+    // SAFETY: `out_ptr` was allocated by `mupdf_mutate_bridge.c` if non-null.
+    let updated_bytes = unsafe { take_malloc_vec(out_ptr, out_len) };
+
+    if status != 0 || updated_bytes.is_empty() {
+        let details = c_buf_to_optional_string(&err_buf)
+            .unwrap_or_else(|| format!("MuPDF failed to redact the page (status {status})"));
+        return Err(PdfEngineError::EngineFailure { details });
+    }
+    Ok(updated_bytes)
+}
+
 pub fn remove_highlight_annotation_from_pdf(
     pdf_bytes: &[u8],
     page_count: u32,
@@ -484,6 +575,152 @@ mod tests {
             doc.page_highlight_annotations(0)
                 .expect("query after delete")
                 .is_empty()
+        );
+    }
+}
+
+#[cfg(test)]
+mod redaction_tests {
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use vocument_core::pdf_engine::{PdfEngine, PdfEngineDocument};
+
+    /// The corpus PDF with real text, used for the redaction.
+    fn corpus_pdf() -> Vec<u8> {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/corpus/m0_3_navigation_and_search.pdf");
+        std::fs::read(&path).expect("the navigation corpus must be present")
+    }
+
+    /// The page text of the first page, joined into one string.
+    fn page_text(document: &dyn PdfEngineDocument) -> String {
+        document
+            .extract_page_text(0)
+            .expect("the text of the page must be extractable")
+            .lines
+            .iter()
+            .map(|line| line.text.clone())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    #[test]
+    fn a_redaction_removes_the_text_of_the_region_from_the_document() {
+        let bytes = corpus_pdf();
+        let engine = crate::MuPdfEngineAdapter::new();
+        let mut document = engine
+            .open_pdf_bytes(&bytes)
+            .expect("the corpus PDF must be openable");
+
+        let before = page_text(document.as_ref());
+        assert!(
+            before.contains("Vocument Preface and Navigation Overview"),
+            "the corpus must contain the text that is redacted, it holds: {before}"
+        );
+
+        // The region of the headline, taken from the bounding box of the line.
+        let structured = document
+            .extract_page_text(0)
+            .expect("the text of the page must be extractable");
+        let line = structured
+            .lines
+            .iter()
+            .find(|line| line.text.contains("Vocument Preface"))
+            .expect("the headline must be in the text of the page");
+        let region = PdfRectMilliPt {
+            x0_milli_pt: line.bbox.x0_milli_pt,
+            y0_milli_pt: line.bbox.y0_milli_pt,
+            x1_milli_pt: line.bbox.x1_milli_pt,
+            y1_milli_pt: line.bbox.y1_milli_pt,
+        };
+
+        let redacted = document
+            .redact_page_regions(0, &[region])
+            .expect("the redaction must succeed");
+
+        // The text of the region is gone from the extraction.
+        let after = page_text(document.as_ref());
+        assert!(
+            !after.contains("Vocument Preface and Navigation Overview"),
+            "the redacted text must no longer be extractable, it still holds: {after}"
+        );
+        assert!(
+            after.contains("This preface introduces"),
+            "the text outside the region must be untouched, it holds: {after}"
+        );
+
+        // The text of the region is gone from the bytes of the file.
+        let as_text = String::from_utf8_lossy(&redacted);
+        assert!(
+            !as_text.contains("Vocument Preface"),
+            "the redacted text must no longer be in the file"
+        );
+
+        // The document is still a valid PDF that can be opened again.
+        let reopened = engine
+            .open_pdf_bytes(&redacted)
+            .expect("the redacted document must be openable");
+        assert_eq!(
+            reopened.summary().page_count,
+            document.summary().page_count,
+            "the redaction must not change the number of pages"
+        );
+    }
+
+    #[test]
+    fn a_redaction_without_a_region_changes_nothing() {
+        let bytes = corpus_pdf();
+        let engine = crate::MuPdfEngineAdapter::new();
+        let mut document = engine
+            .open_pdf_bytes(&bytes)
+            .expect("the corpus PDF must be openable");
+        let result = document.redact_page_regions(0, &[]);
+        assert!(
+            result.is_err(),
+            "a redaction without a region must be refused, not silently accepted"
+        );
+    }
+
+    #[test]
+    fn the_redacted_document_stays_readable_in_a_third_party_viewer() {
+        // The redaction is applied by the engine and the result is written as
+        // a normal PDF. The file is opened again with the same engine, which
+        // is the same code path a viewer of the user takes.
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/corpus/m0_3_navigation_and_search.pdf");
+        let bytes = std::fs::read(path).expect("the corpus must be present");
+        let engine = crate::MuPdfEngineAdapter::new();
+        let mut document = engine
+            .open_pdf_bytes(&bytes)
+            .expect("the corpus PDF must be openable");
+        let structured = document
+            .extract_page_text(0)
+            .expect("the text of the page must be extractable");
+        let line = structured
+            .lines
+            .iter()
+            .find(|line| line.text.contains("Vocument Preface"))
+            .expect("the headline must be in the text of the page");
+        let region = PdfRectMilliPt {
+            x0_milli_pt: line.bbox.x0_milli_pt,
+            y0_milli_pt: line.bbox.y0_milli_pt,
+            x1_milli_pt: line.bbox.x1_milli_pt,
+            y1_milli_pt: line.bbox.y1_milli_pt,
+        };
+        let redacted = document
+            .redact_page_regions(0, &[region])
+            .expect("the redaction must succeed");
+        assert!(
+            redacted.starts_with(b"%PDF-"),
+            "the redacted document must still be a PDF"
+        );
+        assert!(
+            !redacted.is_empty()
+                && redacted.ends_with(
+                    b"%%EOF
+"
+                ),
+            "the redacted document must be complete"
         );
     }
 }

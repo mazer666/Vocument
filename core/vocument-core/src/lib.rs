@@ -10,6 +10,7 @@ pub mod jobs;
 pub mod navigation;
 pub mod pdf_engine;
 pub mod recovery;
+pub mod redaction;
 pub mod render;
 pub mod save;
 pub mod search_index;
@@ -91,7 +92,9 @@ mod tests {
     fn bootstrap_snapshot_respects_security_and_performance_invariants() {
         let snapshot = bootstrap_core_snapshot().expect("embedded config must parse");
         assert_eq!(snapshot.baseline_version, "0.1");
-        assert_eq!(snapshot.milestone, "M1");
+        // The milestone is derived from `project/project.yaml`, the single source
+        // of truth. M1 is implemented, M2 has started with the redaction.
+        assert_eq!(snapshot.milestone, "M2");
         assert!(snapshot.strict_offline_default);
         assert!(!snapshot.telemetry_enabled);
         assert_eq!(snapshot.target_fps, 60);

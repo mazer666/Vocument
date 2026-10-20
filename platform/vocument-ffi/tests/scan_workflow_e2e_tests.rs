@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 use vocument_core::pdf_engine::PdfEngine;
 use vocument_ffi::navigation_search_dto::FfiSearchResponse;
 use vocument_ffi::ocr_dto::document_core_ingest_scan_as_document_session;
+use vocument_ffi::redaction_dto::{FfiRedactionRegion, document_core_redact_page_regions};
 use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::save_dto::document_core_save_session_as;
 use vocument_ffi::scan_dto::{
@@ -31,7 +32,10 @@ use vocument_ffi::scan_dto::{
     document_core_append_scan_page, document_core_detect_document_edges,
     document_core_start_scan_session,
 };
-use vocument_ffi::{document_core_index_search_batch, document_core_search_exact};
+use vocument_ffi::{
+    document_core_index_search_batch, document_core_search_exact, document_core_select_page_text,
+    document_core_undo,
+};
 
 /// Longest time the whole workflow may take. A workflow that needs longer is a
 /// defect: the user is waiting for it.
@@ -374,5 +378,158 @@ fn the_scanned_document_can_be_exported_and_opened_again() {
     assert!(
         !as_text.contains("sess_") && !as_text.contains("vocument_recovery"),
         "the exported document must not contain internal identifiers"
+    );
+}
+
+#[test]
+fn a_redaction_removes_the_scanned_text_from_the_document_and_from_the_search() {
+    // The hardest case for a redaction: the text of a scan is an invisible
+    // text layer over the image. A redaction that only paints a black
+    // rectangle over the page would leave the text readable in the file.
+    let frame = camera_frame();
+    let detected = document_core_detect_document_edges(frame.clone())
+        .expect("the edge detection must not fail")
+        .expect("the page must be found in the frame");
+
+    let scan_session_id = document_core_start_scan_session();
+    document_core_append_scan_page(
+        scan_session_id.clone(),
+        frame,
+        Some(detected),
+        Some(FfiScanCleanupProfile::DocumentAuto),
+    )
+    .expect("the captured page must be appended");
+
+    let snapshot = document_core_ingest_scan_as_document_session(
+        scan_session_id,
+        FfiScanCleanupProfile::DocumentAuto,
+        vec!["deu".to_owned()],
+        "Vertraulichkeit.pdf".to_owned(),
+    )
+    .expect("the scan must be ingestable as a document session");
+    let session_id = snapshot.session_id.clone();
+
+    // The text of the scan is indexed and can be found.
+    let _ = document_core_index_search_batch(session_id.clone(), 0, 16)
+        .expect("the search index must be buildable");
+    let before = document_core_search_exact(session_id.clone(), "Vertraulichkeit".to_owned())
+        .expect("the search must run");
+    assert!(
+        !before.hits.is_empty(),
+        "the word that is printed on the page must be found before the redaction"
+    );
+
+    // The region of the word: the rectangles of the text, exactly as the
+    // interface reports them after the user has selected the text.
+    let selection = document_core_select_page_text(session_id.clone(), 0, None)
+        .expect("the text of the page must be selectable");
+    assert!(
+        !selection.highlight_rects.is_empty(),
+        "the page must have text that can be selected"
+    );
+    let regions: Vec<FfiRedactionRegion> = selection
+        .highlight_rects
+        .iter()
+        .map(|rect| FfiRedactionRegion {
+            x0_milli_pt: rect.x0_milli_pt,
+            y0_milli_pt: rect.y0_milli_pt,
+            x1_milli_pt: rect.x1_milli_pt,
+            y1_milli_pt: rect.y1_milli_pt,
+        })
+        .collect();
+    let report = document_core_redact_page_regions(session_id.clone(), 0, regions)
+        .expect("the redaction must succeed");
+
+    assert!(
+        report.removed_fragment_count > 0,
+        "the redaction must have removed text, it removed {} fragment(s)",
+        report.removed_fragment_count
+    );
+    assert!(
+        report.text_extraction_clean,
+        "the removed text must no longer be extractable from the page"
+    );
+    assert!(
+        report.search_index_clean,
+        "the removed text must no longer be found by the search"
+    );
+    assert!(
+        report.file_bytes_clean,
+        "the removed text must no longer be present in the bytes of the file"
+    );
+    assert!(
+        report.verified,
+        "the redaction must be verified in every respect"
+    );
+
+    // The search does not find the text anymore.
+    let after = document_core_search_exact(session_id.clone(), "Vertraulichkeit".to_owned())
+        .expect("the search must run");
+    assert!(
+        after.hits.is_empty(),
+        "the search must not find the removed text anymore, it found {} hit(s)",
+        after.hits.len()
+    );
+
+    // The redaction cannot be undone. The content is gone from the document;
+    // an undo that would restore it would be a lie.
+    let undo = document_core_undo(session_id.clone());
+    assert!(
+        undo.is_err(),
+        "a redaction must not be undoable, the undo returned: {undo:?}"
+    );
+    let error = undo.expect_err("the undo must fail");
+    let message = error.to_string();
+    assert!(
+        message.to_lowercase().contains("cannot be undone")
+            || message.to_lowercase().contains("irreversible"),
+        "the refusal must say that the redaction cannot be undone, it said: {message}"
+    );
+
+    // The text is still gone after the refused undo.
+    let after_undo = document_core_select_page_text(session_id.clone(), 0, None)
+        .expect("the text must be readable");
+    assert!(
+        !after_undo
+            .cleaned_text
+            .to_lowercase()
+            .contains("vertraulichkeit"),
+        "the refused undo must not bring the removed text back"
+    );
+
+    // The saved file does not contain the text anymore.
+    let target = temp_dir("redaction").join("redacted_scan.pdf");
+    document_core_save_session_as(session_id.clone(), target.to_string_lossy().into())
+        .expect("the session must be savable");
+    let saved = std::fs::read(&target).expect("the saved file must be readable");
+    let as_text = String::from_utf8_lossy(&saved).to_lowercase();
+    assert!(
+        !as_text.contains("vertraulichkeit"),
+        "the removed text must not be in the saved file"
+    );
+
+    // The file is still a readable PDF.
+    let engine = vocument_pdf_mupdf::MuPdfEngineAdapter::new();
+    let document = engine
+        .open_pdf_bytes(&saved)
+        .expect("the redacted document must be openable");
+    assert_eq!(
+        document.summary().page_count,
+        1,
+        "the redaction must not change the number of pages"
+    );
+    let text = document
+        .extract_page_text(0)
+        .expect("the text of the redacted page must be extractable");
+    let joined = text
+        .lines
+        .iter()
+        .map(|line| line.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    assert!(
+        !joined.contains("vertraulichkeit"),
+        "the removed text must not be extractable from the redacted document"
     );
 }

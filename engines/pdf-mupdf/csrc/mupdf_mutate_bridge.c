@@ -41,6 +41,10 @@ static int serialize_pdf_doc_to_malloc(
         pdf_write_options opts = pdf_default_write_options;
         opts.do_appearance = 1;
         opts.reproducible = 1;
+        /* Objects that are no longer referenced are removed. Without this a
+           removed content — the text of a redaction, for example — would stay
+           in the file as an unread object and could still be read from it. */
+        opts.do_garbage = 1;
         pdf_write_document(ctx, pdf_doc, out, &opts);
         fz_close_output(ctx, out);
 
@@ -497,6 +501,131 @@ int vocument_mupdf_remove_highlight_annot(
         }
     }
     fz_always(ctx) {
+        if (page) pdf_drop_page(ctx, page);
+        if (doc) fz_drop_document(ctx, doc);
+        if (stream) fz_drop_stream(ctx, stream);
+    }
+    fz_catch(ctx) {
+        const char *msg = fz_caught_message(ctx);
+        if (msg && err_buf && err_buf_len > 0) {
+            strncpy(err_buf, msg, err_buf_len - 1);
+        }
+        status = 2;
+    }
+
+    fz_drop_context(ctx);
+    return status;
+}
+
+typedef struct {
+    int page_index;
+    int x0_milli_pt;
+    int y0_milli_pt;
+    int x1_milli_pt;
+    int y1_milli_pt;
+} vocument_mupdf_rect_t;
+
+/**
+ * Removes the content of the given regions of a page for good.
+ *
+ * The text, the images and the line art under the region are removed from
+ * the content of the page, not covered by a black rectangle. A rectangle
+ * would only hide the content, it would leave it readable in the file.
+ */
+int vocument_mupdf_redact_page_regions(
+    const unsigned char *bytes,
+    size_t len,
+    const vocument_mupdf_rect_t *rects,
+    size_t rects_len,
+    unsigned char **out_pdf_bytes,
+    size_t *out_pdf_len,
+    char *err_buf,
+    size_t err_buf_len
+) {
+    if (!rects || !out_pdf_bytes || !out_pdf_len) {
+        return 3;
+    }
+    if (rects_len == 0) {
+        return 5;
+    }
+    *out_pdf_bytes = NULL;
+    *out_pdf_len = 0;
+    if (err_buf && err_buf_len > 0) {
+        err_buf[0] = '\0';
+    }
+
+    fz_context *ctx = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
+    if (!ctx) {
+        return 3;
+    }
+
+    fz_stream *stream = NULL;
+    fz_document *doc = NULL;
+    pdf_page *page = NULL;
+    pdf_annot *annot = NULL;
+    int status = 0;
+
+    fz_var(stream);
+    fz_var(doc);
+    fz_var(page);
+    fz_var(annot);
+    fz_var(status);
+
+    fz_try(ctx) {
+        fz_register_document_handlers(ctx);
+        stream = fz_open_memory(ctx, bytes, len);
+        doc = fz_open_document_with_stream(ctx, "application/pdf", stream);
+
+        int count = fz_count_pages(ctx, doc);
+        if (rects[0].page_index < 0 || rects[0].page_index >= count) {
+            status = 4;
+        } else {
+            pdf_document *pdf_doc = pdf_specifics(ctx, doc);
+            page = pdf_load_page(ctx, pdf_doc, rects[0].page_index);
+
+            pdf_redact_options opts;
+            memset(&opts, 0, sizeof(opts));
+            /* The area is painted black, so that the reader sees what was
+               removed. The content under it is removed anyway. */
+            opts.black_boxes = 1;
+            /* Images that reach into the area are removed completely. */
+            opts.image_method = PDF_REDACT_IMAGE_REMOVE_UNLESS_INVISIBLE;
+            /* Line art that is touched by the area is removed. */
+            opts.line_art = PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED;
+            /* The text is removed — not hidden. This is the secure option;
+               PDF_REDACT_TEXT_NONE would leave the text in the file. */
+            opts.text = PDF_REDACT_TEXT_REMOVE;
+
+            for (size_t i = 0; i < rects_len; i++) {
+                if (rects[i].page_index != rects[0].page_index) {
+                    status = 6;
+                    continue;
+                }
+                fz_rect r = fz_make_rect(
+                    (float)rects[i].x0_milli_pt / 1000.0f,
+                    (float)rects[i].y0_milli_pt / 1000.0f,
+                    (float)rects[i].x1_milli_pt / 1000.0f,
+                    (float)rects[i].y1_milli_pt / 1000.0f
+                );
+                if (fz_is_empty_rect(r)) {
+                    status = 7;
+                    continue;
+                }
+                annot = pdf_create_annot(ctx, page, PDF_ANNOT_REDACT);
+                pdf_set_annot_rect(ctx, annot, r);
+                pdf_apply_redaction(ctx, annot, &opts);
+                pdf_drop_annot(ctx, annot);
+                annot = NULL;
+            }
+
+            if (status == 0) {
+                pdf_update_page(ctx, page);
+                serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+            }
+        }
+    }
+    fz_always(ctx) {
+        if (annot) pdf_drop_annot(ctx, annot);
         if (page) pdf_drop_page(ctx, page);
         if (doc) fz_drop_document(ctx, doc);
         if (stream) fz_drop_stream(ctx, stream);

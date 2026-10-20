@@ -3444,6 +3444,282 @@ public func FfiConverterTypeFfiRecoveryActionResult_lower(_ value: FfiRecoveryAc
 
 
 /**
+ * A region of a page whose content shall be removed (`REDACT-001`).
+ *
+ * The coordinates are in PDF user space, in milli-points, with the origin at
+ * the lower left of the page — the same space in which the bounding box of a
+ * text line is reported.
+ */
+public struct FfiRedactionRegion {
+    public var x0MilliPt: Int32
+    public var y0MilliPt: Int32
+    public var x1MilliPt: Int32
+    public var y1MilliPt: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(x0MilliPt: Int32, y0MilliPt: Int32, x1MilliPt: Int32, y1MilliPt: Int32) {
+        self.x0MilliPt = x0MilliPt
+        self.y0MilliPt = y0MilliPt
+        self.x1MilliPt = x1MilliPt
+        self.y1MilliPt = y1MilliPt
+    }
+}
+
+#if compiler(>=6)
+extension FfiRedactionRegion: Sendable {}
+#endif
+
+
+extension FfiRedactionRegion: Equatable, Hashable {
+    public static func ==(lhs: FfiRedactionRegion, rhs: FfiRedactionRegion) -> Bool {
+        if lhs.x0MilliPt != rhs.x0MilliPt {
+            return false
+        }
+        if lhs.y0MilliPt != rhs.y0MilliPt {
+            return false
+        }
+        if lhs.x1MilliPt != rhs.x1MilliPt {
+            return false
+        }
+        if lhs.y1MilliPt != rhs.y1MilliPt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x0MilliPt)
+        hasher.combine(y0MilliPt)
+        hasher.combine(x1MilliPt)
+        hasher.combine(y1MilliPt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRedactionRegion: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRedactionRegion {
+        return
+            try FfiRedactionRegion(
+                x0MilliPt: FfiConverterInt32.read(from: &buf), 
+                y0MilliPt: FfiConverterInt32.read(from: &buf), 
+                x1MilliPt: FfiConverterInt32.read(from: &buf), 
+                y1MilliPt: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRedactionRegion, into buf: inout [UInt8]) {
+        FfiConverterInt32.write(value.x0MilliPt, into: &buf)
+        FfiConverterInt32.write(value.y0MilliPt, into: &buf)
+        FfiConverterInt32.write(value.x1MilliPt, into: &buf)
+        FfiConverterInt32.write(value.y1MilliPt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionRegion_lift(_ buf: RustBuffer) throws -> FfiRedactionRegion {
+    return try FfiConverterTypeFfiRedactionRegion.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionRegion_lower(_ value: FfiRedactionRegion) -> RustBuffer {
+    return FfiConverterTypeFfiRedactionRegion.lower(value)
+}
+
+
+/**
+ * The report of a redaction and of its verification (`REDACT-001`).
+ */
+public struct FfiRedactionReport {
+    /**
+     * The page on which the content was removed.
+     */
+    public var pageIndex: UInt32
+    /**
+     * The number of regions that were removed.
+     */
+    public var regionCount: UInt32
+    /**
+     * The text that lay under the regions.
+     */
+    public var removedFragments: [String]
+    /**
+     * The number of text fragments that were removed.
+     */
+    public var removedFragmentCount: UInt32
+    /**
+     * The text is no longer extractable from the page.
+     */
+    public var textExtractionClean: Bool
+    /**
+     * The text is no longer found by the search over the document.
+     */
+    public var searchIndexClean: Bool
+    /**
+     * The text is no longer present in the bytes of the file as plain text.
+     */
+    public var fileBytesClean: Bool
+    /**
+     * The removal was verified in every respect.
+     */
+    public var verified: Bool
+    /**
+     * The revision of the document after the redaction.
+     */
+    public var revision: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The page on which the content was removed.
+         */pageIndex: UInt32, 
+        /**
+         * The number of regions that were removed.
+         */regionCount: UInt32, 
+        /**
+         * The text that lay under the regions.
+         */removedFragments: [String], 
+        /**
+         * The number of text fragments that were removed.
+         */removedFragmentCount: UInt32, 
+        /**
+         * The text is no longer extractable from the page.
+         */textExtractionClean: Bool, 
+        /**
+         * The text is no longer found by the search over the document.
+         */searchIndexClean: Bool, 
+        /**
+         * The text is no longer present in the bytes of the file as plain text.
+         */fileBytesClean: Bool, 
+        /**
+         * The removal was verified in every respect.
+         */verified: Bool, 
+        /**
+         * The revision of the document after the redaction.
+         */revision: UInt64) {
+        self.pageIndex = pageIndex
+        self.regionCount = regionCount
+        self.removedFragments = removedFragments
+        self.removedFragmentCount = removedFragmentCount
+        self.textExtractionClean = textExtractionClean
+        self.searchIndexClean = searchIndexClean
+        self.fileBytesClean = fileBytesClean
+        self.verified = verified
+        self.revision = revision
+    }
+}
+
+#if compiler(>=6)
+extension FfiRedactionReport: Sendable {}
+#endif
+
+
+extension FfiRedactionReport: Equatable, Hashable {
+    public static func ==(lhs: FfiRedactionReport, rhs: FfiRedactionReport) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.regionCount != rhs.regionCount {
+            return false
+        }
+        if lhs.removedFragments != rhs.removedFragments {
+            return false
+        }
+        if lhs.removedFragmentCount != rhs.removedFragmentCount {
+            return false
+        }
+        if lhs.textExtractionClean != rhs.textExtractionClean {
+            return false
+        }
+        if lhs.searchIndexClean != rhs.searchIndexClean {
+            return false
+        }
+        if lhs.fileBytesClean != rhs.fileBytesClean {
+            return false
+        }
+        if lhs.verified != rhs.verified {
+            return false
+        }
+        if lhs.revision != rhs.revision {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(regionCount)
+        hasher.combine(removedFragments)
+        hasher.combine(removedFragmentCount)
+        hasher.combine(textExtractionClean)
+        hasher.combine(searchIndexClean)
+        hasher.combine(fileBytesClean)
+        hasher.combine(verified)
+        hasher.combine(revision)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRedactionReport {
+        return
+            try FfiRedactionReport(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                regionCount: FfiConverterUInt32.read(from: &buf), 
+                removedFragments: FfiConverterSequenceString.read(from: &buf), 
+                removedFragmentCount: FfiConverterUInt32.read(from: &buf), 
+                textExtractionClean: FfiConverterBool.read(from: &buf), 
+                searchIndexClean: FfiConverterBool.read(from: &buf), 
+                fileBytesClean: FfiConverterBool.read(from: &buf), 
+                verified: FfiConverterBool.read(from: &buf), 
+                revision: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRedactionReport, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.regionCount, into: &buf)
+        FfiConverterSequenceString.write(value.removedFragments, into: &buf)
+        FfiConverterUInt32.write(value.removedFragmentCount, into: &buf)
+        FfiConverterBool.write(value.textExtractionClean, into: &buf)
+        FfiConverterBool.write(value.searchIndexClean, into: &buf)
+        FfiConverterBool.write(value.fileBytesClean, into: &buf)
+        FfiConverterBool.write(value.verified, into: &buf)
+        FfiConverterUInt64.write(value.revision, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionReport_lift(_ buf: RustBuffer) throws -> FfiRedactionReport {
+    return try FfiConverterTypeFfiRedactionReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRedactionReport_lower(_ value: FfiRedactionReport) -> RustBuffer {
+    return FfiConverterTypeFfiRedactionReport.lower(value)
+}
+
+
+/**
  * Rendered RGBA8 page thumbnail DTO (`PAGEVIEW-001`, `PAGEVIEW-002`, `ROADMAP.md` M0.3).
  */
 public struct FfiRenderedThumbnail {
@@ -5237,6 +5513,12 @@ public enum DocumentCoreError: Swift.Error {
     )
     case DocumentNotLocallyWritable(details: String
     )
+    /**
+     * The redaction could not be carried out or could not be verified
+     * (`REDACT-001`).
+     */
+    case RedactionFailure(details: String
+    )
     case NavigationFailure(details: String
     )
     case TransactionFailure(details: String
@@ -5281,22 +5563,25 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 6: return .DocumentNotLocallyWritable(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .NavigationFailure(
+        case 7: return .RedactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .TransactionFailure(
+        case 8: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .SaveFailure(
+        case 9: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .RecoveryFailure(
+        case 10: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .ImagingFailure(
+        case 11: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 12: return .InternalFailure(
+        case 12: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 13: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -5340,33 +5625,38 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .NavigationFailure(details):
+        case let .RedactionFailure(details):
             writeInt(&buf, Int32(7))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .TransactionFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(8))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .SaveFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(9))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .RecoveryFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(12))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(13))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -6658,6 +6948,31 @@ fileprivate struct FfiConverterSequenceTypeFfiRecoverableDocumentInfo: FfiConver
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiRedactionRegion: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiRedactionRegion]
+
+    public static func write(_ value: [FfiRedactionRegion], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiRedactionRegion.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiRedactionRegion] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiRedactionRegion]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiRedactionRegion.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer {
     typealias SwiftType = [FfiSearchHit]
 
@@ -7200,6 +7515,22 @@ public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
 })
 }
 /**
+ * Removes the content of the given regions of a page for good and verifies
+ * the removal (`REDACT-001`).
+ *
+ * The redaction cannot be undone. The text under the region is removed from
+ * the document, not covered by a black rectangle.
+ */
+public func documentCoreRedactPageRegions(sessionId: String, pageIndex: UInt32, regions: [FfiRedactionRegion])throws  -> FfiRedactionReport  {
+    return try  FfiConverterTypeFfiRedactionReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_redact_page_regions(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterSequenceTypeFfiRedactionRegion.lower(regions),$0
+    )
+})
+}
+/**
  * Redoes the last undone transaction on `session_id` via `TransactionManager` (`UNDO-001`, `UNDO-004`).
  */
 public func documentCoreRedo(sessionId: String)throws  -> FfiTransactionHistorySnapshot  {
@@ -7647,6 +7978,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 8342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555) {

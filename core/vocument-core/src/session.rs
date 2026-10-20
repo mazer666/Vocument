@@ -53,6 +53,8 @@ pub enum SessionError {
     NotLocallyWritable { session_id: String },
     #[error("session registry lock poisoned")]
     RegistryPoisoned,
+    #[error("redaction failed: {0}")]
+    Redaction(#[from] crate::redaction::RedactionError),
 }
 
 /// Immutable snapshot of an active `DocumentSession` exposed to native UI across UniFFI (`ARCHITECTURE.md` §§5–6).
@@ -256,7 +258,7 @@ impl SessionRegistry {
         Ok(snapshot)
     }
 
-    fn with_session<T, F>(&self, session_id: &str, f: F) -> Result<T, SessionError>
+    pub(crate) fn with_session<T, F>(&self, session_id: &str, f: F) -> Result<T, SessionError>
     where
         F: FnOnce(&DocumentSession) -> Result<T, SessionError>,
     {

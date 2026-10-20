@@ -11,6 +11,10 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 
+echo "==> Verifying the secure redaction (M2.1): the content is removed, the removal is verified, the undo is refused..."
+cargo test -p vocument-pdf-mupdf redaction_tests
+cargo test -p vocument-ffi --test scan_workflow_e2e_tests a_redaction
+
 echo "==> Generating and verifying UniFFI bindings (Swift & Kotlin)..."
 BINDING_HASH_BEFORE="$(shasum -a 256 apps/macos/Sources/VocumentFFI/* apps/macos/Sources/VocumentFFIHeaders/include/* apps/android/app/src/main/java/uniffi/vocument_ffi/* 2>/dev/null || true)"
 ./scripts/generate-bindings.sh

@@ -185,6 +185,30 @@ Zustand des Geräts (`document_core_report_power_state`), das Core entscheidet,
 was laufen darf. So gilt auf macOS und auf Android dieselbe Regel, und die
 Entscheidung ist ohne Gerät prüfbar.
 
+## 7b. Wo ändere ich die Redaction?
+
+| Thema | Datei |
+|---|---|
+| Redaction im Core mit Verifikation | `core/vocument-core/src/redaction.rs` |
+| Entfernen des Inhalts in der MuPDF-Engine | `engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c` (`vocument_mupdf_redact_page_regions`) |
+| Redaction über die FFI-Grenze | `platform/vocument-ffi/src/redaction_dto.rs` |
+| Transaktion und Undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
+
+**Drei Fallen, die schon einmal zugeschlagen haben:**
+
+1. **Eine Redaction, die nur überdeckt, ist keine Redaction.** Der Text muss
+   aus dem Dokument entfernt werden. MuPDF bietet dafür `PDF_REDACT_TEXT_REMOVE`;
+   das entfernt auch die unsichtbare Textebene eines Scans.
+2. **Der entfernte Text kann in der Datei bleiben.** MuPDF schreibt unerreichbare
+   Objekte mit in die Datei, wenn die Garbage Collection nicht angefordert wird
+   (`opts.do_garbage = 1`). Der Test prüft deshalb die Bytes der Datei, nicht
+   nur die Textextraktion.
+3. **Die Wiederherstellung enthält ältere Stände.** Die Checkpoints des
+   Recovery-Stores werden mit der Redaction gelöscht, sonst wäre der Inhalt von
+   dort wiederherstellbar.
+
+Nachweise: `docs/acceptance/M2.1-ACCEPTANCE.md`.
+
 ## 8. Wo ergänze ich neue Job-Arten?
 
 Drei Stellen, in dieser Reihenfolge:

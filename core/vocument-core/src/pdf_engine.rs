@@ -214,6 +214,30 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         page_index: u32,
         annotation_id: &str,
     ) -> Result<(PdfHighlightAnnotation, Vec<u8>), PdfEngineError>;
+
+    /// Removes the content of the given regions of `page_index` from the
+    /// document and returns the new bytes of the document (`REDACT-001`).
+    ///
+    /// The removal has to be final: the text, the images and the line art
+    /// under the region must not be recoverable from the returned bytes. A
+    /// black rectangle over the content is not a redaction, it only hides it.
+    ///
+    /// The coordinates are in PDF user space, in milli-points, with the origin
+    /// at the lower left of the page — the same space in which
+    /// [`PdfTextLine::bbox`] is reported.
+    ///
+    /// Must only be invoked through `TransactionManager`
+    /// (`ROADMAP.md` M2 Gate: redaction extraction/search verification).
+    fn redact_page_regions(
+        &mut self,
+        page_index: u32,
+        regions: &[PdfRectMilliPt],
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_index, regions);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support redaction".to_owned(),
+        })
+    }
 }
 
 /// Vocument-owned PDF engine interface (`ARCHITECTURE.md` §18).

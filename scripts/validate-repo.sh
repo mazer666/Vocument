@@ -375,6 +375,44 @@ if ! grep -q "test_searchable_pdf_synthesis_and_mupdf_roundtrip" engines/ocr/tes
 fi
 echo "✓ M1.4 Gate verified: Searchable PDF synthesis (invisible 3 Tr text layer), DocumentSession ingestion & FTS5 search verified."
 
+# Enforce M2.1 Gate: secure redaction with verification
+#
+# A redaction is only worth something if the removed content is really gone.
+# The gate therefore insists on three things: the engine removes the content
+# (and not only covers it), the core verifies the removal, and the undo of a
+# redaction is refused.
+if [[ ! -f "core/vocument-core/src/redaction.rs" ]]; then
+  echo "ERROR (M2.1 Gate): core/vocument-core/src/redaction.rs missing!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_redact_page_regions" platform/vocument-ffi/src/redaction_dto.rs; then
+  echo "ERROR (M2.1 Gate): the redaction is not exported over the FFI boundary!" >&2
+  exit 1
+fi
+if ! grep -q "fn redact_page_regions" engines/pdf-mupdf/src/lib.rs; then
+  echo "ERROR (M2.1 Gate): the PDF engine does not implement the redaction!" >&2
+  exit 1
+fi
+if ! grep -q "PDF_REDACT_TEXT_REMOVE" engines/pdf-mupdf/csrc/mupdf_mutate_bridge.c; then
+  echo "ERROR (M2.1 Gate): the redaction does not remove the text of the region!" >&2
+  exit 1
+fi
+if ! grep -q "a_redaction_removes_the_text_of_the_region_from_the_document" \
+    engines/pdf-mupdf/src/mutate.rs; then
+  echo "ERROR (M2.1 Gate): the engine has no test that the text of the region is removed!" >&2
+  exit 1
+fi
+if ! grep -q "a_redaction_removes_the_scanned_text_from_the_document_and_from_the_search" \
+    platform/vocument-ffi/tests/scan_workflow_e2e_tests.rs; then
+  echo "ERROR (M2.1 Gate): the redaction has no end-to-end test over the FFI boundary!" >&2
+  exit 1
+fi
+if ! grep -q "A redaction cannot be undone" core/vocument-core/src/transactions.rs; then
+  echo "ERROR (M2.1 Gate): a redaction must not be undoable!" >&2
+  exit 1
+fi
+echo "✓ M2.1 Gate verified: secure redaction removes the content, verifies the removal and refuses the undo."
+
 # Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
 if ! grep -q "QA-003" REQUIREMENTS.md; then
   echo "ERROR (QA-003): QA-003 missing in REQUIREMENTS.md!" >&2

@@ -653,7 +653,10 @@ Professional annotation system with editable jurist preset.
 Secure redaction removes underlying text/OCR/hidden relevant content.
 
 ### REDACT-002
-Verify that redacted content is no longer searchable/extractable.
+Verify that redacted content is no longer searchable/extractable. The verification covers three aspects: the text is no longer extractable from the page, the full-text search no longer finds it, and it is no longer present in the bytes of the file as plain text.
+
+### REDACT-005 — A redaction cannot be undone
+The removed content is gone from the document. An undo that would bring it back would be a lie, so the undo is refused explicitly. The checkpoints of the recovery store, which still hold the bytes of the earlier states of the document, are deleted with the redaction. The persistent journal carries no text of the removed content.
 
 ### REDACT-003
 Search-assisted candidate selection.

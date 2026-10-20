@@ -2,7 +2,7 @@
 //!
 //! Gate (`ROADMAP.md` M0.4): **Mutation never bypasses `TransactionManager`.**
 
-use crate::pdf_engine::PdfHighlightAnnotation;
+use crate::pdf_engine::{PdfHighlightAnnotation, PdfRectMilliPt};
 use crate::session::{SessionError, SessionRegistry};
 use crate::transactions::{
     PersistentTransactionJournal, TransactionCommand, TransactionHistorySnapshot, TransactionRecord,
@@ -102,6 +102,83 @@ impl SessionRegistry {
             session_id,
             TransactionCommand::AddHighlightAnnotation { annotation },
         )
+    }
+
+    /// Removes the content of the given regions of a page for good (`REDACT-001`).
+    ///
+    /// The redaction cannot be undone. The checkpoints of the recovery store
+    /// still hold the bytes of the earlier states of the document, and those
+    /// bytes still contain the removed content — they are deleted with the
+    /// redaction.
+    pub fn apply_redaction(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        regions: Vec<PdfRectMilliPt>,
+    ) -> Result<TransactionRecord, SessionError> {
+        let record = self.execute_transaction(
+            session_id,
+            TransactionCommand::RedactPageRegions {
+                page_index,
+                regions,
+            },
+        )?;
+
+        let document_id = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            session.document_id.clone()
+        };
+        self.recovery_store
+            .container_for(document_id.as_str())
+            .purge_checkpoints()
+            .map_err(SessionError::Recovery)?;
+
+        Ok(record)
+    }
+
+    /// Writes the current text of a page into the search index.
+    ///
+    /// After a redaction the index has to be updated, otherwise the search
+    /// would still find the text that was removed from the document
+    /// (`REDACT-001`).
+    pub(crate) fn reindex_page(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<(), SessionError> {
+        let actor = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            session.actor()
+        };
+        let structured = actor.extract_page_text(page_index)?;
+
+        let mut guard = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = guard
+            .get_mut(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        let _ = session.search_index.index_structured_page(structured)?;
+        Ok(())
     }
 
     /// Removes a standard PDF `/Highlight` annotation by `annotation_id` via `TransactionManager` (`ANNOT-001`).

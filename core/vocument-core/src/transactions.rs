@@ -4,7 +4,9 @@
 //! Every document mutation executes through `TransactionManager::execute_command`, `undo`, or `redo`.
 
 use crate::identity::{DocumentId, compute_sha256_hex as sha256_hex};
-use crate::pdf_engine::{PdfEngineDocument, PdfEngineError, PdfHighlightAnnotation};
+use crate::pdf_engine::{
+    PdfEngineDocument, PdfEngineError, PdfHighlightAnnotation, PdfRectMilliPt,
+};
 use crate::render::{DocumentActor, RenderPipelineError};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,6 +33,8 @@ pub enum TransactionError {
     SerializationFailure { details: String },
     #[error("persistent transaction journal integrity error: {details}")]
     IntegrityMismatch { details: String },
+    #[error("the operation cannot be undone: {description}")]
+    Irreversible { description: String },
 }
 
 /// Semantic mutation commands (`ARCHITECTURE.md` §11, `UNDO-004`, `ROTATE-001`, `ANNOT-001`).
@@ -50,6 +54,20 @@ pub enum TransactionCommand {
         /// Captured snapshot of the removed annotation so Undo can deterministically restore it.
         restored_annotation: Option<PdfHighlightAnnotation>,
     },
+    /// Removes the content of regions of a page for good (`REDACT-001`).
+    ///
+    /// The command has no inverse: the removed content is gone from the
+    /// document and cannot be restored.
+    ///
+    /// The command carries no text. It is written into the persistent journal
+    /// of the recovery store, and the journal must not contain the content
+    /// that was just removed.
+    RedactPageRegions {
+        page_index: u32,
+        regions: Vec<PdfRectMilliPt>,
+    },
+    /// The inverse of a command that cannot be undone (`REDACT-001`).
+    Irreversible { description: String },
 }
 
 impl TransactionCommand {
@@ -86,6 +104,17 @@ impl TransactionCommand {
             Self::RemoveHighlightAnnotation { page_index, .. } => {
                 format!("Remove highlight annotation on page #{}", page_index + 1)
             }
+            Self::RedactPageRegions {
+                page_index,
+                regions,
+            } => {
+                format!(
+                    "Remove the content of {} region(s) on page #{}",
+                    regions.len(),
+                    page_index + 1
+                )
+            }
+            Self::Irreversible { description } => description.clone(),
         }
     }
 
@@ -94,6 +123,8 @@ impl TransactionCommand {
             Self::RotatePages { page_indices, .. } => page_indices.clone(),
             Self::AddHighlightAnnotation { annotation } => vec![annotation.page_index],
             Self::RemoveHighlightAnnotation { page_index, .. } => vec![*page_index],
+            Self::RedactPageRegions { page_index, .. } => vec![*page_index],
+            Self::Irreversible { .. } => Vec::new(),
         }
     }
 
@@ -109,6 +140,10 @@ impl TransactionCommand {
             Self::RemoveHighlightAnnotation { annotation_id, .. } => {
                 vec![format!("annot:{annotation_id}")]
             }
+            Self::RedactPageRegions { page_index, .. } => {
+                vec![format!("redaction:page:{page_index}")]
+            }
+            Self::Irreversible { .. } => Vec::new(),
         }
     }
 }
@@ -391,6 +426,21 @@ impl TransactionManager {
             .pop()
             .ok_or(TransactionError::NothingToUndo)?;
 
+        if matches!(
+            record.forward_command,
+            TransactionCommand::RedactPageRegions { .. }
+        ) {
+            // The removed content is gone from the document. Undoing it would
+            // be a lie, so the command stays on the stack and the refusal is
+            // reported.
+            self.undo_stack.push(record);
+            return Err(TransactionError::Irreversible {
+                description:
+                    "A redaction cannot be undone: the removed content is gone from the document."
+                        .to_owned(),
+            });
+        }
+
         let (_, _, _) = Self::apply_command_on_actor(actor, record.inverse_command.clone())?;
 
         // When undo stack becomes empty and we were originally at saved_revision = 1, return to saved_revision
@@ -524,6 +574,36 @@ impl TransactionManager {
                 };
                 let forward = TransactionCommand::AddHighlightAnnotation { annotation };
                 Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::RedactPageRegions {
+                page_index,
+                regions,
+            } => {
+                if regions.is_empty() {
+                    return Err(TransactionError::EmptyPageSelection);
+                }
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
+                    |doc: &mut dyn PdfEngineDocument| doc.redact_page_regions(page_index, &regions),
+                )?;
+                let forward = TransactionCommand::RedactPageRegions {
+                    page_index,
+                    regions: regions.clone(),
+                };
+                // The removed content is gone from the document. It cannot be
+                // restored, so the inverse of the command is the refusal to
+                // undo it.
+                let inverse = TransactionCommand::Irreversible {
+                    description: format!(
+                        "The content of page #{} cannot be restored",
+                        page_index + 1
+                    ),
+                };
+                Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::Irreversible { description } => {
+                Err(TransactionError::Irreversible {
+                    description: description.clone(),
+                })
             }
             TransactionCommand::RemoveHighlightAnnotation {
                 page_index,

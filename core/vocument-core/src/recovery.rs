@@ -359,6 +359,30 @@ impl RecoveryContainer {
         Ok(())
     }
 
+    /// Deletes the checkpoints of this document.
+    ///
+    /// A checkpoint holds the bytes of an earlier state of the document. After
+    /// a redaction those bytes still contain the removed content, so the
+    /// checkpoints have to go with the redaction (`REDACT-001`).
+    pub fn purge_checkpoints(&self) -> Result<(), RecoveryError> {
+        let directory = self.checkpoints_dir();
+        if directory.exists() {
+            fs::remove_dir_all(&directory)?;
+        }
+        // The manifest points at the last checkpoint. It must not point at a
+        // file that no longer exists.
+        if let Some(mut manifest) = self.read_manifest()? {
+            let has_checkpoint = manifest.last_checkpoint_file.is_some()
+                || manifest.last_checkpoint_sha256.is_some();
+            if has_checkpoint {
+                manifest.last_checkpoint_file = None;
+                manifest.last_checkpoint_sha256 = None;
+                self.write_manifest(&manifest)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Removes this document's recovery container from disk.
     pub fn purge(&self) -> Result<(), RecoveryError> {
         if self.container_dir.exists() {

@@ -1,10 +1,10 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified"
-  current_milestone: "M1"
-  current_milestone_name: "Android Scan & OCR"
-  current_submilestone: "M1.6"
+  product_status: "m1-implemented-not-device-verified-m2-started"
+  current_milestone: "M2"
+  current_milestone_name: "macOS Professional Review"
+  current_submilestone: "M2.1"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -23,6 +23,10 @@ project:
     - "M1.4"
     - "M1.4b"
     - "M1.5"
+    # M2.1 covers the secure redaction with its verification in the core, the
+    # engine and over the FFI boundary. The macOS interface of the redaction
+    # is not part of M2.1 and stays open, see docs/acceptance/M2.1-ACCEPTANCE.md.
+    - "M2.1"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

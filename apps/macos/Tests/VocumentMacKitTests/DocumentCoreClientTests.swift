@@ -8,7 +8,7 @@ func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
     let client = DocumentCoreClient()
     let handshake = try client.performHandshake()
     #expect(handshake.baselineVersion == "0.1")
-    #expect(handshake.milestone == "M1")
+    #expect(handshake.milestone == "M2")
     #expect(handshake.strictOfflineDefault == true)
     #expect(handshake.telemetryEnabled == false)
     #expect(handshake.targetFps == 60)

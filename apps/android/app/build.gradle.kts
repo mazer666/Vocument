@@ -120,4 +120,8 @@ tasks.withType<Test> {
     val targetDebug = File(repoRoot, "target/debug").absolutePath
     systemProperty("jna.library.path", targetDebug)
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    // The OCR of the test runs on the host and needs the trained data of the
+    // application. Without the path the tests would look in the system
+    // directory and fail with "Error opening data file".
+    environment("TESSDATA_PREFIX", File(repoRoot, "apps/android/app/src/main/assets/tessdata").absolutePath)
 }

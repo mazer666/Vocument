@@ -14,7 +14,7 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::pdf_engine::{
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTileBitmap,
+    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfRectMilliPt, PdfTileBitmap,
     PdfTileRenderRequest,
 };
 
@@ -379,6 +379,21 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         )?;
         self.pdf_bytes = updated.clone();
         Ok((removed, updated))
+    }
+
+    fn redact_page_regions(
+        &mut self,
+        page_index: u32,
+        regions: &[PdfRectMilliPt],
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = mutate::redact_page_regions_in_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+            regions,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
     }
 }
 

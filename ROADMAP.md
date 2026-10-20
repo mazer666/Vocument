@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (M1.0–M1.4 and M1.5 implemented; M1.6 in progress — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md))
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification** (implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -476,7 +476,7 @@ The parts that need a device or a macOS host remain open and are documented as
 
 ---
 
-# M2 — macOS Professional Review
+# M2 — macOS Professional Review *(Started — M2.1 done)*
 
 ## Purpose
 
@@ -502,6 +502,31 @@ Deliver:
 - signature revision safety tests
 - interoperability with major PDF tools
 - keyboard workflow review
+
+## M2.1 — Sichere Redaction mit Verifikation *(Implemented, host-verified)*
+
+The first cut of M2. The redaction is security-critical and verifiable on the
+host with the real MuPDF engine, so it comes before the parts that need a macOS
+host and a macOS interface.
+
+Delivered:
+
+- the engine removes the content of the region — text, invisible OCR text,
+  images and line art — instead of covering it with a rectangle
+- the core verifies the removal three times: the text is no longer
+  extractable, the search no longer finds it, and it is no longer in the bytes
+  of the file
+- the removal is reported: the text that was removed is handed back to the
+  interface, so the user sees what the redaction did before saving
+- a redaction cannot be undone; the undo is refused explicitly, and the
+  checkpoints of the recovery store are deleted with it
+- the transaction command carries no text, so the persistent journal does not
+  contain the removed content either
+
+Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md).
+
+Open in M2: the remaining eight functions, the macOS interface, and the
+interoperability gate with the tools of other vendors.
 
 ---
 

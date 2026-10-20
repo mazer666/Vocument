@@ -10,6 +10,7 @@ pub mod navigation_search_dto;
 pub mod ocr_dto;
 pub mod power_dto;
 pub mod recovery_dto;
+pub mod redaction_dto;
 pub mod render_dto;
 pub mod save_dto;
 pub mod scan_dto;
@@ -46,6 +47,9 @@ pub use recovery_dto::{
     FfiRecoverableDocumentInfo, FfiRecoveryAction, FfiRecoveryActionResult,
     document_core_check_document_recovery, document_core_execute_recovery_action,
     document_core_mark_recovery_clean_shutdown, document_core_scan_recoverable_documents,
+};
+pub use redaction_dto::{
+    FfiRedactionRegion, FfiRedactionReport, document_core_redact_page_regions,
 };
 pub use render_dto::{
     FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
@@ -95,6 +99,10 @@ pub enum DocumentCoreError {
     SessionNotFound { session_id: String },
     #[error("the document is not stored locally and cannot be saved in place: {details}")]
     DocumentNotLocallyWritable { details: String },
+    /// The redaction could not be carried out or could not be verified
+    /// (`REDACT-001`).
+    #[error("redaction failed: {details}")]
+    RedactionFailure { details: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
@@ -145,6 +153,9 @@ impl From<SessionError> for DocumentCoreError {
                 details: format!(
                     "session {session_id} lives in a platform document provider; export it to a location the user owns"
                 ),
+            },
+            SessionError::Redaction(redaction_err) => Self::RedactionFailure {
+                details: redaction_err.to_string(),
             },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),
@@ -391,7 +402,8 @@ mod tests {
     fn ffi_handshake_returns_verified_core_snapshot() {
         let handshake = document_core_handshake().expect("handshake must succeed");
         assert_eq!(handshake.baseline_version, "0.1");
-        assert_eq!(handshake.milestone, "M1");
+        // The milestone is derived from `project/project.yaml`.
+        assert_eq!(handshake.milestone, "M2");
         assert!(handshake.strict_offline_default);
         assert!(!handshake.telemetry_enabled);
         assert_eq!(handshake.target_fps, 60);

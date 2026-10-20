@@ -477,6 +477,11 @@ RustBuffer uniffi_vocument_ffi_fn_func_document_core_power_limits(RustCallStatus
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_FN_FUNC_DOCUMENT_CORE_REDACT_PAGE_REGIONS
+#define UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_FN_FUNC_DOCUMENT_CORE_REDACT_PAGE_REGIONS
+RustBuffer uniffi_vocument_ffi_fn_func_document_core_redact_page_regions(RustBuffer session_id, uint32_t page_index, RustBuffer regions, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_FN_FUNC_DOCUMENT_CORE_REDO
 #define UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_FN_FUNC_DOCUMENT_CORE_REDO
 RustBuffer uniffi_vocument_ffi_fn_func_document_core_redo(RustBuffer session_id, RustCallStatus *_Nonnull out_status
@@ -1163,6 +1168,12 @@ uint16_t uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(v
 #ifndef UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_CHECKSUM_FUNC_DOCUMENT_CORE_POWER_LIMITS
 #define UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_CHECKSUM_FUNC_DOCUMENT_CORE_POWER_LIMITS
 uint16_t uniffi_vocument_ffi_checksum_func_document_core_power_limits(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_CHECKSUM_FUNC_DOCUMENT_CORE_REDACT_PAGE_REGIONS
+#define UNIFFI_FFIDEF_UNIFFI_VOCUMENT_FFI_CHECKSUM_FUNC_DOCUMENT_CORE_REDACT_PAGE_REGIONS
+uint16_t uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions(void
     
 );
 #endif
