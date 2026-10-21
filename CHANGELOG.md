@@ -4,6 +4,58 @@ All notable changes to Vocument are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **M2.1 — secure redaction with verification** (`docs/acceptance/M2.1-ACCEPTANCE.md`).
+  The removal replaces the content instead of covering it, and the removal is
+  verified four times: the text is gone, the search does not find it, the
+  rendered page does not show it, and it is not in the bytes of the file. A
+  removal that cannot be verified in every respect is **refused** — there is
+  no way to treat an unverified redaction as a success.
+- **M2.2 — link and action inspection**, **M2.3 — attachment and signature
+  inspection** and **M2.4 — the comment of the reviewer with the rail of the
+  profession** (`docs/acceptance/M2.2-ACCEPTANCE.md`, `M2.3`, `M2.4`).
+- **The juristic palette is kept on the disk** (`jurist_palette.json`, `0600`
+  in a `0700` directory, written atomically). A rail that was cut in half by a
+  crash is an error with a name, never a silent fall back to the standard
+  rail.
+- **The identification of the build**: every binary names the source it was
+  built from, and a build from a dirty tree is refused.
+- **The release scripts** for the macOS bundle, the Android package and the
+  archive of the source, with the notices and the offer of the source, and the
+  **licence texts and the notice of the third-party components** in
+  `LICENSES/`.
+- **The privacy policy** (`PRIVACY.md`), the **licensing decision** E1–E5
+  (`docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md`) and the **blockers
+  of a public release** (`docs/releasing/RELEASE-BLOCKERS.md`).
+- **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
+
+### Fixed
+- The **fourth adversarial audit** of the redaction found that the walk over
+  the cross-reference table handed the objects on as *direct* objects, so the
+  content of a form object was never looked at: a copy of the removed text
+  stayed in the document while the redaction reported `verified = true`. The
+  walk descends into the dictionary of a stream now; the redaction **refuses**
+  and names the place.
+- The **macOS sources did not compile**: a mechanical split of the file had
+  left fragments of methods without their head. The review workflow is one
+  file again, and the gate checks the structure of the Swift sources.
+- The **provisional "remove the first line"** is replaced by a **marked
+  rectangle**: the user drags a place on the page, the core decides which text
+  lies in it, the panel shows it before the removal.
+- The **coordinate space of the page** is now measured by a test and not
+  assumed: the text layer and the rendered picture live in the same space —
+  the device space of the page, with the origin in the top left corner.
+- The note of the reviewer carries the **name and the meaning** of the rail
+  besides its key, so that it says what it means even if the rail is replaced
+  years later.
+- The **licence analysis of the Apple conditions** was verified against the
+  actually applicable contract versions (`docs/audit/apple-terms-verification.md`):
+  the applicable schedule is **Schedule 1** for a free application, the
+  **Apple Media Services Terms** were added, and the wording that stated a
+  legal verdict was replaced by the open question it really is.
+
 ## [0.1.0-m1.4] - 2026-10-19
 
 ### Added

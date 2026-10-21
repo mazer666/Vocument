@@ -208,7 +208,19 @@ pub struct PdfCommentAnnotation {
     /// The box of the note on the page, in page milli-points.
     pub rect: PdfRectMilliPt,
     /// The key of the palette the note was written with.
+    ///
+    /// The key is the **stable** identifier: it does not change when the rail
+    /// of the user changes.
     pub palette_key: String,
+    /// The name of the rail the note was written with (`/VocumentPaletteLabel`).
+    ///
+    /// The name and the meaning travel with the note, so that the note says
+    /// what it means even years later — and even if the rail of the user has
+    /// been replaced in the meantime. A note that carries only a key would
+    /// be unreadable in a document that is opened with another rail.
+    pub palette_label: String,
+    /// What the colour of the note meant in the review (`/VocumentPaletteMeaning`).
+    pub palette_meaning: String,
     /// The colour of the note, RGB.
     pub color_rgb: [u8; 3],
     /// The text of the note.

@@ -19,7 +19,7 @@ E1–E5) and the rules of `AGENTS.md`.
 | **macOS, direct** | The signed and notarised `.app` bundle (and its archive) with the notices and the offer of the source inside. | `scripts/release-macos.sh --sign "Developer ID Application: …"` |
 | **Android, direct** | The signed APK with the notices and the offer of the source inside. | `scripts/release-android.sh --apk` |
 | **Android, Play** | The bundle for the Play Store. The upload is a separate step that needs the approval of the project owner. | `scripts/release-android.sh --bundle` |
-| **macOS, Mac App Store** | Prepared, but **not** taken: the terms of Apple and the AGPL-3.0 have to be weighed first (§7.5 of the licensing decision, `RISK-041`). | — |
+| **macOS, Mac App Store** | **Deferred** by the decision of the project owner (2026-10-21): the direct distribution comes first. The terms of Apple and the AGPL-3.0 still have to be weighed before that channel is prepared further (§7.5 of the licensing decision, `RISK-041`, B-7). | — |
 
 ## 2. The conditions before a release
 
@@ -33,6 +33,12 @@ E1–E5) and the rules of `AGENTS.md`.
 | V6 | The source archive of the revision exists, with its checksum. | `scripts/release-source-archive.sh` |
 | V7 | The legal compliance review has been carried out. | **A person, not a script.** E5. |
 | V8 | The attribution of Artifex is in the generated PDFs. | The producer line and the AGPL note in the metadata. **Open — O2.** |
+
+**The open blockers** are listed with their owner and their state in
+[`RELEASE-BLOCKERS.md`](RELEASE-BLOCKERS.md). A blocker is closed by a
+person, not by a script: the legal review, the signing identity, the address
+of the responsible person and the decision about a channel are the work of
+the project owner.
 
 ## 3. The steps of a release
 

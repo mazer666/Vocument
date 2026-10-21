@@ -1264,8 +1264,21 @@ public struct FfiCommentAnnotation {
     public var rect: FfiPdfRectMilliPt
     /**
      * The key of the rail the note was written with.
+     *
+     * The key is the stable identifier of the entry of the rail.
      */
     public var paletteKey: String
+    /**
+     * The name of the rail the note was written with.
+     *
+     * The name travels with the note, so that the note says what it means
+     * even if the rail of the user is replaced later.
+     */
+    public var paletteLabel: String
+    /**
+     * What the colour of the note meant in the review.
+     */
+    public var paletteMeaning: String
     public var colorR: UInt8
     public var colorG: UInt8
     public var colorB: UInt8
@@ -1292,7 +1305,18 @@ public struct FfiCommentAnnotation {
          */rect: FfiPdfRectMilliPt, 
         /**
          * The key of the rail the note was written with.
-         */paletteKey: String, colorR: UInt8, colorG: UInt8, colorB: UInt8, 
+         *
+         * The key is the stable identifier of the entry of the rail.
+         */paletteKey: String, 
+        /**
+         * The name of the rail the note was written with.
+         *
+         * The name travels with the note, so that the note says what it means
+         * even if the rail of the user is replaced later.
+         */paletteLabel: String, 
+        /**
+         * What the colour of the note meant in the review.
+         */paletteMeaning: String, colorR: UInt8, colorG: UInt8, colorB: UInt8, 
         /**
          * The text of the note.
          */contents: String, 
@@ -1303,6 +1327,8 @@ public struct FfiCommentAnnotation {
         self.pageIndex = pageIndex
         self.rect = rect
         self.paletteKey = paletteKey
+        self.paletteLabel = paletteLabel
+        self.paletteMeaning = paletteMeaning
         self.colorR = colorR
         self.colorG = colorG
         self.colorB = colorB
@@ -1330,6 +1356,12 @@ extension FfiCommentAnnotation: Equatable, Hashable {
         if lhs.paletteKey != rhs.paletteKey {
             return false
         }
+        if lhs.paletteLabel != rhs.paletteLabel {
+            return false
+        }
+        if lhs.paletteMeaning != rhs.paletteMeaning {
+            return false
+        }
         if lhs.colorR != rhs.colorR {
             return false
         }
@@ -1353,6 +1385,8 @@ extension FfiCommentAnnotation: Equatable, Hashable {
         hasher.combine(pageIndex)
         hasher.combine(rect)
         hasher.combine(paletteKey)
+        hasher.combine(paletteLabel)
+        hasher.combine(paletteMeaning)
         hasher.combine(colorR)
         hasher.combine(colorG)
         hasher.combine(colorB)
@@ -1374,6 +1408,8 @@ public struct FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer {
                 pageIndex: FfiConverterUInt32.read(from: &buf), 
                 rect: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
                 paletteKey: FfiConverterString.read(from: &buf), 
+                paletteLabel: FfiConverterString.read(from: &buf), 
+                paletteMeaning: FfiConverterString.read(from: &buf), 
                 colorR: FfiConverterUInt8.read(from: &buf), 
                 colorG: FfiConverterUInt8.read(from: &buf), 
                 colorB: FfiConverterUInt8.read(from: &buf), 
@@ -1387,6 +1423,8 @@ public struct FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.pageIndex, into: &buf)
         FfiConverterTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
         FfiConverterString.write(value.paletteKey, into: &buf)
+        FfiConverterString.write(value.paletteLabel, into: &buf)
+        FfiConverterString.write(value.paletteMeaning, into: &buf)
         FfiConverterUInt8.write(value.colorR, into: &buf)
         FfiConverterUInt8.write(value.colorG, into: &buf)
         FfiConverterUInt8.write(value.colorB, into: &buf)

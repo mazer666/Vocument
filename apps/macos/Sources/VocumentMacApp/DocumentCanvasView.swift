@@ -129,10 +129,7 @@ struct DocumentCanvasView: View {
 
             ScrollView([.horizontal, .vertical], showsIndicators: true) {
                 if let cgImage = coordinator.renderedPageImage {
-                    Image(decorative: cgImage, scale: 1.0, orientation: .up)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .shadow(radius: 3)
+                    PageImageView(coordinator: coordinator, image: cgImage)
                         .padding(16)
                 } else {
                     Text("Rendering viewport via DocumentActor…")
@@ -150,6 +147,71 @@ struct DocumentCanvasView: View {
         .sheet(item: $coordinator.pendingRecovery) { recovery in
             RecoveryPromptSheet(coordinator: coordinator, recovery: recovery)
         }
+    }
+}
+
+/// The page, with the place the user marks for a redaction (`REDACT-001`).
+///
+/// The image is drawn with one point per pixel, so a rectangle in the
+/// coordinate space of the view is a rectangle in the coordinate space of the
+/// page. The core then decides which text lies inside it — the shell does not
+/// guess.
+struct PageImageView: View {
+    @ObservedObject var coordinator: MacDocumentSessionCoordinator
+    let image: CGImage
+
+    /// The corner where the drag began.
+    @State private var dragStart: CGPoint?
+    /// The rectangle of the drag, in the coordinate space of the view.
+    @State private var dragRect: CGRect = .zero
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .topLeading) {
+                Image(decorative: image, scale: 1.0, orientation: .up)
+                    .background(Color.white)
+                if dragRect.width > 1, dragRect.height > 1 {
+                    Rectangle()
+                        .fill(Color.red.opacity(0.25))
+                        .frame(width: dragRect.width, height: dragRect.height)
+                        .offset(x: dragRect.minX, y: dragRect.minY)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 4)
+                    .onChanged { value in
+                        if dragStart == nil {
+                            dragStart = value.startLocation
+                        }
+                        dragRect = Self.rect(from: dragStart ?? value.startLocation, to: value.location)
+                    }
+                    .onEnded { value in
+                        let rect = Self.rect(from: dragStart ?? value.startLocation, to: value.location)
+                        dragStart = nil
+                        dragRect = .zero
+                        guard let pageRect = coordinator.pageRect(fromViewRect: rect) else {
+                            return
+                        }
+                        coordinator.applyRedactionSelection(pageRect)
+                    }
+            )
+        }
+        .frame(width: CGFloat(image.width), height: CGFloat(image.height))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .shadow(radius: 3)
+    }
+
+    /// The rectangle between two points, however the drag ran.
+    private static func rect(from first: CGPoint, to second: CGPoint) -> CGRect {
+        CGRect(
+            x: min(first.x, second.x),
+            y: min(first.y, second.y),
+            width: abs(second.x - first.x),
+            height: abs(second.y - first.y)
+        )
     }
 }
 

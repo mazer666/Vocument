@@ -685,6 +685,13 @@ that was written before a change of the rail keeps its key, and a note whose
 key the rail does not carry is reported as not assignable instead of being
 given the colour of a neighbouring key.
 
+The **name** of the rail and what it meant travel with the note as well
+(`/VocumentPaletteLabel`, `/VocumentPaletteMeaning`). A key alone says
+nothing to a reader who does not have the rail of the author — and the rail
+of the user may be replaced years later. The note therefore says what it
+means on its own, and the meaning of a note never changes with the rail of
+the moment.
+
 ---
 
 # 24. Redaction / sanitize / hidden content
@@ -776,6 +783,13 @@ Two rules follow from the same walk:
 
 ### REDACT-004a — The pixels of an image are replaced
 A document can carry the same text twice: as a text layer and as pixels in an image. For a scan the text layer is invisible and the picture carries the words. The redaction therefore has to replace the pixels of the image under the region, not cover them. The rest of the image must survive — a redaction may not destroy the page.
+
+### REDACT-006 — The user marks the place, the application does not choose it
+A redaction removes what the user marked. The shell therefore offers a marked
+rectangle on the page and shows the text inside it before the removal; the
+removal is refused when nothing is marked. A removal of "the first line of
+the page" would remove something the user never looked at — and a redaction
+cannot be undone.
 
 ### REDACT-004b — Only the words in the region have to disappear
 The verification is word by word. A line in which only one word was redacted keeps its other words, and the removal is not reported as a failure.

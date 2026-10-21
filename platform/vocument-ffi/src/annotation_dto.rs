@@ -64,7 +64,16 @@ pub struct FfiCommentAnnotation {
     /// The box of the note on the page.
     pub rect: FfiPdfRectMilliPt,
     /// The key of the rail the note was written with.
+    ///
+    /// The key is the stable identifier of the entry of the rail.
     pub palette_key: String,
+    /// The name of the rail the note was written with.
+    ///
+    /// The name travels with the note, so that the note says what it means
+    /// even if the rail of the user is replaced later.
+    pub palette_label: String,
+    /// What the colour of the note meant in the review.
+    pub palette_meaning: String,
     pub color_r: u8,
     pub color_g: u8,
     pub color_b: u8,
@@ -81,6 +90,8 @@ impl From<PdfCommentAnnotation> for FfiCommentAnnotation {
             page_index: annot.page_index,
             rect: annot.rect.into(),
             palette_key: annot.palette_key,
+            palette_label: annot.palette_label,
+            palette_meaning: annot.palette_meaning,
             color_r: annot.color_rgb[0],
             color_g: annot.color_rgb[1],
             color_b: annot.color_rgb[2],
@@ -97,6 +108,8 @@ impl From<FfiCommentAnnotation> for PdfCommentAnnotation {
             page_index: annot.page_index,
             rect: annot.rect.into(),
             palette_key: annot.palette_key,
+            palette_label: annot.palette_label,
+            palette_meaning: annot.palette_meaning,
             color_rgb: [annot.color_r, annot.color_g, annot.color_b],
             contents: annot.contents,
             author: annot.author,

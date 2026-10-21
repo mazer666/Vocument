@@ -39,9 +39,9 @@ struct ReviewPanelView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if let inspection = coordinator.reviewInspection {
                         Text(
-                            "Risky: \(inspection.risyCount) · " +
-                            "leaving the document: \(inspection.externalCount) · " +
-                            "signed: \(inspection.isSigned ? "yes" : "no")"
+                            "Risky: \(inspection.risyCount) · "
+                            + "leaving the document: \(inspection.externalCount) · "
+                            + "signed: \(inspection.isSigned ? "yes" : "no")"
                         )
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -87,29 +87,45 @@ struct ReviewPanelView: View {
 
             GroupBox("Redaction") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Button("Remove the content of the first line") {
-                        coordinator.redactFirstLineOnCurrentPage()
+                    if let selection = coordinator.redactionSelection {
+                        Text("Marked place:")
+                            .font(.caption2)
+                            .bold()
+                        Text(
+                            "x \(selection.x0MilliPt)–\(selection.x1MilliPt) · "
+                            + "y \(selection.y0MilliPt)–\(selection.y1MilliPt) (millipoints)"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        if coordinator.redactionSelectionText.isEmpty {
+                            Text("No text lies in the marked place.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(coordinator.redactionSelectionText)
+                                .font(.caption)
+                                .lineLimit(6)
+                        }
+                        Button("Remove the marked content for good") {
+                            coordinator.redactSelectedRegions()
+                        }
+                        .font(.caption)
+                        .buttonStyle(.borderedProminent)
+                        Button("Mark another place") {
+                            coordinator.clearRedactionSelection()
+                        }
+                        .font(.caption2)
+                    } else {
+                        Text(
+                            "Drag on the page to mark a place. The marked text is shown "
+                            + "here before it is removed."
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     }
-                    .font(.caption)
                     Text(
-                        "The removal cannot be undone. If the same text stands " +
-                        "somewhere else in the document, the warning above names the place."
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            GroupBox("Redaction") {
-                VStack(alignment: .leading, spacing: 6) {
-                    Button("Remove the content of the first line") {
-                        coordinator.redactFirstLineOnCurrentPage()
-                    }
-                    .font(.caption)
-                    Text(
-                        "The removal cannot be undone. If the same text stands " +
-                        "somewhere else in the document, the warning above names the place."
+                        "The removal cannot be undone. If the same text stands "
+                        + "somewhere else in the document, the warning above names the place."
                     )
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -141,6 +157,12 @@ struct ReviewPanelView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                             }
+                            Spacer()
+                            Button("×") {
+                                coordinator.removeComment(comment)
+                            }
+                            .font(.caption2)
+                            .help("Take the comment back")
                         }
                     }
 

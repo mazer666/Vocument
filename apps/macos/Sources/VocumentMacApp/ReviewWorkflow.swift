@@ -4,37 +4,41 @@ import Foundation
 import VocumentMacKit
 import VocumentFFI
 
-/// The review workflow of the document (`M2`, `ANNOT-001`, `REDACT-001`,
+/// The workflow of the reviewer (`M2`, `ANNOT-001`, `REDACT-001`,
 /// `LINKSEC-001`, `ATTACH-001`, `SIGREV-001`).
 ///
-/// The findings of the document, the comments of the reviewer with the rail
-/// of the profession, and the warnings of a redaction. The warnings have to
-/// reach the user: a user who sees only "the redaction succeeded" would
-/// believe that the marked text is gone from the document while it is still
-/// in it.
+/// The workflow is: open a document, read the findings of the core, write the
+/// comments of the reviewer with the rail of the profession, and remove what
+/// has to go — for good, and with a report that says what could not be
+/// removed.
+///
+/// The warnings have to reach the user. A user who sees only "the redaction
+/// succeeded" would believe that the marked text is gone from the document
+/// while it is still in it.
+@MainActor
 extension MacDocumentSessionCoordinator {
-    /// Hands the core the directory of the data of the user.
+    // MARK: - Opening a document
+
+    /// Lets the user choose a document (`M0.2`).
+    func openDocumentViaPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK, let url = panel.url {
+            openDocument(at: url)
+        }
+    }
+
+    /// Opens a document and asks the recovery store whether it knows
+    /// something about it (`RECOVERY-001`).
     ///
-
-    /// Reads the rail of the profession.
-    func refreshJuristPalette() {
-        juristPalette = coreClient.juristPalette()
-        if !juristPalette.contains(where: { $0.key == commentPaletteKey }) {
-            commentPaletteKey = juristPalette.first?.key ?? "note"
-        }
-    }
-
-    /// Removes the content of the first line of the current page for good
-
-    /// Reads the findings of the document.
-    func refreshReviewFindings() {
-        guard let session = activeSession else {
-            reviewInspection = nil
-            return
-        }
-        reviewInspection = try? coreClient.inspectDocument(sessionId: session.sessionId)
-    }
-
+    /// The recovery is asked **before** the document is opened: a document
+    /// that was open when the application died can carry unsaved changes, and
+    /// the user has to decide what happens with them.
+    func openDocument(at url: URL, bypassRecoveryCheck: Bool = false) {
+        if !bypassRecoveryCheck {
+            if let rec = try? coreClient.checkDocumentRecovery(sourceToken: url.path) {
                 pendingRecovery = rec
                 return
             }
@@ -52,6 +56,7 @@ extension MacDocumentSessionCoordinator {
             searchHits = []
             exportedJournalJsonPreview = nil
             errorMessage = nil
+            clearRedactionSelection()
             pageDescriptors = try coreClient.pageDescriptors(sessionId: session.sessionId)
             transactionHistory = try coreClient.transactionHistory(sessionId: session.sessionId)
             renderCurrentViewport()
@@ -61,31 +66,32 @@ extension MacDocumentSessionCoordinator {
         }
     }
 
-    func executeRecovery(action: FfiRecoveryAction) {
-        guard let recovery = pendingRecovery else { return }
-        do {
-            let result = try coreClient.executeRecoveryAction(documentId: recovery.documentId, action: action)
-            pendingRecovery = nil
-            if let snap = result.sessionSnapshot {
-                if let existing = activeSession {
-                    try? coreClient.closeSession(sessionId: existing.sessionId)
-                }
-                activeSession = snap
-                currentPageIndex = 0
-                scaleMilli = 1000
-                thumbnailImages = [:]
-                searchHits = []
-                exportedJournalJsonPreview = nil
-                errorMessage = nil
-                pageDescriptors = (try? coreClient.pageDescriptors(sessionId: snap.sessionId)) ?? []
-                transactionHistory = try? coreClient.transactionHistory(sessionId: snap.sessionId)
-                renderCurrentViewport()
-                loadThumbnailsAndInitialSearchBatch(sessionId: snap.sessionId)
-                saveNotificationMessage = result.message
-            } else if action == .discard {
-                let url = URL(fileURLWithPath: recovery.sourceToken)
+    // MARK: - The findings and the comments of the page
 
-    /// Reads the comments of the current page.
+    /// Reads the rail of the profession (`ANNOT-001`).
+    ///
+    /// The rail holds the colours and their meanings. The shell never sends a
+    /// colour of its own — it sends the **key** of the rail, and the core
+    /// looks the colour up.
+    func refreshJuristPalette() {
+        juristPalette = coreClient.juristPalette()
+        if !juristPalette.contains(where: { $0.key == commentPaletteKey }) {
+            commentPaletteKey = juristPalette.first?.key ?? "note"
+        }
+    }
+
+    /// Reads the findings of the document: the links and the actions, the
+    /// attachments and the signatures (`LINKSEC-001`, `ATTACH-001`,
+    /// `SIGREV-001`).
+    func refreshReviewFindings() {
+        guard let session = activeSession else {
+            reviewInspection = nil
+            return
+        }
+        reviewInspection = try? coreClient.inspectDocument(sessionId: session.sessionId)
+    }
+
+    /// Reads the comments of the reviewer on the current page (`ANNOT-001`).
     func refreshPageComments() {
         guard let session = activeSession else {
             pageComments = []
@@ -98,32 +104,6 @@ extension MacDocumentSessionCoordinator {
             )) ?? []
     }
 
-
-    var pageCount: UInt32 {
-        activeSession?.pdfSummary.pageCount ?? 0
-    }
-
-    var currentLogicalLabel: String {
-        pageDescriptors.first(where: { $0.pageIndex == currentPageIndex })?.logicalLabel
-            ?? "\(currentPageIndex + 1)"
-    }
-
-    var prefetchedPagesSummary: String {
-        prefetchedPages.isEmpty
-            ? "none"
-            : prefetchedPages.map { String($0 + 1) }.joined(separator: ", ")
-    }
-
-    func openDocumentViaPanel() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.pdf]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        if panel.runModal() == .OK, let url = panel.url {
-            openDocument(at: url)
-        }
-    }
-
     /// Loads the findings and the comments of the document after a change of
     /// the page.
     func refreshReviewState() {
@@ -131,11 +111,13 @@ extension MacDocumentSessionCoordinator {
         refreshPageComments()
     }
 
-    func openDocument(at url: URL, bypassRecoveryCheck: Bool = false) {
-        if !bypassRecoveryCheck {
-            if let rec = try? coreClient.checkDocumentRecovery(sourceToken: url.path) {
+    // MARK: - The comment of the reviewer
 
-    /// Writes the comment the user has written on the current page.
+    /// Writes the comment the user has written on the current page
+    /// (`ANNOT-001`).
+    ///
+    /// The note is placed at the place the user marked. The colour comes from
+    /// the rail — the shell sends the key, not a colour.
     func addCommentToCurrentPage() {
         guard let session = activeSession else {
             return
@@ -144,16 +126,17 @@ extension MacDocumentSessionCoordinator {
         guard !text.isEmpty else {
             return
         }
+        let rect = commentPlacementRect()
         let annotation = FfiCommentAnnotation(
             annotationId: "comment_\(UUID().uuidString)",
             pageIndex: currentPageIndex,
-            rect: FfiPdfRectMilliPt(
-                x0MilliPt: 20_000,
-                y0MilliPt: 20_000,
-                x1MilliPt: 36_000,
-                y1MilliPt: 36_000
-            ),
+            rect: rect,
             paletteKey: commentPaletteKey,
+            // The name and the meaning of the rail are filled by the core:
+            // the shell sends the key, and the core looks the rest up in the
+            // rail of the user.
+            paletteLabel: "",
+            paletteMeaning: "",
             colorR: 255,
             colorG: 230,
             colorB: 80,
@@ -170,5 +153,137 @@ extension MacDocumentSessionCoordinator {
         } catch {
             errorMessage = "\(error)"
         }
+    }
+
+    /// Takes a comment of the reviewer back (`ANNOT-001`).
+    ///
+    /// A comment can be taken back — unlike a redaction, which cannot.
+    func removeComment(_ comment: FfiCommentAnnotation) {
+        guard let session = activeSession else {
+            return
+        }
+        do {
+            _ = try coreClient.removeCommentAnnotation(
+                sessionId: session.sessionId,
+                pageIndex: comment.pageIndex,
+                annotationId: comment.annotationId
+            )
+            refreshPageComments()
+        } catch {
+            errorMessage = "\(error)"
+        }
+    }
+
+    /// The place of a new comment.
+    ///
+    /// The note stands where the user marked something; without a marked
+    /// place it stands in the corner of the page, where the user sees it.
+    private func commentPlacementRect() -> FfiPdfRectMilliPt {
+        if let selection = redactionSelection {
+            return selection
+        }
+        return FfiPdfRectMilliPt(
+            x0MilliPt: 20_000,
+            y0MilliPt: 20_000,
+            x1MilliPt: 36_000,
+            y1MilliPt: 36_000
+        )
+    }
+
+    // MARK: - The redaction
+
+    /// Takes the rectangle the user marked on the page and asks the core
+    /// which text lies inside it (`REDACT-001`).
+    ///
+    /// The core decides — the shell does not guess. The text of the selection
+    /// is shown to the user before the removal.
+    func applyRedactionSelection(_ rect: FfiPdfRectMilliPt) {
+        guard let session = activeSession else { return }
+        do {
+            let selection = try coreClient.selectPageText(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                selectionRect: rect
+            )
+            redactionSelection = rect
+            redactionSelectionText = selection.cleanedText
+        } catch {
+            errorMessage = "\(error)"
+        }
+    }
+
+    /// Forgets the marked place.
+    func clearRedactionSelection() {
+        redactionSelection = nil
+        redactionSelectionText = ""
+    }
+
+    /// Removes the content of the marked place for good and verifies the
+    /// removal (`REDACT-001`).
+    ///
+    /// The redaction cannot be undone. The report tells the shell what it has
+    /// to show to the user: the words that were removed, the four checks of
+    /// the verification and the places of the document where the same text
+    /// still stands. The warnings go into `securityWarnings` — a user who
+    /// sees only "the redaction succeeded" would believe that the word is
+    /// gone from the document while it is still in it.
+    func redactSelectedRegions() {
+        guard let session = activeSession else { return }
+        guard let selection = redactionSelection else {
+            errorMessage = "Mark a place on the page before you remove something."
+            return
+        }
+        let region = FfiRedactionRegion(
+            x0MilliPt: selection.x0MilliPt,
+            y0MilliPt: selection.y0MilliPt,
+            x1MilliPt: selection.x1MilliPt,
+            y1MilliPt: selection.y1MilliPt
+        )
+        do {
+            let report = try coreClient.redactPageRegions(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                regions: [region]
+            )
+            securityWarnings = DocumentCoreClient.redactionWarnings(report)
+            clearRedactionSelection()
+            refreshReviewState()
+        } catch {
+            errorMessage = "\(error)"
+            // A refused redaction changes nothing: the document is as it was.
+            // There is no warning, because nothing happened.
+            securityWarnings = []
+        }
+    }
+
+    /// Converts a rectangle of the screen into the rectangle of the page
+    /// (`REDACT-001`).
+    ///
+    /// The page lives in the **device space** of the page: the origin is the
+    /// top left corner, the y axis points down. The rendered image has the
+    /// same orientation — the first row of the image is the top of the page —
+    /// so the conversion needs no flip.
+    ///
+    /// The two ends of the map are the size of the rendered image in pixels
+    /// and the size of the page in millipoints.
+    func pageRect(fromViewRect viewRect: CGRect) -> FfiPdfRectMilliPt? {
+        guard renderedPageSizePx.width > 0,
+              renderedPageSizePx.height > 0,
+              pageSizeMilliPt.width > 0,
+              pageSizeMilliPt.height > 0 else {
+            return nil
+        }
+        let xScale = pageSizeMilliPt.width / renderedPageSizePx.width
+        let yScale = pageSizeMilliPt.height / renderedPageSizePx.height
+        let x0 = Int32((viewRect.minX * xScale).rounded())
+        let y0 = Int32((viewRect.minY * yScale).rounded())
+        let x1 = Int32((viewRect.maxX * xScale).rounded())
+        let y1 = Int32((viewRect.maxY * yScale).rounded())
+        return FfiPdfRectMilliPt(
+            x0MilliPt: min(x0, x1),
+            y0MilliPt: min(y0, y1),
+            x1MilliPt: max(x0, x1),
+            y1MilliPt: max(y0, y1)
+        )
     }
 }

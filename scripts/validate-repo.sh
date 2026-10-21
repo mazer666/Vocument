@@ -767,6 +767,19 @@ if ! grep -q "QA-003" QUALITY.md; then
 fi
 echo "✓ QA-003 Governance verified: Prohibition of stubs in feature acceptance strictly enforced."
 
+# The Swift sources have to be structurally sound.
+#
+# There is no Swift toolchain in every environment, and a Swift file that
+# does not compile is a file that nobody notices: the Rust part is green, the
+# gate is green, and the application does not start. The check is not a
+# compiler — it catches the balance of the brackets, a statement in the body
+# of a type (the trace of a lost method head) and a declaration that stands
+# twice.
+if ! python3 scripts/check-swift-structure.py; then
+  echo "ERROR (SWIFT Gate): the Swift sources are not structurally sound!" >&2
+  exit 1
+fi
+
 # --- The gate of the distribution ---------------------------------------
 # The licence, the notices, the offer of the source, the local-first rules
 # and the privacy policy: what a released binary has to carry.

@@ -25,6 +25,8 @@ struct RawMuPdfComment {
     author: [c_char; 256],
     contents: [c_char; 2048],
     palette_key: [c_char; 64],
+    palette_label: [c_char; 128],
+    palette_meaning: [c_char; 256],
 }
 
 impl Default for RawMuPdfComment {
@@ -42,6 +44,8 @@ impl Default for RawMuPdfComment {
             author: [0; 256],
             contents: [0; 2048],
             palette_key: [0; 64],
+            palette_label: [0; 128],
+            palette_meaning: [0; 256],
         }
     }
 }
@@ -121,6 +125,11 @@ fn raw_to_comment(raw: &RawMuPdfComment, fallback_page_index: u32) -> PdfComment
         // by another tool carries none: the core then looks the colour up in
         // the rail.
         palette_key: c_buf_to_optional_string(&raw.palette_key).unwrap_or_default(),
+        // The name of the rail and its meaning travel with the note. A note
+        // that carries only a key is unreadable for a reader who does not
+        // have the rail of the author.
+        palette_label: c_buf_to_optional_string(&raw.palette_label).unwrap_or_default(),
+        palette_meaning: c_buf_to_optional_string(&raw.palette_meaning).unwrap_or_default(),
         color_rgb: [raw.color_r, raw.color_g, raw.color_b],
         contents: c_buf_to_optional_string(&raw.contents).unwrap_or_default(),
         author: c_buf_to_optional_string(&raw.author),
@@ -223,6 +232,9 @@ pub fn add_comment_annotation_to_pdf(
     }
     copy_str_to_c_buf(&annotation.contents, &mut raw.contents);
     copy_str_to_c_buf(&annotation.palette_key, &mut raw.palette_key);
+    // The name of the rail and its meaning travel with the note.
+    copy_str_to_c_buf(&annotation.palette_label, &mut raw.palette_label);
+    copy_str_to_c_buf(&annotation.palette_meaning, &mut raw.palette_meaning);
 
     let mut out_ptr: *mut u8 = std::ptr::null_mut();
     let mut out_len: usize = 0;

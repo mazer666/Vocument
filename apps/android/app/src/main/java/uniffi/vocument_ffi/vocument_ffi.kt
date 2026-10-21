@@ -2315,8 +2315,21 @@ data class FfiCommentAnnotation (
     var `rect`: FfiPdfRectMilliPt, 
     /**
      * The key of the rail the note was written with.
+     *
+     * The key is the stable identifier of the entry of the rail.
      */
     var `paletteKey`: kotlin.String, 
+    /**
+     * The name of the rail the note was written with.
+     *
+     * The name travels with the note, so that the note says what it means
+     * even if the rail of the user is replaced later.
+     */
+    var `paletteLabel`: kotlin.String, 
+    /**
+     * What the colour of the note meant in the review.
+     */
+    var `paletteMeaning`: kotlin.String, 
     var `colorR`: kotlin.UByte, 
     var `colorG`: kotlin.UByte, 
     var `colorB`: kotlin.UByte, 
@@ -2343,6 +2356,8 @@ public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCo
             FfiConverterUInt.read(buf),
             FfiConverterTypeFfiPdfRectMilliPt.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterUByte.read(buf),
             FfiConverterUByte.read(buf),
             FfiConverterUByte.read(buf),
@@ -2356,6 +2371,8 @@ public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCo
             FfiConverterUInt.allocationSize(value.`pageIndex`) +
             FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`rect`) +
             FfiConverterString.allocationSize(value.`paletteKey`) +
+            FfiConverterString.allocationSize(value.`paletteLabel`) +
+            FfiConverterString.allocationSize(value.`paletteMeaning`) +
             FfiConverterUByte.allocationSize(value.`colorR`) +
             FfiConverterUByte.allocationSize(value.`colorG`) +
             FfiConverterUByte.allocationSize(value.`colorB`) +
@@ -2368,6 +2385,8 @@ public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCo
             FfiConverterUInt.write(value.`pageIndex`, buf)
             FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
             FfiConverterString.write(value.`paletteKey`, buf)
+            FfiConverterString.write(value.`paletteLabel`, buf)
+            FfiConverterString.write(value.`paletteMeaning`, buf)
             FfiConverterUByte.write(value.`colorR`, buf)
             FfiConverterUByte.write(value.`colorG`, buf)
             FfiConverterUByte.write(value.`colorB`, buf)

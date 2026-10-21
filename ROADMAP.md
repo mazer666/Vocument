@@ -681,13 +681,23 @@ Delivered:
 
 Open: the **signing and the notarisation** (no macOS host, no Apple identity,
 no Android key — **NOT RUN**), the **legal clearance of the project owner**
-(E5), the **decision about the Mac App Store** — the only channel that
-collides structurally with the AGPL, see `RISK-041` — and the **contact of the
-responsible person** in the privacy policy.
+(E5), the **contact of the responsible person** in the privacy policy, and the
+**build of the source archive**.
+
+**The Mac App Store is deferred** by the decision of the project owner
+(2026-10-21): the direct distribution of macOS comes first. The store
+conditions of Apple carry obligations that stand next to the duties of the
+AGPL; whether they can be satisfied at the same time is an **open legal
+question** (E5), not a verdict. The verification of the actually applicable
+contract versions — the ADPLA with all three schedules, the Apple Media
+Services Terms and the review guidelines — is in
+[`docs/audit/apple-terms-verification.md`](docs/audit/apple-terms-verification.md).
 
 No store eligibility is claimed anywhere. The digest of the requirements and
 the ten decisions that are with the owner:
-[`docs/audit/store-requirements.md`](docs/audit/store-requirements.md).
+[`docs/audit/store-requirements.md`](docs/audit/store-requirements.md). The
+blockers of a public binary, with their owner and their state:
+[`docs/releasing/RELEASE-BLOCKERS.md`](docs/releasing/RELEASE-BLOCKERS.md).
 
 Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 

@@ -12,6 +12,9 @@ echo "==> Checking the gate of the distribution: the licence, the notices, the o
 echo "==> Auditing the licences of every component against the inventory..."
 ./scripts/audit-licenses.sh
 
+echo "==> Checking the structure of the Swift sources..."
+python3 scripts/check-swift-structure.py
+
 echo "==> Running Cargo workspace checks..."
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings

@@ -10,7 +10,10 @@ import VocumentFFI
 /// Uses `ObservableObject` so it compiles cleanly under both Xcode and standalone Command Line Tools.
 @MainActor
 final class MacDocumentSessionCoordinator: ObservableObject {
-    private let coreClient = DocumentCoreClient()
+    /// The client of the core. The review workflow lives in the file
+    /// `ReviewWorkflow.swift` and uses it as well, so it is not private to
+    /// this file.
+    let coreClient = DocumentCoreClient()
     private var memoryPressureSource: DispatchSourceMemoryPressure?
 
     @Published var activeSession: FfiDocumentSessionSnapshot?
@@ -55,6 +58,23 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     /// redaction succeeded" would believe that the word is gone from the
     /// document while it is still in it.
     @Published var securityWarnings: [String] = []
+    /// The rectangle the user has marked on the page (`REDACT-001`).
+    ///
+    /// The rectangle is in the millipoints of the page — the same space the
+    /// core uses for the regions of a redaction. The user marks a **place**,
+    /// not a line: a line that the application picks on its own would remove
+    /// something the user never looked at.
+    @Published var redactionSelection: FfiPdfRectMilliPt?
+    /// The text inside the marked rectangle.
+    ///
+    /// The user has to see what they marked before they remove it for good.
+    /// A removal that cannot be undone deserves a preview.
+    @Published var redactionSelectionText: String = ""
+    /// The size of the rendered page in pixels — the map from the screen to
+    /// the page (`REDACT-001`).
+    @Published var renderedPageSizePx: CGSize = .zero
+    /// The size of the page in millipoints.
+    @Published var pageSizeMilliPt: CGSize = .zero
     /// The identification of the build. The AGPL-3.0 asks every binary to
     /// name the source it was built from, so the shell shows it.
     let buildInfo: FfiBuildInfo
@@ -106,53 +126,59 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     }
 
 
-    /// (`REDACT-001`).
+    /// The recovery of a document that was open when the application died
+    /// (`RECOVERY-001`).
     ///
-    /// The redaction cannot be undone. The report tells the shell what it has
-    /// to show to the user: the words that were removed, the four checks of
-    /// the verification and the places of the document where the same text
-    /// still stands. The warnings go into `securityWarnings` — a user who
-    /// sees only "the redaction succeeded" would believe that the word is
-    /// gone from the document while it is still in it.
-    func redactFirstLineOnCurrentPage() {
-        guard let session = activeSession else { return }
+    /// The four actions of the recovery are the ones of the requirement:
+    /// restore, preview, discard, open as new.
+    func executeRecovery(action: FfiRecoveryAction) {
+        guard let recovery = pendingRecovery else { return }
         do {
-            let selection = try coreClient.selectPageText(
-                sessionId: session.sessionId,
-                pageIndex: currentPageIndex,
-                selectionRect: nil
-            )
-            guard let rect = selection.highlightRects.first else {
-                errorMessage = "There is no text on this page that could be removed."
-                return
-            }
-            let region = FfiRedactionRegion(
-                x0MilliPt: rect.x0MilliPt,
-                y0MilliPt: rect.y0MilliPt,
-                x1MilliPt: rect.x1MilliPt,
-                y1MilliPt: rect.y1MilliPt
-            )
-            let report = try coreClient.redactPageRegions(
-                sessionId: session.sessionId,
-                pageIndex: currentPageIndex,
-                regions: [region]
-            )
-            securityWarnings = DocumentCoreClient.redactionWarnings(report)
-            refreshReviewState()
-        } catch {
-            errorMessage = "\(error)"
-            // A refused redaction changes nothing: the document is as it was.
-            // There is no warning, because nothing happened.
-            securityWarnings = []
-        }
-    }
-
+            let result = try coreClient.executeRecoveryAction(documentId: recovery.documentId, action: action)
+            pendingRecovery = nil
+            if let snap = result.sessionSnapshot {
+                if let existing = activeSession {
+                    try? coreClient.closeSession(sessionId: existing.sessionId)
+                }
+                activeSession = snap
+                currentPageIndex = 0
+                scaleMilli = 1000
+                thumbnailImages = [:]
+                searchHits = []
+                exportedJournalJsonPreview = nil
+                errorMessage = nil
+                pageDescriptors = (try? coreClient.pageDescriptors(sessionId: snap.sessionId)) ?? []
+                transactionHistory = try? coreClient.transactionHistory(sessionId: snap.sessionId)
+                renderCurrentViewport()
+                loadThumbnailsAndInitialSearchBatch(sessionId: snap.sessionId)
+                saveNotificationMessage = result.message
+            } else if action == .discard {
+                let url = URL(fileURLWithPath: recovery.sourceToken)
                 openDocument(at: url, bypassRecoveryCheck: true)
                 saveNotificationMessage = "Recovery discarded; opened original document from disk."
             }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// The number of pages of the document.
+    var pageCount: UInt32 {
+        activeSession?.pdfSummary.pageCount ?? 0
+    }
+
+    /// The label of the current page — the one the document gives it, not the
+    /// number in the file (`PAGELABEL-002`).
+    var currentLogicalLabel: String {
+        pageDescriptors.first(where: { $0.pageIndex == currentPageIndex })?.logicalLabel
+            ?? "\(currentPageIndex + 1)"
+    }
+
+    /// The pages that are already in the cache, for the status line.
+    var prefetchedPagesSummary: String {
+        prefetchedPages.isEmpty
+            ? "none"
+            : prefetchedPages.map { String($0 + 1) }.joined(separator: ", ")
     }
 
     func canStepPage(by delta: Int) -> Bool {
@@ -487,6 +513,18 @@ final class MacDocumentSessionCoordinator: ObservableObject {
                 request: request
             )
             renderedPageImage = DocumentCoreClient.makeCGImage(from: result.visibleTile)
+            // The size of the rendered image in pixels and the size of the
+            // page in millipoints are the two ends of the map from the
+            // screen to the page. A marked rectangle on the screen is
+            // converted with them (`REDACT-001`).
+            renderedPageSizePx = CGSize(
+                width: CGFloat(result.visibleTile.widthPx),
+                height: CGFloat(result.visibleTile.heightPx)
+            )
+            pageSizeMilliPt = CGSize(
+                width: CGFloat(geometry.widthMilliPt),
+                height: CGFloat(geometry.heightMilliPt)
+            )
             prefetchedPages = result.prefetchedPages
             cacheStats = result.cacheStats
             if let sel = try? coreClient.selectPageText(
@@ -502,7 +540,7 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         }
     }
 
-    private func loadThumbnailsAndInitialSearchBatch(sessionId: String) {
+    func loadThumbnailsAndInitialSearchBatch(sessionId: String) {
         for desc in pageDescriptors {
             if let thumb = try? coreClient.renderPageThumbnail(
                 sessionId: sessionId,
@@ -538,72 +576,5 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         }
         source.resume()
         self.memoryPressureSource = source
-    }
-}
-
-/// Native macOS 15+ application entry point (`ARCHITECTURE.md` §3, `VIEW-002` Comfort/Professional Reader preset).
-@main
-struct VocumentMacApp: App {
-    @ObservedObject private var coordinator = MacDocumentSessionCoordinator()
-
-    var body: some Scene {
-        WindowGroup("Vocument") {
-            CalmReaderSessionView(coordinator: coordinator)
-                .frame(minWidth: 1080, minHeight: 720)
-        }
-    }
-}
-
-struct CalmReaderSessionView: View {
-    @ObservedObject var coordinator: MacDocumentSessionCoordinator
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Vocument")
-                    .font(.title2)
-                    .bold()
-                if let session = coordinator.activeSession {
-                    Text("• \(session.fileIdentity.displayName) (\(session.documentId))")
-                        .foregroundStyle(.secondary)
-                }
-                Text(
-                    "• \(coordinator.buildInfo.productName) \(coordinator.buildInfo.version)"
-                        + " — source \(String(coordinator.buildInfo.sourceRevision.prefix(12)))"
-                        + " (\(coordinator.buildInfo.licence))"
-                )
-                .foregroundStyle(.secondary)
-                Spacer()
-                Button("Open PDF…") {
-                    coordinator.openDocumentViaPanel()
-                }
-            }
-
-            if let errorMessage = coordinator.errorMessage {
-                Text(errorMessage)
-                    .foregroundStyle(.red)
-            }
-
-            if let recoveryWarning = coordinator.recoveryWarning {
-                Text(recoveryWarning)
-                    .foregroundStyle(.red)
-            }
-
-            if coordinator.activeSession != nil {
-                HStack(alignment: .top, spacing: 16) {
-                    NavigationAndSearchSidebarView(coordinator: coordinator)
-                    DocumentCanvasView(coordinator: coordinator)
-                    ReviewPanelView(coordinator: coordinator)
-                }
-            } else {
-                Text("No document open. Choose 'Open PDF…' or open a file from Finder.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            }
-        }
-        .padding(20)
-        .onOpenURL { url in
-            coordinator.openDocument(at: url)
-        }
     }
 }

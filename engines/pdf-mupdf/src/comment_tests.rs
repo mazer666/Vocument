@@ -64,6 +64,8 @@ fn comment(annotation_id: &str, contents: &str) -> PdfCommentAnnotation {
             y1_milli_pt: 34_000,
         },
         palette_key: "objection".to_owned(),
+        palette_label: "Einwand".to_owned(),
+        palette_meaning: "Der Prüfer widerspricht.".to_owned(),
         color_rgb: [235, 90, 80],
         contents: contents.to_owned(),
         author: Some("Dr. Klar".to_owned()),
@@ -91,6 +93,38 @@ fn a_comment_is_written_into_the_document_and_found_again() {
     assert_eq!(found[0].author.as_deref(), Some("Dr. Klar"));
     assert_eq!(found[0].color_rgb, [235, 90, 80]);
     assert_eq!(found[0].page_index, 0);
+}
+
+/// The name of the rail and its meaning travel with the note.
+///
+/// A note that carries only a key says nothing to a reader who does not have
+/// the rail of the author — and the rail of the user may be replaced years
+/// later. The note therefore carries the name and the meaning of the rail
+/// that the note was written with.
+#[test]
+fn the_note_carries_the_name_and_the_meaning_of_the_rail() {
+    let adapter = MuPdfEngineAdapter::new();
+    let mut engine = adapter
+        .open_pdf_bytes(&document_with_one_page())
+        .expect("the engine opens the document");
+
+    engine
+        .add_comment_annotation(&comment("comment_003", "Einwand."))
+        .expect("the comment is written");
+
+    let found = engine
+        .page_comment_annotations(0)
+        .expect("the comments of the page are read");
+    assert_eq!(found.len(), 1, "the note stands on the page");
+    assert_eq!(found[0].palette_key, "objection", "the key travels as well");
+    assert_eq!(
+        found[0].palette_label, "Einwand",
+        "the name of the rail travels with the note"
+    );
+    assert_eq!(
+        found[0].palette_meaning, "Der Prüfer widerspricht.",
+        "the meaning of the rail travels with the note"
+    );
 }
 
 #[test]

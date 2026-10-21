@@ -152,10 +152,12 @@ distribution:
       sandbox: true
       notarisation: "NOT RUN (no macOS host, no Apple credentials)"
     macos_app_store:
-      status: "blocked-by-licence-conflict"
-      note: "The terms of Apple collide structurally with the AGPL. The decision
-        stays with the project owner, see RISK-041. No store eligibility is
-        claimed."
+      status: "deferred-by-the-decision-of-the-owner-2026-10-21"
+      note: "The store conditions of Apple carry obligations that stand next to
+        the duties of the AGPL; whether they can be satisfied at the same time
+        is an open legal question (E5). The direct distribution comes first.
+        No store eligibility is claimed. See RISK-041 and
+        docs/audit/store-requirements.md."
     android_google_play:
       status: "prepared-not-signed"
       note: "The build of the bundle exists; the signature and the upload are
@@ -165,10 +167,13 @@ distribution:
     source_archive:
       status: "script-ready-not-built"
   # The steps that still have to be taken before anything is handed out.
+  # The blockers of a public binary, with their owner and their state:
+  # docs/releasing/RELEASE-BLOCKERS.md
   open_before_publication:
-    - "the legal compliance review of the project owner (E5)"
-    - "the decision about the Mac App Store (the conflict of Apple and the AGPL)"
-    - "the sign and the notarisation of the macOS bundle"
-    - "the sign of the Android artefacts"
-    - "the contact of the responsible person in PRIVACY.md"
-    - "the build of the source archive with the offer of the source"
+    - "B-1 the legal compliance review of the project owner (E5)"
+    - "B-2 the sign and the notarisation of the macOS bundle"
+    - "B-3 the sign of the Android artefacts"
+    - "B-4 the contact of the responsible person in PRIVACY.md — it must not be invented"
+    - "B-5 the build of the source archive with the offer of the source"
+    - "B-6 the reproducibility of the build from the archive"
+    - "B-7 the decision about the Mac App Store (deferred on 2026-10-21)"

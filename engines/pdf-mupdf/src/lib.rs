@@ -24,6 +24,8 @@ mod redaction_image_tests;
 mod redaction_rotation_tests;
 #[cfg(test)]
 mod scrub_tests;
+#[cfg(test)]
+mod text_space_tests;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};

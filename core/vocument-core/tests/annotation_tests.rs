@@ -22,6 +22,8 @@ fn comment(key: &str, contents: &str) -> PdfCommentAnnotation {
             y1_milli_pt: 24_000,
         },
         palette_key: key.to_owned(),
+        palette_label: String::new(),
+        palette_meaning: String::new(),
         color_rgb: [0, 0, 0],
         contents: contents.to_owned(),
         author: Some("Dr. Klar".to_owned()),
@@ -61,6 +63,62 @@ fn a_note_with_a_key_that_the_rail_does_not_carry_is_refused() {
             key: "rosa".to_owned()
         }
     );
+}
+
+/// The name of the rail and its meaning travel with the note.
+///
+/// The key is the stable identifier, but a key alone says nothing to a
+/// reader who does not have the rail of the author — and the rail of the
+/// user may be replaced years later. The note therefore carries the name and
+/// the meaning of the rail it was written with.
+#[test]
+fn a_note_carries_the_name_and_the_meaning_of_the_rail() {
+    let palette = JuristPalette::default_palette();
+    let prepared =
+        prepare_comment(&palette, &comment("objection", "Einwand")).expect("the note is prepared");
+    assert_eq!(
+        prepared.palette_key, "objection",
+        "the key is the stable one"
+    );
+    assert_eq!(
+        prepared.palette_label, "Objection",
+        "the name of the rail travels with the note"
+    );
+    assert!(
+        !prepared.palette_meaning.is_empty(),
+        "the meaning of the rail travels with the note: {:?}",
+        prepared.palette_meaning
+    );
+}
+
+/// The meaning of a note does not change when the rail of the user is
+/// replaced. The note keeps the name and the meaning of the rail it was
+/// written with.
+#[test]
+fn the_meaning_of_a_note_survives_a_change_of_the_rail() {
+    let standard = JuristPalette::default_palette();
+    let prepared =
+        prepare_comment(&standard, &comment("objection", "Einwand")).expect("the note is prepared");
+
+    // The rail of the user: the key "objection" is gone.
+    let other = JuristPalette::new(vec![JuristPaletteEntry::new(
+        "house",
+        "Hausfarbe",
+        "Die Farbe des Hauses.",
+        [12, 34, 56],
+    )])
+    .expect("the rail");
+
+    // The note keeps the name and the meaning of the rail it was written
+    // with — they stand in the document, not in the rail of the moment.
+    assert_eq!(prepared.palette_label, "Objection");
+    assert!(!prepared.palette_meaning.is_empty());
+
+    // A note that is written **now** with the new rail carries the new
+    // meaning.
+    let fresh =
+        prepare_comment(&other, &comment("house", "Hinweis")).expect("the note is prepared");
+    assert_eq!(fresh.palette_label, "Hausfarbe");
 }
 
 #[test]

@@ -37,6 +37,8 @@ typedef struct {
     char author[256];
     char contents[2048];
     char palette_key[64];
+    char palette_label[128];
+    char palette_meaning[256];
 } vocument_mupdf_comment_t;
 
 /* The size of the popup of a note. The popup opens next to the note; its
@@ -106,6 +108,34 @@ static void extract_comment_struct(
         if (key && key_len < sizeof(dst->palette_key)) {
             memcpy(dst->palette_key, key, key_len);
             dst->palette_key[key_len] = '\0';
+        }
+    }
+    /* The name of the rail and what it meant travel with the note as well.
+     *
+     * The key is the stable identifier, but a key alone says nothing to a
+     * reader who does not have the rail. The name and the meaning make the
+     * note interpretable on its own — years later, and with a rail that has
+     * been replaced in the meantime. */
+    pdf_obj *label_obj = pdf_dict_get(
+        ctx, pdf_annot_obj(ctx, annot), pdf_new_name(ctx, "VocumentPaletteLabel")
+    );
+    if (pdf_is_string(ctx, label_obj)) {
+        const char *label = pdf_to_str_buf(ctx, label_obj);
+        size_t label_len = pdf_to_str_len(ctx, label_obj);
+        if (label && label_len < sizeof(dst->palette_label)) {
+            memcpy(dst->palette_label, label, label_len);
+            dst->palette_label[label_len] = '\0';
+        }
+    }
+    pdf_obj *meaning_obj = pdf_dict_get(
+        ctx, pdf_annot_obj(ctx, annot), pdf_new_name(ctx, "VocumentPaletteMeaning")
+    );
+    if (pdf_is_string(ctx, meaning_obj)) {
+        const char *meaning = pdf_to_str_buf(ctx, meaning_obj);
+        size_t meaning_len = pdf_to_str_len(ctx, meaning_obj);
+        if (meaning && meaning_len < sizeof(dst->palette_meaning)) {
+            memcpy(dst->palette_meaning, meaning, meaning_len);
+            dst->palette_meaning[meaning_len] = '\0';
         }
     }
 }
@@ -294,7 +324,9 @@ int vocument_mupdf_add_comment_annot(
             }
             pdf_set_annot_contents(ctx, annot, spec->contents);
 
-            /* The key of the rail travels with the note. */
+            /* The key of the rail travels with the note — and so do its name
+               and its meaning, so that the note says what it means even if
+               the rail is replaced later. */
             if (spec->palette_key[0] != '\0') {
                 pdf_obj *key_name = pdf_new_name(ctx, "VocumentPaletteKey");
                 pdf_obj *key_value = pdf_new_string(
@@ -302,6 +334,24 @@ int vocument_mupdf_add_comment_annot(
                 );
                 if (key_name && key_value) {
                     pdf_dict_put(ctx, pdf_annot_obj(ctx, annot), key_name, key_value);
+                }
+            }
+            if (spec->palette_label[0] != '\0') {
+                pdf_obj *label_name = pdf_new_name(ctx, "VocumentPaletteLabel");
+                pdf_obj *label_value = pdf_new_string(
+                    ctx, spec->palette_label, strlen(spec->palette_label)
+                );
+                if (label_name && label_value) {
+                    pdf_dict_put(ctx, pdf_annot_obj(ctx, annot), label_name, label_value);
+                }
+            }
+            if (spec->palette_meaning[0] != '\0') {
+                pdf_obj *meaning_name = pdf_new_name(ctx, "VocumentPaletteMeaning");
+                pdf_obj *meaning_value = pdf_new_string(
+                    ctx, spec->palette_meaning, strlen(spec->palette_meaning)
+                );
+                if (meaning_name && meaning_value) {
+                    pdf_dict_put(ctx, pdf_annot_obj(ctx, annot), meaning_name, meaning_value);
                 }
             }
 

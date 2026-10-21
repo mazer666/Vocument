@@ -83,6 +83,10 @@ fn note(annotation_id: &str, key: &str, contents: &str) -> FfiCommentAnnotation 
             y1_milli_pt: 34_000,
         },
         palette_key: key.to_owned(),
+        // The name and the meaning of the rail are filled by the core; the
+        // caller sends the key.
+        palette_label: String::new(),
+        palette_meaning: String::new(),
         color_r: 0,
         color_g: 0,
         color_b: 0,
@@ -267,6 +271,61 @@ fn the_rail_of_the_user_may_replace_the_default() {
 /// The key of the rail travels with the note. A note stays interpretable
 /// even when the rail has changed in the meantime: the note says which
 /// meaning it was written with, not only which colour it has.
+/// The name of the rail and its meaning travel with the note.
+///
+/// The key is the stable identifier, but a key alone says nothing to a
+/// reader who does not have the rail of the author. The note therefore
+/// carries the name and the meaning of the rail it was written with — and
+/// they stay the same when the rail of the user is replaced.
+#[test]
+fn the_meaning_of_the_rail_travels_with_the_note() {
+    let session_id = open_session(document_with_one_page(), "comment-meaning");
+    document_core_add_comment_annotation(
+        session_id.clone(),
+        note("comment_008", "objection", "Einwand"),
+    )
+    .expect("the note is written");
+
+    let comments = document_core_page_comment_annotations(session_id.clone(), 0)
+        .expect("the notes of the page are readable");
+    assert_eq!(comments.len(), 1, "the note is still there");
+    assert_eq!(comments[0].palette_key, "objection", "the key travels");
+    assert_eq!(
+        comments[0].palette_label, "Objection",
+        "the name of the rail travels with the note: {:?}",
+        comments[0]
+    );
+    assert!(
+        !comments[0].palette_meaning.is_empty(),
+        "the meaning of the rail travels with the note: {:?}",
+        comments[0]
+    );
+
+    // The rail of the user is replaced: the key "objection" is gone. The
+    // note keeps the name and the meaning of the rail it was written with.
+    document_core_set_jurist_palette(vec![FfiJuristPaletteEntry {
+        key: "house".to_owned(),
+        label: "Hausfarbe".to_owned(),
+        meaning: "Die Farbe des Hauses.".to_owned(),
+        color_r: 12u8,
+        color_g: 34u8,
+        color_b: 56u8,
+    }])
+    .expect("the rail is set");
+
+    let comments = document_core_page_comment_annotations(session_id.clone(), 0)
+        .expect("the notes of the page are readable");
+    assert_eq!(
+        comments[0].palette_label, "Objection",
+        "the name of the rail does not change with the rail of the moment"
+    );
+
+    // The rail of the user is put back, so that the other tests see the
+    // standard rail.
+    document_core_set_jurist_palette(document_core_default_jurist_palette())
+        .expect("the standard rail is set");
+}
+
 #[test]
 fn the_key_of_the_rail_travels_with_the_note() {
     let session_id = open_session(document_with_one_page(), "comment-key");

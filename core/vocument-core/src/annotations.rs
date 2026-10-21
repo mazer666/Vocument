@@ -232,13 +232,21 @@ pub fn prepare_comment(
     {
         return Err(CommentError::EmptyRect);
     }
-    let color = palette.color_of(&annotation.palette_key).ok_or_else(|| {
-        CommentError::UnknownPaletteKey {
-            key: annotation.palette_key.clone(),
-        }
-    })?;
+    let entry =
+        palette
+            .entry(&annotation.palette_key)
+            .ok_or_else(|| CommentError::UnknownPaletteKey {
+                key: annotation.palette_key.clone(),
+            })?;
+    let color = entry.color_rgb;
     let mut prepared = annotation.clone();
     prepared.color_rgb = color;
+    // The name and the meaning of the rail travel with the note. The note
+    // says what it means even if the rail of the user is replaced later —
+    // a note that carries only a key is unreadable in a document that is
+    // opened with another rail.
+    prepared.palette_label = entry.label.clone();
+    prepared.palette_meaning = entry.meaning.clone();
     Ok(prepared)
 }
 

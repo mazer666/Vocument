@@ -394,6 +394,58 @@ popup**. Nothing private, nothing of Vocument: another tool reads the note.
 
 Evidence: `docs/acceptance/M2.4-ACCEPTANCE.md`.
 
+## 7i. How does the user mark the place of a redaction?
+
+The user drags a rectangle on the page. The shell converts it into the
+millipoints of the page and the **core** decides which text lies inside it —
+the shell does not guess.
+
+**The coordinate space is measured, not assumed.** The page lives in the
+**device space** of the page: the origin is the **top left** corner, the y
+axis points **down**. The rendered image has the same orientation, so the
+conversion needs no flip. The two ends of the map are the size of the
+rendered image in pixels and the size of the page in millipoints.
+
+The proof is a test, not a comment:
+`engines/pdf-mupdf/src/text_space_tests.rs` draws a word at a known place of
+the page and measures where the engine reports it.
+
+**Why it matters:** if the text layer and the rendered picture used
+different spaces, a region would hit the text layer and miss the picture —
+and the proof over the picture would pass while the word was still visible
+in the document.
+
+**What the shell does with it:**
+
+1. the drag becomes a rectangle in the millipoints of the page;
+2. `selectPageText` with that rectangle asks the core which text lies in it;
+3. the panel shows the marked text — the removal cannot be undone, so the
+   user sees what they marked before they remove it;
+4. `redactPageRegions` removes it and returns the report;
+5. the warnings of the report (the places where the same text still stands,
+   the places that could not be read) are shown in red.
+
+There is **no** "remove the first line" any more: a removal of something the
+user never looked at is not a review.
+
+## 7j. How do I know that the Swift sources still build?
+
+There is no Swift toolchain in every environment, and a Swift file that does
+not compile is a file that nobody notices: the Rust part is green, the gate
+is green, and the application does not start.
+
+`scripts/check-swift-structure.py` checks the structure of the Swift sources:
+the balance of the brackets, a **statement in the body of a type** (the trace
+of a method whose head was lost in an edit), a declaration that stands twice
+and a box of a view that was pasted twice.
+
+**It is not a compiler.** It catches the class of defect that a mechanical
+edit produces; it does not prove that the code compiles. The compilation is
+**NOT RUN** in an environment without a Swift toolchain, and the acceptance
+record says so.
+
+Evidence: `docs/acceptance/M2.1-ACCEPTANCE.md`.
+
 ## 7f. Where does the rail of the profession live on the disk?
 
 The rail of the user — the colours with their names and their meanings — is a
