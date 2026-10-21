@@ -23,6 +23,8 @@ mod redaction_image_tests;
 #[cfg(test)]
 mod redaction_rotation_tests;
 #[cfg(test)]
+mod scrub_hardening_tests;
+#[cfg(test)]
 mod scrub_tests;
 #[cfg(test)]
 mod text_space_tests;
