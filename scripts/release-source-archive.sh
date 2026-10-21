@@ -116,10 +116,19 @@ echo "==> Building the source archive of $REVISION..."
 # in the repository, without the artefacts of the build. The identification
 # is added as a virtual file, so that the content of the archive does not
 # depend on the moment of the build — two archives of the same revision have
-# the same SHA-256.
-git archive --format=tar.gz --prefix="${PREFIX}/" \
+# to be bit for bit the same.
+#
+# The compression is written with `gzip -n`: without the flag, the header of
+# the gzip stream carries the **time of the build** and the name of the file,
+# and two archives of the same revision have two different checksums. The
+# build record measured it: the first archive of the revision had the
+# checksum `0d468656…`, the second `70819e8f…` — the same content, two
+# different names. An archive of the source whose checksum depends on the
+# moment of the build is not the *corresponding source* — the reader cannot
+# check it.
+git archive --format=tar --prefix="${PREFIX}/" \
     --add-virtual-file="${PREFIX}/${IDENTIFICATION_NAME}:${IDENTIFICATION}" \
-    -o "$ARCHIVE" "$REVISION"
+    "$REVISION" | gzip -n -9 > "$ARCHIVE"
 
 # --- The verification of the archive -------------------------------------
 # §6 asks for the *complete* corresponding source. The strongest proof that

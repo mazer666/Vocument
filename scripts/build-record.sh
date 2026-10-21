@@ -359,21 +359,30 @@ ARCHIVE_IDENTIFICATION="not-available"
 
 if bash scripts/release-source-archive.sh --output "$ARCHIVE_DIRECTORY" > "$OUTPUT_DIRECTORY/source-archive.log" 2>&1 \
    && bash scripts/release-source-archive.sh --output "$ARCHIVE_SECOND_DIRECTORY" >> "$OUTPUT_DIRECTORY/source-archive.log" 2>&1; then
-    ARCHIVE_FILE="$(find "$ARCHIVE_DIRECTORY" -name "*.tar.gz" | head -n 1)"
-    ARCHIVE_SECOND_FILE="$(find "$ARCHIVE_SECOND_DIRECTORY" -name "*.tar.gz" | head -n 1)"
-    ARCHIVE_PATH="${ARCHIVE_FILE#"$REPO_ROOT"/}"
-    ARCHIVE_SHA256="$(sha256_of "$ARCHIVE_FILE")"
-    ARCHIVE_SECOND_SHA256="$(sha256_of "$ARCHIVE_SECOND_FILE")"
-    ARCHIVE_BYTES="$(wc -c < "$ARCHIVE_FILE" | tr -d ' ')"
-    ARCHIVE_IDENTIFICATION="$(tar xzf "$ARCHIVE_FILE" -O --wildcards "*/SOURCE-IDENTIFICATION.txt" 2>/dev/null | head -n 8 | tr '\n' ' ' || echo "not-available")"
-    if [[ "$ARCHIVE_SHA256" == "$ARCHIVE_SECOND_SHA256" ]]; then
-        ARCHIVE_STATE="PASS"
-        ARCHIVE_REPRODUCIBLE="true"
-    else
+    # The archive of **this** revision — not the one that an earlier run left
+    # in the directory. A record that names an old archive describes an old
+    # build.
+    ARCHIVE_FILE="$(find "$ARCHIVE_DIRECTORY" -name "*-source-${REVISION:0:12}.tar.gz" | head -n 1)"
+    ARCHIVE_SECOND_FILE="$(find "$ARCHIVE_SECOND_DIRECTORY" -name "*-source-${REVISION:0:12}.tar.gz" | head -n 1)"
+    if [[ -z "$ARCHIVE_FILE" || -z "$ARCHIVE_SECOND_FILE" ]]; then
         ARCHIVE_STATE="FAIL"
-        ARCHIVE_REPRODUCIBLE="false"
+        ARCHIVE_REPRODUCIBLE="not-measured"
+        echo "    the source archive of $REVISION was not found after the build." >&2
+    else
+        ARCHIVE_PATH="${ARCHIVE_FILE#"$REPO_ROOT"/}"
+        ARCHIVE_SHA256="$(sha256_of "$ARCHIVE_FILE")"
+        ARCHIVE_SECOND_SHA256="$(sha256_of "$ARCHIVE_SECOND_FILE")"
+        ARCHIVE_BYTES="$(wc -c < "$ARCHIVE_FILE" | tr -d ' ')"
+        ARCHIVE_IDENTIFICATION="$(tar xzf "$ARCHIVE_FILE" -O --wildcards "*/SOURCE-IDENTIFICATION.txt" 2>/dev/null | head -n 8 | tr '\n' ' ' || echo "not-available")"
+        if [[ "$ARCHIVE_SHA256" == "$ARCHIVE_SECOND_SHA256" ]]; then
+            ARCHIVE_STATE="PASS"
+            ARCHIVE_REPRODUCIBLE="true"
+        else
+            ARCHIVE_STATE="FAIL"
+            ARCHIVE_REPRODUCIBLE="false"
+        fi
+        echo "    the source archive: $ARCHIVE_STATE (reproducible: $ARCHIVE_REPRODUCIBLE)"
     fi
-    echo "    the source archive: $ARCHIVE_STATE (reproducible: $ARCHIVE_REPRODUCIBLE)"
 else
     echo "    the source archive could not be built — the log names the reason." >&2
 fi
@@ -391,8 +400,8 @@ fact_string "source_archive.log" "target/build-record/source-archive.log"
 # A record that hides the limits of the environment is a record that lies.
 # Every limit is written down with the reason.
 NOT_RUN_ITEMS=(
-    "macOS application (Swift target)|no Swift toolchain and no macOS host in this environment|the sources of the target are in the archive (apps/macos), the build of the target is NOT RUN"
-    "Android package (Gradle)|no Android SDK and no JDK in this environment|the sources of the package are in the archive (apps/android), the build of the package is NOT RUN"
+    "macOS application (Swift target)|no macOS host and therefore no macOS SDK in this environment — SwiftUI, AppKit and CoreGraphics do not exist for Linux. The Swift compiler (6.0.3) parses every file of the application and builds the generated bindings; the application itself needs the SDK|the sources of the target are in the archive (apps/macos), the parse of every file is proved by scripts/check-swift-sources.py, the build of the application is NOT RUN"
+    "Android package (Gradle)|no Android SDK in this environment (a JDK is installed)|the sources of the package are in the archive (apps/android), the build of the package is NOT RUN"
     "macOS notarisation|no Apple identity and no macOS host in this environment|the commands are in scripts/release-macos.sh, the notarisation is NOT RUN"
     "Android release signature|no release key in this environment|the signing is left to Gradle, the signature of a release build is NOT RUN"
 )

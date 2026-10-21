@@ -45,6 +45,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- The **archive of the source was not reproducible**: the header of the gzip
+  stream carried the time of the build, so two archives of the same revision
+  had two different checksums — and the first measurement of the day had
+  hidden it, because the two builds happened within the same second. The
+  archive is compressed with `gzip -n` now, and the build record names the
+  archive of the revision it has just built instead of the first file it
+  finds in the directory.
 - The **report of the places of a document was cut off** at 200 lines. The
   note about a place that the walk could not examine is written **last** — a
   document with 201 pages that carry the removed text pushed that note out

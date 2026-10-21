@@ -55,6 +55,13 @@ that a reader can tell which engine produced a number.
 
 ## 2. The source archive (B-5)
 
+**The measurement of §2 was carried out on the revision
+`00ddd08b5f11a1d665a9b62443c19f8676025b39`.** A release publishes the
+archive of **its** revision — the archive is built again for the revision
+that is published, and the measurement of §2 is repeated for it. The
+numbers below therefore name the revision they belong to; the build record
+of every run names the revision it has built.
+
 ### 2.1 The build
 
 ```bash
@@ -156,14 +163,51 @@ cmp <a>/*.tar.gz <b>/*.tar.gz
 | The first | `0d468656774e48c3b00aa07a33f79ec918620577e72daceb1d32fb2bab608b47` |
 | The second | `0d468656774e48c3b00aa07a33f79ec918620577e72daceb1d32fb2bab608b47` |
 
-**The two archives are bit for bit the same.** The build of the archive is
-reproducible.
+**The two archives were bit for bit the same — and that was an accident of
+the measurement, not a property of the build.**
 
-That is not an accident: the content of the archive is the tree of the
-revision, and the identification carries nothing that depends on the moment
-of the build — no timestamp, no name of the machine. The measurement is
-repeated by every build record (`scripts/build-record.sh` builds the
-archive twice and writes both checksums into `target/build-record/build-record.json`).
+The build record of the evening of 2026-10-21 built the archive **twice**,
+with a pause of more than a second in between, and measured two different
+checksums:
+
+| The build | The SHA-256 |
+|---|---|
+| The first | `0d468656774e48c3b00aa07a33f79ec918620577e72daceb1d32fb2bab608b47` |
+| The second | `70819e8f1926bc05109f625b847eb50d0415ca14eae935f043e17cacd4a523b8` |
+
+**The cause:** the header of the gzip stream carries the **time of the
+build** (and the name of the file) unless the compression is written with
+`gzip -n`. Two builds that happen within the same second therefore have the
+same checksum — and two builds that happen in different seconds do not. The
+first measurement of the day (two builds, one second apart) had therefore
+measured the resolution of the clock and called it reproducibility.
+
+**The fix:** the archive is compressed with `gzip -n` now — the header
+carries no time and no name. The measurement of the current revision, with
+a pause of two seconds in between:
+
+| The build | The SHA-256 |
+|---|---|
+| The first | `ce8b606c3ddfb6170e66ad8af647993ead799d69e18ab0fc42e8d0f800d46141` |
+| The second | `ce8b606c3ddfb6170e66ad8af647993ead799d69e18ab0fc42e8d0f800d46141` |
+
+**Now the two archives are bit for bit the same — and that is a property of
+the build.** The content of the archive is the tree of the revision, the
+identification carries nothing that depends on the moment of the build, and
+the compression carries no clock. The measurement is repeated by every build
+record (`scripts/build-record.sh` builds the archive twice and writes both
+checksums into `target/build-record/build-record.json`).
+
+**Why it matters:** the archive of the source is the *offer* of the source
+that the AGPL asks for (§6). A reader who downloads it and computes the
+checksum has to arrive at the same number — with a checksum that depends on
+the moment of the build, the offer cannot be checked.
+
+**A second finding of the same kind:** the build record picked the archive
+of an **earlier** revision out of the directory, because it took the first
+file it found. The record named the archive of the revision `00ddd08` while
+it had just built the archive of the current one. The record now asks for
+the archive of the revision it has just built.
 
 ---
 
@@ -239,7 +283,7 @@ artefact by artefact:
 
 | What | Why | What was checked instead |
 |---|---|---|
-| The build of the macOS application (the Swift target) | there is no Swift toolchain and no macOS host in this environment | the sources of the target are in the archive (`apps/macos`, `Package.swift`, the generated `vocument_ffi.swift`), the checksum of the generated Swift binding is in the build record, and the Swift sources are checked by `scripts/check-swift-structure.py` |
+| The build of the macOS application (the Swift target) | there is no macOS host and therefore no macOS SDK — SwiftUI, AppKit and CoreGraphics do not exist for Linux. The Swift **compiler** (6.0.3) was installed on 2026-10-21: it parses every file of the application and builds the **generated bindings** (`swift build --target VocumentFFI` — green) | the sources of the target are in the archive (`apps/macos`, `Package.swift`, the generated `vocument_ffi.swift`), the checksum of the generated Swift binding is in the build record, and the Swift sources are checked by `scripts/check-swift-structure.py` and proved by `scripts/check-swift-sources.py` |
 | The build of the Android package (Gradle) | there is no Android SDK and no JDK in this environment | the sources of the package are in the archive (`apps/android`, the build files, the generated `vocument_ffi.kt`), the checksum of the generated Kotlin binding is in the build record, and the native libraries of the Android target are checked by `scripts/verify-android-native-libs.sh` |
 | The notarisation of the macOS bundle | there is no Apple identity and no macOS host | the commands are in `scripts/release-macos.sh`; the notarisation is a task of the project owner (B-2) |
 | The signature of the Android release build | there is no release key in this environment | the signing is left to Gradle; the key is a task of the project owner (B-3) |
@@ -294,7 +338,20 @@ that was HEAD when the record was written):
    `target/build-record/build-record.json` under `gates.repository`, and it
    was fixed by the parallel task in the commit `3ff973f`. It is **B-8** of
    the blockers — a task of the team, closed on 2026-10-21.
-4. **The environment has no Swift toolchain, no JDK and no Android SDK.**
-   The two application targets are therefore **NOT RUN** here; the sources
-   are in the archive, and the proof of the completeness of the source does
-   not depend on them.
+4. **The archive of the source was not reproducible** — the checksum of the
+   archive depended on the second in which it was built (§3). The first
+   measurement of the day had hidden it. The compression is written with
+   `gzip -n` now, and two builds with a pause in between carry the same
+   checksum. The build record measures it on every run — it is the record
+   that found it.
+5. **The build record named an old archive** — it took the first file it
+   found in the directory, and the directory still held the archive of an
+   earlier revision. The record now asks for the archive of the revision it
+   has just built. A record that describes an old build is worse than no
+   record.
+6. **The environment has no macOS SDK and no Android SDK**, so the two
+   application targets are **NOT RUN** here; the sources are in the archive,
+   and the proof of the completeness of the source does not depend on them.
+   The **Swift compiler** (6.0.3) was installed during the day and reads
+   every file of the application and builds the generated bindings — the
+   application itself needs the macOS SDK.
