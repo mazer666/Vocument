@@ -65,6 +65,13 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     /// not a line: a line that the application picks on its own would remove
     /// something the user never looked at.
     @Published var redactionSelection: FfiPdfRectMilliPt?
+    /// The page the marked place stands on.
+    ///
+    /// The place belongs to the page it was marked on. A rectangle of page 3
+    /// means nothing on page 5 — and a removal that did not remove the text
+    /// the user saw in the preview would be a removal behind the back of the
+    /// user. The redaction is therefore refused when the page has changed.
+    @Published var redactionSelectionPageIndex: UInt32?
     /// The text inside the marked rectangle.
     ///
     /// The user has to see what they marked before they remove it for good.
@@ -147,8 +154,17 @@ final class MacDocumentSessionCoordinator: ObservableObject {
                 searchHits = []
                 exportedJournalJsonPreview = nil
                 errorMessage = nil
+                // The warnings belong to the document that was open before.
+                securityWarnings = []
+                // The marked place belongs to the document that was open
+                // before.
+                clearRedactionSelection()
                 pageDescriptors = (try? coreClient.pageDescriptors(sessionId: snap.sessionId)) ?? []
                 transactionHistory = try? coreClient.transactionHistory(sessionId: snap.sessionId)
+                // The recovered document is a document: its findings and its
+                // comments have to be read, like the ones of an opened
+                // document.
+                refreshReviewState()
                 renderCurrentViewport()
                 loadThumbnailsAndInitialSearchBatch(sessionId: snap.sessionId)
                 saveNotificationMessage = result.message
@@ -195,6 +211,9 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     func jumpToPageIndex(_ index: UInt32) {
         guard index < pageCount else { return }
         currentPageIndex = index
+        // The marked place belongs to the page it was marked on: the preview
+        // of the place must not stand above another page.
+        clearRedactionSelection()
         renderCurrentViewport()
         // Die Notizen und die Befunde der Seite werden mit der Seite
         // geladen: der Nutzer sieht, was auf der Seite steht.
@@ -439,11 +458,16 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         transactionHistory = try? coreClient.transactionHistory(sessionId: snapshot.sessionId)
     }
 
-    private func refreshAfterMutation(
-        sessionId: String,
-        history: FfiTransactionHistorySnapshot
-    ) {
-        transactionHistory = history
+    /// Refreshes the picture of the document after a change of the document
+    /// (`REDACT-001`).
+    ///
+    /// The user has to see the result of the change. A page that still shows
+    /// the text that was just removed for good would be a lie: the user
+    /// would believe that the text is still in the document — or that the
+    /// removal never happened at all. The thumbnail of the page is refreshed
+    /// as well, so that the picture in the rail of the pages does not lie
+    /// either.
+    func refreshRenderedPageAfterChange(sessionId: String) {
         activeSession = try? coreClient.sessionSnapshot(sessionId: sessionId)
         if let thumb = try? coreClient.renderPageThumbnail(
             sessionId: sessionId,
@@ -454,6 +478,14 @@ final class MacDocumentSessionCoordinator: ObservableObject {
             thumbnailImages[currentPageIndex] = cgImg
         }
         renderCurrentViewport()
+    }
+
+    private func refreshAfterMutation(
+        sessionId: String,
+        history: FfiTransactionHistorySnapshot
+    ) {
+        transactionHistory = history
+        refreshRenderedPageAfterChange(sessionId: sessionId)
     }
 
     func adjustZoom(deltaMilli: Int) {

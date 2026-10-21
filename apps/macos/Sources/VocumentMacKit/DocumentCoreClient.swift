@@ -373,9 +373,11 @@ public struct DocumentCoreClient: Sendable {
     /// removed, the four checks of the verification and the places of the
     /// document where the same word still stands.
     ///
-    /// The client does not trust the `verified` flag of the report: it looks
-    /// at the four checks themselves. A check that was not carried out
-    /// (`notChecked`) is not a pass.
+    /// The client does not trust the `verified` flag of the report alone: it
+    /// looks at the four checks themselves. A check that was not carried out
+    /// (`notChecked`) is not a pass. The reasons of the core — **why** a
+    /// check could not be carried out — are part of the error, so that the
+    /// user learns the places at which the removal was refused.
     public func redactPageRegions(
         sessionId: String,
         pageIndex: UInt32,
@@ -392,19 +394,31 @@ public struct DocumentCoreClient: Sendable {
             ("the picture of the page", report.renderedPageClean),
             ("the bytes of the file", report.fileBytesClean),
         ]
-        for (what, check) in checks where check != .passed {
+        let failed = checks.filter { $0.1 != .passed }
+        if !failed.is_empty || !report.verified {
+            var details = "the redaction of the page \(pageIndex) could not be verified: "
+            if failed.is_empty {
+                details += "the report of the core does not promise the removal"
+            } else {
+                details += failed
+                    .map { "\($0.0) is not clean" }
+                    .joined(separator: ", ")
+            }
+            if !report.notCheckedReasons.isEmpty {
+                details += " — the reasons: "
+                details += report.notCheckedReasons.joined(separator: "; ")
+            }
             // The error of the boundary itself: a shell that catches the
             // errors of the core catches this one as well, and it cannot
             // mistake a refused redaction for a successful one.
-            throw DocumentCoreError.RedactionUnverified(
-                details: "the redaction of the page \(pageIndex) could not be verified: \(what) is not clean"
-            )
+            throw DocumentCoreError.RedactionUnverified(details: details)
         }
         return report
     }
 
     /// The warnings of a redaction: the places of the document where the same
-    /// text still stands, and the places that could not be read.
+    /// text still stands, the places that could not be read, and the reasons
+    /// why a check of the removal could not be carried out.
     ///
     /// The redaction removes what the user marked. The same word can stand
     /// somewhere else in the document — on another page, in another place of
@@ -412,8 +426,21 @@ public struct DocumentCoreClient: Sendable {
     /// that the text is gone. The shell **has to** show these warnings: a
     /// user who is told only that the redaction succeeded would believe that
     /// the word is gone from the document, while it is still in it.
+    ///
+    /// The reasons of the checks that could not be carried out belong to the
+    /// warnings as well: they name the places at which the removal could
+    /// not be proven.
     public static func redactionWarnings(_ report: FfiRedactionReport) -> [String] {
         var warnings: [String] = []
+        if !report.verified {
+            warnings.append(
+                "the removal could not be verified in every respect — the document "
+                + "is not free of the marked text"
+            )
+        }
+        for reason in report.notCheckedReasons {
+            warnings.append("a check of the removal could not be carried out: \(reason)")
+        }
         for place in report.remainingOccurrences {
             warnings.append(
                 "the same text still stands at \(place.location) (page \(place.pageIndex))"

@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)). **M2.5 — the licence, the distribution and the release readiness** carries the binding decision of the project owner (E1–E5) and prepares the artefacts; the signing, the notarisation and the legal clearance are still open (see [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md)).
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)). **M2.5 — the licence, the distribution and the release readiness** carries the binding decision of the project owner (E1–E5) and prepares the artefacts; the signing, the notarisation and the legal clearance are still open (see [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md)). The **fifth round** hardened the verification of the redaction once more — the walk names every place it could not examine, the report of the places is no longer cut off — proved the Swift sources statically and with the compiler, and brought the release preparation to the point where the source archive, the reproducibility and the build record exist (see [Round 5 Acceptance Record](docs/acceptance/ROUND-5-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -578,7 +578,7 @@ region, sees the report and the warnings) and the **clipboard**, which has to
 be cleared after a redaction. Both belong to the macOS slice of M2, which
 cannot be built or run here.
 
-Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
+Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [Round 4 Acceptance Record](docs/acceptance/ROUND-4-ACCEPTANCE.md), [Round 5 Acceptance Record](docs/acceptance/ROUND-5-ACCEPTANCE.md),
 [the two audits](docs/audit/redaction-security-audit.md),
 [the second audit on the document level](docs/audit/redteam-document-level.md),
 [the second audit along the chain](docs/audit/redteam-platform-chain.md),

@@ -143,61 +143,86 @@ pub fn scrub_words(
 }
 
 /// Reports the places of the document that still carry one of the words.
+///
+/// The report of the places must be **complete**: a list that stops in the
+/// middle does not say that the places behind it were examined. The sixth
+/// round of the red team measured it: a document with 201 pages that carry
+/// the secret and one place that the walk could not reach was reported as
+/// "verified", because the note about the unreadable place was written last
+/// and was pushed out of the report.
+///
+/// The buffer of the report therefore grows until the report fits. If it
+/// does not fit even then, the function fails — a check that could not name
+/// all the places could not be carried out, and the core turns that into a
+/// refusal.
 pub fn find_word_occurrences(
     pdf_bytes: &[u8],
     words: &[String],
 ) -> Result<Vec<PdfTextOccurrence>, PdfEngineError> {
+    const FIRST_CAPACITY: usize = 16 * 1024;
+    const MAX_CAPACITY: usize = 8 * 1024 * 1024;
+    const INCOMPLETE_REPORT: i32 = 5;
+
     let word_list = prepare_words(words)?;
     let word_pointers: Vec<*const c_char> = word_list.iter().map(|word| word.as_ptr()).collect();
 
-    let mut report = vec![0 as c_char; 16 * 1024];
-    let mut err_buf = [0 as c_char; 512];
+    let mut capacity = FIRST_CAPACITY;
+    loop {
+        let mut report = vec![0 as c_char; capacity];
+        let mut err_buf = [0 as c_char; 512];
 
-    // SAFETY: the pointers refer to the strings of `word_list`, the report
-    // buffer has room for the lines, the buffer of the document is valid.
-    let status = unsafe {
-        vocument_mupdf_find_text_occurrences(
-            pdf_bytes.as_ptr(),
-            pdf_bytes.len(),
-            word_pointers.as_ptr(),
-            word_pointers.len(),
-            report.as_mut_ptr(),
-            report.len(),
-            err_buf.as_mut_ptr(),
-            err_buf.len(),
-        )
-    };
+        // SAFETY: the pointers refer to the strings of `word_list`, the report
+        // buffer has room for the lines, the buffer of the document is valid.
+        let status = unsafe {
+            vocument_mupdf_find_text_occurrences(
+                pdf_bytes.as_ptr(),
+                pdf_bytes.len(),
+                word_pointers.as_ptr(),
+                word_pointers.len(),
+                report.as_mut_ptr(),
+                report.len(),
+                err_buf.as_mut_ptr(),
+                err_buf.len(),
+            )
+        };
 
-    if status != 0 {
-        let details = read_string(&err_buf);
-        return Err(PdfEngineError::EngineFailure {
-            details: if details.is_empty() {
-                format!("MuPDF failed to search the document (status {status})")
-            } else {
-                details
-            },
-        });
-    }
-
-    let text = read_string(&report);
-    let mut occurrences = Vec::new();
-    for line in text.lines() {
-        let mut parts = line.splitn(3, '\t');
-        let kind = parts.next().unwrap_or_default().to_owned();
-        let page_index = parts
-            .next()
-            .unwrap_or_default()
-            .parse::<i32>()
-            .unwrap_or(-1);
-        let location = parts.next().unwrap_or_default().to_owned();
-        if kind.is_empty() {
+        if status == INCOMPLETE_REPORT && capacity < MAX_CAPACITY {
+            // The report did not fit: a bigger buffer, a new walk.
+            capacity = (capacity * 4).min(MAX_CAPACITY);
             continue;
         }
-        occurrences.push(PdfTextOccurrence {
-            kind,
-            page_index,
-            location,
-        });
+
+        if status != 0 {
+            let details = read_string(&err_buf);
+            return Err(PdfEngineError::EngineFailure {
+                details: if details.is_empty() {
+                    format!("MuPDF failed to search the document (status {status})")
+                } else {
+                    details
+                },
+            });
+        }
+
+        let text = read_string(&report);
+        let mut occurrences = Vec::new();
+        for line in text.lines() {
+            let mut parts = line.splitn(3, '\t');
+            let kind = parts.next().unwrap_or_default().to_owned();
+            let page_index = parts
+                .next()
+                .unwrap_or_default()
+                .parse::<i32>()
+                .unwrap_or(-1);
+            let location = parts.next().unwrap_or_default().to_owned();
+            if kind.is_empty() {
+                continue;
+            }
+            occurrences.push(PdfTextOccurrence {
+                kind,
+                page_index,
+                location,
+            });
+        }
+        return Ok(occurrences);
     }
-    Ok(occurrences)
 }

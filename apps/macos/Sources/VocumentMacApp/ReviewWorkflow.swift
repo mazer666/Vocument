@@ -56,6 +56,9 @@ extension MacDocumentSessionCoordinator {
             searchHits = []
             exportedJournalJsonPreview = nil
             errorMessage = nil
+            // The warnings belong to the document that was open before.
+            // A new document has not been examined yet.
+            securityWarnings = []
             clearRedactionSelection()
             pageDescriptors = try coreClient.pageDescriptors(sessionId: session.sessionId)
             transactionHistory = try coreClient.transactionHistory(sessionId: session.sessionId)
@@ -206,6 +209,9 @@ extension MacDocumentSessionCoordinator {
                 selectionRect: rect
             )
             redactionSelection = rect
+            // The place belongs to the page it was marked on: the removal
+            // has to happen on the page the preview was taken from.
+            redactionSelectionPageIndex = currentPageIndex
             redactionSelectionText = selection.cleanedText
         } catch {
             errorMessage = "\(error)"
@@ -215,6 +221,7 @@ extension MacDocumentSessionCoordinator {
     /// Forgets the marked place.
     func clearRedactionSelection() {
         redactionSelection = nil
+        redactionSelectionPageIndex = nil
         redactionSelectionText = ""
     }
 
@@ -233,6 +240,14 @@ extension MacDocumentSessionCoordinator {
             errorMessage = "Mark a place on the page before you remove something."
             return
         }
+        // The marked place belongs to the page it was marked on. A removal
+        // on another page would remove a text the user never saw in the
+        // preview — the removal is therefore refused.
+        if let markedPage = redactionSelectionPageIndex, markedPage != currentPageIndex {
+            clearRedactionSelection()
+            errorMessage = "The marked place stands on another page — mark it again."
+            return
+        }
         let region = FfiRedactionRegion(
             x0MilliPt: selection.x0MilliPt,
             y0MilliPt: selection.y0MilliPt,
@@ -248,6 +263,10 @@ extension MacDocumentSessionCoordinator {
             securityWarnings = DocumentCoreClient.redactionWarnings(report)
             clearRedactionSelection()
             refreshReviewState()
+            // The user has to see the result of the removal: a page that
+            // still shows the text that was just removed for good would be a
+            // lie.
+            refreshRenderedPageAfterChange(sessionId: session.sessionId)
         } catch {
             errorMessage = "\(error)"
             // A refused redaction changes nothing: the document is as it was.

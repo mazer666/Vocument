@@ -39,7 +39,7 @@ struct ReviewPanelView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if let inspection = coordinator.reviewInspection {
                         Text(
-                            "Risky: \(inspection.risyCount) · "
+                            "Risky: \(inspection.riskyCount) · "
                             + "leaving the document: \(inspection.externalCount) · "
                             + "signed: \(inspection.isSigned ? "yes" : "no")"
                         )

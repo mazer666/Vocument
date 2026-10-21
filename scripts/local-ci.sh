@@ -4,6 +4,24 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# --- The build record ----------------------------------------------------
+# A release always leaves a record of what was built: the revision, the
+# tools, the tests, the gates, the source archive. The record is written
+# when the gate is green — and also when a step of the gate fails, because a
+# failed release has to leave a trace as well.
+BUILD_RECORD_ARGUMENTS=()
+RECORD_WRITTEN=0
+write_build_record() {
+    local exit_code="$1"
+    if [[ "$RECORD_WRITTEN" == "1" ]]; then
+        return 0
+    fi
+    RECORD_WRITTEN=1
+    ./scripts/build-record.sh --gate-exit-code "$exit_code" \
+        ${BUILD_RECORD_ARGUMENTS[@]+"${BUILD_RECORD_ARGUMENTS[@]}"} || true
+}
+trap 'write_build_record $?' EXIT
+
 ./scripts/validate-repo.sh
 
 echo "==> Checking the gate of the distribution: the licence, the notices, the offer of the source..."
@@ -15,10 +33,56 @@ echo "==> Auditing the licences of every component against the inventory..."
 echo "==> Checking the structure of the Swift sources..."
 python3 scripts/check-swift-structure.py
 
+echo "==> Proving the Swift sources: the grammar of Swift and the names against the generated bindings..."
+if [[ "${VOCUSMENT_SWIFT_CHECK_SKIP:-0}" == "1" ]]; then
+  echo "SKIPPED: the static proof of the Swift sources was skipped by the environment."
+  echo "         The proof is NOT RUN here and must not be reported as passed."
+else
+  # The proof is an *addition* to the gate: a missing grammar of Swift makes
+  # the proof NOT RUN (exit code 2) — it does not make the build of the
+  # product fail. A *defect* in the sources (exit code 1) does fail the gate.
+  set +e
+  python3 scripts/check-swift-sources.py --install-if-missing
+  SWIFT_PROOF_EXIT=$?
+  set -e
+  if [[ "$SWIFT_PROOF_EXIT" -eq 2 ]]; then
+    echo "NOT RUN: the static proof of the Swift sources could not be carried out here."
+    echo "         The Swift sources were NOT proved in this run — do not report them as proved."
+  elif [[ "$SWIFT_PROOF_EXIT" -ne 0 ]]; then
+    echo "ERROR: the static proof of the Swift sources found a defect (exit code $SWIFT_PROOF_EXIT)." >&2
+    exit "$SWIFT_PROOF_EXIT"
+  fi
+  set +e
+  python3 scripts/check-swift-sources.py --self-test
+  SWIFT_SELFTEST_EXIT=$?
+  set -e
+  if [[ "$SWIFT_SELFTEST_EXIT" -eq 2 ]]; then
+    echo "NOT RUN: the self-test of the Swift proof could not be carried out here."
+  elif [[ "$SWIFT_SELFTEST_EXIT" -ne 0 ]]; then
+    echo "ERROR: the self-test of the Swift proof failed (exit code $SWIFT_SELFTEST_EXIT)." >&2
+    exit "$SWIFT_SELFTEST_EXIT"
+  fi
+fi
+
 echo "==> Running Cargo workspace checks..."
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+
+# The output of the tests is kept: the build record reads the counts of the
+# tests out of it, so that the tests are not run twice for one gate run.
+mkdir -p "$REPO_ROOT/target/build-record"
+TEST_LOG="$REPO_ROOT/target/build-record/cargo-test.log"
+set +e
+cargo test --workspace > "$TEST_LOG" 2>&1
+TEST_EXIT_CODE=$?
+set -e
+cat "$TEST_LOG"
+if [[ "$TEST_EXIT_CODE" -ne 0 ]]; then
+    echo "ERROR: the tests of the workspace failed (exit code $TEST_EXIT_CODE)." >&2
+    echo "       The output is in $TEST_LOG." >&2
+    exit "$TEST_EXIT_CODE"
+fi
+BUILD_RECORD_ARGUMENTS=(--test-log "$TEST_LOG" --test-exit-code "$TEST_EXIT_CODE")
 
 echo "==> Verifying the secure redaction (M2.1): the content is removed, the removal is verified, the undo is refused..."
 cargo test -p vocument-pdf-mupdf redaction_tests
@@ -46,9 +110,18 @@ fi
 echo "✓ Generated UniFFI bindings are clean and in sync."
 
 if [[ -f "apps/macos/Package.swift" ]] && command -v swift >/dev/null 2>&1; then
-  echo "==> Building macOS Swift targets (VocumentMacApp & VocumentMacHandshakeCLI) and running Swift → UniFFI → Rust handshake..."
-  swift build --package-path apps/macos --product VocumentMacApp
-  swift run --package-path apps/macos vocument-mac-handshake
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "==> Building macOS Swift targets (VocumentMacApp & VocumentMacHandshakeCLI) and running Swift → UniFFI → Rust handshake..."
+    swift build --package-path apps/macos --product VocumentMacApp
+    swift run --package-path apps/macos vocument-mac-handshake
+  else
+    echo "==> Building the generated Swift bindings with the Swift compiler..."
+    swift build --package-path apps/macos --target VocumentFFI
+    echo "NOTE: the application itself is NOT built here — SwiftUI, AppKit and CoreGraphics"
+    echo "      are part of the macOS SDK, and this runner is not a Mac. The build of the"
+    echo "      application and the handshake are NOT RUN here and must not be reported"
+    echo "      as passed."
+  fi
 fi
 
 echo "==> Verifying the native Android libraries (dependency closure, SONAME, 16 KB page alignment)..."
@@ -63,6 +136,20 @@ else
 fi
 
 echo "==> Running real Android runtime & scan-capture verification (Gradle assembleDebug, apkanalyzer, unit tests, and Kotlin handshake)..."
-./scripts/verify-android-runtime.sh
+# The runtime proof of Android needs the Android SDK and the NDK. An
+# environment without them does not make the proof fail — it makes it
+# **NOT RUN**, and a NOT RUN proof is never reported as a passed one.
+ANDROID_SDK_DIRECTORY="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
+if [[ -d "$ANDROID_SDK_DIRECTORY" ]]; then
+  ./scripts/verify-android-runtime.sh
+else
+  echo "SKIPPED: the Android runtime proof needs the Android SDK ($ANDROID_SDK_DIRECTORY)."
+  echo "         The Android runtime proof is NOT RUN here and must not be reported as passed."
+fi
 
 echo "==> Local CI completed successfully."
+
+# The record of this run: the revision, the tools, the tests, the gates and
+# the source archive. It is written in `target/build-record/`.
+write_build_record 0
+trap - EXIT

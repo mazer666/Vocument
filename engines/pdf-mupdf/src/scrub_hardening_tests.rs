@@ -442,3 +442,130 @@ fn a_secret_that_is_encoded_is_found_and_emptied() {
         "the encoded secret must not survive the cleaning: {text}"
     );
 }
+
+/// Builds a document with many pages that carry the secret and one place
+/// that the walk cannot reach.
+///
+/// The places of the report are written in the order of the walk: the
+/// content of the pages comes first, the places that could not be examined
+/// come **last**. A report that is cut off before the end therefore loses
+/// exactly the note that says that a place was never looked into.
+fn document_with_many_places() -> Vec<u8> {
+    const PAGES: usize = 201;
+    const DEPTH: usize = 60;
+
+    // The numbering of the objects: 1 the catalogue, 2 the tree of the pages,
+    // 3 the font, 4..(4 + DEPTH) the chain, then two objects per page.
+    let chain_start = 4usize;
+    let chain_end = chain_start + DEPTH;
+    let first_page = chain_end;
+
+    let mut objects: Vec<Vec<u8>> = Vec::new();
+    objects.push(
+        format!("1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Extra {chain_start} 0 R >>\nendobj\n")
+            .into_bytes(),
+    );
+    let kids: Vec<String> = (0..PAGES)
+        .map(|index| format!("{} 0 R", first_page + index * 2))
+        .collect();
+    objects.push(
+        format!(
+            "2 0 obj\n<< /Type /Pages /Kids [{}] /Count {PAGES} >>\nendobj\n",
+            kids.join(" ")
+        )
+        .into_bytes(),
+    );
+    objects.push(
+        b"3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+    );
+
+    for index in 0..DEPTH {
+        let number = chain_start + index;
+        if index == DEPTH - 1 {
+            objects.push(format!("{number} 0 obj\n<< /Secret (GEHEIM) >>\nendobj\n").into_bytes());
+        } else {
+            objects.push(
+                format!("{number} 0 obj\n<< /Next {} 0 R >>\nendobj\n", number + 1).into_bytes(),
+            );
+        }
+    }
+
+    for index in 0..PAGES {
+        let page_number = first_page + index * 2;
+        let content_number = page_number + 1;
+        objects.push(
+            format!(
+                "{page_number} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 3 0 R >> >> /Contents {content_number} 0 R >>\nendobj\n"
+            )
+            .into_bytes(),
+        );
+        let content = "BT /F1 18 Tf 20 150 Td (GEHEIM) Tj ET\n";
+        let mut object = format!(
+            "{content_number} 0 obj\n<< /Length {} >>\nstream\n",
+            content.len()
+        )
+        .into_bytes();
+        object.extend_from_slice(content.as_bytes());
+        object.extend_from_slice(b"\nendstream\nendobj\n");
+        objects.push(object);
+    }
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A report that is cut off does not say that the places behind it were
+/// examined.
+///
+/// The sixth round of the red team measured the defect: a document with 201
+/// pages that carry the secret and one place that the walk could not reach
+/// was reported as "verified" — the note about the unreadable place was
+/// written last and was pushed out of the report by the limit of 200
+/// places. The report must be complete, or the caller has to know that it
+/// is not.
+#[test]
+fn the_report_of_the_places_is_not_cut_off() {
+    let bytes = document_with_many_places();
+
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+
+    let content = occurrences
+        .iter()
+        .filter(|place| place.kind == "content")
+        .count();
+    assert!(
+        content >= 201,
+        "the report must name every page that carries the secret, found {content}"
+    );
+
+    let uninspected: Vec<&str> = occurrences
+        .iter()
+        .filter(|place| place.kind == "uninspected")
+        .map(|place| place.location.as_str())
+        .collect();
+    assert!(
+        !uninspected.is_empty(),
+        "the place that the walk could not examine must be named — a report that is cut off \
+         before the end does not say that a place was examined"
+    );
+}

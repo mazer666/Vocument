@@ -37,8 +37,28 @@
 #include "mupdf_text_search.h"
 #include "mupdf_walk.h"
 
-/* The maximum number of reported places. */
-#define VOCUMENT_MAX_OCCURRENCES 200
+/* The safety limit of the number of reported places.
+ *
+ * The limit is a safety net against a pathological document, not a rule
+ * about the report: a report that is cut off is a report that lies. The
+ * places that could not be looked into are written **last** — a report that
+ * stops before them does not say that a place was examined. The sixth round
+ * of the red team measured it: a document with 201 pages that carry the
+ * secret and one place that the walk could not reach was reported as
+ * "verified", because the 201st place pushed the note about the unreadable
+ * place out of the report.
+ *
+ * The report therefore grows with the buffer of the caller. The limit below
+ * is only reached by a document with more than a hundred thousand places —
+ * and a report that reaches it is reported as incomplete. */
+#define VOCUMENT_MAX_OCCURRENCES 100000
+
+/* The status of a report that does not fit into the buffer of the caller.
+ *
+ * The caller has to know that the list of the places is incomplete: a check
+ * that could not name all the places could not be carried out, and a check
+ * that could not be carried out is not a pass. */
+#define VOCUMENT_STATUS_INCOMPLETE_REPORT 5
 
 /* The buffer that collects the report. */
 typedef struct {
@@ -371,5 +391,21 @@ int vocument_mupdf_find_text_occurrences(
     }
 
     fz_drop_context(ctx);
+    if (status == 0 && report.truncated) {
+        /* The list of the places does not fit into the buffer of the caller.
+           The report is incomplete — and an incomplete report must not look
+           like a complete one. The caller grows its buffer and asks again;
+           if the report does not fit even then, the check of the document
+           could not be carried out, and that is not a pass. */
+        if (err_buf && err_buf_len > 0) {
+            snprintf(
+                err_buf,
+                err_buf_len,
+                "%s",
+                "the list of the places of the document did not fit into the buffer of the report"
+            );
+        }
+        status = VOCUMENT_STATUS_INCOMPLETE_REPORT;
+    }
     return status;
 }

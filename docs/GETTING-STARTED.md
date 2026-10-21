@@ -198,7 +198,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Twenty-six traps that have already bitten once:**
+**Twenty-seven traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -327,6 +327,14 @@ decision can be checked without a device.
     carried the text were never examined. The product examines the document
     **before** the removal now and keeps the list of the places that
     carried the text (`places_before_removal`).
+27. **A report that is cut off is a report that lies.** The list of the
+    places of a document was limited to 200 lines — and the note about a
+    place that the walk could not examine is written **last**. A document
+    with 201 pages that carry the removed text pushed that note out of the
+    list: the list looked complete, and the redaction was reported as
+    verified while a place of the document had never been looked into. The
+    list grows with the document now, a list that does not fit is said to
+    be incomplete, and an incomplete list is a refused redaction.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in
@@ -478,7 +486,30 @@ edit produces; it does not prove that the code compiles. The compilation is
 **NOT RUN** in an environment without a Swift toolchain, and the acceptance
 record says so.
 
-Evidence: `docs/acceptance/M2.1-ACCEPTANCE.md`.
+**There is a second line now.** `scripts/check-swift-sources.py` parses every
+Swift file with the **real grammar of Swift** (`tree-sitter-swift`) and
+resolves the names of the application against the **generated bindings** —
+a member that the bindings do not know, an argument label that the
+declaration does not know, a type that nobody imports, a `switch` that does
+not cover every case. The check proves itself: `--self-test` breaks the
+sources in seven ways and demands that every break is found. The check is
+part of the gate; a missing grammar is a `NOT RUN` with a loud note, never
+a green claim.
+
+```bash
+python3 scripts/check-swift-sources.py --install-if-missing   # once
+python3 scripts/check-swift-sources.py                        # the proof
+python3 scripts/check-swift-sources.py --self-test             # the proof of the proof
+```
+
+The **compiler** is the second witness and not the first: on a machine with
+a Swift toolchain, `swiftc -parse <file>` reads every file of the product
+and `swift build --package-path apps/macos --target VocumentFFI` builds the
+generated bindings. The **application** needs the macOS SDK and stays
+`NOT RUN` on Linux.
+
+Evidence: `docs/acceptance/M2.1-ACCEPTANCE.md`,
+`docs/audit/swift-verification.md`.
 
 ## 7f. Where does the rail of the profession live on the disk?
 

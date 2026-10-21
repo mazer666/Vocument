@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **The static proof of the Swift sources** (`scripts/check-swift-sources.py`,
+  `scripts/check-swift-ast.mjs`): every Swift file is parsed with the real
+  grammar of Swift, the names of the application are resolved against the
+  generated bindings, and the check proves itself with a self-test that
+  breaks the sources in seven ways. The check is part of the gate; a
+  missing grammar is a `NOT RUN` with a loud note, never a green claim.
+- **The build record** (`scripts/build-record.sh`): every gate run leaves a
+  record of the revision, the tools, the counts of the tests, the gates and
+  the source archive — also when a step of the gate fails.
+- **The proof of the reproducibility** (`docs/releasing/REPRODUCIBILITY.md`):
+  the archive of the revision, the build from the archive in a fresh
+  directory, the comparison with the build of the working tree, and the
+  limits of the environment that carried it out.
 - **M2.1 — secure redaction with verification** (`docs/acceptance/M2.1-ACCEPTANCE.md`).
   The removal replaces the content instead of covering it, and the removal is
   verified four times: the text is gone, the search does not find it, the
@@ -32,7 +45,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
-- The verification of a redaction could report a **success that it could not
+- The **report of the places of a document was cut off** at 200 lines. The
+  note about a place that the walk could not examine is written **last** — a
+  document with 201 pages that carry the removed text pushed that note out
+  of the report, and the redaction was reported as **verified** while a
+  place of the document had never been looked into. The report grows with
+  the document now, a report that does not fit is said to be incomplete, and
+  an incomplete report is a refused redaction. The proof:
+  `the_report_of_the_places_is_not_cut_off`,
+  `a_place_that_the_walk_could_not_reach_is_named_even_in_a_long_document`.
+- The **macOS application did not compile**: the review panel read
+  `inspection.risyCount`, while the generated bindings know `riskyCount`.
+  Six more defects of the workflow were found and fixed with it — the page
+  was not drawn again after a removal (the user kept seeing the text that
+  had just been removed for good), the reasons of a refused redaction were
+  lost, the warnings of the previous document stood above the new one, the
+  recovered document was never read, and the marked place belonged to no
+  page: a rectangle of page 3 would have removed a text of page 5 that the
+  user never saw in the preview.
+- The **build record counted 105 tests instead of 255** — a greedy pattern
+  ate the first digit of every two-digit number. A record that counts wrong
+  is worse than no record.
+- The **verification of a redaction could report a
+  **success that it could not
   prove**: the walk stopped at its limit of the depth and at objects it
   could not read **without saying so**, and the encryption dictionary was
   not examined at all. The walk now writes down every place it could not
