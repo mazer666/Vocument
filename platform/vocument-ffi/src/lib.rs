@@ -4,6 +4,7 @@
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
 pub mod annotation_dto;
+pub mod build_info_dto;
 pub mod inspection_dto;
 pub mod interop_dto;
 pub mod job_dto;
@@ -85,12 +86,93 @@ pub use session_dto::{
 uniffi::setup_scaffolding!("vocument_ffi");
 
 static GLOBAL_SESSION_REGISTRY: OnceLock<SessionRegistry> = OnceLock::new();
+static RECOVERY_STORE: OnceLock<std::sync::Arc<vocument_core::recovery::RecoveryStore>> =
+    OnceLock::new();
+static DATA_DIRECTORY: OnceLock<std::path::PathBuf> = OnceLock::new();
+
+/// The directory in which Vocument keeps the data of the user.
+///
+/// The platform hands the application its own directory — the application
+/// support directory of macOS, the files directory of Android — before it
+/// opens the first document. The rail of the profession and the recovery
+/// store live there.
+pub(crate) fn data_directory() -> std::path::PathBuf {
+    DATA_DIRECTORY
+        .get()
+        .cloned()
+        .unwrap_or_else(vocument_core::config::default_data_directory)
+}
+
+/// Answers whether the registry was already used.
+pub(crate) fn session_registry_is_initialised() -> bool {
+    GLOBAL_SESSION_REGISTRY.get().is_some()
+}
+
+/// Remembers the directory of the data of the user.
+///
+/// The directory has to be handed over before the first document is opened:
+/// the recovery store is created in it, and a store that is created in the
+/// wrong directory would keep the document of the user in a place the
+/// platform did not choose. The function therefore refuses a second call.
+pub(crate) fn set_data_directory(directory: std::path::PathBuf) -> bool {
+    DATA_DIRECTORY.set(directory).is_ok()
+}
 
 pub(crate) fn session_registry() -> &'static SessionRegistry {
     GLOBAL_SESSION_REGISTRY.get_or_init(|| {
-        SessionRegistry::new(Box::new(MuPdfEngineAdapter::new()))
-            .with_rendered_page_reader(rendered_page_reader::default_rendered_page_reader())
+        let store = recovery_store();
+        SessionRegistry::with_broker_and_recovery(
+            Box::new(MuPdfEngineAdapter::new()),
+            std::sync::Arc::new(vocument_core::file_broker::ScopedLocalFileBroker::new()),
+            store.clone(),
+        )
+        .with_rendered_page_reader(rendered_page_reader::default_rendered_page_reader())
     })
+}
+
+/// The store that holds the recovery data of the user.
+///
+/// The store holds the document of the user in plain text. The directory has
+/// to belong to the user alone: a directory that a stranger can read or
+/// replace is no place for it. When the directory cannot be made private, the
+/// store refuses every write instead of handing the document of the user to
+/// somebody else — and the reason is kept, so that the application can tell
+/// the user that the crash recovery is not available in this run.
+///
+/// The fourth round of the red team found the error of the private root
+/// being printed to the standard error and then forgotten: the run continued
+/// as if the recovery were protected. The reason is now part of the answer
+/// of the library.
+fn recovery_store() -> &'static std::sync::Arc<vocument_core::recovery::RecoveryStore> {
+    RECOVERY_STORE.get_or_init(|| {
+        let root = data_directory().join(vocument_core::recovery::RECOVERY_DIR_NAME);
+        match vocument_core::recovery::RecoveryContainer::create_private_root(&root) {
+            Ok(()) => std::sync::Arc::new(vocument_core::recovery::RecoveryStore::new(root)),
+            Err(error) => {
+                let details = format!(
+                    "the recovery directory {} could not be made private: {error}. \
+                     The crash recovery of the documents is not available in this run.",
+                    root.display()
+                );
+                std::sync::Arc::new(vocument_core::recovery::RecoveryStore::disabled(
+                    root, details,
+                ))
+            }
+        }
+    })
+}
+
+/// Reports whether the crash recovery of the documents is available.
+///
+/// The application asks at the start and shows the reason as a warning when
+/// the recovery is not available: the user has to know that the documents
+/// are not protected against a crash in this run.
+pub(crate) fn recovery_status() -> recovery_dto::FfiRecoveryStatus {
+    let store = recovery_store();
+    recovery_dto::FfiRecoveryStatus {
+        available: !store.is_disabled(),
+        details: store.disabled_reason().unwrap_or_default().to_owned(),
+    }
 }
 
 /// Error type crossing the UniFFI boundary from `DocumentCore`.

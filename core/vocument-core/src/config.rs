@@ -7,6 +7,50 @@ const EMBEDDED_APP_DEFAULTS: &str = include_str!("../../../config/app-defaults.t
 const EMBEDDED_PERFORMANCE_BUDGETS: &str = include_str!("../../../config/performance-budgets.toml");
 const EMBEDDED_SECURITY_POLICY: &str = include_str!("../../../config/security-policy.toml");
 
+/// The directory in which Vocument keeps the data that belongs to the user.
+///
+/// The rail of the profession and the recovery store live there: the rail is
+/// a setting of the user and has to survive the restart of the application,
+/// and the recovery store holds the document of the user in plain text.
+///
+/// The default is a directory of the user and not the temporary directory of
+/// the system: a directory that everybody on the machine may write to is a
+/// place where a stranger can prepare the directory before the application
+/// does. The platform hands the application its own directory — the
+/// application support directory of macOS, the files directory of Android —
+/// with `configure_data_directory`; the default is the way out when the
+/// platform does not.
+pub fn default_data_directory() -> std::path::PathBuf {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = std::env::var_os("HOME") {
+            return std::path::PathBuf::from(home)
+                .join("Library")
+                .join("Application Support")
+                .join("Vocument");
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(app_data) = std::env::var_os("APPDATA") {
+            return std::path::PathBuf::from(app_data).join("Vocument");
+        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        if let Some(data_home) = std::env::var_os("XDG_DATA_HOME") {
+            return std::path::PathBuf::from(data_home).join("vocument");
+        }
+        if let Some(home) = std::env::var_os("HOME") {
+            return std::path::PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("vocument");
+        }
+    }
+    std::env::temp_dir().join("vocument")
+}
+
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("failed to parse configuration TOML: {0}")]

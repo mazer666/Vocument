@@ -4,6 +4,8 @@
 //! recovery contracts, and broker boundaries without any native UI dependencies.
 
 pub mod annotations;
+pub mod annotations_store;
+pub mod build_info;
 pub mod config;
 pub mod document_inspection;
 pub mod file_broker;

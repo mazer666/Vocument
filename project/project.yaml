@@ -1,10 +1,10 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host-m2.1-hardened-after-three-independent-audits-m2.4-comment-with-the-jurist-rail"
+  product_status: "m1-implemented-not-device-verified-m2-in-progress-four-slices-verified-on-host-m2.1-hardened-after-four-independent-audits-m2.4-comment-with-the-persistent-jurist-rail-licensing-decision-taken-app-store-readiness-in-preparation"
   current_milestone: "M2"
   current_milestone_name: "macOS Professional Review"
-  current_submilestone: "M2.3"
+  current_submilestone: "M2.5"
   completed_milestones:
     - "M0"
   completed_submilestones:
@@ -25,15 +25,18 @@ project:
     - "M1.5"
     # M2.1 covers the secure redaction with its verification in the core, the
     # engine and over the FFI boundary. The redaction was hardened after
-    # three independent adversarial audits: the word boxes of a turned page,
+    # four independent adversarial audits: the word boxes of a turned page,
     # the fragments of a partly covered word, the places of the document that
     # still carry the text, the rollback of a redaction that cannot be
     # verified, the rule that a marked region takes the whole word it
     # touches, the rollback after every error and the private checkpoints of
-    # the recovery store, and finally the systematic gap of the third audit:
-    # the search and the cleaning work with a list of known places and now
-    # walk through every object of the document. The macOS interface of the
-    # redaction is not part of M2.1 and stays open, see
+    # the recovery store, the systematic gap of the third audit (the search
+    # and the cleaning work with a list of known places and now walk through
+    # every object of the document) and the systematic gap of the fourth
+    # audit (the walk did not descend into the dictionary of a stream, so a
+    # copy of the text in a form object stayed in the document while the
+    # redaction reported success). The macOS interface of the redaction is
+    # not part of M2.1 and stays open, see
     # docs/acceptance/M2.1-ACCEPTANCE.md.
     - "M2.1"
     # M2.2 covers the inspection of the links and actions of a document: the
@@ -50,8 +53,12 @@ project:
     # M2.4 covers the comment of the reviewer and the rail of the profession:
     # a standard PDF /Text annotation with a popup, the rail of the
     # profession in the core, the caller sends the key and not a colour, and
-    # the note runs as a transaction. The surface of the applications stays
-    # open, see docs/acceptance/M2.4-ACCEPTANCE.md.
+    # the note runs as a transaction. The rail of the user is kept on the
+    # disk (0600, written atomically, a broken file is an error and not a
+    # silent fall back to the standard rail) and the key of the note travels
+    # with the document, so a change of the rail does not change the meaning
+    # of a note that was written before. The surface of the applications
+    # stays open, see docs/acceptance/M2.4-ACCEPTANCE.md.
     - "M2.4"
   license: "AGPL-3.0"
   contribution_model: "DCO"
@@ -117,3 +124,51 @@ documentation:
   architecture_version: "0.1"
   roadmap_version: "0.1"
   quality_version: "0.1"
+
+# The decision of the project owner about the licence and the distribution
+# (E1-E5). The decision is binding for every further step; the legal review
+# that has to precede every publication is still open (E5).
+distribution:
+  licence: "AGPL-3.0-or-later"
+  decision: "docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md"
+  decision_taken: "2026-10-21"
+  # E1: the whole product is open source under the AGPL-3.0-or-later.
+  # E2: no proprietary use, no commercial licence of MuPDF.
+  # E3: the product is free; services and support are optional.
+  # E4: no mandatory service, no cloud, no accounts, no telemetry; the
+  #      product is local-first. A server function later needs a new
+  #      architecture and licence review.
+  # E5: the final legal compliance review is a precondition of every
+  #      publication. An agent cannot give that clearance.
+  legal_clearance: "open"
+  inventory: "THIRD_PARTY.md"
+  notices: "LICENSES/THIRD-PARTY-NOTICES.txt"
+  build_from_source: "docs/releasing/BUILD-FROM-SOURCE.md"
+  release_process: "docs/releasing/RELEASE-PROCESS.md"
+  privacy_policy: "PRIVACY.md"
+  channels:
+    macos_direct:
+      status: "prepared-not-signed-not-notarised"
+      sandbox: true
+      notarisation: "NOT RUN (no macOS host, no Apple credentials)"
+    macos_app_store:
+      status: "blocked-by-licence-conflict"
+      note: "The terms of Apple collide structurally with the AGPL. The decision
+        stays with the project owner, see RISK-041. No store eligibility is
+        claimed."
+    android_google_play:
+      status: "prepared-not-signed"
+      note: "The build of the bundle exists; the signature and the upload are
+        NOT RUN."
+    android_direct_apk:
+      status: "prepared-not-signed"
+    source_archive:
+      status: "script-ready-not-built"
+  # The steps that still have to be taken before anything is handed out.
+  open_before_publication:
+    - "the legal compliance review of the project owner (E5)"
+    - "the decision about the Mac App Store (the conflict of Apple and the AGPL)"
+    - "the sign and the notarisation of the macOS bundle"
+    - "the sign of the Android artefacts"
+    - "the contact of the responsible person in PRIVACY.md"
+    - "the build of the source archive with the offer of the source"

@@ -873,6 +873,12 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -896,6 +902,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_build_info(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
@@ -903,6 +911,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
 fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path(
 ): Short
@@ -987,6 +997,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(
 fun uniffi_vocument_ffi_checksum_func_document_core_page_words(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_power_limits(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_recovery_status(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions(
 ): Short
@@ -1103,6 +1115,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: Rust
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_auto_orient_frame(`frame`: RustBuffer.ByValue,`preferPortrait`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_build_info(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_document_recovery(`sourceToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1110,6 +1124,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`
 fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_configure_data_directory(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1194,6 +1210,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_page_words(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_power_limits(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_recovery_status(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_redact_page_regions(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`regions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1395,6 +1413,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_build_info() != 37725.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1405,6 +1426,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory() != 38924.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856.toShort()) {
@@ -1531,6 +1555,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_recovery_status() != 1356.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 61983.toShort()) {
@@ -2089,6 +2116,84 @@ public object FfiConverterTypeFfiBrokeredFileDescriptor: FfiConverterRustBuffer<
             FfiConverterOptionalString.write(value.`osFileId`, buf)
             FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
             FfiConverterByteArray.write(value.`bytes`, buf)
+    }
+}
+
+
+
+/**
+ * The identification of the build that carries the library.
+ */
+data class FfiBuildInfo (
+    /**
+     * The name of the product.
+     */
+    var `productName`: kotlin.String, 
+    /**
+     * The version of the product.
+     */
+    var `version`: kotlin.String, 
+    /**
+     * The revision of the source the binary was built from.
+     */
+    var `sourceRevision`: kotlin.String, 
+    /**
+     * Whether the tree was clean when the build was made.
+     *
+     * `false` means: the binary cannot be tied to the revision alone.
+     */
+    var `sourceTreeClean`: kotlin.Boolean, 
+    /**
+     * The address under which the source of the revision can be obtained.
+     */
+    var `sourceUrl`: kotlin.String, 
+    /**
+     * The licence of the product.
+     */
+    var `licence`: kotlin.String, 
+    /**
+     * Why the binary may not be published — empty when it may.
+     */
+    var `publicationBlocker`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBuildInfo: FfiConverterRustBuffer<FfiBuildInfo> {
+    override fun read(buf: ByteBuffer): FfiBuildInfo {
+        return FfiBuildInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBuildInfo) = (
+            FfiConverterString.allocationSize(value.`productName`) +
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterBoolean.allocationSize(value.`sourceTreeClean`) +
+            FfiConverterString.allocationSize(value.`sourceUrl`) +
+            FfiConverterString.allocationSize(value.`licence`) +
+            FfiConverterString.allocationSize(value.`publicationBlocker`)
+    )
+
+    override fun write(value: FfiBuildInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`productName`, buf)
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterBoolean.write(value.`sourceTreeClean`, buf)
+            FfiConverterString.write(value.`sourceUrl`, buf)
+            FfiConverterString.write(value.`licence`, buf)
+            FfiConverterString.write(value.`publicationBlocker`, buf)
     }
 }
 
@@ -3821,6 +3926,58 @@ public object FfiConverterTypeFfiRecoveryActionResult: FfiConverterRustBuffer<Ff
 
 
 /**
+ * Whether the crash recovery of the documents is available in this run.
+ *
+ * The recovery store holds the document of the user in plain text. It
+ * therefore only writes into a directory that belongs to the user alone. If
+ * that directory cannot be made private, the store refuses every write — and
+ * the user has to learn about it, because the documents are then not
+ * protected against a crash.
+ *
+ * The fourth round of the red team found the error of the private root being
+ * printed to the standard error and then forgotten: the run continued as if
+ * the recovery were protected. The reason now travels to the application,
+ * which shows it as a warning.
+ */
+data class FfiRecoveryStatus (
+    /**
+     * Whether the recovery store may write.
+     */
+    var `available`: kotlin.Boolean, 
+    /**
+     * Why the recovery is not available — empty when it is.
+     */
+    var `details`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRecoveryStatus: FfiConverterRustBuffer<FfiRecoveryStatus> {
+    override fun read(buf: ByteBuffer): FfiRecoveryStatus {
+        return FfiRecoveryStatus(
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiRecoveryStatus) = (
+            FfiConverterBoolean.allocationSize(value.`available`) +
+            FfiConverterString.allocationSize(value.`details`)
+    )
+
+    override fun write(value: FfiRecoveryStatus, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`available`, buf)
+            FfiConverterString.write(value.`details`, buf)
+    }
+}
+
+
+
+/**
  * A place of the document that still carries a redacted word
  * (`REDACT-001`).
  *
@@ -3977,7 +4134,19 @@ data class FfiRedactionReport (
      */
     var `uninspectedPlaces`: List<FfiRedactionOccurrence>, 
     /**
+     * The reasons why a check could not be carried out.
+     *
+     * A check that could not be carried out is not a pass. The reason is
+     * named, so that the shell can tell the user **why** the removal could
+     * not be proven.
+     */
+    var `notCheckedReasons`: List<kotlin.String>, 
+    /**
      * The removal was verified in every respect.
+     *
+     * The flag is false when a check could not be carried out **or** when a
+     * place of the document could not be read: the tool does not promise
+     * what it cannot prove.
      */
     var `verified`: kotlin.Boolean, 
     /**
@@ -4005,6 +4174,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
             FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
+            FfiConverterSequenceString.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterULong.read(buf),
         )
@@ -4021,6 +4191,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`fileBytesClean`) +
             FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`remainingOccurrences`) +
             FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`uninspectedPlaces`) +
+            FfiConverterSequenceString.allocationSize(value.`notCheckedReasons`) +
             FfiConverterBoolean.allocationSize(value.`verified`) +
             FfiConverterULong.allocationSize(value.`revision`)
     )
@@ -4036,6 +4207,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.write(value.`fileBytesClean`, buf)
             FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`remainingOccurrences`, buf)
             FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`uninspectedPlaces`, buf)
+            FfiConverterSequenceString.write(value.`notCheckedReasons`, buf)
             FfiConverterBoolean.write(value.`verified`, buf)
             FfiConverterULong.write(value.`revision`, buf)
     }
@@ -6972,6 +7144,18 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Returns the identification of the build that carries the library.
+         */ fun `documentCoreBuildInfo`(): FfiBuildInfo {
+            return FfiConverterTypeFfiBuildInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_build_info(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Checks if a specific document by source path or token has an active crash recovery container.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCheckDocumentRecovery`(`sourceToken`: kotlin.String): FfiRecoverableDocumentInfo? {
@@ -7020,6 +7204,25 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_close_session(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    
+    
+
+        /**
+         * Hands Vocument the directory in which it keeps the data of the user
+         * (`ANNOT-001`, `RECOVERY-001`).
+         *
+         * The directory holds the rail of the profession and the recovery store. The
+         * platform calls the function before it opens the first document: the
+         * application support directory of macOS, the files directory of Android.
+         * The directory has to belong to the user alone — the recovery store holds
+         * the document of the user in plain text.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreConfigureDataDirectory`(`path`: kotlin.String)
+        = 
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_configure_data_directory(
+        FfiConverterString.lower(`path`),_status)
 }
     
     
@@ -7603,6 +7806,21 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
             return FfiConverterTypeFfiPowerLimits.lift(
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_power_limits(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the state of the crash recovery of the documents.
+         *
+         * The application calls it once at the start and shows `details` as a
+         * warning when the recovery is not available.
+         */ fun `documentCoreRecoveryStatus`(): FfiRecoveryStatus {
+            return FfiConverterTypeFfiRecoveryStatus.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_recovery_status(
         _status)
 }
     )

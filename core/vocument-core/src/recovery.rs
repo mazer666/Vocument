@@ -29,6 +29,14 @@ pub const RECOVERY_DIR_NAME: &str = "vocument_recovery";
 pub enum RecoveryError {
     #[error("I/O error in recovery container: {details}")]
     Io { details: String },
+    /// The directory of the recovery store does not belong to the user alone.
+    ///
+    /// The store holds the document of the user in plain text. A directory
+    /// that a stranger can read or replace is no place for it, so the store
+    /// refuses every write instead of handing the document of the user to
+    /// somebody else.
+    #[error("the recovery directory is not private: {details}")]
+    NotPrivate { details: String },
     #[error("JSON serialization error in recovery container: {details}")]
     Json { details: String },
     #[error("Recovery container integrity mismatch for document '{document_id}': {details}")]
@@ -168,6 +176,14 @@ impl RecoveryManifest {
 pub struct RecoveryContainer {
     container_dir: PathBuf,
     document_id: String,
+    /// Set when the root of the store could not be made private.
+    ///
+    /// The fourth round of the red team measured a directory of a stranger
+    /// that the check of the root accepted. A container below such a
+    /// directory is a place where a stranger can read the checkpoint of the
+    /// user — it holds the document in plain text. Every write is therefore
+    /// refused instead of performed.
+    disabled: Option<String>,
 }
 
 impl RecoveryContainer {
@@ -175,6 +191,36 @@ impl RecoveryContainer {
         Self {
             container_dir: root_dir.join(document_id),
             document_id: document_id.to_owned(),
+            disabled: None,
+        }
+    }
+
+    /// A container that refuses every write.
+    fn disabled(root_dir: &Path, document_id: &str, reason: String) -> Self {
+        Self {
+            container_dir: root_dir.join(document_id),
+            document_id: document_id.to_owned(),
+            disabled: Some(reason),
+        }
+    }
+
+    /// Answers whether this container refuses to write.
+    pub fn is_disabled(&self) -> bool {
+        self.disabled.is_some()
+    }
+
+    /// The reason why this container refuses to write, if it refuses.
+    pub fn disabled_reason(&self) -> Option<&str> {
+        self.disabled.as_deref()
+    }
+
+    /// Refuses the write when the directory of the store is not private.
+    fn guard_write(&self) -> Result<(), RecoveryError> {
+        match &self.disabled {
+            Some(reason) => Err(RecoveryError::NotPrivate {
+                details: reason.clone(),
+            }),
+            None => Ok(()),
         }
     }
 
@@ -203,6 +249,7 @@ impl RecoveryContainer {
     /// world-writable place like the temporary directory a stranger could
     /// prepare the directory before the application does.
     fn ensure_container_dir(&self) -> Result<(), RecoveryError> {
+        self.guard_write()?;
         if let Some(root) = self.container_dir.parent()
             && !root.as_os_str().is_empty()
         {
@@ -241,6 +288,70 @@ impl RecoveryContainer {
             if permissions.mode() & 0o077 != 0 {
                 permissions.set_mode(0o700);
                 fs::set_permissions(dir, permissions)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Creates the root directory of a store and makes it private.
+    ///
+    /// The store holds the document of the user in plain text. The directory
+    /// must belong to the user alone: a directory that anybody on the machine
+    /// may write to is a place where a stranger can prepare the directory
+    /// before the application does, and the application would then write the
+    /// document of the user into a directory that belongs to somebody else.
+    ///
+    /// The application therefore hands the store a directory of its own — the
+    /// application support directory of macOS, the files directory of Android.
+    pub fn create_private_root(root: &Path) -> Result<(), RecoveryError> {
+        fs::create_dir_all(root)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{MetadataExt, PermissionsExt};
+            let mut permissions = fs::metadata(root)?.permissions();
+            if permissions.mode() & 0o077 != 0 {
+                permissions.set_mode(0o700);
+                fs::set_permissions(root, permissions)?;
+            }
+            // The mode has to be private now — a directory that is still
+            // writable for anybody else is refused, not used.
+            let mode = fs::metadata(root)?.permissions().mode();
+            if mode & 0o022 != 0 {
+                return Err(RecoveryError::Io {
+                    details: format!(
+                        "the recovery directory {} is writable for others (mode {:o})",
+                        root.display(),
+                        mode
+                    ),
+                });
+            }
+            // The directory has to belong to the user who runs the
+            // application. A directory that belongs to somebody else may be
+            // replaced by that person: the recovery data — and with it the
+            // checkpoint that holds the document of the user in plain text —
+            // would not be in the hands of the user any more. The fourth
+            // round of the red team measured a directory of a stranger that
+            // the check accepted.
+            //
+            // The user of the process is read out of a file that the
+            // application writes itself: the kernel gives such a file to the
+            // effective user of the process. A directory that cannot be
+            // written to is refused as well — the recovery would not work
+            // there anyway.
+            let owner = fs::metadata(root)?.uid();
+            let probe = root.join(".owner_probe");
+            fs::write(&probe, b"vocument")?;
+            let probe_owner = fs::metadata(&probe)?.uid();
+            let _ = fs::remove_file(&probe);
+            if probe_owner != owner {
+                return Err(RecoveryError::Io {
+                    details: format!(
+                        "the recovery directory {} belongs to the user {} and not to the user of the application ({}).",
+                        root.display(),
+                        owner,
+                        probe_owner
+                    ),
+                });
             }
         }
         Ok(())
@@ -368,6 +479,7 @@ impl RecoveryContainer {
         revision: u64,
         pdf_bytes: &[u8],
     ) -> Result<(String, String), RecoveryError> {
+        self.guard_write()?;
         let dir = self.checkpoints_dir();
         fs::create_dir_all(&dir)?;
         Self::set_private_directory_permissions(&dir)?;
@@ -433,6 +545,7 @@ impl RecoveryContainer {
     /// a redaction those bytes still contain the removed content, so the
     /// checkpoints have to go with the redaction (`REDACT-001`).
     pub fn purge_checkpoints(&self) -> Result<(), RecoveryError> {
+        self.guard_write()?;
         let directory = self.checkpoints_dir();
         if directory.exists() {
             fs::remove_dir_all(&directory)?;
@@ -453,6 +566,7 @@ impl RecoveryContainer {
 
     /// Removes this document's recovery container from disk.
     pub fn purge(&self) -> Result<(), RecoveryError> {
+        self.guard_write()?;
         if self.container_dir.exists() {
             fs::remove_dir_all(&self.container_dir)?;
         }
@@ -464,11 +578,44 @@ impl RecoveryContainer {
 #[derive(Debug)]
 pub struct RecoveryStore {
     root_dir: PathBuf,
+    /// Set when the root of the store could not be made private.
+    ///
+    /// The store then refuses every write: the checkpoint holds the document
+    /// of the user in plain text, and a directory that belongs to somebody
+    /// else is no place for it. The reason travels with the store, so that
+    /// the user can be told why the crash recovery is not available.
+    disabled_reason: Option<String>,
 }
 
 impl RecoveryStore {
     pub fn new(root_dir: PathBuf) -> Self {
-        Self { root_dir }
+        Self {
+            root_dir,
+            disabled_reason: None,
+        }
+    }
+
+    /// A store that refuses every write.
+    ///
+    /// The store is used when the root directory could not be made private.
+    /// The documents of the user are then not written into that directory —
+    /// the crash recovery is simply not available in this run, and the
+    /// reason says why.
+    pub fn disabled(root_dir: PathBuf, reason: String) -> Self {
+        Self {
+            root_dir,
+            disabled_reason: Some(reason),
+        }
+    }
+
+    /// Answers whether the store refuses to write.
+    pub fn is_disabled(&self) -> bool {
+        self.disabled_reason.is_some()
+    }
+
+    /// The reason why the store refuses to write, if it refuses.
+    pub fn disabled_reason(&self) -> Option<&str> {
+        self.disabled_reason.as_deref()
     }
 
     pub fn default_app_store() -> Self {
@@ -481,7 +628,12 @@ impl RecoveryStore {
     }
 
     pub fn container_for(&self, document_id: impl AsRef<str>) -> RecoveryContainer {
-        RecoveryContainer::new(&self.root_dir, document_id.as_ref())
+        match &self.disabled_reason {
+            Some(reason) => {
+                RecoveryContainer::disabled(&self.root_dir, document_id.as_ref(), reason.clone())
+            }
+            None => RecoveryContainer::new(&self.root_dir, document_id.as_ref()),
+        }
     }
 
     /// Scans the recovery store and returns information on all unrecovered crashed sessions.
@@ -489,6 +641,11 @@ impl RecoveryStore {
         &self,
         broker: &dyn FileBroker,
     ) -> Vec<RecoverableDocumentInfo> {
+        // A store that refuses to write holds no recovery data of the user.
+        // The directory may belong to somebody else; it is not read.
+        if self.is_disabled() {
+            return Vec::new();
+        }
         let mut results = Vec::new();
         let entries = match fs::read_dir(&self.root_dir) {
             Ok(e) => e,

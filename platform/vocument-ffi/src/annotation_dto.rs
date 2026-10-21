@@ -116,6 +116,60 @@ pub fn document_core_jurist_palette() -> Vec<FfiJuristPaletteEntry> {
         .collect()
 }
 
+/// Hands Vocument the directory in which it keeps the data of the user
+/// (`ANNOT-001`, `RECOVERY-001`).
+///
+/// The directory holds the rail of the profession and the recovery store. The
+/// platform calls the function before it opens the first document: the
+/// application support directory of macOS, the files directory of Android.
+/// The directory has to belong to the user alone — the recovery store holds
+/// the document of the user in plain text.
+#[uniffi::export]
+pub fn document_core_configure_data_directory(path: String) -> Result<(), DocumentCoreError> {
+    if crate::session_registry_is_initialised() {
+        return Err(DocumentCoreError::ConfigurationError {
+            details: "the data directory has to be configured before the first document is opened"
+                .to_owned(),
+        });
+    }
+    let directory = std::path::PathBuf::from(path);
+    // The directory is remembered first: the recovery store is created in it,
+    // and a store that is created in the default directory would keep the
+    // document of the user in a place the platform did not choose.
+    if !crate::set_data_directory(directory.clone()) {
+        return Err(DocumentCoreError::ConfigurationError {
+            details: "the data directory has already been configured".to_owned(),
+        });
+    }
+    let recovery_root = directory.join(vocument_core::recovery::RECOVERY_DIR_NAME);
+    vocument_core::recovery::RecoveryContainer::create_private_root(&recovery_root).map_err(
+        |error| DocumentCoreError::ConfigurationError {
+            details: format!(
+                "the recovery directory {} could not be made private: {error}",
+                recovery_root.display()
+            ),
+        },
+    )?;
+    let palette_path = directory.join(vocument_core::annotations_store::JURIST_PALETTE_FILE_NAME);
+    // The rail of the user is read before the first note is written: a rail
+    // that the user has chosen has to be the rail of the session.
+    match vocument_core::annotations_store::JuristPaletteStore::new(&palette_path).load() {
+        Ok(Some(palette)) => {
+            let _ = session_registry().set_jurist_palette(palette);
+        }
+        Ok(None) => {}
+        Err(error) => {
+            return Err(DocumentCoreError::ConfigurationError {
+                details: format!(
+                    "the rail of the profession in {} could not be read: {error}",
+                    palette_path.display()
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// The standard rail of the profession (`ANNOT-001`).
 ///
 /// The shell offers it to the user as the way back: the rail of the user may
@@ -146,9 +200,20 @@ pub fn document_core_set_jurist_palette(
             }
         })?;
     session_registry()
-        .set_jurist_palette(palette)
+        .set_jurist_palette(palette.clone())
         .map_err(|error| DocumentCoreError::CommentRefused {
             details: error.to_string(),
+        })?;
+    // The rail of the user is a setting: it has to survive the restart of
+    // the application. The file is written atomically, and a file that cannot
+    // be written is an error — the user would lose the rail at the next
+    // start without being told.
+    let path =
+        crate::data_directory().join(vocument_core::annotations_store::JURIST_PALETTE_FILE_NAME);
+    vocument_core::annotations_store::JuristPaletteStore::new(&path)
+        .save(&palette)
+        .map_err(|error| DocumentCoreError::ConfigurationError {
+            details: format!("the rail of the profession could not be written: {error}"),
         })
 }
 

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Vocument</string>
+	<key>CFBundleExecutable</key>
+	<string>VocumentMacApp</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.vocument.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Vocument</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Vocument is distributed under the GNU Affero General Public License v3.0 or later. The complete source of this build is named in the file SOURCE.txt in this bundle.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+
+	<!-- The documents the app opens. Without this the app would not appear
+	     as a PDF reader in the file dialog of the system. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PDF document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.adobe.pdf</string>
+			<key>UTTypeDescription</key>
+			<string>PDF document</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pdf</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+
+	<!-- The camera is used for the scan. The app does not ask for the
+	     microphone and it does not talk to the network. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Vocument uses the camera to scan a document. The picture never leaves the device.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vocument can import a picture of a document that you choose. The picture never leaves the device.</string>
+
+	<!-- The identification of the build. The script of the release writes the
+	     revision of the source into this file; the value here is the
+	     placeholder of a build of the working tree. -->
+	<key>VocumentSourceRevision</key>
+	<string>__VOCUMENT_SOURCE_REVISION__</string>
+	<key>VocumentSourceURL</key>
+	<string>https://github.com/mazer666/Vocument</string>
+</dict>
+</plist>

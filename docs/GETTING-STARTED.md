@@ -394,6 +394,92 @@ popup**. Nothing private, nothing of Vocument: another tool reads the note.
 
 Evidence: `docs/acceptance/M2.4-ACCEPTANCE.md`.
 
+## 7f. Where does the rail of the profession live on the disk?
+
+The rail of the user — the colours with their names and their meanings — is a
+small JSON file in the data directory of the application:
+`jurist_palette.json`.
+
+**Three things to know about it:**
+
+1. **The file belongs to the user alone.** The store writes the file with the
+   mode `0600` and makes the directory `0700`. The store refuses to write into
+   a directory or over a file that belongs to somebody else, and it refuses
+   every path that leaves its directory (`..`) and every file whose name is
+   not exactly `jurist_palette.json`.
+2. **The write is atomic.** The rail is written into a staging file that
+   carries the identity of the process, and that file is renamed over the
+   rail. A crash therefore leaves the rail either complete or untouched — and
+   a rail that was cut in half is an **error with a name**, never a silent
+   fall back to the standard rail. A silent fall back would change the
+   meaning of every note of the reviewer without saying so.
+3. **The key travels with the note, not the colour.** The note carries the
+   key (`/VocumentPaletteKey` in the annotation). When the rail changes, a
+   note of the old rail keeps its key and is reported as not assignable —
+   it does not get the colour of a neighbouring key.
+
+Where the data directory is set: `document_core_configure_data_directory()`
+over the FFI boundary, `core/vocument-core/src/config.rs` in the core. The
+application sets it to its own sandbox (the application support directory of
+the app) — **not** to the temporary directory, because the temporary directory
+is predictable and can be prepared by somebody else.
+
+Evidence: `docs/audit/redteam-palette-and-storage.md` and
+`docs/acceptance/M2.4-ACCEPTANCE.md`.
+
+## 7g. How does the user learn that the recovery does not work?
+
+The recovery store holds the document of the user in plain text. It therefore
+only writes into a directory that belongs to the user alone. If that
+directory cannot be made private — it belongs to somebody else, or it is
+reached by others — the store **refuses every write** and says why.
+
+The refusal is not a message on the console. It crosses the FFI boundary:
+
+```
+document_core_recovery_status() -> FfiRecoveryStatus { available, details }
+```
+
+The macOS shell shows `details` above the document, the Android shell shows it
+as well. A user who does not know it would believe that a crash cannot cost
+them anything.
+
+The same rule applies to the **rail of the profession** and to the
+**checkpoints** of the recovery: they are the data of the user, and they live
+in the directory of the user.
+
+Evidence: `core/vocument-core/tests/recovery_privacy_tests.rs` and
+`docs/acceptance/M2.1-ACCEPTANCE.md`.
+
+## 7h. What has to be in a release, and what does the AGPL ask for?
+
+The project is open source under the **AGPL-3.0-or-later**. The decision of
+the project owner is written down in
+`docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md` (E1–E5). Four things
+follow from it for every artefact that is handed out:
+
+1. **The identification of the build.** Every binary names the source it was
+   built from: `document_core_build_info()` carries the product, the version,
+   the revision of the source, the licence and the source address. The shells
+   show it.
+2. **The texts of the licences.** `LICENSES/` holds the text of every
+   licence that travels with the product, and
+   `LICENSES/THIRD-PARTY-NOTICES.txt` holds the notice of the third-party
+   components. Both are copied into the bundle and into the package by the
+   release scripts. `scripts/generate-third-party-notices.sh` regenerates the
+   notice — the gate fails when the file in the repository is out of date.
+3. **The offer of the source.** `scripts/release-source-archive.sh` builds
+   the archive of the source with the offer of the AGPL-§6 and a checksum.
+4. **The inventory of the licences.** `scripts/audit-licenses.sh` reads the
+   manifests and the Android dependencies and fails when a component carries a
+   licence that is not known. `THIRD_PARTY.md` holds the result.
+
+**What is still open:** the legal compliance review of the project owner
+(E5). An agent cannot give that clearance, and no binary is published before
+it exists.
+
+The distribution gate that checks all of this: `scripts/validate-distribution.sh`.
+
 ## 8. Where do I add new kinds of jobs?
 
 Three places, in this order:

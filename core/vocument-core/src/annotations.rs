@@ -302,12 +302,16 @@ impl crate::session::SessionRegistry {
         Ok(comments
             .into_iter()
             .map(|mut comment| {
-                comment.palette_key = palette
-                    .entries()
-                    .iter()
-                    .find(|entry| entry.color_rgb == comment.color_rgb)
-                    .map(|entry| entry.key.clone())
-                    .unwrap_or_default();
+                // The key travels with the note. A note that carries none — a
+                // note of another tool — is looked up by its colour.
+                if comment.palette_key.is_empty() {
+                    comment.palette_key = palette
+                        .entries()
+                        .iter()
+                        .find(|entry| entry.color_rgb == comment.color_rgb)
+                        .map(|entry| entry.key.clone())
+                        .unwrap_or_default();
+                }
                 comment
             })
             .collect())

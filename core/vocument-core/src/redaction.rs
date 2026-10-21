@@ -119,7 +119,18 @@ pub struct RedactionReport {
     /// could not look into — the content of a container that is attached to
     /// the document, for example. The places are named here, so that the
     /// user can decide what to do with them.
+    ///
+    /// A place that could not be read means that the verification is
+    /// **incomplete**: the redaction is not a secure document, and it is
+    /// refused rather than reported as verified.
     pub uninspected_places: Vec<PdfTextOccurrence>,
+    /// The reasons why a check could not be carried out.
+    ///
+    /// A check that could not be carried out is not a pass. The reason is
+    /// named, so that the user learns **why** the redaction could not be
+    /// proven — a missing reader, a document that the engine could not read,
+    /// a place that could not be looked into.
+    pub not_checked_reasons: Vec<String>,
     /// The revision of the document after the redaction.
     pub revision: u64,
 }
@@ -129,11 +140,17 @@ impl RedactionReport {
     ///
     /// A redaction that cannot be verified is not a redaction. The caller has
     /// to treat an unverified redaction as a failure.
+    ///
+    /// A place of the document that could **not** be read makes the
+    /// verification incomplete: the redaction cannot claim that the text is
+    /// gone from a place nobody looked into. A tool that says "verified" while
+    /// a place was not read would make a promise it cannot keep.
     pub fn is_verified(&self) -> bool {
         self.text_layer_clean == RedactionCheck::Passed
             && self.search_index_clean == RedactionCheck::Passed
             && self.rendered_page_clean == RedactionCheck::Passed
             && self.file_bytes_clean == RedactionCheck::Passed
+            && self.uninspected_places.is_empty()
     }
 
     /// The checks that did not pass, as a readable list.
@@ -154,6 +171,9 @@ impl RedactionReport {
                     failures.push(format!("{name}: the check could not be carried out"))
                 }
             }
+        }
+        for reason in &self.not_checked_reasons {
+            failures.push(reason.clone());
         }
         failures
     }
@@ -372,6 +392,12 @@ impl SessionRegistry {
         }
 
         // The verification.
+        //
+        // The reasons why a check could not be carried out are collected here:
+        // a check that could not be carried out is not a pass, and a reason
+        // that is not named is an excuse instead of an information.
+        let mut not_checked_reasons: Vec<String> = Vec::new();
+
         let text_after = match self.with_session(session_id, |session| {
             Ok(session.actor.extract_page_text(page_index)?)
         }) {
@@ -452,7 +478,10 @@ impl SessionRegistry {
                             break;
                         }
                     }
-                    Err(_) => {
+                    Err(error) => {
+                        not_checked_reasons.push(format!(
+                            "the search index could not be searched for the removed word: {error}"
+                        ));
                         failed = true;
                         break;
                     }
@@ -519,8 +548,15 @@ impl SessionRegistry {
                 }
             }
             // No reader is wired: the check could not be carried out. That is
-            // not a pass.
-            _ => RedactionCheck::NotChecked,
+            // not a pass, and the reason is named: the user has to learn that
+            // the picture of the page was never looked at.
+            _ => {
+                not_checked_reasons.push(
+                    "the picture of the page was not read: no reader for the rendered page is wired"
+                        .to_owned(),
+                );
+                RedactionCheck::NotChecked
+            }
         };
 
         // The bytes of the file. The check is supplementary: a PDF can hold
@@ -623,6 +659,17 @@ impl SessionRegistry {
                         .collect();
                     uncleaned_places = inside.iter().map(|place| (*place).clone()).collect();
                     uninspected_places = uninspected.iter().map(|place| (*place).clone()).collect();
+                    if !uninspected_places.is_empty() {
+                        not_checked_reasons.push(format!(
+                            "the document could not be read completely: {} place(s) could not be looked into, among them {}",
+                            uninspected_places.len(),
+                            uninspected_places
+                                .iter()
+                                .map(|place| place.location.as_str())
+                                .collect::<Vec<&str>>()
+                                .join(", ")
+                        ));
+                    }
                     if !inside.is_empty() {
                         RedactionCheck::Failed
                     } else {
@@ -655,8 +702,13 @@ impl SessionRegistry {
                     }
                 }
                 // The engine cannot report the places. The check could not be
-                // carried out, and that is not a pass.
-                Err(_) => RedactionCheck::NotChecked,
+                // carried out, and that is not a pass. The reason is named.
+                Err(error) => {
+                    not_checked_reasons.push(format!(
+                        "the places of the document that could still carry the text could not be read: {error}"
+                    ));
+                    RedactionCheck::NotChecked
+                }
             }
         };
 
@@ -673,6 +725,7 @@ impl SessionRegistry {
             file_bytes_clean,
             remaining_occurrences,
             uninspected_places,
+            not_checked_reasons,
             revision,
         };
 

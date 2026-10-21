@@ -1,0 +1,774 @@
+==============================================================
+Red-Team-Runde 4 — Messprotokoll
+Stand: /workspace/vocument, Arbeitsbaum (uncommitted)
+==============================================================
+
+## 0. Der geprüfte Stand (Prüfsummen der angegriffenen Dateien)
+0a8584e64088daf9fb19e8ff37e4a7c3  core/vocument-core/src/redaction.rs
+06a8474c38a23c094f81e8754c8c5a5b  engines/pdf-mupdf/csrc/mupdf_walk.h
+53edac6b3cef22227b500ae8d402e453  engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c
+e10cd379e05bbeaf6bd21de4a2746b61  engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c
+8c7a7df2e4feaf37a0a9d4cf924f94fa  core/vocument-core/src/recovery.rs
+1743412320c2ce9086b2adeb0ee43656  platform/vocument-ffi/src/lib.rs
+
+## 1. Die Kette: Redaction ueber die exportierte FFI
+----------------------------------------------------------------
+=== base_one_page ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/base_one_page.pdf
+session: sess_0001_doc_70ea4ce5d13588ef
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/base_one_page.pdf
+  bytes                   = 509 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== base_two_pages ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/base_two_pages.pdf
+session: sess_0001_doc_27e09e04d5d244c3
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = [FfiRedactionOccurrence { kind: "content", page_index: 1, location: "content stream of the page" }]
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/base_two_pages.pdf
+  bytes                   = 846 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = true
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_id_utf16 ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_id_utf16.pdf
+session: sess_0001_doc_743962570a093566
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_id_utf16.pdf
+  bytes                   = 580 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = true
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_id_plain ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_id_plain.pdf
+session: sess_0001_doc_9ebca293271b25ef
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = [FfiRedactionOccurrence { kind: "content", page_index: 1, location: "content stream of the page" }]
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_id_plain.pdf
+  bytes                   = 892 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = true
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_orphan_annot ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_orphan_annot.pdf
+session: sess_0001_doc_28c081bdbeba4d94
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_orphan_annot.pdf
+  bytes                   = 2397 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_orphan_chain ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_orphan_chain.pdf
+session: sess_0001_doc_56855e73798ac0e4
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_orphan_chain.pdf
+  bytes                   = 2397 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_nested_form ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_nested_form.pdf
+session: sess_0001_doc_4c4c8f393fb638c9
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_nested_form.pdf
+  bytes                   = 883 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_objstm ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_objstm.pdf
+session: sess_0001_doc_22300130c263fa79
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_objstm.pdf
+  bytes                   = 529 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_objstm_xrefstream ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_objstm_xrefstream.pdf
+session: sess_0001_doc_cad000945c79494d
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_objstm_xrefstream.pdf
+  bytes                   = 573 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_image_exif ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_image_exif.pdf
+session: sess_0001_doc_4f6ecd804707a627
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_image_exif.pdf
+  bytes                   = 3485 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_zip_embeddedfiles ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_zip_embeddedfiles.pdf
+session: sess_0001_doc_c8531bc869c9e7b8
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: the document could not be read completely: 1 place(s) could not be looked into, among them /Root/Names/EmbeddedFiles/Names[1]/EF/F; the words that were removed: GEHEIM; this place could not be read: /Root/Names/EmbeddedFiles/Names[1]/EF/F (page -1, uninspected)
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_embeddedfiles.pdf
+  bytes                   = 1013 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = true
+  textlayer nachher      = ["GEHEIM"] (treffer: ["GEHEIM"])
+----------------------------------------------------------------
+=== attack_zip_associated_files ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_zip_associated_files.pdf
+session: sess_0001_doc_e51cd367f193101b
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_associated_files.pdf
+  bytes                   = 869 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_zip_af_first ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_zip_af_first.pdf
+session: sess_0001_doc_48da0f91a2ed92a4
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_af_first.pdf
+  bytes                   = 921 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_form_hidden ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_form_hidden.pdf
+session: sess_0001_doc_b90f2cd50337b1fc
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_hidden.pdf
+  bytes                   = 551 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_form_drawn ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_form_drawn.pdf
+session: sess_0001_doc_b5d4e40ae2f02c0e
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM", "GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_drawn.pdf
+  bytes                   = 883 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== attack_form_page1 ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/attack_form_page1.pdf
+session: sess_0001_doc_ab204e8e2320baba
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_page1.pdf
+  bytes                   = 1253 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+=== encrypted_aes128 ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/encrypted_aes128.pdf
+session: sess_0001_doc_b937511817d30140
+zielwort: "GEHEIM" box=[72000,116200,166680,166680]
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/encrypted_aes128.pdf
+  bytes                   = 898 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = false
+  textlayer nachher      = [] (treffer: [])
+----------------------------------------------------------------
+### das einbuchstabige Wort in einem verschluesselten Dokument
+=== encrypted_oneletter ===
+datei: /workspace/.mavis/plans/plan_25670a94/workspace/redteam/pdfs/encrypted_oneletter.pdf
+session: sess_0001_doc_a11a9a931a0314ed
+zielwort: "X" box=[72000,116200,88008,88008]
+warning: encryption password key too short (0)
+format error: aes padding out of range: 102
+warning: read error; treating as end of file
+warning: encryption password key too short (0)
+format error: aes padding out of range: 102
+warning: read error; treating as end of file
+warning: encryption password key too short (0)
+ERGEBNIS: Fehler
+  fehler: PDF requires an open password
+  ausgabe                 = /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/encrypted_oneletter.pdf
+  bytes                   = 970 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  geheimnis (ignoriert)   = true
+  textlayer nachher      = ["X"] (treffer: ["X"])
+
+## 2. Die Ausgabedateien: steckt das Geheimnis noch drin?
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_drawn.pdf (883 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'XObject': 2}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_hidden.pdf (551 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_page1 (neu gebaut).pdf (1253 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  *** Strom 2 enthaelt das Geheimnis (entpackt)
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 2, 'Font': 1, 'XObject': 2}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_form_page1.pdf (1253 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  *** Strom 2 enthaelt das Geheimnis (entpackt)
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 2, 'Font': 1, 'XObject': 2}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_id_plain.pdf (892 Bytes) ===
+  Klartext im Ganzen        : True
+  UTF-16-Hex im Ganzen      : False
+  *** Objekt 6 enthaelt das Geheimnis im Klartext
+  *** Strom 0 enthaelt das Geheimnis im Klartext
+  /ID im Trailer            : b"(GEHEIM)(c\\2100{\\304\\025Z\\310>;4\\216S`'`)"
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 2, 'Font': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_id_utf16 (neu gebaut).pdf (580 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : True
+  /ID im Trailer            : b'(<FEFF00470045004800450049004D>)<234E70E2F46CDBF3B38C77461D3BC8BD>'
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_id_utf16.pdf (580 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : True
+  /ID im Trailer            : b'(<FEFF00470045004800450049004D>)<F778ADF807729326539A09F39BDECE59>'
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_image_exif.pdf (3485 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'XObject': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_nested_form.pdf (883 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'XObject': 2}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_objstm.pdf (529 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_objstm_xrefstream.pdf (573 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_orphan_annot.pdf (2397 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_orphan_chain.pdf (2397 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_af_first (neu gebaut).pdf (921 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  *** Strom 0 ist ein ZIP-Archiv (ungepackt)
+        Archivdatei 'notiz.txt': Geheimnis darin: True
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'EmbeddedFile': 1, 'Filespec': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_af_first.pdf (921 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  *** Strom 0 ist ein ZIP-Archiv (ungepackt)
+        Archivdatei 'notiz.txt': Geheimnis darin: True
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'EmbeddedFile': 1, 'Filespec': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_associated_files.pdf (869 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  *** Strom 0 ist ein ZIP-Archiv (ungepackt)
+        Archivdatei 'notiz.txt': Geheimnis darin: True
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'EmbeddedFile': 1, 'Filespec': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_embeddedfiles (neu gebaut).pdf (1013 Bytes) ===
+  Klartext im Ganzen        : True
+  UTF-16-Hex im Ganzen      : False
+  *** Objekt 4 enthaelt das Geheimnis im Klartext
+  *** Strom 0 enthaelt das Geheimnis im Klartext
+  *** Strom 2 ist ein ZIP-Archiv (ungepackt)
+        Archivdatei 'notiz.txt': Geheimnis darin: True
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Font': 1, 'EmbeddedFile': 1, 'Filespec': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/attack_zip_embeddedfiles.pdf (1013 Bytes) ===
+  Klartext im Ganzen        : True
+  UTF-16-Hex im Ganzen      : False
+  *** Objekt 4 enthaelt das Geheimnis im Klartext
+  *** Strom 0 enthaelt das Geheimnis im Klartext
+  *** Strom 2 ist ein ZIP-Archiv (ungepackt)
+        Archivdatei 'notiz.txt': Geheimnis darin: True
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Font': 1, 'EmbeddedFile': 1, 'Filespec': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/base_one_page.pdf (509 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/base_two_pages.pdf (846 Bytes) ===
+  Klartext im Ganzen        : True
+  UTF-16-Hex im Ganzen      : False
+  *** Objekt 6 enthaelt das Geheimnis im Klartext
+  *** Strom 0 enthaelt das Geheimnis im Klartext
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 2, 'Font': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/encrypted_aes128.pdf (898 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  /ID im Trailer            : b'<D93E9424641CF1B54B0DEFEB5251BAE6><F64A2BAD727C9F4CCA7F66F28FE4FCF9>'
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/encrypted_oneletter.pdf (970 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  /ID im Trailer            : b'<3B433F3663E730A46DC0481FA5862E24><7199C2FE9E552B79D1045C46B3DCCDE5>'
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Font': 1}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/live_2000.pdf (237247 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Annot': 2000}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/live_32000.pdf (3903270 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Annot': 32000}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/live_500.pdf (58724 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Annot': 500}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/live_8000.pdf (957247 Bytes) ===
+  Klartext im Ganzen        : False
+  UTF-16-Hex im Ganzen      : False
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Annot': 8000}
+=== /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/probe_gc_orphan.pdf (2487 Bytes) ===
+  Klartext im Ganzen        : True
+  UTF-16-Hex im Ganzen      : False
+  *** Objekt 4 enthaelt das Geheimnis im Klartext
+  *** Strom 0 enthaelt das Geheimnis im Klartext
+  Objektarten               : {'Catalog': 1, 'Pages': 1, 'Page': 1, 'Font': 1}
+
+## 3. Die Sonde: der Walk ueber das Kreuzverzeichnis (mit und ohne Sweep)
+### attack_form_page1 — MIT Sweep
+  ANDERES /Page/Type                                                  
+  ANDERES /Page/MediaBox[0]                                           
+  ANDERES /Page/MediaBox[1]                                           
+  ANDERES /Page/MediaBox[2]                                           
+  ANDERES /Page/MediaBox[3]                                           
+  STROM   /Page/Resources/XObject/Fm0                                  traegt=nein
+  STROM   /Page/Contents                                               traegt=nein
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  ANDERES /Object[7]/Type                                             
+  ANDERES /Object[7]/Subtype                                          
+  ANDERES /Object[7]/BBox[0]                                          
+  ANDERES /Object[7]/BBox[1]                                          
+  ANDERES /Object[7]/BBox[2]                                          
+  ANDERES /Object[7]/BBox[3]                                          
+  ANDERES /Object[7]/Filter                                           
+  ANDERES /Object[7]/Length                                           
+  -> angebotene Stellen: 27, Zeichenketten: 0, Stroeme: 3, andere: 24, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_form_page1 — OHNE Sweep
+  ANDERES /Page/Type                                                  
+  ANDERES /Page/MediaBox[0]                                           
+  ANDERES /Page/MediaBox[1]                                           
+  ANDERES /Page/MediaBox[2]                                           
+  ANDERES /Page/MediaBox[3]                                           
+  STROM   /Page/Resources/XObject/Fm0                                  traegt=nein
+  STROM   /Page/Contents                                               traegt=nein
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  -> angebotene Stellen: 19, Zeichenketten: 0, Stroeme: 3, andere: 16, Doppelbesuche: 1
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_objstm_xrefstream — MIT Sweep
+  ANDERES /Object[5]/N                                                
+  ANDERES /Object[5]/First                                            
+  ANDERES /Object[5]/Filter                                           
+  ANDERES /Object[5]/Length                                           
+  ANDERES /Object[6]/Type                                             
+  ANDERES /Object[6]/Size                                             
+  ANDERES /Object[6]/W[0]                                             
+  ANDERES /Object[6]/W[1]                                             
+  ANDERES /Object[6]/W[2]                                             
+  ANDERES /Object[6]/Filter                                           
+  ANDERES /Object[6]/Length                                           
+  ANDERES /Object[8]/Type                                             
+  ANDERES /Object[8]/Subtype                                          
+  ANDERES /Object[8]/Rect[0]                                          
+  ANDERES /Object[8]/Rect[1]                                          
+  ANDERES /Object[8]/Rect[2]                                          
+  ANDERES /Object[8]/Rect[3]                                          
+  STRING  /Object[8]/Contents                                          len=6 traegt=JA  -> geleert
+  -> angebotene Stellen: 31, Zeichenketten: 1, Stroeme: 1, andere: 29, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_objstm_xrefstream — OHNE Sweep
+  ANDERES /Page/MediaBox[1]                                           
+  ANDERES /Page/MediaBox[2]                                           
+  ANDERES /Page/MediaBox[3]                                           
+  ANDERES /Page/Resources/Font/F1/Type                                
+  ANDERES /Page/Resources/Font/F1/Subtype                             
+  ANDERES /Page/Resources/Font/F1/BaseFont                            
+  STROM   /Page/Contents                                               traegt=JA
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  -> angebotene Stellen: 12, Zeichenketten: 0, Stroeme: 1, andere: 11, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_orphan_chain — MIT Sweep
+  ANDERES /Page/MediaBox[3]                                           
+  ANDERES /Page/Resources/Font/F1/Type                                
+  ANDERES /Page/Resources/Font/F1/Subtype                             
+  ANDERES /Page/Resources/Font/F1/BaseFont                            
+  ANDERES /Page/Resources/Font/F1/Encoding                            
+  STROM   /Page/Contents                                               traegt=JA
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  ANDERES /Object[98]/Type                                            
+  ANDERES /Object[98]/S                                               
+  STRING  /Object[98]/ActualText                                       len=14 traegt=JA  -> geleert
+  ANDERES /Object[99]/Type                                            
+  ANDERES /Object[99]/Subtype                                         
+  ANDERES /Object[99]/Rect[0]                                         
+  ANDERES /Object[99]/Rect[1]                                         
+  ANDERES /Object[99]/Rect[2]                                         
+  ANDERES /Object[99]/Rect[3]                                         
+  -> angebotene Stellen: 22, Zeichenketten: 1, Stroeme: 1, andere: 20, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_orphan_chain — OHNE Sweep
+  ANDERES /Page/MediaBox[2]                                           
+  ANDERES /Page/MediaBox[3]                                           
+  ANDERES /Page/Resources/Font/F1/Type                                
+  ANDERES /Page/Resources/Font/F1/Subtype                             
+  ANDERES /Page/Resources/Font/F1/BaseFont                            
+  ANDERES /Page/Resources/Font/F1/Encoding                            
+  STROM   /Page/Contents                                               traegt=JA
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  -> angebotene Stellen: 13, Zeichenketten: 0, Stroeme: 1, andere: 12, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_zip_af_first — MIT Sweep
+  ANDERES /Page/Type                                                  
+  ANDERES /Page/MediaBox[0]                                           
+  ANDERES /Page/MediaBox[1]                                           
+  ANDERES /Page/MediaBox[2]                                           
+  ANDERES /Page/MediaBox[3]                                           
+  ANDERES /Page/Resources/Font/F1/Type                                
+  ANDERES /Page/Resources/Font/F1/Subtype                             
+  ANDERES /Page/Resources/Font/F1/BaseFont                            
+  STROM   /Page/Contents                                               traegt=JA
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  ANDERES /Root/AF[0]/Type                                            
+  STRING  /Root/AF[0]/F                                                len=9 traegt=nein
+  STRING  /Root/AF[0]/UF                                               len=9 traegt=nein
+  STROM   /Root/AF[0]/EF/F                                             traegt=nein
+  STRING  /Root/Names/EmbeddedFiles/Names[0]                           len=9 traegt=nein
+  -> angebotene Stellen: 17, Zeichenketten: 3, Stroeme: 2, andere: 12, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### attack_zip_af_first — OHNE Sweep
+  ANDERES /Page/Resources/Font/F1/BaseFont                            
+  STROM   /Page/Contents                                               traegt=JA
+  ANDERES /Root/Type                                                  
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  ANDERES /Root/AF[0]/Type                                            
+  STRING  /Root/AF[0]/F                                                len=9 traegt=nein
+  STRING  /Root/AF[0]/UF                                               len=9 traegt=nein
+  STROM   /Root/AF[0]/EF/F                                             traegt=nein
+  STRING  /Root/Names/EmbeddedFiles/Names[0]                           len=9 traegt=nein
+  -> angebotene Stellen: 17, Zeichenketten: 3, Stroeme: 2, andere: 12, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+
+## 4. Die Sonde: was das Kreuzverzeichnis ueberhaupt liefert
+  Kreuzverzeichnis: 10 Eintraege
+    [0] num=0 typ=f ofs=0 (nicht ladbar)
+    [1] num=1 typ=n ofs=15 dict=1 strom=0 type=Catalog
+    [2] num=2 typ=n ofs=64 dict=1 strom=0 type=Pages
+    [3] num=3 typ=n ofs=127 dict=1 strom=0 type=Page
+    [4] num=4 typ=n ofs=253 dict=1 strom=0
+    [5] num=5 typ=n ofs=342 dict=1 strom=0 type=Font subtype=Type1
+    [6] num=6 typ=n ofs=412 dict=1 strom=0 type=XObject subtype=Form
+    [7] num=7 typ=n ofs=604 dict=1 strom=0 type=XObject subtype=Form
+    [8] num=8 typ=n ofs=810 dict=1 strom=0 type=Page
+    [9] num=9 typ=n ofs=962 dict=1 strom=0
+
+## 5. Die Sonde: dieselben Objekte, aber als indirekte Referenzen
+  Kreuzverzeichnis mit indirekten Referenzen:
+    [1] als indirekte Referenz: strom=0 (direkt: strom=0)
+    [2] als indirekte Referenz: strom=0 (direkt: strom=0)
+    [3] als indirekte Referenz: strom=0 (direkt: strom=0)
+    [4] als indirekte Referenz: strom=1 (direkt: strom=0)
+        Inhalt des Stromes traegt das Wort: JA (38 Bytes)
+    [5] als indirekte Referenz: strom=0 (direkt: strom=0)
+    [6] als indirekte Referenz: strom=1 (direkt: strom=0)
+        Inhalt des Stromes traegt das Wort: nein (27 Bytes)
+    [7] als indirekte Referenz: strom=1 (direkt: strom=0)
+        Inhalt des Stromes traegt das Wort: JA (38 Bytes)
+    [8] als indirekte Referenz: strom=0 (direkt: strom=0)
+    [9] als indirekte Referenz: strom=1 (direkt: strom=0)
+        Inhalt des Stromes traegt das Wort: nein (42 Bytes)
+
+## 6. Die Sonde: der Objektstrom und das Kreuzverzeichnis als Strom
+  Kreuzverzeichnis: 9 Eintraege
+    [0] num=0 typ=f ofs=0 (nicht ladbar)
+    [1] num=1 typ=n ofs=15 dict=1 strom=0 type=Catalog
+    [2] num=2 typ=n ofs=64 dict=1 strom=0 type=Pages
+    [3] num=3 typ=n ofs=121 dict=1 strom=0 type=Page
+    [4] num=4 typ=n ofs=247 dict=1 strom=0
+    [5] num=5 typ=n ofs=335 dict=1 strom=0 type=ObjStm
+    [6] num=6 typ=n ofs=545 dict=1 strom=0 type=XRef
+    [7] num=7 typ=o ofs=5 dict=1 strom=0 type=Font subtype=Type1
+    [8] num=8 typ=o ofs=5 dict=1 strom=0 type=Annot subtype=Text
+
+## 7. Die Sonde: das Verschluesselungswoerterbuch
+### MIT /Encrypt-Walk
+  STRING  /Encrypt/O                                                   len=32 traegt=nein
+  STRING  /Encrypt/U                                                   len=32 traegt=JA  -> geleert
+  -> angebotene Stellen: 25, Zeichenketten: 2, Stroeme: 1, andere: 22, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+### OHNE /Encrypt-Walk
+  ANDERES /Root/Pages/Type                                            
+  ANDERES /Root/Pages/Count                                           
+  -> angebotene Stellen: 12, Zeichenketten: 0, Stroeme: 1, andere: 11, Doppelbesuche: 0
+  -> Fundstellen im Inhaltsstrom: 1, in verborgenen Orten: 0
+
+## 8. Die Zeit: der Sweep ist quadratisch
+n=1000  mit Sweep: 0.0116 s je Walk   ohne Sweep: 0.0003 s je Walk
+n=4000  mit Sweep: 0.0517 s je Walk   ohne Sweep: 0.0003 s je Walk
+n=16000  mit Sweep: 0.3170 s je Walk   ohne Sweep: 0.0003 s je Walk
+n=32000  mit Sweep: 0.8340 s je Walk   ohne Sweep: 0.0003 s je Walk
+
+## 9. Die Zeit: die Redaction selbst (erreichbare Objekte)
+live_500: real	0m0.314s
+live_2000: real	0m0.625s
+live_8000: real	0m2.468s
+live_32000: real	0m13.779s
+
+## 10. Der Wiederherstellungsspeicher
+### A: das Wurzelverzeichnis gehoert einem fremden Benutzer (uid 1000), Modus 0700
+drwx------ 2 node node 4096 Oct 21 08:31 /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery
+create_private_root(/workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery)
+  Ergebnis: Ok (die Pruefung hat angenommen)
+  danach: 700 uid=1000
+
+### B: die Anwendung schreibt in dieses fremde Verzeichnis (als root)
+  session: sess_0001_doc_70ea4ce5d13588ef
+  Dokument: 614 Bytes
+  Wiederherstellungsspeicher:
+  DIR    700 uid=0     4096 Bytes  /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery/doc_70ea4ce5d13588ef
+  DIR    700 uid=0     4096 Bytes  /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery/doc_70ea4ce5d13588ef/checkpoints
+  FILE   600 uid=0      613 Bytes  /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery/doc_70ea4ce5d13588ef/checkpoints/checkpoint_rev_10.pdf
+  FILE   600 uid=0     9656 Bytes  /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery/doc_70ea4ce5d13588ef/journal.json
+  FILE   600 uid=0      939 Bytes  /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec/vocument/vocument_recovery/doc_70ea4ce5d13588ef/manifest.json
+
+### C: das Wurzelverzeichnis ist von jedem beschreibbar (Modus 0777) — die Anwendung laeuft als uid 1000
+drwxrwxrwx 2 root root 4096 Oct 21 08:31 /workspace/.mavis/plans/plan_25670a94/workspace/redteam/out/rec3/vocument/vocument_recovery
+vocument: the recovery directory could not be made private: I/O error in recovery container: Operation not permitted (os error 1). The crash recovery of the documents is not protected in this run.
+  session: sess_0001_doc_70ea4ce5d13588ef
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+vocument: the state of the document could not be secured for the crash recovery: I/O error in recovery container: Operation not permitted (os error 1)
+  Dokument: 614 Bytes
+  Wiederherstellungsspeicher:
+  (kein Verzeichnis: )

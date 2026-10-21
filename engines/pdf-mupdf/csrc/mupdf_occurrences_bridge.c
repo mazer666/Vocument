@@ -206,9 +206,12 @@ static int vocument_report_place(
            text inside it is compressed, and the redaction cannot look into
            it. The place is reported as uninspected — the redaction does not
            claim that the text is gone from there. */
-        if (!item->is_page_content &&
-            vocument_buffer_is_container(data, len) &&
-            strstr(item->path, "EmbeddedFiles") != NULL) {
+        /* A container is a container, wherever it hangs. The fourth round of
+           the red team showed that a test on the path is no test at all: the
+           same archive was refused under `/Names/EmbeddedFiles` and accepted
+           under `/AF`, and the redaction reported success while the secret
+           stayed in the archive. */
+        if (!item->is_page_content && vocument_buffer_is_container(data, len)) {
             vocument_report_line(
                 state->report, "uninspected", item->page_index, item->path
             );

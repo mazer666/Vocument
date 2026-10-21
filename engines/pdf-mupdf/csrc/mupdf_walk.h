@@ -5,7 +5,7 @@
  * string of the document: in the text of an annotation, in the popup of an
  * annotation, in the value of a form field, in the structure tree, in the
  * name tree, in the optional content, in the private data of a page, in the
- * metadata, in the XMP packet.
+ * metadata, in the XMP packet, in the identifier of the file.
  *
  * The second round of the red team worked with a list of known places. The
  * third round showed what a list misses: a popup that does not stand in
@@ -21,7 +21,21 @@
  *
  * The objects of a page are walked with the number of the page, so that the
  * caller can tell the visible text of a page from the hidden text of the
- * document. The content stream of a page is marked as such. */
+ * document. The content stream of a page is marked as such.
+ *
+ * The fourth round of the red team showed three holes of this walk, and
+ * they are closed here:
+ *
+ * 1. The dictionary of a stream was not walked. A form XObject carries its
+ *    resources in its dictionary, and a form XObject can carry the text of
+ *    the user in its content. The walk therefore walks the dictionary of a
+ *    stream as well, and offers the content of the stream.
+ * 2. The objects of the cross-reference table were handed out without their
+ *    indirect wrapper, so that `pdf_is_stream()` answered "no" for every one
+ *    of them and the content of a stream was never looked at. The sweep
+ *    hands them out as indirect references now.
+ * 3. The trailer was not walked at all, so that the identifier of the file
+ *    (`/ID`) was never seen. The trailer is walked now. */
 
 #ifndef VOCUMENT_MUPDF_WALK_H
 #define VOCUMENT_MUPDF_WALK_H
@@ -70,11 +84,16 @@ typedef struct {
     fz_context *ctx;
     vocument_walk_callback callback;
     void *user;
-    /* The numbers of the indirect objects that were visited. */
+    /* The numbers of the indirect objects that were visited, in a hash
+       table with open addressing. A linear list made the sweep over the
+       cross-reference table quadratic: 32,000 objects needed 0.83 s. */
     int *visited;
-    int visited_count;
     int visited_capacity;
+    int visited_count;
 } vocument_walk_t;
+
+/* The number of slots of the hash table at the start. */
+#define VOCUMENT_WALK_TABLE_MIN 256
 
 /* Prepares a walk. */
 static inline void vocument_walk_init(
@@ -87,8 +106,8 @@ static inline void vocument_walk_init(
     walk->callback = callback;
     walk->user = user;
     walk->visited = NULL;
-    walk->visited_count = 0;
     walk->visited_capacity = 0;
+    walk->visited_count = 0;
 }
 
 /* Releases the state of the walk. */
@@ -97,8 +116,82 @@ static inline void vocument_walk_free(vocument_walk_t *walk) {
         free(walk->visited);
         walk->visited = NULL;
     }
-    walk->visited_count = 0;
     walk->visited_capacity = 0;
+    walk->visited_count = 0;
+}
+
+/* The slot of an object number in the hash table. */
+static inline int vocument_walk_slot(int num, int capacity) {
+    unsigned int hash = (unsigned int)num * 2654435761u;
+    return (int)(hash % (unsigned int)capacity);
+}
+
+/* Remembers the number of an object.
+ *
+ * The table grows when it is half full, so that the search for a free slot
+ * stays short. A failure of the allocation is not fatal: the walk then
+ * remembers fewer objects, and the objects that are visited twice are
+ * offered twice — the caller does not care. */
+static inline void vocument_walk_remember(vocument_walk_t *walk, int num) {
+    if (num <= 0) {
+        return;
+    }
+    if (walk->visited_capacity == 0) {
+        int capacity = VOCUMENT_WALK_TABLE_MIN;
+        int *table = (int *)calloc((size_t)capacity, sizeof(int));
+        if (!table) {
+            return;
+        }
+        walk->visited = table;
+        walk->visited_capacity = capacity;
+    } else if ((walk->visited_count + 1) * 2 >= walk->visited_capacity) {
+        int capacity = walk->visited_capacity * 2;
+        int *table = (int *)calloc((size_t)capacity, sizeof(int));
+        if (!table) {
+            return;
+        }
+        for (int i = 0; i < walk->visited_capacity; i++) {
+            int entry = walk->visited[i];
+            if (entry <= 0) {
+                continue;
+            }
+            int slot = vocument_walk_slot(entry, capacity);
+            while (table[slot] != 0) {
+                slot = (slot + 1) % capacity;
+            }
+            table[slot] = entry;
+        }
+        free(walk->visited);
+        walk->visited = table;
+        walk->visited_capacity = capacity;
+    }
+    int slot = vocument_walk_slot(num, walk->visited_capacity);
+    while (walk->visited[slot] != 0 && walk->visited[slot] != num) {
+        slot = (slot + 1) % walk->visited_capacity;
+    }
+    if (walk->visited[slot] == 0) {
+        walk->visited[slot] = num;
+        walk->visited_count++;
+    }
+}
+
+/* Answers whether the object with this number was visited before. */
+static inline int vocument_walk_already_seen(vocument_walk_t *walk, int num) {
+    if (num <= 0 || walk->visited_capacity == 0) {
+        return 0;
+    }
+    int slot = vocument_walk_slot(num, walk->visited_capacity);
+    for (int probe = 0; probe < walk->visited_capacity; probe++) {
+        int entry = walk->visited[slot];
+        if (entry == 0) {
+            return 0;
+        }
+        if (entry == num) {
+            return 1;
+        }
+        slot = (slot + 1) % walk->visited_capacity;
+    }
+    return 0;
 }
 
 /* Answers whether the object was visited before, and remembers it.
@@ -115,21 +208,10 @@ static inline int vocument_walk_seen(vocument_walk_t *walk, pdf_obj *obj) {
     if (num <= 0) {
         return 0;
     }
-    for (int i = 0; i < walk->visited_count; i++) {
-        if (walk->visited[i] == num) {
-            return 1;
-        }
+    if (vocument_walk_already_seen(walk, num)) {
+        return 1;
     }
-    if (walk->visited_count >= walk->visited_capacity) {
-        int capacity = walk->visited_capacity ? walk->visited_capacity * 2 : 128;
-        int *grown = (int *)realloc(walk->visited, (size_t)capacity * sizeof(int));
-        if (!grown) {
-            return 0;
-        }
-        walk->visited = grown;
-        walk->visited_capacity = capacity;
-    }
-    walk->visited[walk->visited_count++] = num;
+    vocument_walk_remember(walk, num);
     return 0;
 }
 
@@ -229,6 +311,13 @@ static inline void vocument_walk_dict(
         if (is_page && name && strcmp(name, "Parent") == 0) {
             continue;
         }
+        /* The encryption dictionary holds the keys of the document, not the
+           text of the user. Emptying one of those keys would destroy the
+           document: the fourth round of the red team measured a redaction
+           of a one-letter word that broke the encryption of the file. */
+        if (name && strcmp(name, "Encrypt") == 0) {
+            continue;
+        }
         char sub[VOCUMENT_WALK_PATH_MAX];
         snprintf(sub, sizeof(sub), "%s/%s", path, name ? name : "?");
         /* The content of a page is the visible text of the page. The caller
@@ -274,11 +363,14 @@ static inline void vocument_walk_object(
     if (pdf_is_dict(ctx, obj)) {
         /* A stream is a dictionary with a content. Its content is a place of
            its own — the text of a page, the XMP packet, the file of an
-           attachment — and the entries of its dictionary carry no text. */
+           attachment — and the entries of its dictionary can carry the text
+           as well: the resources of a form XObject, for example, hold the
+           form XObjects that draw the text. Both are therefore walked. */
         if (pdf_is_stream(ctx, obj)) {
             vocument_walk_offer(
                 walk, obj, parent, key, index, page_index, is_page_content, path
             );
+            vocument_walk_dict(walk, obj, page_index, 0, depth, path);
             return;
         }
         vocument_walk_dict(walk, obj, page_index, is_page_content, depth, path);
@@ -291,11 +383,95 @@ static inline void vocument_walk_object(
     vocument_walk_offer(walk, obj, parent, key, index, page_index, is_page_content, path);
 }
 
+/* Answers whether the stream is a container of objects rather than content.
+ *
+ * An object stream holds the objects of the file in a compressed form; a
+ * cross-reference stream holds the cross-reference table. Neither carries
+ * text of the user — their content is the objects themselves, and those are
+ * walked on their own. A stream that is not a container is content: the
+ * text of a page, the XMP packet, the file of an attachment. */
+static inline int vocument_walk_is_container_stream(fz_context *ctx, pdf_obj *obj) {
+    pdf_obj *type = pdf_dict_get(ctx, obj, PDF_NAME(Type));
+    if (!pdf_is_name(ctx, type)) {
+        return 0;
+    }
+    const char *name = pdf_to_name(ctx, type);
+    if (!name) {
+        return 0;
+    }
+    return strcmp(name, "ObjStm") == 0 || strcmp(name, "XRef") == 0;
+}
+
+/* Walks through every object of the cross-reference table.
+ *
+ * The walk from the root reaches the objects that the document still uses. A
+ * PDF can carry objects that nothing refers to any more: an older version of
+ * a page, a note that was deleted but stayed in the file, an object that the
+ * writer left behind. A secret can stand in such an object, and the
+ * redaction has to see it — otherwise the file keeps a copy of the text that
+ * the user believes he has removed.
+ *
+ * The cross-reference table lists every object of the file, including the
+ * ones that nothing refers to. The objects that were already reached are
+ * skipped, so that every object is offered once.
+ *
+ * The objects are handed out as **indirect references**. The entry of the
+ * table holds the parsed object, and `pdf_is_stream()` works on the number
+ * of the object — a direct object has the number zero, and the answer is
+ * therefore always "no". With the indirect reference the content of the
+ * stream is found and cleaned. */
+static inline void vocument_walk_xref(
+    vocument_walk_t *walk,
+    pdf_document *pdf_doc
+) {
+    fz_context *ctx = walk->ctx;
+    int length = pdf_xref_len(ctx, pdf_doc);
+    for (int i = 0; i < length; i++) {
+        pdf_xref_entry *entry = pdf_get_xref_entry(ctx, pdf_doc, i);
+        if (!entry) {
+            continue;
+        }
+        /* `f` is a free entry, `n` a normal object, `o` an object that lives
+           in an object stream. */
+        if (entry->type != 'n' && entry->type != 'o') {
+            continue;
+        }
+        int num = entry->num;
+        if (num <= 0 || vocument_walk_already_seen(walk, num)) {
+            continue;
+        }
+        /* The object has to be read before it can be walked. */
+        pdf_xref_entry *cached = pdf_cache_object(ctx, pdf_doc, num);
+        if (!cached || !cached->obj) {
+            continue;
+        }
+        if (pdf_obj_num_is_stream(ctx, pdf_doc, num) &&
+            vocument_walk_is_container_stream(ctx, cached->obj)) {
+            continue;
+        }
+        char path[VOCUMENT_WALK_PATH_MAX];
+        snprintf(path, sizeof(path), "/Object[%d]", num);
+        /* The indirect reference: it carries the number of the object, and
+           with it the content of the stream. The number must **not** be
+           remembered here — the walk remembers it itself, and a number that
+           is remembered twice would make the walk skip the object. */
+        pdf_obj *reference = pdf_new_indirect(ctx, pdf_doc, num, entry->gen);
+        if (!reference) {
+            continue;
+        }
+        vocument_walk_object(walk, reference, NULL, NULL, -1, -1, 0, 0, path);
+        pdf_drop_obj(ctx, reference);
+    }
+}
+
 /* Walks through the whole document.
  *
  * The pages come first: the caller has to know the number of the page a
  * place lies on. The catalog and the document information follow; the pages
- * are not walked twice. */
+ * are not walked twice. The trailer follows, because it holds the
+ * identifier of the file (`/ID`), which is not an object of the table and
+ * would therefore be missed by the sweep. The cross-reference table comes
+ * last: it holds the objects that nothing refers to any more. */
 static inline void vocument_walk_document(
     vocument_walk_t *walk,
     pdf_document *pdf_doc
@@ -327,6 +503,14 @@ static inline void vocument_walk_document(
     vocument_walk_object(walk, root, NULL, NULL, -1, -1, 0, 0, "/Root");
     pdf_obj *info = pdf_dict_get(ctx, trailer, PDF_NAME(Info));
     vocument_walk_object(walk, info, NULL, NULL, -1, -1, 0, 0, "/Info");
+    /* The trailer itself: the identifier of the file (`/ID`) lives here, and
+       it is not an object of the table — the sweep cannot reach it. */
+    vocument_walk_object(walk, trailer, NULL, NULL, -1, -1, 0, 0, "/Trailer");
+    /* The encryption dictionary is **not** walked: it holds the keys of the
+       document, not the text of the user. Emptying one of those keys would
+       destroy the document. */
+    /* The objects that nothing refers to any more. */
+    vocument_walk_xref(walk, pdf_doc);
 }
 
 #endif /* VOCUMENT_MUPDF_WALK_H */

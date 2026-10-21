@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The App Sandbox.
+	     The Mac App Store asks for it; the direct distribution can use the
+	     same entitlements, so that one build serves both ways.
+
+	     The app needs the file access for the documents the user opens and
+	     for the directory in which it keeps the data of the user (the rail
+	     of the profession and the recovery store). The camera is needed for
+	     the scan.
+
+	     The network is **not** asked for: the app works offline. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+	<key>com.apple.security.device.camera</key>
+	<true/>
+</dict>
+</plist>

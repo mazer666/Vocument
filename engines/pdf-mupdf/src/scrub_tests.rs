@@ -375,3 +375,263 @@ fn the_places_that_a_list_of_known_places_does_not_reach_are_emptied() {
         "the text of the page must survive the scrubbing"
     );
 }
+
+/// Builds a document that carries an object which nothing refers to any
+/// more: an older version of a note that the writer left in the file.
+///
+/// The object stands in the cross-reference table, but no page, no catalog
+/// and no annotation refers to it. A secret that stands there is still in the
+/// file — and the user who removed it believes that it is gone.
+fn document_with_an_orphaned_object() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        // Das verwaiste Objekt: es steht im Kreuzverzeichnis, aber kein
+        // Objekt des Dokuments verweist auf es.
+        b"6 0 obj\n<< /Type /Annot /Subtype /Text /Rect [20 20 40 40] /Contents (GEHEIM) >>\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A secret that stands in an object which nothing refers to any more is
+/// still in the file. The search has to find it.
+#[test]
+fn a_secret_in_an_object_that_nothing_refers_to_is_found() {
+    let bytes = document_with_an_orphaned_object();
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIM".to_owned()])
+        .expect("the document must be readable");
+    assert!(
+        !occurrences.is_empty(),
+        "the secret in the orphaned object must be found"
+    );
+    assert!(
+        occurrences
+            .iter()
+            .any(|entry| entry.location.contains("/Object[6]")),
+        "the place of the secret must be named: {occurrences:?}"
+    );
+}
+
+/// And it has to be cleaned: a secret that stays in the file after the
+/// redaction is a secret that is not removed.
+#[test]
+fn a_secret_in_an_object_that_nothing_refers_to_is_emptied() {
+    let bytes = document_with_an_orphaned_object();
+    let (scrubbed, _report) =
+        scrub_words(&bytes, &["GEHEIM".to_owned()]).expect("the document must be scrubable");
+
+    let occurrences = find_word_occurrences(&scrubbed, &["GEHEIM".to_owned()])
+        .expect("the scrubbed document must be readable");
+    assert!(
+        occurrences.is_empty(),
+        "the secret must not stand in the file any more: {occurrences:?}"
+    );
+
+    // The rest of the document survived: the text of the page is still there.
+    let engine = crate::MuPdfEngineAdapter::new();
+    let document = engine
+        .open_pdf_bytes(&scrubbed)
+        .expect("the scrubbed document must be openable");
+    let text = document
+        .extract_page_text(0)
+        .expect("the text of the page must be extractable");
+    assert!(
+        text.words.iter().any(|word| word.text == "VERTRAULICH"),
+        "the text of the page must survive the scrubbing"
+    );
+}
+
+/// Builds a document whose form XObject carries a second copy of the word.
+///
+/// The copy stands in the content stream of an object that only the
+/// dictionary of the form XObject refers to. The fourth round of the red
+/// team showed that the walk did not descend into the dictionary of a
+/// stream — so the copy was never seen, and the redaction reported success
+/// while the word was still in the file.
+fn document_with_a_copy_in_a_form_xobject() -> Vec<u8> {
+    let page_content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let form_content = "BT /F1 18 Tf 20 100 Td (GEHEIM) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> /XObject << /Fm0 6 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", page_content.len()).into_bytes();
+            obj.extend_from_slice(page_content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        // The form XObject draws the inner form, which carries the copy. The
+        // inner form stands in the **dictionary** of the outer one — the
+        // place that the walk did not reach before.
+        b"6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /XObject << /Fm1 7 0 R >> >> /Length 20 >>\nstream\nq /Fm1 Do Q\nendstream\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("7 0 obj\n<< /Length {} >>\nstream\n", form_content.len()).into_bytes();
+            obj.extend_from_slice(form_content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A copy of the word in the content of a form XObject has to be found. It
+/// is not drawn on any page, so neither the text of the page nor the search
+/// over the pages sees it.
+#[test]
+fn a_copy_of_the_word_in_a_form_xobject_is_found() {
+    let bytes = document_with_a_copy_in_a_form_xobject();
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIM".to_owned()])
+        .expect("the document must be readable");
+    assert!(
+        !occurrences.is_empty(),
+        "the copy in the form XObject must be found"
+    );
+}
+
+/// The copy has to be **named**, even when it cannot be removed.
+///
+/// The content of a form XObject is a content stream, not a string: the
+/// scrub cannot empty it, and MuPDF's redaction does not descend into a
+/// form XObject. A copy that cannot be removed must therefore make the
+/// redaction **refuse** — a redaction that reports a success while the word
+/// is still in the file is the worst possible answer.
+#[test]
+fn a_copy_of_the_word_in_a_form_xobject_is_named_and_not_hidden() {
+    let bytes = document_with_a_copy_in_a_form_xobject();
+    let (_scrubbed, _report) =
+        scrub_words(&bytes, &["GEHEIM".to_owned()]).expect("the document must be scrubable");
+
+    // The copy is still in the document — and the search says so.
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIM".to_owned()])
+        .expect("the document must be readable");
+    assert!(
+        !occurrences.is_empty(),
+        "the copy must still be found — the redaction must not claim that it is gone"
+    );
+    assert!(
+        occurrences
+            .iter()
+            .any(|entry| entry.location.contains("Fm1")),
+        "the place of the copy must be named: {occurrences:?}"
+    );
+}
+
+/// Builds a document whose identifier of the file carries the word.
+///
+/// The identifier stands in the trailer. It is not an object of the
+/// cross-reference table, so a walk that only looks at the objects of the
+/// table never sees it — and the word stays in the file.
+fn document_with_the_word_in_the_file_identifier() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    // The identifier of the file: the word stands in it as a hex string, so
+    // that the search over the plain bytes of the file does not see it.
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R /ID [(<FEFF00470045004800450049004D>)<00112233445566778899AABBCCDDEEFF>] >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// The identifier of the file is a place of the document, and it has to be
+/// seen: the word that stands in it is still in the file.
+#[test]
+fn the_word_in_the_identifier_of_the_file_is_found() {
+    let bytes = document_with_the_word_in_the_file_identifier();
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIM".to_owned()])
+        .expect("the document must be readable");
+    assert!(
+        !occurrences.is_empty(),
+        "the word in the identifier of the file must be found"
+    );
+    assert!(
+        occurrences
+            .iter()
+            .any(|entry| entry.location.contains("/ID") || entry.location.contains("/Trailer")),
+        "the place of the word must be named: {occurrences:?}"
+    );
+}

@@ -158,6 +158,17 @@ fun MinimalReaderSessionScreen(
     var lastSavedPath by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    // The identification of the build. The AGPL-3.0 asks every binary to
+    // name the source it was built from, so the shell shows it.
+    val buildInfo = remember { coreBridge.buildInfo() }
+    // The state of the crash recovery of the documents (`RECOVERY-001`).
+    //
+    // The recovery store holds the document of the user in plain text. It
+    // therefore only writes into a directory that belongs to the user alone.
+    // If that directory cannot be made private, the store refuses every
+    // write — and the user has to learn about it, because the documents are
+    // then not protected against a crash.
+    val recoveryStatus = remember { coreBridge.recoveryStatus() }
     // The conflict of a save, if the file was changed outside the application.
     // The user decides how it is resolved (`FILELOCK-004`).
     var saveConflict by remember { mutableStateOf<FfiSaveConflict?>(null) }
@@ -380,6 +391,10 @@ fun MinimalReaderSessionScreen(
                 text = "Milestone ${handshake.milestone} — Baseline v${handshake.baselineVersion}",
                 style = MaterialTheme.typography.bodySmall
             )
+            Text(
+                text = "${buildInfo.productName} ${buildInfo.version} — source ${buildInfo.sourceRevision.take(12)} (${buildInfo.licence})",
+                style = MaterialTheme.typography.bodySmall
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = { openPdfLauncher.launch(arrayOf("application/pdf")) }) {
                 Text("Open PDF (SAF)…")
@@ -423,6 +438,16 @@ fun MinimalReaderSessionScreen(
             errorMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = msg, color = MaterialTheme.colorScheme.error)
+            }
+
+            // The documents are not protected against a crash in this run.
+            // The user has to know it (`RECOVERY-001`).
+            if (!recoveryStatus.available) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = recoveryStatus.details,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
 
             // A file that was changed outside the application is never

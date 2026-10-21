@@ -6,6 +6,12 @@ cd "$REPO_ROOT"
 
 ./scripts/validate-repo.sh
 
+echo "==> Checking the gate of the distribution: the licence, the notices, the offer of the source..."
+./scripts/validate-distribution.sh
+
+echo "==> Auditing the licences of every component against the inventory..."
+./scripts/audit-licenses.sh
+
 echo "==> Running Cargo workspace checks..."
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings

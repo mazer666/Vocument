@@ -134,3 +134,98 @@ fn the_rail_of_the_user_may_replace_the_default() {
     let prepared = prepare_comment(&palette, &comment("house", "Ein Hinweis")).expect("the note");
     assert_eq!(prepared.color_rgb, [12, 34, 56]);
 }
+
+/// The rail of the user has to survive the restart of the application: it is
+/// written to a file and read back.
+#[test]
+fn the_rail_of_the_user_survives_the_restart() {
+    let directory =
+        std::env::temp_dir().join(format!("vocument_palette_test_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&directory);
+    let path = directory.join("jurist_palette.json");
+    let store = vocument_core::annotations_store::JuristPaletteStore::new(&path);
+
+    // No file yet: the rail of the user does not exist.
+    assert_eq!(store.load().expect("the store must be readable"), None);
+
+    let palette = JuristPalette::new(vec![
+        JuristPaletteEntry::new("house", "Hausfarbe", "Die Farbe des Hauses.", [12, 34, 56]),
+        JuristPaletteEntry::new("note", "Hinweis", "Ein Hinweis.", [255, 230, 80]),
+    ])
+    .expect("the rail");
+    store.save(&palette).expect("the rail must be written");
+
+    let loaded = store
+        .load()
+        .expect("the store must be readable")
+        .expect("the rail must be there");
+    assert_eq!(loaded, palette, "the rail comes back unchanged");
+}
+
+#[test]
+fn the_file_of_the_rail_belongs_to_the_user_alone() {
+    let directory =
+        std::env::temp_dir().join(format!("vocument_palette_mode_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&directory);
+    let path = directory.join("jurist_palette.json");
+    let store = vocument_core::annotations_store::JuristPaletteStore::new(&path);
+    let palette = JuristPalette::default_palette();
+    store.save(&palette).expect("the rail must be written");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&path)
+            .expect("the file")
+            .permissions()
+            .mode();
+        assert_eq!(
+            mode & 0o077,
+            0,
+            "the file of the rail must not be readable for others: {mode:o}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&directory);
+}
+
+#[test]
+fn a_rail_of_a_newer_format_is_not_read() {
+    let directory =
+        std::env::temp_dir().join(format!("vocument_palette_version_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&directory);
+    std::fs::create_dir_all(&directory).expect("the directory");
+    let path = directory.join("jurist_palette.json");
+    std::fs::write(
+        &path,
+        r#"{"format_version": 99, "entries": [], "modified_unix_ms": 0}"#,
+    )
+    .expect("the file");
+
+    let store = vocument_core::annotations_store::JuristPaletteStore::new(&path);
+    let error = store
+        .load()
+        .expect_err("a rail of an unknown version is refused");
+    assert!(
+        error.to_string().contains("99"),
+        "the error names the version: {error}"
+    );
+    let _ = std::fs::remove_dir_all(&directory);
+}
+
+#[test]
+fn a_broken_rail_is_an_error_and_not_a_silent_standard_rail() {
+    let directory =
+        std::env::temp_dir().join(format!("vocument_palette_broken_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&directory);
+    std::fs::create_dir_all(&directory).expect("the directory");
+    let path = directory.join("jurist_palette.json");
+    std::fs::write(&path, "{ this is not json").expect("the file");
+
+    let store = vocument_core::annotations_store::JuristPaletteStore::new(&path);
+    let error = store.load().expect_err("a broken rail is an error");
+    assert!(
+        error.to_string().contains("jurist_palette.json"),
+        "the error names the file: {error}"
+    );
+    let _ = std::fs::remove_dir_all(&directory);
+}

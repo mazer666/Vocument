@@ -24,6 +24,7 @@ struct RawMuPdfComment {
     annotation_id: [c_char; 128],
     author: [c_char; 256],
     contents: [c_char; 2048],
+    palette_key: [c_char; 64],
 }
 
 impl Default for RawMuPdfComment {
@@ -40,6 +41,7 @@ impl Default for RawMuPdfComment {
             annotation_id: [0; 128],
             author: [0; 256],
             contents: [0; 2048],
+            palette_key: [0; 64],
         }
     }
 }
@@ -115,7 +117,10 @@ fn raw_to_comment(raw: &RawMuPdfComment, fallback_page_index: u32) -> PdfComment
             x1_milli_pt: raw.x1_milli_pt,
             y1_milli_pt: raw.y1_milli_pt,
         },
-        palette_key: String::new(),
+        // The key of the rail travels with the note. A note that was written
+        // by another tool carries none: the core then looks the colour up in
+        // the rail.
+        palette_key: c_buf_to_optional_string(&raw.palette_key).unwrap_or_default(),
         color_rgb: [raw.color_r, raw.color_g, raw.color_b],
         contents: c_buf_to_optional_string(&raw.contents).unwrap_or_default(),
         author: c_buf_to_optional_string(&raw.author),
@@ -217,6 +222,7 @@ pub fn add_comment_annotation_to_pdf(
         copy_str_to_c_buf(author, &mut raw.author);
     }
     copy_str_to_c_buf(&annotation.contents, &mut raw.contents);
+    copy_str_to_c_buf(&annotation.palette_key, &mut raw.palette_key);
 
     let mut out_ptr: *mut u8 = std::ptr::null_mut();
     let mut out_len: usize = 0;

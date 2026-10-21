@@ -34,87 +34,119 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var pendingRecovery: FfiRecoverableDocumentInfo?
     @Published var saveNotificationMessage: String?
     @Published var errorMessage: String?
+    /// The findings of the document: the links and the actions, the
+    /// attachments and the signatures (`LINKSEC-001`, `ATTACH-001`,
+    /// `SIGREV-001`).
+    @Published var reviewInspection: FfiDocumentInspection?
+    /// The comments of the reviewer on the current page (`ANNOT-001`).
+    @Published var pageComments: [FfiCommentAnnotation] = []
+    /// The rail of the profession: the colours and their meanings
+    /// (`ANNOT-001`).
+    @Published var juristPalette: [FfiJuristPaletteEntry] = []
+    /// The text of the comment the user is writing.
+    @Published var commentDraft: String = ""
+    /// The key of the rail the new comment is written with.
+    @Published var commentPaletteKey: String = "note"
+    /// The warnings of the last redaction: the places of the document where
+    /// the same text still stands, and the places that could not be read
+    /// (`REDACT-002`).
+    ///
+    /// The warnings have to reach the user. A user who sees only "the
+    /// redaction succeeded" would believe that the word is gone from the
+    /// document while it is still in it.
+    @Published var securityWarnings: [String] = []
+    /// The identification of the build. The AGPL-3.0 asks every binary to
+    /// name the source it was built from, so the shell shows it.
+    let buildInfo: FfiBuildInfo
+    /// The warning that the crash recovery of the documents is not available
+    /// (`RECOVERY-001`).
+    ///
+    /// The recovery store holds the document of the user in plain text. It
+    /// therefore only writes into a directory that belongs to the user alone.
+    /// If that directory cannot be made private, the store refuses every
+    /// write — and the user has to learn about it, because the documents are
+    /// then not protected against a crash. A user who does not know that
+    /// would believe that a crash cannot cost them anything.
+    @Published var recoveryWarning: String?
 
     init() {
+        buildInfo = coreClient.buildInfo()
         setupSystemMemoryPressureObserver()
+        configureDataDirectory()
+        refreshJuristPalette()
+        refreshRecoveryStatus()
     }
 
-    var pageCount: UInt32 {
-        activeSession?.pdfSummary.pageCount ?? 0
-    }
-
-    var currentLogicalLabel: String {
-        pageDescriptors.first(where: { $0.pageIndex == currentPageIndex })?.logicalLabel
-            ?? "\(currentPageIndex + 1)"
-    }
-
-    var prefetchedPagesSummary: String {
-        prefetchedPages.isEmpty
-            ? "none"
-            : prefetchedPages.map { String($0 + 1) }.joined(separator: ", ")
-    }
-
-    func openDocumentViaPanel() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.pdf]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        if panel.runModal() == .OK, let url = panel.url {
-            openDocument(at: url)
+    /// Reads the state of the recovery store and shows the reason when the
+    /// documents are not protected against a crash.
+    func refreshRecoveryStatus() {
+        let status = coreClient.recoveryStatus()
+        if status.available {
+            recoveryWarning = nil
+        } else {
+            recoveryWarning = status.details
         }
     }
 
-    func openDocument(at url: URL, bypassRecoveryCheck: Bool = false) {
-        if !bypassRecoveryCheck {
-            if let rec = try? coreClient.checkDocumentRecovery(sourceToken: url.path) {
-                pendingRecovery = rec
+    /// The directory holds the rail of the profession and the recovery store.
+    /// The recovery store holds the document of the user in plain text and
+    /// therefore belongs to the user alone: it is the application support
+    /// directory of the app, not a directory of the system.
+    func configureDataDirectory() {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+        guard let directory = base.first else {
+            return
+        }
+        let vocumentDirectory = directory.appendingPathComponent("Vocument", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: vocumentDirectory,
+            withIntermediateDirectories: true
+        )
+        try? coreClient.configureDataDirectory(path: vocumentDirectory.path)
+    }
+
+
+    /// (`REDACT-001`).
+    ///
+    /// The redaction cannot be undone. The report tells the shell what it has
+    /// to show to the user: the words that were removed, the four checks of
+    /// the verification and the places of the document where the same text
+    /// still stands. The warnings go into `securityWarnings` — a user who
+    /// sees only "the redaction succeeded" would believe that the word is
+    /// gone from the document while it is still in it.
+    func redactFirstLineOnCurrentPage() {
+        guard let session = activeSession else { return }
+        do {
+            let selection = try coreClient.selectPageText(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                selectionRect: nil
+            )
+            guard let rect = selection.highlightRects.first else {
+                errorMessage = "There is no text on this page that could be removed."
                 return
             }
-        }
-        do {
-            if let existing = activeSession {
-                try? coreClient.closeSession(sessionId: existing.sessionId)
-            }
-            let session = try coreClient.openScopedDocument(at: url)
-            activeSession = session
-            currentPageIndex = 0
-            scaleMilli = 1000
-            thumbnailImages = [:]
-            searchHits = []
-            exportedJournalJsonPreview = nil
-            errorMessage = nil
-            pageDescriptors = try coreClient.pageDescriptors(sessionId: session.sessionId)
-            transactionHistory = try coreClient.transactionHistory(sessionId: session.sessionId)
-            renderCurrentViewport()
-            loadThumbnailsAndInitialSearchBatch(sessionId: session.sessionId)
+            let region = FfiRedactionRegion(
+                x0MilliPt: rect.x0MilliPt,
+                y0MilliPt: rect.y0MilliPt,
+                x1MilliPt: rect.x1MilliPt,
+                y1MilliPt: rect.y1MilliPt
+            )
+            let report = try coreClient.redactPageRegions(
+                sessionId: session.sessionId,
+                pageIndex: currentPageIndex,
+                regions: [region]
+            )
+            securityWarnings = DocumentCoreClient.redactionWarnings(report)
+            refreshReviewState()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "\(error)"
+            // A refused redaction changes nothing: the document is as it was.
+            // There is no warning, because nothing happened.
+            securityWarnings = []
         }
     }
 
-    func executeRecovery(action: FfiRecoveryAction) {
-        guard let recovery = pendingRecovery else { return }
-        do {
-            let result = try coreClient.executeRecoveryAction(documentId: recovery.documentId, action: action)
-            pendingRecovery = nil
-            if let snap = result.sessionSnapshot {
-                if let existing = activeSession {
-                    try? coreClient.closeSession(sessionId: existing.sessionId)
-                }
-                activeSession = snap
-                currentPageIndex = 0
-                scaleMilli = 1000
-                thumbnailImages = [:]
-                searchHits = []
-                exportedJournalJsonPreview = nil
-                errorMessage = nil
-                pageDescriptors = (try? coreClient.pageDescriptors(sessionId: snap.sessionId)) ?? []
-                transactionHistory = try? coreClient.transactionHistory(sessionId: snap.sessionId)
-                renderCurrentViewport()
-                loadThumbnailsAndInitialSearchBatch(sessionId: snap.sessionId)
-                saveNotificationMessage = result.message
-            } else if action == .discard {
-                let url = URL(fileURLWithPath: recovery.sourceToken)
                 openDocument(at: url, bypassRecoveryCheck: true)
                 saveNotificationMessage = "Recovery discarded; opened original document from disk."
             }
@@ -138,6 +170,9 @@ final class MacDocumentSessionCoordinator: ObservableObject {
         guard index < pageCount else { return }
         currentPageIndex = index
         renderCurrentViewport()
+        // Die Notizen und die Befunde der Seite werden mit der Seite
+        // geladen: der Nutzer sieht, was auf der Seite steht.
+        refreshReviewState()
     }
 
     func jumpToQuery() {
@@ -532,6 +567,12 @@ struct CalmReaderSessionView: View {
                     Text("• \(session.fileIdentity.displayName) (\(session.documentId))")
                         .foregroundStyle(.secondary)
                 }
+                Text(
+                    "• \(coordinator.buildInfo.productName) \(coordinator.buildInfo.version)"
+                        + " — source \(String(coordinator.buildInfo.sourceRevision.prefix(12)))"
+                        + " (\(coordinator.buildInfo.licence))"
+                )
+                .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open PDF…") {
                     coordinator.openDocumentViaPanel()
@@ -543,10 +584,16 @@ struct CalmReaderSessionView: View {
                     .foregroundStyle(.red)
             }
 
+            if let recoveryWarning = coordinator.recoveryWarning {
+                Text(recoveryWarning)
+                    .foregroundStyle(.red)
+            }
+
             if coordinator.activeSession != nil {
                 HStack(alignment: .top, spacing: 16) {
                     NavigationAndSearchSidebarView(coordinator: coordinator)
                     DocumentCanvasView(coordinator: coordinator)
+                    ReviewPanelView(coordinator: coordinator)
                 }
             } else {
                 Text("No document open. Choose 'Open PDF…' or open a file from Finder.")

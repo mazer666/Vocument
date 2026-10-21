@@ -37,7 +37,14 @@
  * the document. Emptying them would break the document instead of removing a
  * secret. A word in such a key is reported by the search instead. */
 static const char *const VOCUMENT_PROTECTED_KEYS[] = {
-    "BaseFont", "FontName", "Encoding", "ID", "Filter", "Length", "Type", "Subtype"
+    "BaseFont", "FontName", "Encoding", "ID", "Filter", "Length", "Type", "Subtype",
+    /* The encryption dictionary holds the keys of the document. They are not
+       text of the user, and emptying one of them would destroy the document:
+       the fourth round of the red team measured a redaction of a one-letter
+       word that broke the encryption of the file. The walk does not visit
+       the dictionary at all; the key is protected as well, so that a
+       dictionary that is reached by another way is left alone too. */
+    "Encrypt"
 };
 
 /* Answers whether the object carries one of the words. */

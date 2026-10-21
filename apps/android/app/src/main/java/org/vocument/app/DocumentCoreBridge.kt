@@ -311,11 +311,50 @@ class DocumentCoreBridge {
     }
 
     /**
+     * The identification of the build that carries the library.
+     *
+     * The AGPL-3.0 asks every binary to name the source it was built from
+     * (`LICENSING-AND-DISTRIBUTION-DECISION.md`). The shell shows it in the
+     * "about" area, so that the user can get the source of the build they
+     * are running.
+     */
+    fun buildInfo(): FfiBuildInfo {
+        return documentCoreBuildInfo()
+    }
+
+    /**
+     * The state of the crash recovery of the documents (`RECOVERY-001`).
+     *
+     * The recovery store holds the document of the user in plain text. It
+     * therefore only writes into a directory that belongs to the user alone.
+     * If that directory cannot be made private, the store refuses every
+     * write — and the user has to learn about it, because the documents are
+     * then not protected against a crash.
+     */
+    fun recoveryStatus(): FfiRecoveryStatus {
+        return documentCoreRecoveryStatus()
+    }
+
+    /**
      * Replaces the rail of the profession with the palette of the user
      * (`ANNOT-001`).
      */
     fun setJuristPalette(entries: List<FfiJuristPaletteEntry>) {
         documentCoreSetJuristPalette(entries)
+    }
+
+    /**
+     * Hands Vocument the directory in which it keeps the data of the user
+     * (`ANNOT-001`, `RECOVERY-001`).
+     *
+     * The application calls the function before it opens the first document:
+     * the files directory of the app. The directory holds the rail of the
+     * profession and the recovery store — the recovery store holds the
+     * document of the user in plain text and therefore belongs to the user
+     * alone.
+     */
+    fun configureDataDirectory(path: String) {
+        documentCoreConfigureDataDirectory(path)
     }
 
     /**

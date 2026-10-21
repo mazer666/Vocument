@@ -1,15 +1,74 @@
-# Decision Template: Licensing and Distribution of the PDF Engine
+# Decision: Licensing and Distribution of the PDF Engine
 
-**Document type:** Non-binding technical decision template
-**Status:** Draft for a decision by the project owner
-**Date:** 2026-10-20
-**Reference:** `RISK-009`, `RISK-010`, `ADR-0017`, `THIRD_PARTY.md`, `project/project.yaml`
+**Document type:** Binding technical decision of the project owner, with the
+technical consequences that follow from it
+**Status:** **Decided** (E1–E5) — the analysis below is kept as the record of
+the way the decision was reached
+**Date:** 2026-10-21 (the analysis: 2026-10-20)
+**Reference:** `RISK-009`, `RISK-010`, `RISK-041`, `ADR-0017`, `THIRD_PARTY.md`, `project/project.yaml`
 **Created in the context of:** M1.6 — Platform integration and release readiness
 
-> **This template is neither legal advice nor a licence decision.** It presents
-> the technical and legal boundary conditions that have to be known for a
-> decision, and names the open questions. The binding release remains a
-> decision of the project owner.
+> **The decision is a technical and organisational decision of the project
+> owner, not legal advice.** The final legal compliance review (§9, E5)
+> remains the precondition of every public publication. Neither the
+> maintainers nor an automated agent can replace that review.
+
+---
+
+## 0. The decision
+
+The project owner decided on 2026-10-21:
+
+| # | The decision | What it means for the work |
+|---|---|---|
+| **E1** | **Vocument is published completely under the AGPL-3.0-or-later.** The whole work — the Rust core, the engines, the UniFFI bindings, the Swift and Kotlin applications, the build scripts and the tests — is open source under the AGPL-3.0-or-later. | The repository is the published source. There is no "closed" part of the product that would need a second licence. |
+| **E2** | **No proprietary exploitation of the engine, and no commercial MuPDF licence.** Vocument uses the AGPL of MuPDF, not a commercial licence of Artifex. | The obligations of the AGPL apply to the product as a whole. A commercial licence is not bought, so the duties of §6 and §13 of the AGPL have to be implemented in the product itself. |
+| **E3** | **The product is free of charge. Paid services and support are possible and do not change the licence.** | The price of a support or a service is a business question; the licence of the code stays the AGPL. No part of the AGPL can be withdrawn by a paid service. |
+| **E4** | **No mandatory service, no cloud, no accounts, no telemetry. Local-first and offline-first are binding.** A server function that is added later needs a new architecture and licence review before it is built. | The Android manifest carries no `INTERNET` permission, the application keeps the data of the user on the device, and a future server function is a separate decision with its own review (§8). |
+| **E5** | **The final legal compliance review is the precondition of every public publication.** An agent cannot give a legal clearance. | No binary is published before the review has been carried out by a person who is entitled to carry it out (§9). |
+
+### 0.1 What E1–E2 mean technically
+
+The AGPL-3.0 is not a formality here: MuPDF is linked into the product, and
+the coupling is functional (§1.1). The duties that follow are implemented in
+the repository:
+
+| Duty of the AGPL-3.0 | Where it is implemented | State |
+|---|---|---|
+| §4 — the licence text | `LICENSE`, `LICENSES/AGPL-3.0-or-later.txt` | **fulfilled** |
+| §4 — the notice of the licence in the files | `REUSE.toml` (the declaration per file) | **fulfilled** |
+| §4 — the notices of the components | `THIRD_PARTY.md` (§1–§3), the generated inventory (§4) | **fulfilled** |
+| §5 — the notice of the changes | `CHANGELOG.md` | **fulfilled** |
+| §6 — installation information | `README.md`, `docs/releasing/BUILD-FROM-SOURCE.md` | **fulfilled** |
+| §6 — the complete corresponding source of the binary | the revision in the binary (`document_core_build_info`), `SOURCE.txt` in the bundle and in the package, `scripts/release-source-archive.sh` | **fulfilled** |
+| §13 — the duty of the network use | not applicable: the product has no server function (§8). The moment one is added, the duty applies to the whole service. | **fulfilled by the absence of a network function** |
+| The attribution duties of Artifex | the producer line and the AGPL note in the metadata of the generated PDFs | **to be implemented before the first publication** (see §0.3) |
+
+### 0.2 What E3–E4 mean technically
+
+* The product does not ask for the network, neither on Android (no
+  `INTERNET` permission in the manifest) nor on macOS (no network entitlement
+  in `apps/macos/Resources/VocumentMac.entitlements`).
+* The data of the user stays on the device: the rail of the profession, the
+  recovery store and the search index live in the data directory of the user
+  (`core/vocument-core/src/config.rs`), and the recovery store is private to
+  the user (0700, 0600).
+* There is no account, no login, no identifier of the user, no telemetry.
+* A paid service (E3) may only **offer** something — it may not make a
+  function of the product conditional on it.
+
+### 0.3 What is still open before the first publication
+
+| # | What | Why it is open | Who |
+|---|---|---|---|
+| O1 | The **legal compliance review** of the published binary against §6 and §13 of the AGPL-3.0. | E5. A person who is entitled to give the clearance has to give it. | the project owner, with legal support |
+| O2 | The **attribution of Artifex** in the generated PDFs (producer line, AGPL note in the metadata). | The duty belongs to the user of MuPDF; it is not implemented in the product yet. | the maintainers |
+| O3 | The **Apple terms of distribution** against the AGPL (§7.3). | A conflict that a person has to weigh; it is not for an agent to decide. | the project owner, with legal support |
+| O4 | The **decision about the store** (direct distribution, Mac App Store, Google Play) — the way of the distribution changes the duties of §13 and the App Store rules change the licence options. | E1 and E2 do not decide the way of the distribution. | the project owner |
+
+The rest of the document is the record of the way the decision was reached.
+It is kept, because the reasoning behind a decision is worth more than the
+decision itself.
 
 ---
 
@@ -276,9 +335,14 @@ and not only rendering. Most alternatives are pure renderers.
 
 ---
 
-## 7. Recommendation and open questions of the decision
+## 7. The recommendation that led to the decision, and the open questions
 
-### 7.1 Recommendation
+> This section is the record of the state **before** the decision of
+> 2026-10-21 (§0). The questions E1–E5 are answered there. They are kept
+> here, because the reasoning behind the decision is worth more than the
+> decision itself.
+
+### 7.1 The recommendation that was made
 
 **Variant A (AGPL conforming open source publication) is technically
 recommended**, under two explicit conditions:
@@ -301,21 +365,24 @@ This recommendation is **deliberately marked as provisional**: it is based on
 the publicly documented facts about the three variants, not on a cost estimate,
 which does not exist at the moment.
 
-### 7.2 Open questions for the project owner
+### 7.2 The questions and their answers
 
-| # | Question | Why it blocks |
+| # | Question | Answer of the project owner (2026-10-21) |
 |---|---|---|
-| E1 | Should the source code of the application core become public? | Determines variant A vs. B vs. C. |
-| E2 | Is a proprietary distribution the goal (specialist application, closed source)? | Determines variant A vs. B. |
-| E3 | Which order of magnitude is realistic? | Determines the commercial costs in variant B. |
-| E4 | Should a server service arise? | In variant A AGPL §13 applies and obliges to disclose the service. |
-| E5 | Who is liable for the legal review? | This template is not advice. |
+| E1 | Should the source code of the application core become public? | **Yes** — the whole work is published under the AGPL-3.0-or-later. |
+| E2 | Is a proprietary distribution the goal (specialist application, closed source)? | **No** — no proprietary exploitation, and no commercial MuPDF licence is bought. |
+| E3 | Which order of magnitude is realistic? | The product is free of charge; paid services and support are possible and do not change the licence. |
+| E4 | Should a server service arise? | **Not now.** No mandatory service, no cloud, no accounts, no telemetry. A server function that is added later needs a new architecture and licence review. |
+| E5 | Who is liable for the legal review? | The project owner, with legal support. An agent cannot give the clearance. |
 
 ### 7.3 What must not happen until the release
 
 * **No public distribution** of APK, AAB, DMG or installer that contains
-  MuPDF may be treated as "released".
-* **No inclusion in app stores** without the respectively applicable variant.
+  MuPDF may be treated as "released" before the legal compliance review (E5,
+  O1) has been carried out.
+* **No inclusion in app stores** without the respectively applicable variant —
+  and, for the Apple stores, without the review of the conflict between the
+  terms of Apple and the AGPL (§7.5, `RISK-041`).
 * **No proprietary extensions** may be built while E1 is open — otherwise a
   mixture arises that cannot later be resolved cleanly.
 * **No engine migration** (variant C) may be started while E1 and E2 are open.
@@ -328,15 +395,52 @@ which does not exist at the moment.
 These points improve the state in every variant:
 
 1. **Prepare the release process for variant A** (source bundle, checksums,
-   build instructions including the NDK/SDK/MuPDF pins).
-2. **Add the attribution in the PDF metadata** (producer line, AGPL note).
+   build instructions including the NDK/SDK/MuPDF pins). — **done**:
+   `scripts/release-macos.sh`, `scripts/release-android.sh`,
+   `scripts/release-source-archive.sh`, `docs/releasing/`.
+2. **Add the attribution in the PDF metadata** (producer line, AGPL note). —
+   **open** (O2).
 3. **Reduce `RISK-010` (size)**: deactivate the MuPDF build options for unused
    formats (XPS, CBZ, HTML/EPUB), use `strip`, offer ABI splits. That is
    **reproducible** and provable without a functional regression — the pixel
    comparison against the reference rendering is the proof of it.
 4. **Obtain an answer from Artifex** in order to underpin E3 with sound figures
    (that is also a sensible basis even for a later decision in favour of
-   variant A).
+   variant A). — **not needed under E2**, because no commercial licence is
+   bought; the information is nevertheless useful for a later decision about
+   a paid service.
+
+### 7.5 The conflict between the Apple terms and the AGPL — a release risk
+
+This is the one point of the decision that cannot be settled technically, and
+it is therefore written down as a **release risk** (`RISK-041`) instead of
+being smoothed over:
+
+* The App Review Guidelines of Apple ask for the terms of the licence of an
+  app, and the review of an app that is distributed under a copyleft licence
+  has to be expected to be difficult. The Mac App Store and the iOS App Store
+  are in tension with §13 of the AGPL-3.0, because a store distribution is a
+  distribution to a third party that then conveys the binary further.
+* The **direct distribution** of a signed and notarised macOS application is
+  not affected by this: the user receives the binary and the complete source
+  with it (§6 of the AGPL-3.0 is fulfilled by the `SOURCE.txt` of the bundle
+  and by the source archive).
+* The **Google Play** does not have this conflict in the same way, but its
+  rules on the licence and on the "notices" of the app have to be checked
+  against the AGPL before the first upload.
+
+What follows from this for the work — and nothing more:
+
+1. The product is built in a way that **can** be distributed directly
+   (signed, notarised, with the notices and the source offer inside the
+   bundle). This is the way that is free of conflicts.
+2. The store way is **prepared** but not taken: the bundle, the entitlements
+   and the package are built for it, and the decision about the upload is a
+   decision of the project owner with legal support.
+3. **A second licence of the product is not prepared.** A double licensing
+   would be a change of the strategy of E1 and E2 and is therefore not made
+   here. Nobody but the project owner can decide it, and it needs legal
+   support.
 
 ---
 

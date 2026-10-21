@@ -36,6 +36,7 @@ typedef struct {
     char annotation_id[128];
     char author[256];
     char contents[2048];
+    char palette_key[64];
 } vocument_mupdf_comment_t;
 
 /* The size of the popup of a note. The popup opens next to the note; its
@@ -88,6 +89,24 @@ static void extract_comment_struct(
     const char *contents = pdf_annot_contents(ctx, annot);
     if (contents) {
         strncpy(dst->contents, contents, sizeof(dst->contents) - 1);
+    }
+    /* The key of the rail the note was written with.
+     *
+     * The PDF carries the colour of the note, not its meaning: the meaning
+     * lives in the rail of the profession, and the rail of the user may be
+     * replaced. The key therefore travels with the note, in a key of its own
+     * that a reader of another vendor simply ignores. A note stays
+     * interpretable even when the rail has changed in the meantime. */
+    pdf_obj *key_obj = pdf_dict_get(
+        ctx, pdf_annot_obj(ctx, annot), pdf_new_name(ctx, "VocumentPaletteKey")
+    );
+    if (pdf_is_string(ctx, key_obj)) {
+        const char *key = pdf_to_str_buf(ctx, key_obj);
+        size_t key_len = pdf_to_str_len(ctx, key_obj);
+        if (key && key_len < sizeof(dst->palette_key)) {
+            memcpy(dst->palette_key, key, key_len);
+            dst->palette_key[key_len] = '\0';
+        }
     }
 }
 
@@ -274,6 +293,17 @@ int vocument_mupdf_add_comment_annot(
                 pdf_set_annot_author(ctx, annot, spec->author);
             }
             pdf_set_annot_contents(ctx, annot, spec->contents);
+
+            /* The key of the rail travels with the note. */
+            if (spec->palette_key[0] != '\0') {
+                pdf_obj *key_name = pdf_new_name(ctx, "VocumentPaletteKey");
+                pdf_obj *key_value = pdf_new_string(
+                    ctx, spec->palette_key, strlen(spec->palette_key)
+                );
+                if (key_name && key_value) {
+                    pdf_dict_put(ctx, pdf_annot_obj(ctx, annot), key_name, key_value);
+                }
+            }
 
             /* The time of the change belongs to the note: a reviewer has to
                see when the note was written. */

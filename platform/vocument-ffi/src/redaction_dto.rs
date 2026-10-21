@@ -129,7 +129,17 @@ pub struct FfiRedactionReport {
     /// the document, for example. The shell should show these places to the
     /// user.
     pub uninspected_places: Vec<FfiRedactionOccurrence>,
+    /// The reasons why a check could not be carried out.
+    ///
+    /// A check that could not be carried out is not a pass. The reason is
+    /// named, so that the shell can tell the user **why** the removal could
+    /// not be proven.
+    pub not_checked_reasons: Vec<String>,
     /// The removal was verified in every respect.
+    ///
+    /// The flag is false when a check could not be carried out **or** when a
+    /// place of the document could not be read: the tool does not promise
+    /// what it cannot prove.
     pub verified: bool,
     /// The revision of the document after the redaction.
     pub revision: u64,
@@ -157,6 +167,7 @@ impl From<RedactionReport> for FfiRedactionReport {
                 .into_iter()
                 .map(Into::into)
                 .collect(),
+            not_checked_reasons: report.not_checked_reasons,
             verified,
             revision: report.revision,
         }

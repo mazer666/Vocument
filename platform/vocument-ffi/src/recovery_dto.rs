@@ -99,6 +99,35 @@ impl From<RecoveryActionResult> for FfiRecoveryActionResult {
     }
 }
 
+/// Whether the crash recovery of the documents is available in this run.
+///
+/// The recovery store holds the document of the user in plain text. It
+/// therefore only writes into a directory that belongs to the user alone. If
+/// that directory cannot be made private, the store refuses every write — and
+/// the user has to learn about it, because the documents are then not
+/// protected against a crash.
+///
+/// The fourth round of the red team found the error of the private root being
+/// printed to the standard error and then forgotten: the run continued as if
+/// the recovery were protected. The reason now travels to the application,
+/// which shows it as a warning.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FfiRecoveryStatus {
+    /// Whether the recovery store may write.
+    pub available: bool,
+    /// Why the recovery is not available — empty when it is.
+    pub details: String,
+}
+
+/// Returns the state of the crash recovery of the documents.
+///
+/// The application calls it once at the start and shows `details` as a
+/// warning when the recovery is not available.
+#[uniffi::export]
+pub fn document_core_recovery_status() -> FfiRecoveryStatus {
+    crate::recovery_status()
+}
+
 /// Scans the recovery directory for documents that suffered an unclean shutdown with unsaved changes.
 #[uniffi::export]
 pub fn document_core_scan_recoverable_documents()

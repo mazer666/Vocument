@@ -275,10 +275,51 @@ public struct DocumentCoreClient: Sendable {
         documentCoreJuristPalette()
     }
 
+    /// The standard rail of the profession (`ANNOT-001`).
+    ///
+    /// The shell offers it to the user as the way back to the rail every
+    /// document was written with.
+    public func defaultJuristPalette() -> [FfiJuristPaletteEntry] {
+        documentCoreDefaultJuristPalette()
+    }
+
+    /// The identification of the build that carries the library.
+    ///
+    /// The AGPL-3.0 asks every binary to name the source it was built from
+    /// (`LICENSING-AND-DISTRIBUTION-DECISION.md`). The shell shows it in the
+    /// "about" area, so that the user can get the source of the build they
+    /// are running.
+    public func buildInfo() -> FfiBuildInfo {
+        documentCoreBuildInfo()
+    }
+
+    /// The state of the crash recovery of the documents (`RECOVERY-001`).
+    ///
+    /// The recovery store holds the document of the user in plain text. It
+    /// therefore only writes into a directory that belongs to the user alone.
+    /// If that directory cannot be made private, the store refuses every
+    /// write — and the user has to learn about it, because the documents are
+    /// then not protected against a crash.
+    public func recoveryStatus() -> FfiRecoveryStatus {
+        documentCoreRecoveryStatus()
+    }
+
     /// Replaces the rail of the profession with the palette of the user
     /// (`ANNOT-001`).
     public func setJuristPalette(entries: [FfiJuristPaletteEntry]) throws {
         try documentCoreSetJuristPalette(entries: entries)
+    }
+
+    /// Hands Vocument the directory in which it keeps the data of the user
+    /// (`ANNOT-001`, `RECOVERY-001`).
+    ///
+    /// The application calls the function before it opens the first document:
+    /// the application support directory of the app. The directory holds the
+    /// rail of the profession and the recovery store — the recovery store
+    /// holds the document of the user in plain text and therefore belongs to
+    /// the user alone.
+    public func configureDataDirectory(path: String) throws {
+        try documentCoreConfigureDataDirectory(path: path)
     }
 
     /// Lists the comments of the reviewer on `pageIndex` (`ANNOT-001`).

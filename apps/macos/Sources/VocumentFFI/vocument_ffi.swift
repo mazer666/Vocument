@@ -886,6 +886,165 @@ public func FfiConverterTypeFfiBrokeredFileDescriptor_lower(_ value: FfiBrokered
 
 
 /**
+ * The identification of the build that carries the library.
+ */
+public struct FfiBuildInfo {
+    /**
+     * The name of the product.
+     */
+    public var productName: String
+    /**
+     * The version of the product.
+     */
+    public var version: String
+    /**
+     * The revision of the source the binary was built from.
+     */
+    public var sourceRevision: String
+    /**
+     * Whether the tree was clean when the build was made.
+     *
+     * `false` means: the binary cannot be tied to the revision alone.
+     */
+    public var sourceTreeClean: Bool
+    /**
+     * The address under which the source of the revision can be obtained.
+     */
+    public var sourceUrl: String
+    /**
+     * The licence of the product.
+     */
+    public var licence: String
+    /**
+     * Why the binary may not be published — empty when it may.
+     */
+    public var publicationBlocker: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The name of the product.
+         */productName: String, 
+        /**
+         * The version of the product.
+         */version: String, 
+        /**
+         * The revision of the source the binary was built from.
+         */sourceRevision: String, 
+        /**
+         * Whether the tree was clean when the build was made.
+         *
+         * `false` means: the binary cannot be tied to the revision alone.
+         */sourceTreeClean: Bool, 
+        /**
+         * The address under which the source of the revision can be obtained.
+         */sourceUrl: String, 
+        /**
+         * The licence of the product.
+         */licence: String, 
+        /**
+         * Why the binary may not be published — empty when it may.
+         */publicationBlocker: String) {
+        self.productName = productName
+        self.version = version
+        self.sourceRevision = sourceRevision
+        self.sourceTreeClean = sourceTreeClean
+        self.sourceUrl = sourceUrl
+        self.licence = licence
+        self.publicationBlocker = publicationBlocker
+    }
+}
+
+#if compiler(>=6)
+extension FfiBuildInfo: Sendable {}
+#endif
+
+
+extension FfiBuildInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiBuildInfo, rhs: FfiBuildInfo) -> Bool {
+        if lhs.productName != rhs.productName {
+            return false
+        }
+        if lhs.version != rhs.version {
+            return false
+        }
+        if lhs.sourceRevision != rhs.sourceRevision {
+            return false
+        }
+        if lhs.sourceTreeClean != rhs.sourceTreeClean {
+            return false
+        }
+        if lhs.sourceUrl != rhs.sourceUrl {
+            return false
+        }
+        if lhs.licence != rhs.licence {
+            return false
+        }
+        if lhs.publicationBlocker != rhs.publicationBlocker {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(productName)
+        hasher.combine(version)
+        hasher.combine(sourceRevision)
+        hasher.combine(sourceTreeClean)
+        hasher.combine(sourceUrl)
+        hasher.combine(licence)
+        hasher.combine(publicationBlocker)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiBuildInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBuildInfo {
+        return
+            try FfiBuildInfo(
+                productName: FfiConverterString.read(from: &buf), 
+                version: FfiConverterString.read(from: &buf), 
+                sourceRevision: FfiConverterString.read(from: &buf), 
+                sourceTreeClean: FfiConverterBool.read(from: &buf), 
+                sourceUrl: FfiConverterString.read(from: &buf), 
+                licence: FfiConverterString.read(from: &buf), 
+                publicationBlocker: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiBuildInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.productName, into: &buf)
+        FfiConverterString.write(value.version, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterBool.write(value.sourceTreeClean, into: &buf)
+        FfiConverterString.write(value.sourceUrl, into: &buf)
+        FfiConverterString.write(value.licence, into: &buf)
+        FfiConverterString.write(value.publicationBlocker, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBuildInfo_lift(_ buf: RustBuffer) throws -> FfiBuildInfo {
+    return try FfiConverterTypeFfiBuildInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBuildInfo_lower(_ value: FfiBuildInfo) -> RustBuffer {
+    return FfiConverterTypeFfiBuildInfo.lower(value)
+}
+
+
+/**
  * A single captured scan page stored in a scanning session.
  */
 public struct FfiCapturedScanPage {
@@ -4427,6 +4586,102 @@ public func FfiConverterTypeFfiRecoveryActionResult_lower(_ value: FfiRecoveryAc
 
 
 /**
+ * Whether the crash recovery of the documents is available in this run.
+ *
+ * The recovery store holds the document of the user in plain text. It
+ * therefore only writes into a directory that belongs to the user alone. If
+ * that directory cannot be made private, the store refuses every write — and
+ * the user has to learn about it, because the documents are then not
+ * protected against a crash.
+ *
+ * The fourth round of the red team found the error of the private root being
+ * printed to the standard error and then forgotten: the run continued as if
+ * the recovery were protected. The reason now travels to the application,
+ * which shows it as a warning.
+ */
+public struct FfiRecoveryStatus {
+    /**
+     * Whether the recovery store may write.
+     */
+    public var available: Bool
+    /**
+     * Why the recovery is not available — empty when it is.
+     */
+    public var details: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Whether the recovery store may write.
+         */available: Bool, 
+        /**
+         * Why the recovery is not available — empty when it is.
+         */details: String) {
+        self.available = available
+        self.details = details
+    }
+}
+
+#if compiler(>=6)
+extension FfiRecoveryStatus: Sendable {}
+#endif
+
+
+extension FfiRecoveryStatus: Equatable, Hashable {
+    public static func ==(lhs: FfiRecoveryStatus, rhs: FfiRecoveryStatus) -> Bool {
+        if lhs.available != rhs.available {
+            return false
+        }
+        if lhs.details != rhs.details {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(available)
+        hasher.combine(details)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRecoveryStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRecoveryStatus {
+        return
+            try FfiRecoveryStatus(
+                available: FfiConverterBool.read(from: &buf), 
+                details: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRecoveryStatus, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.available, into: &buf)
+        FfiConverterString.write(value.details, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryStatus_lift(_ buf: RustBuffer) throws -> FfiRecoveryStatus {
+    return try FfiConverterTypeFfiRecoveryStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRecoveryStatus_lower(_ value: FfiRecoveryStatus) -> RustBuffer {
+    return FfiConverterTypeFfiRecoveryStatus.lower(value)
+}
+
+
+/**
  * A place of the document that still carries a redacted word
  * (`REDACT-001`).
  *
@@ -4681,7 +4936,19 @@ public struct FfiRedactionReport {
      */
     public var uninspectedPlaces: [FfiRedactionOccurrence]
     /**
+     * The reasons why a check could not be carried out.
+     *
+     * A check that could not be carried out is not a pass. The reason is
+     * named, so that the shell can tell the user **why** the removal could
+     * not be proven.
+     */
+    public var notCheckedReasons: [String]
+    /**
      * The removal was verified in every respect.
+     *
+     * The flag is false when a check could not be carried out **or** when a
+     * place of the document could not be read: the tool does not promise
+     * what it cannot prove.
      */
     public var verified: Bool
     /**
@@ -4733,7 +5000,18 @@ public struct FfiRedactionReport {
          * user.
          */uninspectedPlaces: [FfiRedactionOccurrence], 
         /**
+         * The reasons why a check could not be carried out.
+         *
+         * A check that could not be carried out is not a pass. The reason is
+         * named, so that the shell can tell the user **why** the removal could
+         * not be proven.
+         */notCheckedReasons: [String], 
+        /**
          * The removal was verified in every respect.
+         *
+         * The flag is false when a check could not be carried out **or** when a
+         * place of the document could not be read: the tool does not promise
+         * what it cannot prove.
          */verified: Bool, 
         /**
          * The revision of the document after the redaction.
@@ -4748,6 +5026,7 @@ public struct FfiRedactionReport {
         self.fileBytesClean = fileBytesClean
         self.remainingOccurrences = remainingOccurrences
         self.uninspectedPlaces = uninspectedPlaces
+        self.notCheckedReasons = notCheckedReasons
         self.verified = verified
         self.revision = revision
     }
@@ -4790,6 +5069,9 @@ extension FfiRedactionReport: Equatable, Hashable {
         if lhs.uninspectedPlaces != rhs.uninspectedPlaces {
             return false
         }
+        if lhs.notCheckedReasons != rhs.notCheckedReasons {
+            return false
+        }
         if lhs.verified != rhs.verified {
             return false
         }
@@ -4810,6 +5092,7 @@ extension FfiRedactionReport: Equatable, Hashable {
         hasher.combine(fileBytesClean)
         hasher.combine(remainingOccurrences)
         hasher.combine(uninspectedPlaces)
+        hasher.combine(notCheckedReasons)
         hasher.combine(verified)
         hasher.combine(revision)
     }
@@ -4834,6 +5117,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
                 fileBytesClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 remainingOccurrences: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
                 uninspectedPlaces: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
+                notCheckedReasons: FfiConverterSequenceString.read(from: &buf), 
                 verified: FfiConverterBool.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf)
         )
@@ -4850,6 +5134,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
         FfiConverterTypeFfiRedactionCheck.write(value.fileBytesClean, into: &buf)
         FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.remainingOccurrences, into: &buf)
         FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.uninspectedPlaces, into: &buf)
+        FfiConverterSequenceString.write(value.notCheckedReasons, into: &buf)
         FfiConverterBool.write(value.verified, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)
     }
@@ -8752,6 +9037,15 @@ public func documentCoreAutoOrientFrame(frame: FfiScanFrame, preferPortrait: Boo
 })
 }
 /**
+ * Returns the identification of the build that carries the library.
+ */
+public func documentCoreBuildInfo() -> FfiBuildInfo  {
+    return try!  FfiConverterTypeFfiBuildInfo_lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_build_info($0
+    )
+})
+}
+/**
  * Checks if a specific document by source path or token has an active crash recovery container.
  */
 public func documentCoreCheckDocumentRecovery(sourceToken: String)throws  -> FfiRecoverableDocumentInfo?  {
@@ -8789,6 +9083,22 @@ public func documentCoreCloseScanSession(sessionId: String)throws   {try rustCal
 public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_close_session(
         FfiConverterString.lower(sessionId),$0
+    )
+}
+}
+/**
+ * Hands Vocument the directory in which it keeps the data of the user
+ * (`ANNOT-001`, `RECOVERY-001`).
+ *
+ * The directory holds the rail of the profession and the recovery store. The
+ * platform calls the function before it opens the first document: the
+ * application support directory of macOS, the files directory of Android.
+ * The directory has to belong to the user alone — the recovery store holds
+ * the document of the user in plain text.
+ */
+public func documentCoreConfigureDataDirectory(path: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_configure_data_directory(
+        FfiConverterString.lower(path),$0
     )
 }
 }
@@ -9275,6 +9585,18 @@ public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
 })
 }
 /**
+ * Returns the state of the crash recovery of the documents.
+ *
+ * The application calls it once at the start and shows `details` as a
+ * warning when the recovery is not available.
+ */
+public func documentCoreRecoveryStatus() -> FfiRecoveryStatus  {
+    return try!  FfiConverterTypeFfiRecoveryStatus_lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_recovery_status($0
+    )
+})
+}
+/**
  * Removes the content of the given regions of a page for good and verifies
  * the removal (`REDACT-001`, `REDACT-002`).
  *
@@ -9649,6 +9971,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_build_info() != 37725) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery() != 57705) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9659,6 +9984,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory() != 38924) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856) {
@@ -9785,6 +10113,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_recovery_status() != 1356) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions() != 61983) {

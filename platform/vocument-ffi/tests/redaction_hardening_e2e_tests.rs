@@ -368,12 +368,17 @@ fn document_with_a_zip_attachment() -> Vec<u8> {
     pdf
 }
 
-/// An attached archive cannot be read without unpacking it. The redaction
-/// does not claim that the text is gone from there — it names the place, so
-/// that the user can decide what to do with it.
+/// An attached archive cannot be read without unpacking it. A redaction that
+/// cannot prove that the text is gone from **every** place of the document
+/// is not a secure redaction: it is refused, the document stays as it was,
+/// and the place that could not be read is named.
+///
+/// A tool that reported "verified" here would promise what it cannot prove:
+/// the secret can still stand in the archive.
 #[test]
-fn an_attached_archive_is_named_as_a_place_that_could_not_be_read() {
+fn an_attached_archive_makes_the_redaction_refuse_and_names_the_place() {
     let session_id = open_session(document_with_a_zip_attachment());
+    let before = document_core_export_session_bytes(session_id.clone()).expect("the bytes");
 
     let words =
         document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
@@ -388,14 +393,129 @@ fn an_attached_archive_is_named_as_a_place_that_could_not_be_read() {
         y1_milli_pt: word.rect.y1_milli_pt,
     };
 
-    let report = document_core_redact_page_regions(session_id, 0, vec![region])
-        .expect("the redaction of the marked place must succeed");
+    let failure = document_core_redact_page_regions(session_id.clone(), 0, vec![region])
+        .expect_err("the redaction must be refused when a place could not be read");
+    let message = failure.to_string();
     assert!(
-        report.verified,
-        "the marked place is clean in every respect: {report:?}"
+        message.contains("could not be read") || message.contains("could not be looked into"),
+        "the error names the place that could not be read: {message}"
     );
     assert!(
-        !report.uninspected_places.is_empty(),
-        "the place that could not be read is named: {report:?}"
+        message.contains("EmbeddedFiles") || message.contains("attachment"),
+        "the error names the place of the document: {message}"
     );
+
+    let after = document_core_export_session_bytes(session_id).expect("the bytes");
+    assert_eq!(before, after, "the document is unchanged");
+}
+
+/// Builds a document whose form XObject carries a second copy of the secret.
+///
+/// The copy stands in the content stream of an object that only the
+/// dictionary of the form XObject refers to. The fourth round of the red
+/// team showed that the walk did not descend into the dictionary of a stream
+/// — the copy was never seen, and the redaction reported a success while the
+/// word was still in the file.
+fn document_with_a_copy_in_a_form_xobject() -> Vec<u8> {
+    // The page draws the form, the form draws the inner form, and the inner
+    // form carries the word a second time. The redaction of MuPDF reaches
+    // into the content of the page — but not into the content of a form
+    // object: the copy stays in the file.
+    let page_content = format!("BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\nq /Fm0 Do Q\n");
+    let outer_form = "q /Fm1 Do Q\n";
+    let inner_form = format!("BT /F1 18 Tf 20 100 Td ({SECRET}) Tj ET\n");
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> /XObject << /Fm0 6 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", page_content.len()).into_bytes();
+            obj.extend_from_slice(page_content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        {
+            let mut obj = format!("6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /XObject << /Fm1 7 0 R >> >> /Length {} >>\nstream\n", outer_form.len()).into_bytes();
+            obj.extend_from_slice(outer_form.as_bytes());
+            obj.extend_from_slice(b"endstream\nendobj\n");
+            obj
+        },
+        {
+            let mut obj = format!("7 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Length {} >>\nstream\n", inner_form.len()).into_bytes();
+            obj.extend_from_slice(inner_form.as_bytes());
+            obj.extend_from_slice(b"endstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A copy of the secret in a form XObject makes the redaction refuse.
+///
+/// The content of a form XObject is a content stream, not a string: the
+/// scrub cannot empty it, and MuPDF's redaction does not descend into a
+/// form XObject. The copy therefore stays in the document — and the
+/// redaction has to say so instead of reporting a success.
+///
+/// This is the proof across the whole chain: the fourth round of the red
+/// team measured `verified = true` while the secret stood in the file.
+#[test]
+fn a_copy_in_a_form_xobject_makes_the_redaction_refuse_and_names_the_place() {
+    let session_id = open_session(document_with_a_copy_in_a_form_xobject());
+    let before = document_core_export_session_bytes(session_id.clone()).expect("the bytes");
+
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case(SECRET))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let failure = document_core_redact_page_regions(session_id.clone(), 0, vec![region])
+        .expect_err("the redaction must be refused while the copy is in the document");
+    let message = failure.to_string();
+    assert!(
+        message.contains("could not be verified")
+            || message.contains("could not be removed")
+            || message.contains("could not be read")
+            || message.contains("redaction failed"),
+        "the error has to say that the redaction did not work: {message}"
+    );
+    assert!(
+        message.contains("Fm1") || message.contains("XObject"),
+        "the error has to name the place where the copy stands: {message}"
+    );
+
+    // The document is untouched: the bytes before and after are the same.
+    let after = document_core_export_session_bytes(session_id).expect("the bytes");
+    assert_eq!(before, after, "the document has to be unchanged");
 }

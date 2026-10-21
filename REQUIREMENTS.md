@@ -672,6 +672,19 @@ it is the boundary of the engine, and it does not trust a caller.
 A note is a change of the document and runs as a transaction: it can be
 taken back and brought again.
 
+The rail of the user is **kept on the disk** and survives the restart of the
+application. The store of the rail lives in the data directory of the
+application, the file has the mode `0600` and the directory `0700`, and the
+write is atomic: a crash leaves the rail either complete or untouched. A rail
+that cannot be read is an error and not a silent fall back to the standard
+rail — a silent fall back would change the meaning of every note of the
+reviewer without saying so.
+
+The **key** of the note travels with the document, not the colour. A note
+that was written before a change of the rail keeps its key, and a note whose
+key the rail does not carry is reported as not assignable instead of being
+given the colour of a neighbouring key.
+
 ---
 
 # 24. Redaction / sanitize / hidden content
@@ -734,6 +747,32 @@ its memory until the cache evicts it.
 A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success. The refusal reaches the user as the error of the boundary itself — an application that catches the errors of the core catches the refusal as well and cannot mistake a refused redaction for a successful one.
 
 The places where the same text still stands and the places that could not be read reach the user as **warnings** — the shell has to show them. A success that hides them would be a success the user cannot trust.
+
+### REDACT-004c — The search reaches every place of the document
+The redaction may only promise what it has actually looked at. The search and
+the cleaning therefore walk through **every object** of the document and not
+through a list of known places: the pages and their content, the annotations
+with their popups, the form fields, the metadata, the structure tree, the
+name tree, the optional content, the private data of a page, the objects of
+the cross-reference table that nothing refers to any more, the trailer of the
+file, and the **dictionary of a stream**.
+
+The last one is the decisive one. A form XObject carries its resources in its
+dictionary, and it can carry the text of the user in its content. A walk that
+only looks at the content of a stream never sees it — and a redaction that
+reports a success while a copy of the secret stands in the document is a lie.
+The walk descends therefore; the copy is found, the redaction **refuses** and
+names the place, and the document stays unchanged.
+
+Two rules follow from the same walk:
+
+* A **container** is a container wherever it hangs. The decision is made from
+  the **content** of the stream, not from the name of the path — a test on
+  the name is no test at all.
+* The **encryption dictionary** is never cleaned. Its values are the keys of
+  the document, not text; clearing them would destroy the encryption of the
+  file. The same holds for the identifier of the file in the trailer: it is
+  walked like every other place, and it is cleaned like every other place.
 
 ### REDACT-004a — The pixels of an image are replaced
 A document can carry the same text twice: as a text layer and as pixels in an image. For a scan the text layer is invisible and the picture carries the words. The redaction therefore has to replace the pixels of the image under the region, not cover them. The rest of the image must survive — a redaction may not destroy the page.
@@ -1381,6 +1420,36 @@ The staging file of a save, the recovery container with its manifest and journal
 
 ### PRIV-002 — The camera is released when it is not needed
 A camera that stays bound keeps the privacy indicator of the system on and drains the battery. The camera must be released when the view leaves the interface. The state of the interface may only be changed on the main thread.
+
+### PRIV-003 — A directory that does not belong to the user is never written into
+The recovery store and the store of the rail of the profession hold the data of the user in plain text. They may only write into a directory that belongs to the user alone. A directory of a stranger, a file of a stranger, a path that leaves the directory of the user and a link in place of a file are refused. A refusal must reach the user — a store that cannot write is a store that cannot protect the documents against a crash, and the user has to know that.
+
+### PRIV-004 — A broken file of the user is an error and not a silent fall back
+A file of the user that cannot be read — a rail that was cut in half by a crash — must be reported as an error. A silent fall back to a default would change the meaning of the data of the user without saying so.
+
+---
+
+# 45a. The licence and the distribution (E1–E5)
+
+The decision of the project owner is binding for every further step. It is written down in `docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md`.
+
+### LIC-001 — The product is open source under the AGPL-3.0-or-later
+Every part of the product — the core, the engines, the FFI boundary, the shells and the build scripts — is published under the AGPL-3.0-or-later. No proprietary part, no proprietary licence of a third-party component.
+
+### LIC-002 — The product is free, and it stays local-first
+No mandatory service, no cloud, no account, no telemetry, no network right. A server function that is added later needs a new architecture and licence review before it is built.
+
+### LIC-003 — Every binary names the source it was built from
+A binary that is handed out carries the identification of the build: the product, the version, the revision of the source, the state of the tree, the licence and the address of the source. A build that cannot be tied to a revision is refused.
+
+### LIC-004 — Every artefact carries the offer of the source and the notices
+The source archive is built with the offer of the AGPL-§6, with a checksum and with the notice of the third-party components. The texts of the licences that travel with the product are in the repository — a notice that has to be fetched from the network at the moment of the release is a notice that is missing when the network is down.
+
+### LIC-005 — Every component carries a known, compatible licence
+The inventory of the licences is generated from the manifests and from the dependencies of the build, and the gate fails when a component carries a licence that is not known. The inventory of the native libraries is measured on the artefact that is actually delivered, not only declared.
+
+### LIC-006 — The legal clearance is not the job of an agent
+The final legal compliance review is a precondition of every publication. It is carried out by the project owner. No binary is published before it exists, and no store eligibility is claimed anywhere in the repository.
 
 ---
 

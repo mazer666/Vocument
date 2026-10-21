@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)).
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)). **M2.5 — the licence, the distribution and the release readiness** carries the binding decision of the project owner (E1–E5) and prepares the artefacts; the signing, the notarisation and the legal clearance are still open (see [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -543,6 +543,20 @@ Delivered:
 - the applications call the redaction and check the report themselves — the
   `verified` flag is not a check — and they turn the places where the same
   text still stands into warnings that the shell has to show
+- the **fourth** audit attacked the rules that the third round had
+  introduced, and found the systematic gap of the walk: it reached the objects
+  of the cross-reference table, but it did not descend into the **dictionary of
+  a stream** — so a copy of a secret in a form object was never seen, and the
+  redaction reported a success while the secret stood in the file. The walk
+  descends now, the copy is found as a hidden place, and the redaction
+  **refuses** and names the place. A redaction of a document that carries a
+  form object with text therefore does not succeed — that is the correct
+  behaviour, and the proof is in the acceptance record
+- the fourth audit found four more places where the redaction could lie: the
+  identifier of the file in the trailer, a container that hangs under another
+  name than `/EmbeddedFiles`, the values of the `/Encrypt` dictionary (which
+  are keys and not text — clearing them would destroy the encryption), and a
+  quadratic sweep over the cross-reference table. All four are closed
 
 Open: the **redaction surface** of the applications (the user marks the
 region, sees the report and the warnings) and the **clipboard**, which has to
@@ -553,8 +567,10 @@ Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
 [the two audits](docs/audit/redaction-security-audit.md),
 [the second audit on the document level](docs/audit/redteam-document-level.md),
 [the second audit along the chain](docs/audit/redteam-platform-chain.md),
-[the third audit on the document level](docs/audit/redteam-round-three-document-level.md)
-and [the third audit along the chain](docs/audit/redteam-round-three-platform-chain.md).
+[the third audit on the document level](docs/audit/redteam-round-three-document-level.md),
+[the third audit along the chain](docs/audit/redteam-round-three-platform-chain.md)
+and [the fourth audit on the document level](docs/audit/redteam-round-four-document-level.md)
+with its [raw protocol](docs/audit/redteam-round-four-measurements.txt).
 
 ## M2.4 — The comment of the reviewer and the rail of the profession *(Implemented, host-verified)*
 
@@ -630,6 +646,50 @@ Open in M2: the remaining functions (among them the full sanitising,
 `SAN-001`), the macOS interface — the comment bar, the surface of the
 redaction, the rail of the profession as a rail the user can edit — and the
 interoperability gate with the tools of other vendors.
+
+## M2.5 — The licence, the distribution and the release readiness *(Decision taken, the artefacts are prepared but not signed)*
+
+Not a function of the review, but the question that decides whether the
+product can be handed out at all. The **decision of the project owner** is
+binding and written down in
+[`docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md`](docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md):
+the whole product is open source under the **AGPL-3.0-or-later** (E1), there
+is no proprietary use and no commercial licence of MuPDF (E2), the product is
+free and services are optional (E3), there is no mandatory service, no cloud,
+no account and no telemetry — the product is local-first, and a server
+function later needs a new architecture and licence review (E4). The final
+legal compliance review is a precondition of every publication, and **an
+agent cannot give that clearance** (E5).
+
+Delivered:
+
+- every binary names the source it was built from — the product, the version,
+  the revision, the state of the tree, the licence and the address of the
+  source; a build from a dirty tree is refused
+- the texts of every licence that travels with the product are in the
+  repository, and the notice of the third-party components is generated from
+  them and copied into every artefact
+- the inventory of the licences is generated from the manifests **and from the
+  symbols of the delivered library** — 103 external Rust crates, 12 native
+  libraries, 182 fonts, the OCR components and the Android dependencies
+- the release scripts build the bundle, the package and the source archive,
+  write the offer of the source with a checksum, and refuse a build from a
+  dirty tree
+- the macOS app runs in the sandbox, the Android manifest asks for no
+  network right, and the privacy policy says what the product does with the
+  data
+
+Open: the **signing and the notarisation** (no macOS host, no Apple identity,
+no Android key — **NOT RUN**), the **legal clearance of the project owner**
+(E5), the **decision about the Mac App Store** — the only channel that
+collides structurally with the AGPL, see `RISK-041` — and the **contact of the
+responsible person** in the privacy policy.
+
+No store eligibility is claimed anywhere. The digest of the requirements and
+the ten decisions that are with the owner:
+[`docs/audit/store-requirements.md`](docs/audit/store-requirements.md).
+
+Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 

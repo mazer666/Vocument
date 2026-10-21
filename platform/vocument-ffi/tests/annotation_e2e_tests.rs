@@ -8,8 +8,9 @@
 
 use vocument_ffi::annotation_dto::{
     FfiCommentAnnotation, FfiJuristPaletteEntry, document_core_add_comment_annotation,
-    document_core_jurist_palette, document_core_page_comment_annotations,
-    document_core_remove_comment_annotation, document_core_set_jurist_palette,
+    document_core_default_jurist_palette, document_core_jurist_palette,
+    document_core_page_comment_annotations, document_core_remove_comment_annotation,
+    document_core_set_jurist_palette,
 };
 use vocument_ffi::mutation_dto::{document_core_redo, document_core_undo};
 use vocument_ffi::save_dto::document_core_export_session_bytes;
@@ -261,4 +262,45 @@ fn the_rail_of_the_user_may_replace_the_default() {
         "the colour comes from the rail of the user"
     );
     assert_eq!(comments[0].palette_key, "house");
+}
+
+/// The key of the rail travels with the note. A note stays interpretable
+/// even when the rail has changed in the meantime: the note says which
+/// meaning it was written with, not only which colour it has.
+#[test]
+fn the_key_of_the_rail_travels_with_the_note() {
+    let session_id = open_session(document_with_one_page(), "comment-key");
+    document_core_add_comment_annotation(
+        session_id.clone(),
+        note("comment_007", "objection", "Einwand"),
+    )
+    .expect("the note is written");
+
+    // The rail of the user is replaced: the colour of the note is not in it
+    // any more. The note keeps its key — the meaning does not depend on the
+    // rail of the moment.
+    document_core_set_jurist_palette(vec![FfiJuristPaletteEntry {
+        key: "house".to_owned(),
+        label: "Hausfarbe".to_owned(),
+        meaning: "Die Farbe des Hauses.".to_owned(),
+        color_r: 12u8,
+        color_g: 34u8,
+        color_b: 56u8,
+    }])
+    .expect("the rail is set");
+
+    let comments = document_core_page_comment_annotations(session_id.clone(), 0)
+        .expect("the notes of the page are readable");
+    assert_eq!(comments.len(), 1, "the note is still there");
+    assert_eq!(
+        comments[0].palette_key, "objection",
+        "the note keeps the key it was written with: {:?}",
+        comments[0]
+    );
+    assert_eq!(comments[0].color_r, 235, "the note keeps its colour");
+
+    // The rail of the user is put back, so that the other tests see the
+    // standard rail.
+    document_core_set_jurist_palette(document_core_default_jurist_palette())
+        .expect("the standard rail is set");
 }

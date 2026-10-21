@@ -566,7 +566,7 @@ for proof in \
     "core/vocument-core/src/redaction_rules.rs|a_word_that_only_stands_next_to_the_region_is_not_removed" \
     "core/vocument-core/tests/redaction_rollback_tests.rs|a_redaction_that_fails_puts_the_revision_and_the_dirty_flag_back" \
     "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|the_same_word_twice_on_the_same_page_is_redacted_and_the_other_place_is_named" \
-    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|an_attached_archive_is_named_as_a_place_that_could_not_be_read" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|an_attached_archive_makes_the_redaction_refuse_and_names_the_place" \
     "apps/android/app/src/test/java/org/vocument/app/DocumentCoreBridgeTest.kt|thePlacesWhereTheSameTextStillStandsAreTurnedIntoWarnings"; do
   file="${proof%%|*}"
   name="${proof##*|}"
@@ -766,5 +766,13 @@ if ! grep -q "QA-003" QUALITY.md; then
   exit 1
 fi
 echo "✓ QA-003 Governance verified: Prohibition of stubs in feature acceptance strictly enforced."
+
+# --- The gate of the distribution ---------------------------------------
+# The licence, the notices, the offer of the source, the local-first rules
+# and the privacy policy: what a released binary has to carry.
+if ! bash scripts/validate-distribution.sh; then
+  echo "ERROR: the gate of the distribution failed." >&2
+  exit 1
+fi
 
 echo "==> Repository validation passed."
