@@ -195,6 +195,35 @@ pub struct PdfPageRaster {
     pub gray_bytes: Vec<u8>,
 }
 
+/// The comment of the reviewer (`ANNOT-001`).
+///
+/// A standard PDF `/Text` annotation with a popup: the note stands on the
+/// page, the text of the note opens in the popup.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfCommentAnnotation {
+    /// Stable identifier of the annotation, stored in the PDF `/NM` key.
+    pub annotation_id: String,
+    /// `0`-based physical page index.
+    pub page_index: u32,
+    /// The box of the note on the page, in page milli-points.
+    pub rect: PdfRectMilliPt,
+    /// The key of the palette the note was written with.
+    pub palette_key: String,
+    /// The colour of the note, RGB.
+    pub color_rgb: [u8; 3],
+    /// The text of the note.
+    pub contents: String,
+    /// The author of the note (`/T`).
+    pub author: Option<String>,
+}
+
+impl PdfCommentAnnotation {
+    /// Answers whether the note carries a text.
+    pub fn has_text(&self) -> bool {
+        !self.contents.trim().is_empty()
+    }
+}
+
 /// Standard PDF highlight annotation model (`ROADMAP.md` M0.4, `ANNOT-001`, `INTEROP-002`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfHighlightAnnotation {
@@ -264,6 +293,31 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         &self,
         page_index: u32,
     ) -> Result<Vec<PdfHighlightAnnotation>, PdfEngineError>;
+
+    /// Queries all comments of the reviewer on `page_index` (`ANNOT-001`).
+    ///
+    /// A comment is a standard PDF `/Text` annotation with a popup. The
+    /// engine reports what it finds; the rail of the profession — what a
+    /// colour means — lives in the core.
+    fn page_comment_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfCommentAnnotation>, PdfEngineError>;
+
+    /// Writes a comment of the reviewer onto `annotation.page_index` (`ANNOT-001`).
+    /// Must only be invoked through `TransactionManager` (`ANNOT-001`).
+    fn add_comment_annotation(
+        &mut self,
+        annotation: &PdfCommentAnnotation,
+    ) -> Result<Vec<u8>, PdfEngineError>;
+
+    /// Removes the comment identified by `annotation_id` from `page_index`, returning the removed snapshot (`ANNOT-001`).
+    /// Must only be invoked through `TransactionManager` (`ANNOT-001`).
+    fn remove_comment_annotation(
+        &mut self,
+        page_index: u32,
+        annotation_id: &str,
+    ) -> Result<(PdfCommentAnnotation, Vec<u8>), PdfEngineError>;
 
     /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).
     fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError>;

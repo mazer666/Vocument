@@ -3,6 +3,7 @@
 //! No UI layer may depend on this crate directly.
 
 pub mod attach;
+pub mod comment;
 pub mod inspect;
 pub mod mutate;
 pub mod render_page;
@@ -11,6 +12,8 @@ pub mod text_extract;
 
 #[cfg(test)]
 mod attachment_signature_tests;
+#[cfg(test)]
+mod comment_tests;
 #[cfg(test)]
 mod difficult_tests;
 #[cfg(test)]
@@ -28,9 +31,9 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use vocument_core::pdf_engine::{
-    PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt,
-    PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest,
+    PdfCommentAnnotation, PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument,
+    PdfEngineError, PdfHighlightAnnotation, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText,
+    PdfRectMilliPt, PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest,
 };
 
 /// Identifier prefix of the PDF engine adapter.
@@ -286,6 +289,41 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         page_index: u32,
     ) -> Result<Vec<PdfHighlightAnnotation>, PdfEngineError> {
         mutate::query_page_highlights(&self.pdf_bytes, self.summary.page_count, page_index)
+    }
+
+    fn page_comment_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfCommentAnnotation>, PdfEngineError> {
+        comment::query_page_comments(&self.pdf_bytes, self.summary.page_count, page_index)
+    }
+
+    fn add_comment_annotation(
+        &mut self,
+        annotation: &PdfCommentAnnotation,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = comment::add_comment_annotation_to_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            annotation,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
+
+    fn remove_comment_annotation(
+        &mut self,
+        page_index: u32,
+        annotation_id: &str,
+    ) -> Result<(PdfCommentAnnotation, Vec<u8>), PdfEngineError> {
+        let (removed, updated) = comment::remove_comment_annotation_from_pdf(
+            &self.pdf_bytes,
+            self.summary.page_count,
+            page_index,
+            annotation_id,
+        )?;
+        self.pdf_bytes = updated.clone();
+        Ok((removed, updated))
     }
 
     fn page_label(&self, page_index: u32) -> Result<Option<String>, PdfEngineError> {

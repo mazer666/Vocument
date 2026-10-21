@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection** and **M2.3 — attachment and signature inspection** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md) and [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md)).
+**Current milestone:** M1 — Android Scan & OCR (implemented; the device-dependent evidence remains open — see [M1 Acceptance Record](docs/acceptance/M1-ACCEPTANCE.md)). M2 has started with **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -556,6 +556,34 @@ Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
 [the third audit on the document level](docs/audit/redteam-round-three-document-level.md)
 and [the third audit along the chain](docs/audit/redteam-round-three-platform-chain.md).
 
+## M2.4 — The comment of the reviewer and the rail of the profession *(Implemented, host-verified)*
+
+The fourth cut of M2. A reviewer does not write free text on a document:
+every note carries a **meaning**. The colour of the note says what the note
+means, and the rail that makes the meaning readable is the rail of the
+profession.
+
+Delivered:
+
+- a comment is a standard PDF `/Text` annotation with a popup: the note
+  stands on the page, the identifier stands in `/NM`, the author in `/T`, the
+  time of the change in `/M` and the colour in `/C` — another tool reads it
+- the rail of the profession lives in the core: the caller sends the **key**
+  of the rail, the core looks up the colour and refuses a key that the rail
+  does not carry
+- the user may replace the rail with one of their own; a rail without a
+  colour, an entry without a name and a key that stands twice are refused
+- the core refuses a note without a text and a note without an area, and it
+  does so before the document is touched — a refused note leaves the bytes
+  unchanged
+- the note runs as a transaction: it can be taken back and brought again
+- the applications call the comment and the rail
+
+Open: the **surface** — the user marks a place, chooses a colour and reads
+the notes — and the interoperability gate with the tools of other vendors.
+
+Evidence: [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md).
+
 ## M2.2 — Link and action inspection *(Implemented, host-verified)*
 
 The second cut of M2. Before a user follows a link in a document, a reviewer
@@ -598,10 +626,10 @@ Delivered:
 
 Evidence: [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md).
 
-Open in M2: the remaining six functions (among them the annotation function
-with the jurist palette, `ANNOT-001`, and the full sanitising, `SAN-001`),
-the macOS interface, and the interoperability gate with the tools of other
-vendors.
+Open in M2: the remaining functions (among them the full sanitising,
+`SAN-001`), the macOS interface — the comment bar, the surface of the
+redaction, the rail of the profession as a rail the user can edit — and the
+interoperability gate with the tools of other vendors.
 
 ---
 

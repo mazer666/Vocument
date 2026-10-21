@@ -266,6 +266,53 @@ public struct DocumentCoreClient: Sendable {
         )
     }
 
+    /// The rail of the profession: the palette the comments are written with
+    /// (`ANNOT-001`).
+    ///
+    /// The shell does not know the colours of the notes — it chooses the key
+    /// of the rail, and the core looks up the colour.
+    public func juristPalette() -> [FfiJuristPaletteEntry] {
+        documentCoreJuristPalette()
+    }
+
+    /// Replaces the rail of the profession with the palette of the user
+    /// (`ANNOT-001`).
+    public func setJuristPalette(entries: [FfiJuristPaletteEntry]) throws {
+        try documentCoreSetJuristPalette(entries: entries)
+    }
+
+    /// Lists the comments of the reviewer on `pageIndex` (`ANNOT-001`).
+    public func pageCommentAnnotations(
+        sessionId: String,
+        pageIndex: UInt32
+    ) throws -> [FfiCommentAnnotation] {
+        try documentCorePageCommentAnnotations(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
+    /// Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
+    ///
+    /// The core refuses a note without a text and a key that the rail does
+    /// not carry; the document stays untouched when the note is refused.
+    public func addCommentAnnotation(
+        sessionId: String,
+        annotation: FfiCommentAnnotation
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreAddCommentAnnotation(sessionId: sessionId, annotation: annotation)
+    }
+
+    /// Removes a comment of the reviewer by `annotationId` via `TransactionManager` (`ANNOT-001`).
+    public func removeCommentAnnotation(
+        sessionId: String,
+        pageIndex: UInt32,
+        annotationId: String
+    ) throws -> FfiTransactionHistorySnapshot {
+        try documentCoreRemoveCommentAnnotation(
+            sessionId: sessionId,
+            pageIndex: pageIndex,
+            annotationId: annotationId
+        )
+    }
+
     /// Inspects the links and the actions, the attachments and the signatures
     /// of a document (`LINKSEC-001`, `ATTACH-001`, `SIGREV-001`).
     ///

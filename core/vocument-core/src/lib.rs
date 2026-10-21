@@ -3,6 +3,7 @@
 //! Owns document/business state, configuration models, transactions, jobs,
 //! recovery contracts, and broker boundaries without any native UI dependencies.
 
+pub mod annotations;
 pub mod config;
 pub mod document_inspection;
 pub mod file_broker;

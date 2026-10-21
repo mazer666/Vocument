@@ -313,9 +313,9 @@ mod tests {
     use super::*;
     use crate::file_broker::{BrokeredFileRead, FileAccessOrigin};
     use crate::pdf_engine::{
-        PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-        PdfPageGeometry, PdfPageStructuredText, PdfRectMilliPt, PdfTileBitmap,
-        PdfTileRenderRequest,
+        PdfCommentAnnotation, PdfDocumentSummary, PdfEngine, PdfEngineDisplayList,
+        PdfEngineDocument, PdfEngineError, PdfPageGeometry, PdfPageStructuredText, PdfRectMilliPt,
+        PdfTileBitmap, PdfTileRenderRequest,
     };
 
     #[derive(Debug)]
@@ -401,6 +401,39 @@ mod tests {
                 .filter(|h| h.page_index == page_index)
                 .cloned()
                 .collect())
+        }
+
+        /// The comments of the page (`ANNOT-001`). The test engine does not carry
+        /// comments — it is a stand-in for the real engine, and it says so
+        /// instead of pretending that it succeeded.
+        fn page_comment_annotations(
+            &self,
+            _page_index: u32,
+        ) -> Result<Vec<PdfCommentAnnotation>, PdfEngineError> {
+            Err(PdfEngineError::EngineFailure {
+                details: "the test engine does not carry comments".to_owned(),
+            })
+        }
+
+        /// Writes a comment (`ANNOT-001`).
+        fn add_comment_annotation(
+            &mut self,
+            _annotation: &PdfCommentAnnotation,
+        ) -> Result<Vec<u8>, PdfEngineError> {
+            Err(PdfEngineError::EngineFailure {
+                details: "the test engine does not carry comments".to_owned(),
+            })
+        }
+
+        /// Removes a comment (`ANNOT-001`).
+        fn remove_comment_annotation(
+            &mut self,
+            _page_index: u32,
+            _annotation_id: &str,
+        ) -> Result<(PdfCommentAnnotation, Vec<u8>), PdfEngineError> {
+            Err(PdfEngineError::EngineFailure {
+                details: "the test engine does not carry comments".to_owned(),
+            })
         }
 
         fn page_label(&self, _page_index: u32) -> Result<Option<String>, PdfEngineError> {

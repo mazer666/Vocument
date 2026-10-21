@@ -645,6 +645,33 @@ Semantic/legal interpretation layered on exact diff.
 ### ANNOT-001
 Professional annotation system with editable jurist preset.
 
+A comment of the reviewer is a standard PDF `/Text` annotation with a popup:
+the note stands on the page, the text of the note opens in the popup, the
+identifier stands in `/NM`, the author in `/T`, the time of the change in `/M`
+and the colour in `/C`. The note is a part of the document — it is saved with
+it, and a tool of another vendor can read it.
+
+The **rail of the profession** gives every colour one meaning. The rail
+lives in the core, not in the interface: the engine gets a colour, the core
+decides which colours exist and what they mean. The caller sends the **key**
+of the rail (`"objection"`, …) and the core looks up the colour. A caller
+that sends a colour of its own is refused — otherwise the notes of a document
+would mean whatever the shell decided, and the notes of two documents could
+not be read together.
+
+The user may replace the rail with one of their own. The rail is checked
+before it is taken: a rail without a colour, an entry without a name and a
+key that stands twice are refused. The standard rail stays available as the
+way back.
+
+The core refuses a note without a text and a note without an area, and it
+does so **before** the document is touched: a refused note leaves the bytes
+of the document unchanged. The engine refuses the same cases a second time —
+it is the boundary of the engine, and it does not trust a caller.
+
+A note is a change of the document and runs as a transaction: it can be
+taken back and brought again.
+
 ---
 
 # 24. Redaction / sanitize / hidden content

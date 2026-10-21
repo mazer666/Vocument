@@ -3,6 +3,7 @@
 //! Exposes only opaque session/document IDs and immutable DTO snapshots.
 //! Never exposes raw MuPDF pointers or internal Rust references.
 
+pub mod annotation_dto;
 pub mod inspection_dto;
 pub mod interop_dto;
 pub mod job_dto;
@@ -125,6 +126,12 @@ pub enum DocumentCoreError {
         "the redaction failed and the document could not be put back; the document has to be opened again. The error was: {original}. The rollback failed with: {rollback}"
     )]
     RedactionRollbackFailed { original: String, rollback: String },
+    /// A comment of the reviewer was refused (`ANNOT-001`).
+    ///
+    /// The note has no text, no area, or a key that the rail of the
+    /// profession does not carry. The document is untouched.
+    #[error("the comment was refused: {details}")]
+    CommentRefused { details: String },
     #[error("navigation error: {details}")]
     NavigationFailure { details: String },
     #[error("transaction error: {details}")]
@@ -170,6 +177,7 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::Recovery(rec_err) => Self::RecoveryFailure {
                 details: rec_err.to_string(),
             },
+            SessionError::CommentInvalid { details } => Self::CommentRefused { details },
             SessionError::SessionNotFound { session_id } => Self::SessionNotFound { session_id },
             SessionError::NotLocallyWritable { session_id } => Self::DocumentNotLocallyWritable {
                 details: format!(

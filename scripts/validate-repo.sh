@@ -584,6 +584,68 @@ for report in \
   fi
 done
 
+# --- M2.4 Gate: the comment of the reviewer and the rail of the profession ---
+# A note is only worth something if it reaches the document and can be found
+# again. The rail of the profession lives in the core: the caller sends the
+# key, not a colour.
+if [[ ! -f engines/pdf-mupdf/csrc/mupdf_comment_bridge.c ]]; then
+  echo "ERROR (M2.4 Gate): the engine has no bridge for the comment of the reviewer!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_mupdf_add_comment_annot" engines/pdf-mupdf/csrc/mupdf_comment_bridge.c; then
+  echo "ERROR (M2.4 Gate): the engine cannot write a comment!" >&2
+  exit 1
+fi
+if ! grep -q "PDF_ANNOT_TEXT" engines/pdf-mupdf/csrc/mupdf_comment_bridge.c; then
+  echo "ERROR (M2.4 Gate): the comment has to be a standard PDF /Text annotation — another tool has to be able to read it!" >&2
+  exit 1
+fi
+if ! grep -q "fn prepare_comment" core/vocument-core/src/annotations.rs; then
+  echo "ERROR (M2.4 Gate): the core has to check the note against the rail — the engine does not know what a colour means!" >&2
+  exit 1
+fi
+if ! grep -q "fn default_palette" core/vocument-core/src/annotations.rs; then
+  echo "ERROR (M2.4 Gate): the core has to carry the standard rail of the profession!" >&2
+  exit 1
+fi
+if ! grep -q "AddCommentAnnotation" core/vocument-core/src/transactions.rs; then
+  echo "ERROR (M2.4 Gate): the note has to run as a transaction — it has to be able to be taken back!" >&2
+  exit 1
+fi
+if ! grep -q "document_core_add_comment_annotation" platform/vocument-ffi/src/annotation_dto.rs; then
+  echo "ERROR (M2.4 Gate): the comment is not available over the FFI boundary!" >&2
+  exit 1
+fi
+if ! grep -q "juristPalette" apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift; then
+  echo "ERROR (M2.4 Gate): the macOS client has to reach the rail of the profession!" >&2
+  exit 1
+fi
+if ! grep -q "juristPalette" apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt; then
+  echo "ERROR (M2.4 Gate): the Android bridge has to reach the rail of the profession!" >&2
+  exit 1
+fi
+for proof in \
+    "engines/pdf-mupdf/src/comment_tests.rs|a_comment_is_written_into_the_document_and_found_again" \
+    "engines/pdf-mupdf/src/comment_tests.rs|the_note_survives_the_save_of_the_document" \
+    "engines/pdf-mupdf/src/comment_tests.rs|a_note_that_carries_no_text_is_refused" \
+    "core/vocument-core/tests/annotation_tests.rs|a_note_with_a_key_that_the_rail_does_not_carry_is_refused" \
+    "core/vocument-core/tests/annotation_tests.rs|a_rail_with_a_key_that_stands_twice_is_refused" \
+    "platform/vocument-ffi/tests/annotation_e2e_tests.rs|a_note_reaches_the_document_and_is_read_back_with_its_meaning" \
+    "platform/vocument-ffi/tests/annotation_e2e_tests.rs|a_note_survives_the_save_and_is_found_in_the_file_again" \
+    "platform/vocument-ffi/tests/annotation_e2e_tests.rs|a_note_with_a_key_that_the_rail_does_not_carry_is_refused_and_the_document_stays" \
+    "apps/android/app/src/test/java/org/vocument/app/DocumentCoreBridgeTest.kt|theRailOfTheProfessionReachesTheCaller"; do
+  file="${proof%%|*}"
+  name="${proof##*|}"
+  if [[ ! -f "$file" ]] || ! grep -q "$name" "$file"; then
+    echo "ERROR (M2.4 Gate): the proof '$name' is missing ($file)!" >&2
+    exit 1
+  fi
+done
+if [[ ! -f docs/acceptance/M2.4-ACCEPTANCE.md ]]; then
+  echo "ERROR (M2.4 Gate): the acceptance record of the slice is missing!" >&2
+  exit 1
+fi
+
 # --- The callers: the apps have to reach the functions of M2 ---
 if ! grep -q "redactPageRegions" apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift; then
   echo "ERROR (M2.1 Gate): the macOS client has to call the redaction — the chain must not end in the generated code!" >&2
@@ -688,6 +750,7 @@ fi
 echo "✓ M2.1 Gate verified: secure redaction removes the content, verifies the removal and refuses the undo."
 echo "✓ M2.2 Gate verified: the links and actions of a document are reported, the risk is decided in the core."
 echo "✓ M2.3 Gate verified: the attachments and the signatures of a document are reported."
+echo "✓ M2.4 Gate verified: the comment of the reviewer and the rail of the profession."
 
 # Enforce QA-003: Prohibition of stubs in feature acceptance (CR-0002)
 if ! grep -q "QA-003" REQUIREMENTS.md; then

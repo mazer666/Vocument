@@ -1,7 +1,7 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host-m2.1-hardened-after-three-independent-audits"
+  product_status: "m1-implemented-not-device-verified-m2-in-progress-three-slices-verified-on-host-m2.1-hardened-after-three-independent-audits-m2.4-comment-with-the-jurist-rail"
   current_milestone: "M2"
   current_milestone_name: "macOS Professional Review"
   current_submilestone: "M2.3"
@@ -47,6 +47,12 @@ project:
     # available. The macOS interface stays open,
     # see docs/acceptance/M2.3-ACCEPTANCE.md.
     - "M2.3"
+    # M2.4 covers the comment of the reviewer and the rail of the profession:
+    # a standard PDF /Text annotation with a popup, the rail of the
+    # profession in the core, the caller sends the key and not a colour, and
+    # the note runs as a transaction. The surface of the applications stays
+    # open, see docs/acceptance/M2.4-ACCEPTANCE.md.
+    - "M2.4"
   license: "AGPL-3.0"
   contribution_model: "DCO"
 

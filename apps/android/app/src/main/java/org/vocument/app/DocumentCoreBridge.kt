@@ -290,6 +290,69 @@ class DocumentCoreBridge {
     }
 
     /**
+     * The rail of the profession: the palette the comments are written with
+     * (`ANNOT-001`).
+     *
+     * The shell does not know the colours of the notes — it chooses the key
+     * of the rail, and the core looks up the colour.
+     */
+    fun juristPalette(): List<FfiJuristPaletteEntry> {
+        return documentCoreJuristPalette()
+    }
+
+    /**
+     * The standard rail of the profession (`ANNOT-001`).
+     *
+     * The shell offers it to the user as the way back to the rail every
+     * document was written with.
+     */
+    fun defaultJuristPalette(): List<FfiJuristPaletteEntry> {
+        return documentCoreDefaultJuristPalette()
+    }
+
+    /**
+     * Replaces the rail of the profession with the palette of the user
+     * (`ANNOT-001`).
+     */
+    fun setJuristPalette(entries: List<FfiJuristPaletteEntry>) {
+        documentCoreSetJuristPalette(entries)
+    }
+
+    /**
+     * Lists the comments of the reviewer on [pageIndex] (`ANNOT-001`).
+     */
+    fun pageCommentAnnotations(
+        sessionId: String,
+        pageIndex: UInt
+    ): List<FfiCommentAnnotation> {
+        return documentCorePageCommentAnnotations(sessionId, pageIndex)
+    }
+
+    /**
+     * Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
+     *
+     * The core refuses a note without a text and a key that the rail does
+     * not carry; the document stays untouched when the note is refused.
+     */
+    fun addCommentAnnotation(
+        sessionId: String,
+        annotation: FfiCommentAnnotation
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreAddCommentAnnotation(sessionId, annotation)
+    }
+
+    /**
+     * Removes a comment of the reviewer by [annotationId] via `TransactionManager` (`ANNOT-001`).
+     */
+    fun removeCommentAnnotation(
+        sessionId: String,
+        pageIndex: UInt,
+        annotationId: String
+    ): FfiTransactionHistorySnapshot {
+        return documentCoreRemoveCommentAnnotation(sessionId, pageIndex, annotationId)
+    }
+
+    /**
      * Inspects the links and the actions, the attachments and the signatures
      * of a document (`LINKSEC-001`, `ATTACH-001`, `SIGREV-001`).
      *

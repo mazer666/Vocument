@@ -5,7 +5,7 @@
 
 use crate::identity::{DocumentId, compute_sha256_hex as sha256_hex};
 use crate::pdf_engine::{
-    PdfEngineDocument, PdfEngineError, PdfHighlightAnnotation, PdfRectMilliPt,
+    PdfCommentAnnotation, PdfEngineDocument, PdfEngineError, PdfHighlightAnnotation, PdfRectMilliPt,
 };
 use crate::render::{DocumentActor, RenderPipelineError};
 use serde::{Deserialize, Serialize};
@@ -53,6 +53,20 @@ pub enum TransactionCommand {
         annotation_id: String,
         /// Captured snapshot of the removed annotation so Undo can deterministically restore it.
         restored_annotation: Option<PdfHighlightAnnotation>,
+    },
+    /// Adds a comment of the reviewer (`ANNOT-001`).
+    ///
+    /// A comment is a standard PDF `/Text` annotation with a popup. The
+    /// command carries the text of the note: the note belongs to the
+    /// document, and the journal of the recovery store belongs to the user
+    /// alone.
+    AddCommentAnnotation { annotation: PdfCommentAnnotation },
+    /// Removes a comment of the reviewer by `annotation_id` (`ANNOT-001`).
+    RemoveCommentAnnotation {
+        page_index: u32,
+        annotation_id: String,
+        /// Captured snapshot of the removed note so Undo can restore it.
+        restored_annotation: Option<PdfCommentAnnotation>,
     },
     /// Removes the content of regions of a page for good (`REDACT-001`).
     ///
@@ -104,6 +118,12 @@ impl TransactionCommand {
             Self::RemoveHighlightAnnotation { page_index, .. } => {
                 format!("Remove highlight annotation on page #{}", page_index + 1)
             }
+            Self::AddCommentAnnotation { annotation } => {
+                format!("Add comment on page #{}", annotation.page_index + 1)
+            }
+            Self::RemoveCommentAnnotation { page_index, .. } => {
+                format!("Remove comment on page #{}", page_index + 1)
+            }
             Self::RedactPageRegions {
                 page_index,
                 regions,
@@ -131,6 +151,8 @@ impl TransactionCommand {
             Self::RotatePages { page_indices, .. } => page_indices.clone(),
             Self::AddHighlightAnnotation { annotation } => vec![annotation.page_index],
             Self::RemoveHighlightAnnotation { page_index, .. } => vec![*page_index],
+            Self::AddCommentAnnotation { annotation } => vec![annotation.page_index],
+            Self::RemoveCommentAnnotation { page_index, .. } => vec![*page_index],
             Self::RedactPageRegions { page_index, .. } => vec![*page_index],
             Self::Irreversible { .. } => Vec::new(),
         }
@@ -147,6 +169,12 @@ impl TransactionCommand {
             }
             Self::RemoveHighlightAnnotation { annotation_id, .. } => {
                 vec![format!("annot:{annotation_id}")]
+            }
+            Self::AddCommentAnnotation { annotation } => {
+                vec![format!("comment:{}", annotation.annotation_id)]
+            }
+            Self::RemoveCommentAnnotation { annotation_id, .. } => {
+                vec![format!("comment:{annotation_id}")]
             }
             Self::RedactPageRegions { page_index, .. } => {
                 vec![format!("redaction:page:{page_index}")]
@@ -638,6 +666,39 @@ impl TransactionManager {
                     restored_annotation: Some(annotation.clone()),
                 };
                 let forward = TransactionCommand::AddHighlightAnnotation { annotation };
+                Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::AddCommentAnnotation { annotation } => {
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
+                    |doc: &mut dyn PdfEngineDocument| doc.add_comment_annotation(&annotation),
+                )?;
+                let inverse = TransactionCommand::RemoveCommentAnnotation {
+                    page_index: annotation.page_index,
+                    annotation_id: annotation.annotation_id.clone(),
+                    restored_annotation: Some(annotation.clone()),
+                };
+                let forward = TransactionCommand::AddCommentAnnotation { annotation };
+                Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::RemoveCommentAnnotation {
+                page_index,
+                annotation_id,
+                ..
+            } => {
+                let (removed_annot, updated_bytes) = actor
+                    .apply_engine_mutation_for_transaction_manager(
+                        |doc: &mut dyn PdfEngineDocument| {
+                            doc.remove_comment_annotation(page_index, &annotation_id)
+                        },
+                    )?;
+                let forward = TransactionCommand::RemoveCommentAnnotation {
+                    page_index,
+                    annotation_id,
+                    restored_annotation: Some(removed_annot.clone()),
+                };
+                let inverse = TransactionCommand::AddCommentAnnotation {
+                    annotation: removed_annot,
+                };
                 Ok((forward, inverse, updated_bytes))
             }
             TransactionCommand::RedactPageRegions {

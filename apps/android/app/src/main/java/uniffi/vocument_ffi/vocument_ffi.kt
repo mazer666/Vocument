@@ -861,6 +861,18 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -876,7 +888,9 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
+    fun uniffi_vocument_ffi_checksum_func_document_core_add_comment_annotation(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
 ): Short
@@ -891,6 +905,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
@@ -944,6 +960,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_job_statuses(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_job_submit(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_jurist_palette(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame(
@@ -955,6 +973,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_ocr_scan_session_page(
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_descriptors(
 ): Short
@@ -971,6 +991,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_power_limits(
 fun uniffi_vocument_ffi_checksum_func_document_core_redact_page_regions(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_redo(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_remove_comment_annotation(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation(
 ): Short
@@ -1007,6 +1029,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_search_exact(
 fun uniffi_vocument_ffi_checksum_func_document_core_search_index_progress(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
 ): Short
@@ -1071,7 +1095,9 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_vocument_ffi_fn_func_document_core_add_comment_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionId`: RustBuffer.ByValue,`annotation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: RustBuffer.ByValue,`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1087,6 +1113,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuf
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1139,6 +1167,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_job_statuses(uniffi_out_err: Uniff
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_job_submit(`sessionId`: RustBuffer.ByValue,`documentRevision`: Long,`kind`: RustBuffer.ByValue,`resumable`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+fun uniffi_vocument_ffi_fn_func_document_core_jurist_palette(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1150,6 +1180,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_ocr_scan_session_page(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_page_comment_annotations(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_descriptors(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1166,6 +1198,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_power_limits(uniffi_out_err: Uniff
 fun uniffi_vocument_ffi_fn_func_document_core_redact_page_regions(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`regions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_redo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_remove_comment_annotation(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`annotationId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_remove_highlight_annotation(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`annotationId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1203,6 +1237,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_search_index_progress(`sessionId`:
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`selectionRect`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(`entries`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_start_scan_session(uniffi_out_err: UniffiRustCallStatus, 
@@ -1347,6 +1383,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_add_comment_annotation() != 33268.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1369,6 +1408,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
@@ -1449,6 +1491,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_jurist_palette() != 17691.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1465,6 +1510,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations() != 61030.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_descriptors() != 54455.toShort()) {
@@ -1489,6 +1537,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_remove_comment_annotation() != 6407.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation() != 2506.toShort()) {
@@ -1543,6 +1594,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833.toShort()) {
@@ -2139,6 +2193,87 @@ public object FfiConverterTypeFfiCleanupQualityMetrics: FfiConverterRustBuffer<F
 
 
 /**
+ * The comment of the reviewer, as it travels over the FFI boundary (`ANNOT-001`).
+ */
+data class FfiCommentAnnotation (
+    /**
+     * The stable identifier of the note (the PDF `/NM` key).
+     */
+    var `annotationId`: kotlin.String, 
+    /**
+     * The `0`-based page the note stands on.
+     */
+    var `pageIndex`: kotlin.UInt, 
+    /**
+     * The box of the note on the page.
+     */
+    var `rect`: FfiPdfRectMilliPt, 
+    /**
+     * The key of the rail the note was written with.
+     */
+    var `paletteKey`: kotlin.String, 
+    var `colorR`: kotlin.UByte, 
+    var `colorG`: kotlin.UByte, 
+    var `colorB`: kotlin.UByte, 
+    /**
+     * The text of the note.
+     */
+    var `contents`: kotlin.String, 
+    /**
+     * The author of the note (the PDF `/T` key).
+     */
+    var `author`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCommentAnnotation> {
+    override fun read(buf: ByteBuffer): FfiCommentAnnotation {
+        return FfiCommentAnnotation(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCommentAnnotation) = (
+            FfiConverterString.allocationSize(value.`annotationId`) +
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`rect`) +
+            FfiConverterString.allocationSize(value.`paletteKey`) +
+            FfiConverterUByte.allocationSize(value.`colorR`) +
+            FfiConverterUByte.allocationSize(value.`colorG`) +
+            FfiConverterUByte.allocationSize(value.`colorB`) +
+            FfiConverterString.allocationSize(value.`contents`) +
+            FfiConverterOptionalString.allocationSize(value.`author`)
+    )
+
+    override fun write(value: FfiCommentAnnotation, buf: ByteBuffer) {
+            FfiConverterString.write(value.`annotationId`, buf)
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+            FfiConverterString.write(value.`paletteKey`, buf)
+            FfiConverterUByte.write(value.`colorR`, buf)
+            FfiConverterUByte.write(value.`colorG`, buf)
+            FfiConverterUByte.write(value.`colorB`, buf)
+            FfiConverterString.write(value.`contents`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+    }
+}
+
+
+
+/**
  * Result of deskewing and orientation correction crossing UniFFI boundary.
  */
 data class FfiDeskewResult (
@@ -2609,6 +2744,66 @@ public object FfiConverterTypeFfiJobStatus: FfiConverterRustBuffer<FfiJobStatus>
             FfiConverterUByte.write(value.`progressPercent`, buf)
             FfiConverterBoolean.write(value.`resumable`, buf)
             FfiConverterOptionalString.write(value.`failure`, buf)
+    }
+}
+
+
+
+/**
+ * One entry of the rail of the profession (`ANNOT-001`).
+ */
+data class FfiJuristPaletteEntry (
+    /**
+     * The stable key of the entry (`"note"`, `"objection"`, …).
+     */
+    var `key`: kotlin.String, 
+    /**
+     * The name the interface shows.
+     */
+    var `label`: kotlin.String, 
+    /**
+     * What the colour means in the review.
+     */
+    var `meaning`: kotlin.String, 
+    var `colorR`: kotlin.UByte, 
+    var `colorG`: kotlin.UByte, 
+    var `colorB`: kotlin.UByte
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiJuristPaletteEntry: FfiConverterRustBuffer<FfiJuristPaletteEntry> {
+    override fun read(buf: ByteBuffer): FfiJuristPaletteEntry {
+        return FfiJuristPaletteEntry(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiJuristPaletteEntry) = (
+            FfiConverterString.allocationSize(value.`key`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`meaning`) +
+            FfiConverterUByte.allocationSize(value.`colorR`) +
+            FfiConverterUByte.allocationSize(value.`colorG`) +
+            FfiConverterUByte.allocationSize(value.`colorB`)
+    )
+
+    override fun write(value: FfiJuristPaletteEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`key`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`meaning`, buf)
+            FfiConverterUByte.write(value.`colorR`, buf)
+            FfiConverterUByte.write(value.`colorG`, buf)
+            FfiConverterUByte.write(value.`colorB`, buf)
     }
 }
 
@@ -4807,6 +5002,20 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "original=${ `original` }, rollback=${ `rollback` }"
     }
     
+    /**
+     * A comment of the reviewer was refused (`ANNOT-001`).
+     *
+     * The note has no text, no area, or a key that the rail of the
+     * profession does not carry. The document is untouched.
+     */
+    class CommentRefused(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class NavigationFailure(
         
         val `details`: kotlin.String
@@ -4897,22 +5106,25 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            10 -> DocumentCoreException.NavigationFailure(
+            10 -> DocumentCoreException.CommentRefused(
                 FfiConverterString.read(buf),
                 )
-            11 -> DocumentCoreException.TransactionFailure(
+            11 -> DocumentCoreException.NavigationFailure(
                 FfiConverterString.read(buf),
                 )
-            12 -> DocumentCoreException.SaveFailure(
+            12 -> DocumentCoreException.TransactionFailure(
                 FfiConverterString.read(buf),
                 )
-            13 -> DocumentCoreException.RecoveryFailure(
+            13 -> DocumentCoreException.SaveFailure(
                 FfiConverterString.read(buf),
                 )
-            14 -> DocumentCoreException.ImagingFailure(
+            14 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            15 -> DocumentCoreException.InternalFailure(
+            15 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            16 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4965,6 +5177,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 4UL
                 + FfiConverterString.allocationSize(value.`original`)
                 + FfiConverterString.allocationSize(value.`rollback`)
+            )
+            is DocumentCoreException.CommentRefused -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.NavigationFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -5046,33 +5263,38 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`rollback`, buf)
                 Unit
             }
-            is DocumentCoreException.NavigationFailure -> {
+            is DocumentCoreException.CommentRefused -> {
                 buf.putInt(10)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.TransactionFailure -> {
+            is DocumentCoreException.NavigationFailure -> {
                 buf.putInt(11)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.SaveFailure -> {
+            is DocumentCoreException.TransactionFailure -> {
                 buf.putInt(12)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.RecoveryFailure -> {
+            is DocumentCoreException.SaveFailure -> {
                 buf.putInt(13)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.ImagingFailure -> {
+            is DocumentCoreException.RecoveryFailure -> {
                 buf.putInt(14)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(15)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(16)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -6168,6 +6390,34 @@ public object FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuffer<List<FfiCommentAnnotation>> {
+    override fun read(buf: ByteBuffer): List<FfiCommentAnnotation> {
+        val len = buf.getInt()
+        return List<FfiCommentAnnotation>(len) {
+            FfiConverterTypeFfiCommentAnnotation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCommentAnnotation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCommentAnnotation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCommentAnnotation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCommentAnnotation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer<List<FfiHighlightAnnotation>> {
     override fun read(buf: ByteBuffer): List<FfiHighlightAnnotation> {
         val len = buf.getInt()
@@ -6214,6 +6464,34 @@ public object FfiConverterSequenceTypeFfiJobStatus: FfiConverterRustBuffer<List<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiJobStatus.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiJuristPaletteEntry: FfiConverterRustBuffer<List<FfiJuristPaletteEntry>> {
+    override fun read(buf: ByteBuffer): List<FfiJuristPaletteEntry> {
+        val len = buf.getInt()
+        return List<FfiJuristPaletteEntry>(len) {
+            FfiConverterTypeFfiJuristPaletteEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiJuristPaletteEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiJuristPaletteEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiJuristPaletteEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiJuristPaletteEntry.write(it, buf)
         }
     }
 }
@@ -6638,6 +6916,23 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     }
 }
         /**
+         * Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
+         *
+         * The core looks up the colour of the key in the rail of the profession and
+         * refuses a note without a text or without an area. The document stays
+         * untouched when the note is refused.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreAddCommentAnnotation`(`sessionId`: kotlin.String, `annotation`: FfiCommentAnnotation): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_add_comment_annotation(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiCommentAnnotation.lower(`annotation`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreAddHighlightAnnotation`(`sessionId`: kotlin.String, `annotation`: FfiHighlightAnnotation): FfiTransactionHistorySnapshot {
@@ -6738,6 +7033,22 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         FfiConverterString.lower(`path`),_status)
 }
     
+    
+
+        /**
+         * The standard rail of the profession (`ANNOT-001`).
+         *
+         * The shell offers it to the user as the way back: the rail of the user may
+         * be replaced, and the standard rail is the one every document was written
+         * with.
+         */ fun `documentCoreDefaultJuristPalette`(): List<FfiJuristPaletteEntry> {
+            return FfiConverterSequenceTypeFfiJuristPaletteEntry.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette(
+        _status)
+}
+    )
+    }
     
 
         /**
@@ -7114,6 +7425,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * The rail of the profession: the palette the comments are written with
+         * (`ANNOT-001`).
+         */ fun `documentCoreJuristPalette`(): List<FfiJuristPaletteEntry> {
+            return FfiConverterSequenceTypeFfiJuristPaletteEntry.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_jurist_palette(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Marks a document's recovery container clean shutdown.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreMarkRecoveryCleanShutdown`(`documentId`: kotlin.String)
@@ -7186,6 +7510,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(`scopedPathOrUrl`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Lists the comments of the reviewer on `page_index` (`ANNOT-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePageCommentAnnotations`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): List<FfiCommentAnnotation> {
+            return FfiConverterSequenceTypeFfiCommentAnnotation.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_page_comment_annotations(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
 }
     )
     }
@@ -7301,6 +7638,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_redo(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Removes a comment of the reviewer by `annotation_id` via `TransactionManager` (`ANNOT-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRemoveCommentAnnotation`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `annotationId`: kotlin.String): FfiTransactionHistorySnapshot {
+            return FfiConverterTypeFfiTransactionHistorySnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_remove_comment_annotation(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterString.lower(`annotationId`),_status)
 }
     )
     }
@@ -7543,6 +7893,22 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
 }
     )
     }
+    
+
+        /**
+         * Replaces the rail of the profession with the palette of the user
+         * (`ANNOT-001`).
+         *
+         * The palette is checked before it is taken: a rail without a colour, a
+         * name or a unique key is refused, so that every note can be written.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSetJuristPalette`(`entries`: List<FfiJuristPaletteEntry>)
+        = 
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(
+        FfiConverterSequenceTypeFfiJuristPaletteEntry.lower(`entries`),_status)
+}
+    
     
 
         /**

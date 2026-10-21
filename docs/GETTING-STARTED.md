@@ -361,6 +361,39 @@ Evidence: `docs/acceptance/M2.3-ACCEPTANCE.md`.
 
 ---
 
+## 7e. How does the reviewer write a comment?
+
+A comment of the reviewer is a **standard PDF `/Text` annotation with a
+popup**. Nothing private, nothing of Vocument: another tool reads the note.
+
+**Three places, in this order:**
+
+1. **The engine writes and reads the note** —
+   `engines/pdf-mupdf/csrc/mupdf_comment_bridge.c`. The identifier stands in
+   `/NM`, the author in `/T`, the text in `/Contents`, the time of the change
+   in `/M`, the colour in `/C`.
+2. **The core owns the rail of the profession** —
+   `core/vocument-core/src/annotations.rs`. The caller sends the **key** of
+   the rail (`"objection"`, `"question"`, …), the core looks up the colour.
+3. **The FFI boundary makes it available** —
+   `platform/vocument-ffi/src/annotation_dto.rs`.
+
+**Three traps that have already bitten once:**
+
+1. **The engine does not know what a colour means.** If the interface sends
+   the colour, the notes of two documents can contradict each other: a red
+   note is an objection in one document and "agreed" in the other. The core
+   therefore holds the rail and the caller sends the key.
+2. **A text annotation has no border.** `pdf_set_annot_border_width` on a
+   `/Text` annotation throws in MuPDF 1.28.5 (`Text annotations have no BS
+   property`). The note is drawn as an icon with its colour.
+3. **A gap in the cross-reference table loses the note.** A hand-made test
+   document whose object numbers skip one number (1, 2, 3, 6, 7) makes MuPDF
+   repair the document — and the repair loses the annotation that was just
+   written. The test documents number their objects without a gap.
+
+Evidence: `docs/acceptance/M2.4-ACCEPTANCE.md`.
+
 ## 8. Where do I add new kinds of jobs?
 
 Three places, in this order:

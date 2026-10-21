@@ -1088,6 +1088,171 @@ public func FfiConverterTypeFfiCleanupQualityMetrics_lower(_ value: FfiCleanupQu
 
 
 /**
+ * The comment of the reviewer, as it travels over the FFI boundary (`ANNOT-001`).
+ */
+public struct FfiCommentAnnotation {
+    /**
+     * The stable identifier of the note (the PDF `/NM` key).
+     */
+    public var annotationId: String
+    /**
+     * The `0`-based page the note stands on.
+     */
+    public var pageIndex: UInt32
+    /**
+     * The box of the note on the page.
+     */
+    public var rect: FfiPdfRectMilliPt
+    /**
+     * The key of the rail the note was written with.
+     */
+    public var paletteKey: String
+    public var colorR: UInt8
+    public var colorG: UInt8
+    public var colorB: UInt8
+    /**
+     * The text of the note.
+     */
+    public var contents: String
+    /**
+     * The author of the note (the PDF `/T` key).
+     */
+    public var author: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The stable identifier of the note (the PDF `/NM` key).
+         */annotationId: String, 
+        /**
+         * The `0`-based page the note stands on.
+         */pageIndex: UInt32, 
+        /**
+         * The box of the note on the page.
+         */rect: FfiPdfRectMilliPt, 
+        /**
+         * The key of the rail the note was written with.
+         */paletteKey: String, colorR: UInt8, colorG: UInt8, colorB: UInt8, 
+        /**
+         * The text of the note.
+         */contents: String, 
+        /**
+         * The author of the note (the PDF `/T` key).
+         */author: String?) {
+        self.annotationId = annotationId
+        self.pageIndex = pageIndex
+        self.rect = rect
+        self.paletteKey = paletteKey
+        self.colorR = colorR
+        self.colorG = colorG
+        self.colorB = colorB
+        self.contents = contents
+        self.author = author
+    }
+}
+
+#if compiler(>=6)
+extension FfiCommentAnnotation: Sendable {}
+#endif
+
+
+extension FfiCommentAnnotation: Equatable, Hashable {
+    public static func ==(lhs: FfiCommentAnnotation, rhs: FfiCommentAnnotation) -> Bool {
+        if lhs.annotationId != rhs.annotationId {
+            return false
+        }
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        if lhs.paletteKey != rhs.paletteKey {
+            return false
+        }
+        if lhs.colorR != rhs.colorR {
+            return false
+        }
+        if lhs.colorG != rhs.colorG {
+            return false
+        }
+        if lhs.colorB != rhs.colorB {
+            return false
+        }
+        if lhs.contents != rhs.contents {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(annotationId)
+        hasher.combine(pageIndex)
+        hasher.combine(rect)
+        hasher.combine(paletteKey)
+        hasher.combine(colorR)
+        hasher.combine(colorG)
+        hasher.combine(colorB)
+        hasher.combine(contents)
+        hasher.combine(author)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCommentAnnotation {
+        return
+            try FfiCommentAnnotation(
+                annotationId: FfiConverterString.read(from: &buf), 
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                rect: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                paletteKey: FfiConverterString.read(from: &buf), 
+                colorR: FfiConverterUInt8.read(from: &buf), 
+                colorG: FfiConverterUInt8.read(from: &buf), 
+                colorB: FfiConverterUInt8.read(from: &buf), 
+                contents: FfiConverterString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiCommentAnnotation, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.annotationId, into: &buf)
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
+        FfiConverterString.write(value.paletteKey, into: &buf)
+        FfiConverterUInt8.write(value.colorR, into: &buf)
+        FfiConverterUInt8.write(value.colorG, into: &buf)
+        FfiConverterUInt8.write(value.colorB, into: &buf)
+        FfiConverterString.write(value.contents, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCommentAnnotation_lift(_ buf: RustBuffer) throws -> FfiCommentAnnotation {
+    return try FfiConverterTypeFfiCommentAnnotation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiCommentAnnotation_lower(_ value: FfiCommentAnnotation) -> RustBuffer {
+    return FfiConverterTypeFfiCommentAnnotation.lower(value)
+}
+
+
+/**
  * Result of deskewing and orientation correction crossing UniFFI boundary.
  */
 public struct FfiDeskewResult {
@@ -2060,6 +2225,129 @@ public func FfiConverterTypeFfiJobStatus_lift(_ buf: RustBuffer) throws -> FfiJo
 #endif
 public func FfiConverterTypeFfiJobStatus_lower(_ value: FfiJobStatus) -> RustBuffer {
     return FfiConverterTypeFfiJobStatus.lower(value)
+}
+
+
+/**
+ * One entry of the rail of the profession (`ANNOT-001`).
+ */
+public struct FfiJuristPaletteEntry {
+    /**
+     * The stable key of the entry (`"note"`, `"objection"`, …).
+     */
+    public var key: String
+    /**
+     * The name the interface shows.
+     */
+    public var label: String
+    /**
+     * What the colour means in the review.
+     */
+    public var meaning: String
+    public var colorR: UInt8
+    public var colorG: UInt8
+    public var colorB: UInt8
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The stable key of the entry (`"note"`, `"objection"`, …).
+         */key: String, 
+        /**
+         * The name the interface shows.
+         */label: String, 
+        /**
+         * What the colour means in the review.
+         */meaning: String, colorR: UInt8, colorG: UInt8, colorB: UInt8) {
+        self.key = key
+        self.label = label
+        self.meaning = meaning
+        self.colorR = colorR
+        self.colorG = colorG
+        self.colorB = colorB
+    }
+}
+
+#if compiler(>=6)
+extension FfiJuristPaletteEntry: Sendable {}
+#endif
+
+
+extension FfiJuristPaletteEntry: Equatable, Hashable {
+    public static func ==(lhs: FfiJuristPaletteEntry, rhs: FfiJuristPaletteEntry) -> Bool {
+        if lhs.key != rhs.key {
+            return false
+        }
+        if lhs.label != rhs.label {
+            return false
+        }
+        if lhs.meaning != rhs.meaning {
+            return false
+        }
+        if lhs.colorR != rhs.colorR {
+            return false
+        }
+        if lhs.colorG != rhs.colorG {
+            return false
+        }
+        if lhs.colorB != rhs.colorB {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(key)
+        hasher.combine(label)
+        hasher.combine(meaning)
+        hasher.combine(colorR)
+        hasher.combine(colorG)
+        hasher.combine(colorB)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiJuristPaletteEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiJuristPaletteEntry {
+        return
+            try FfiJuristPaletteEntry(
+                key: FfiConverterString.read(from: &buf), 
+                label: FfiConverterString.read(from: &buf), 
+                meaning: FfiConverterString.read(from: &buf), 
+                colorR: FfiConverterUInt8.read(from: &buf), 
+                colorG: FfiConverterUInt8.read(from: &buf), 
+                colorB: FfiConverterUInt8.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiJuristPaletteEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.key, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.meaning, into: &buf)
+        FfiConverterUInt8.write(value.colorR, into: &buf)
+        FfiConverterUInt8.write(value.colorG, into: &buf)
+        FfiConverterUInt8.write(value.colorB, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiJuristPaletteEntry_lift(_ buf: RustBuffer) throws -> FfiJuristPaletteEntry {
+    return try FfiConverterTypeFfiJuristPaletteEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiJuristPaletteEntry_lower(_ value: FfiJuristPaletteEntry) -> RustBuffer {
+    return FfiConverterTypeFfiJuristPaletteEntry.lower(value)
 }
 
 
@@ -6399,6 +6687,14 @@ public enum DocumentCoreError: Swift.Error {
      */
     case RedactionRollbackFailed(original: String, rollback: String
     )
+    /**
+     * A comment of the reviewer was refused (`ANNOT-001`).
+     *
+     * The note has no text, no area, or a key that the rail of the
+     * profession does not carry. The document is untouched.
+     */
+    case CommentRefused(details: String
+    )
     case NavigationFailure(details: String
     )
     case TransactionFailure(details: String
@@ -6453,22 +6749,25 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             original: try FfiConverterString.read(from: &buf), 
             rollback: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .NavigationFailure(
+        case 10: return .CommentRefused(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 11: return .TransactionFailure(
+        case 11: return .NavigationFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 12: return .SaveFailure(
+        case 12: return .TransactionFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 13: return .RecoveryFailure(
+        case 13: return .SaveFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 14: return .ImagingFailure(
+        case 14: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 15: return .InternalFailure(
+        case 15: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 16: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -6528,33 +6827,38 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(rollback, into: &buf)
             
         
-        case let .NavigationFailure(details):
+        case let .CommentRefused(details):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .TransactionFailure(details):
+        case let .NavigationFailure(details):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .SaveFailure(details):
+        case let .TransactionFailure(details):
             writeInt(&buf, Int32(12))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .RecoveryFailure(details):
+        case let .SaveFailure(details):
             writeInt(&buf, Int32(13))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .RecoveryFailure(details):
             writeInt(&buf, Int32(14))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(15))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(16))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -7926,6 +8230,31 @@ fileprivate struct FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiCommentAnnotation]
+
+    public static func write(_ value: [FfiCommentAnnotation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiCommentAnnotation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiCommentAnnotation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiCommentAnnotation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiCommentAnnotation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer {
     typealias SwiftType = [FfiHighlightAnnotation]
 
@@ -7968,6 +8297,31 @@ fileprivate struct FfiConverterSequenceTypeFfiJobStatus: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiJobStatus.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiJuristPaletteEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiJuristPaletteEntry]
+
+    public static func write(_ value: [FfiJuristPaletteEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiJuristPaletteEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiJuristPaletteEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiJuristPaletteEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiJuristPaletteEntry.read(from: &buf))
         }
         return seq
     }
@@ -8348,6 +8702,21 @@ fileprivate struct FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRus
     }
 }
 /**
+ * Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
+ *
+ * The core looks up the colour of the key in the rail of the profession and
+ * refuses a note without a text or without an area. The document stays
+ * untouched when the note is refused.
+ */
+public func documentCoreAddCommentAnnotation(sessionId: String, annotation: FfiCommentAnnotation)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_add_comment_annotation(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiCommentAnnotation_lower(annotation),$0
+    )
+})
+}
+/**
  * Adds a standard PDF `/Highlight` annotation via `TransactionManager` (`ANNOT-001`, `INTEROP-002`, `ROADMAP.md` M0.4 Gate).
  */
 public func documentCoreAddHighlightAnnotation(sessionId: String, annotation: FfiHighlightAnnotation)throws  -> FfiTransactionHistorySnapshot  {
@@ -8431,6 +8800,19 @@ public func documentCoreConfigureTessdataPath(path: String)  {try! rustCall() {
         FfiConverterString.lower(path),$0
     )
 }
+}
+/**
+ * The standard rail of the profession (`ANNOT-001`).
+ *
+ * The shell offers it to the user as the way back: the rail of the user may
+ * be replaced, and the standard rail is the one every document was written
+ * with.
+ */
+public func documentCoreDefaultJuristPalette() -> [FfiJuristPaletteEntry]  {
+    return try!  FfiConverterSequenceTypeFfiJuristPaletteEntry.lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette($0
+    )
+})
 }
 /**
  * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
@@ -8739,6 +9121,16 @@ public func documentCoreJobSubmit(sessionId: String, documentRevision: UInt64, k
 })
 }
 /**
+ * The rail of the profession: the palette the comments are written with
+ * (`ANNOT-001`).
+ */
+public func documentCoreJuristPalette() -> [FfiJuristPaletteEntry]  {
+    return try!  FfiConverterSequenceTypeFfiJuristPaletteEntry.lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_jurist_palette($0
+    )
+})
+}
+/**
  * Marks a document's recovery container clean shutdown.
  */
 public func documentCoreMarkRecoveryCleanShutdown(documentId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -8802,6 +9194,17 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
     return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(scopedPathOrUrl),$0
+    )
+})
+}
+/**
+ * Lists the comments of the reviewer on `page_index` (`ANNOT-001`).
+ */
+public func documentCorePageCommentAnnotations(sessionId: String, pageIndex: UInt32)throws  -> [FfiCommentAnnotation]  {
+    return try  FfiConverterSequenceTypeFfiCommentAnnotation.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_page_comment_annotations(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
     )
 })
 }
@@ -8898,6 +9301,18 @@ public func documentCoreRedo(sessionId: String)throws  -> FfiTransactionHistoryS
     return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_redo(
         FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Removes a comment of the reviewer by `annotation_id` via `TransactionManager` (`ANNOT-001`).
+ */
+public func documentCoreRemoveCommentAnnotation(sessionId: String, pageIndex: UInt32, annotationId: String)throws  -> FfiTransactionHistorySnapshot  {
+    return try  FfiConverterTypeFfiTransactionHistorySnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_remove_comment_annotation(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterString.lower(annotationId),$0
     )
 })
 }
@@ -9101,6 +9516,19 @@ public func documentCoreSelectPageText(sessionId: String, pageIndex: UInt32, sel
 })
 }
 /**
+ * Replaces the rail of the profession with the palette of the user
+ * (`ANNOT-001`).
+ *
+ * The palette is checked before it is taken: a rail without a colour, a
+ * name or a unique key is refused, so that every note can be written.
+ */
+public func documentCoreSetJuristPalette(entries: [FfiJuristPaletteEntry])throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(
+        FfiConverterSequenceTypeFfiJuristPaletteEntry.lower(entries),$0
+    )
+}
+}
+/**
  * Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
  */
 public func documentCoreSetPageLabelRanges(sessionId: String, ranges: [FfiPageLabelRange])throws  -> [FfiPageDescriptor]  {
@@ -9209,6 +9637,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_add_comment_annotation() != 33268) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation() != 56011) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9231,6 +9662,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
@@ -9311,6 +9745,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_job_submit() != 46038) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_jurist_palette() != 17691) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9327,6 +9764,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations() != 61030) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_page_descriptors() != 54455) {
@@ -9351,6 +9791,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_redo() != 59555) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_remove_comment_annotation() != 6407) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_remove_highlight_annotation() != 2506) {
@@ -9405,6 +9848,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833) {

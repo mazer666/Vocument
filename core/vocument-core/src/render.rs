@@ -11,9 +11,9 @@
 use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
-    PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
-    PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText, PdfTextOccurrence,
-    PdfTileRenderRequest,
+    PdfCommentAnnotation, PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument,
+    PdfEngineError, PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText,
+    PdfTextOccurrence, PdfTileRenderRequest,
 };
 use crate::thumbnail_cache::{
     RenderedThumbnail, ThumbnailCache, ThumbnailCacheStats, ThumbnailKey,
@@ -109,6 +109,18 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.page_highlight_annotations(page_index)?)
+    }
+
+    /// Queries all comments of the reviewer on `page_index` (`ANNOT-001`).
+    pub fn page_comment_annotations(
+        &self,
+        page_index: u32,
+    ) -> Result<Vec<PdfCommentAnnotation>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.page_comment_annotations(page_index)?)
     }
 
     /// Queries the embedded PDF logical page label (from `/PageLabels`) for `page_index` (`0`-based).

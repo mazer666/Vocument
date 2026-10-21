@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.vocument_ffi.FfiFileAccessOrigin
+import uniffi.vocument_ffi.FfiJuristPaletteEntry
 import uniffi.vocument_ffi.DocumentCoreException
 import uniffi.vocument_ffi.FfiRedactionCheck
 import uniffi.vocument_ffi.FfiRedactionOccurrence
@@ -88,6 +89,53 @@ class DocumentCoreBridgeTest {
             "the place that could not be read is named",
             warnings.any { it.contains("could not be read") }
         )
+    }
+
+    @Test
+    fun theRailOfTheProfessionReachesTheCaller() {
+        val bridge = DocumentCoreBridge()
+        val rail = bridge.juristPalette()
+        assertTrue(
+            "the rail carries more than one colour: $rail",
+            rail.size >= 5
+        )
+        val objection = rail.firstOrNull { it.key == "objection" }
+        assertTrue(
+            "the rail knows the objection: $rail",
+            objection != null
+        )
+        assertTrue(
+            "every colour of the rail means something",
+            rail.all { it.meaning.isNotBlank() && it.label.isNotBlank() }
+        )
+    }
+
+    @Test
+    fun theRailOfTheUserMayReplaceTheDefault() {
+        val bridge = DocumentCoreBridge()
+        val before = bridge.juristPalette()
+        try {
+            bridge.setJuristPalette(
+                listOf(
+                    FfiJuristPaletteEntry(
+                        "house",
+                        "Hausfarbe",
+                        "Die Farbe des Hauses.",
+                        12u,
+                        34u,
+                        56u
+                    )
+                )
+            )
+            val rail = bridge.juristPalette()
+            assertEquals("the rail of the user has one entry", 1, rail.size)
+            assertEquals("house", rail[0].key)
+            assertTrue("the rail was replaced", rail.size != before.size)
+        } finally {
+            // The rail of the process is shared: the test puts it back, so
+            // that the other tests see the standard rail.
+            bridge.setJuristPalette(before)
+        }
     }
 
     @Test

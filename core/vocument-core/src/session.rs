@@ -66,6 +66,13 @@ pub enum SessionError {
         "the redaction failed and the document could not be put back; the session is in an unknown state, open the document again. The error was: {original}. The rollback failed with: {rollback}"
     )]
     RedactionRollbackFailed { original: String, rollback: String },
+    /// A comment of the reviewer was refused (`ANNOT-001`).
+    ///
+    /// The core refuses the note: a note without a text, a note without an
+    /// area, or a note with a key that the rail of the profession does not
+    /// carry.
+    #[error("the comment was refused: {details}")]
+    CommentInvalid { details: String },
 }
 
 /// Immutable snapshot of an active `DocumentSession` exposed to native UI across UniFFI (`ARCHITECTURE.md` §§5–6).
@@ -150,6 +157,9 @@ pub struct SessionRegistry {
     render_pipeline: RenderPipeline,
     next_session_number: AtomicU64,
     pub(crate) sessions: Mutex<BTreeMap<String, DocumentSession>>,
+    /// The rail of the profession: the palette the comments are written with
+    /// (`ANNOT-001`). The user may edit it; the default is a starting point.
+    pub(crate) jurist_palette: Mutex<crate::annotations::JuristPalette>,
 }
 
 impl SessionRegistry {
@@ -199,6 +209,7 @@ impl SessionRegistry {
             ),
             next_session_number: AtomicU64::new(1),
             sessions: Mutex::new(BTreeMap::new()),
+            jurist_palette: Mutex::new(crate::annotations::JuristPalette::default_palette()),
         }
     }
 

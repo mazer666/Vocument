@@ -114,7 +114,37 @@ document where the same text still stands have to reach the user as warnings,
 and that the recovery store, the errors of the recovery write and the caches
 of the process have to be treated as carefully as the redaction itself.
 
-### 3.3 The gates
+### 3.3 The fourth slice: the comment of the reviewer
+
+After the third audit was worked through, the next slice of M2 was
+implemented: **the comment of the reviewer and the rail of the profession**
+(`ANNOT-001`).
+
+A reviewer does not write free text on a document — every note carries a
+meaning. The colour of the note says what the note means, and the rail that
+makes the meaning readable is the rail of the profession.
+
+- a comment is a standard PDF `/Text` annotation with a popup: the identifier
+  stands in `/NM`, the author in `/T`, the text in `/Contents`, the time of
+  the change in `/M` and the colour in `/C`
+- the rail lives in the core: the caller sends the **key** of the rail, the
+  core looks up the colour and refuses a key that the rail does not carry
+- the user may replace the rail with one of their own; the rail is checked
+  before it is taken, and the standard rail stays available as the way back
+- a note without a text and a note without an area are refused **before** the
+  document is touched — a refused note leaves the bytes unchanged
+- the note runs as a transaction: it can be taken back and brought again
+- the macOS client and the Android bridge call the comment and the rail
+
+Three things bit once and are now written down: the engine does not know
+what a colour means (the rail therefore belongs in the core), a text
+annotation has no border (`pdf_set_annot_border_width` throws), and a gap in
+the cross-reference table of a hand-made document makes MuPDF repair the
+document — and the repair loses the annotation that was just written.
+
+Evidence: [M2.4 Acceptance Record](../acceptance/M2.4-ACCEPTANCE.md).
+
+### 3.4 The gates
 
 | Gate | What it enforces |
 |---|---|
@@ -123,6 +153,7 @@ of the process have to be treated as carefully as the redaction itself.
 | M2.2 | the engine reports the actions, the core decides the risk, the FFI function, the tests |
 | M2.3 | the engine reports the attachments and the signatures, the core decides the risk, the tests |
 | M2.1 (third audit) | the walk through every object of the document, the three kinds of the places, the private recovery root, the warning helpers of the two callers, the new proofs |
+| M2.4 | the bridge of the comment, the standard PDF `/Text` annotation, the check of the note against the rail in the core, the transaction, the FFI function, the two callers and the new proofs |
 
 ## 4. Architecture and platform
 
