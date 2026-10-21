@@ -97,12 +97,32 @@ impl JuristPaletteStore {
     /// a link points somewhere the user did not choose.
     pub fn load(&self) -> Result<Option<JuristPalette>, PaletteFileError> {
         self.check_path()?;
-        if !self.path.exists() {
-            return Ok(None);
+        // The state of the path is read with `symlink_metadata`, which does
+        // **not** follow a link. `Path::exists()` follows a link, and a link
+        // that points nowhere therefore looks like "no file at all" — the
+        // application would carry on with the standard rail, silently, and
+        // the notes of the reviewer would mean something else than the user
+        // thinks. A link of any kind is refused; only a path that carries
+        // nothing at all means "no rail".
+        let metadata = match fs::symlink_metadata(&self.path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(None);
+            }
+            Err(error) => {
+                return Err(PaletteFileError::Io {
+                    details: format!("{}: {error}", self.path.display()),
+                });
+            }
+        };
+        if metadata.file_type().is_symlink() {
+            return Err(PaletteFileError::Invalid {
+                details: format!(
+                    "{}: the rail of the profession is a link, not a plain file of the user",
+                    self.path.display()
+                ),
+            });
         }
-        let metadata = fs::symlink_metadata(&self.path).map_err(|error| PaletteFileError::Io {
-            details: format!("{}: {error}", self.path.display()),
-        })?;
         if !metadata.is_file() {
             return Err(PaletteFileError::Invalid {
                 details: format!(
@@ -110,6 +130,16 @@ impl JuristPaletteStore {
                     self.path.display()
                 ),
             });
+        }
+        // The rail of the user may only be read where the user owns it. The
+        // write path has always checked that; the read path did not, so a
+        // rail that belongs to a stranger was **used** — the notes of the
+        // reviewer were written with the colours of the stranger, and the
+        // meaning of the document changed silently.
+        if let Some(parent) = self.path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            self.assert_belongs_to_the_user(parent)?;
         }
         let text = fs::read_to_string(&self.path).map_err(|error| PaletteFileError::Io {
             details: format!("{}: {error}", self.path.display()),
@@ -205,6 +235,17 @@ impl JuristPaletteStore {
 
     /// Refuses a path that could carry the write out of the directory of the
     /// user.
+    ///
+    /// The **name** of the file decides: it has to be exactly
+    /// `jurist_palette.json`, and a name can never be `..` — so the file
+    /// cannot leave the directory it was given.
+    ///
+    /// The *directory* may carry a `..`: it is the part the **platform**
+    /// chose, and a path like `/a/b/../c` means the same directory as
+    /// `/a/c`. Refusing it would brick the application at the start for a
+    /// path that is not an attack. What protects the directory is the check
+    /// of the owner, and the staging file of the write is built from the
+    /// same directory as the rail — so the two can never land apart.
     fn check_path(&self) -> Result<(), PaletteFileError> {
         let name = self
             .path
@@ -215,18 +256,6 @@ impl JuristPaletteStore {
             return Err(PaletteFileError::Invalid {
                 details: format!(
                     "{}: the rail of the profession is kept in a file named {JURIST_PALETTE_FILE_NAME}",
-                    self.path.display()
-                ),
-            });
-        }
-        if self
-            .path
-            .components()
-            .any(|component| matches!(component, std::path::Component::ParentDir))
-        {
-            return Err(PaletteFileError::Invalid {
-                details: format!(
-                    "{}: the path of the rail of the profession may not leave its directory",
                     self.path.display()
                 ),
             });

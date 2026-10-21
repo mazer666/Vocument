@@ -134,22 +134,116 @@ fn two_applications_that_save_at_the_same_time_leave_a_complete_rail() {
     );
 }
 
+/// The name of the file decides whether the rail can leave its directory.
+///
+/// A name can never be `..` — so a file that is named `jurist_palette.json`
+/// cannot leave the directory it was given. The *directory* may carry a
+/// `..`: that is the part the **platform** chose, and a path like
+/// `/a/b/../c` means the same directory as `/a/c`. The second round of the
+/// red team measured that the old rule refused the whole path and bricked
+/// the application at the start for a path that is not an attack.
 #[test]
-fn a_path_that_leaves_the_directory_is_refused() {
+fn a_file_that_is_not_the_rail_cannot_leave_its_directory() {
     let scratch = Scratch::new("parent_dir");
+    // The name of the file is `..` — it points at the directory itself.
+    let path = scratch.path.join("sub").join("..");
+    let store = JuristPaletteStore::new(&path);
+    let error = store
+        .save(&a_palette())
+        .expect_err("the path has to be refused");
+    assert!(error.to_string().contains("jurist_palette.json"), "{error}");
+}
+
+/// A `..` in the **directory** the platform chose is not an attack: the rail
+/// lands in the directory the path names, and the check of the owner still
+/// applies.
+#[test]
+fn a_directory_with_a_dot_dot_is_accepted_and_lands_in_the_named_directory() {
+    let scratch = Scratch::new("parent_dir_allowed");
+    std::fs::create_dir_all(scratch.path.join("sub")).expect("the sub directory");
     let path = scratch
         .path
         .join("sub")
         .join("..")
         .join("jurist_palette.json");
     let store = JuristPaletteStore::new(&path);
-    let error = store
+    store
         .save(&a_palette())
-        .expect_err("the path has to be refused");
+        .expect("the path of the platform may not be refused");
     assert!(
-        error.to_string().contains("may not leave its directory"),
-        "{error}"
+        scratch.path.join("jurist_palette.json").exists(),
+        "the rail has to land in the directory the path names"
     );
+    assert!(
+        !scratch
+            .path
+            .join("sub")
+            .join("jurist_palette.json")
+            .exists(),
+        "the rail may not land in another directory"
+    );
+}
+
+/// A link that points **nowhere** is refused like every other link.
+///
+/// The old rule asked `Path::exists()`, which follows a link. A link that
+/// points nowhere therefore looked like "no rail at all", and the
+/// application carried on with the standard rail — **silently**. The notes
+/// of the reviewer would then mean something else than the user thinks.
+#[test]
+fn a_link_that_points_nowhere_is_refused_and_not_taken_for_no_rail() {
+    let scratch = Scratch::new("dangling_link");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        scratch.path.join("there_is_nothing_there"),
+        scratch.palette_path(),
+    )
+    .expect("the link");
+
+    let store = JuristPaletteStore::new(scratch.palette_path());
+    let error = store
+        .load()
+        .expect_err("a link that points nowhere is not a missing rail");
+    let text = error.to_string();
+    assert!(
+        text.contains("a link") || text.contains("not a plain file"),
+        "{text}"
+    );
+}
+
+/// The rail of the user may only be read where the user owns it.
+///
+/// The write path has always checked that. The read path did not, so a rail
+/// that belonged to a stranger was **used**: the notes of the reviewer were
+/// written with the colours of the stranger, and the meaning of the document
+/// changed silently. The second round of the red team measured exactly
+/// that.
+#[test]
+fn a_rail_of_a_stranger_is_not_read() {
+    let scratch = Scratch::new("stranger_rail");
+    let store = JuristPaletteStore::new(scratch.palette_path());
+    store.save(&a_palette()).expect("the rail must be written");
+
+    // The rail now belongs to somebody else. The process runs as root in
+    // this environment, so it can read the file of the stranger — and it
+    // must refuse it all the same.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::chown;
+        let uid = 1000;
+        let gid = 1000;
+        chown(scratch.palette_path(), Some(uid), Some(gid)).expect("the rail of the stranger");
+        chown(&scratch.path, Some(uid), Some(gid)).expect("the directory of the stranger");
+
+        let error = store
+            .load()
+            .expect_err("the rail of a stranger may not be read");
+        let text = error.to_string();
+        assert!(
+            text.contains("belongs to the user"),
+            "the refusal has to name the reason: {text}"
+        );
+    }
 }
 
 #[test]

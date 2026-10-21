@@ -101,11 +101,17 @@ broken file is the *worst* case, and the store refuses it.
 |---|---|
 | The stranger prepares the staging file as a link to their own file | The staging file is created **exclusively** (`O_EXCL`) with a name that carries the identity of the process and a counter, so the write goes into a new file and never through the link. The file of the stranger keeps its content. |
 | The stranger puts a link where the rail should be | `load()` refuses it: *"not a plain file"*. |
-| The path leaves the directory (`sub/../jurist_palette.json`) | `save()` refuses it: *"may not leave its directory"*. |
+| The stranger puts a link that points **nowhere** where the rail should be | **Corrected by the second round:** the old rule asked `Path::exists()`, which follows a link — a link that points nowhere therefore looked like *"no rail at all"*, and the application carried on with the standard rail, silently. The state of the path is now read with `symlink_metadata`, which does not follow a link: a link of any kind is refused. |
+| The rail belongs to a **stranger** | **Corrected by the second round:** the write path always checked the owner, the **read** path did not — a rail of a stranger was read and used, so the notes of the reviewer were written with the colours of the stranger. The read path checks the owner now. |
+| The path leaves the directory (`sub/../jurist_palette.json`) | **Corrected by the second round:** the rule refused the **whole** path, including the part the *platform* chose, and bricked the application at the start for a path like `/a/b/../c` — which means the same directory as `/a/c`. The **name** of the file decides now: it has to be exactly `jurist_palette.json`, and a name can never be `..`. The directory is protected by the check of the owner, and the staging file of the write is built from the same directory as the rail. |
 | The file carries another name (`something_else.json`) | `save()` refuses it: the name has to be exactly `jurist_palette.json`. |
 
 **Test cases:** `a_link_of_a_stranger_in_the_place_of_the_staging_file_is_not_written_through`,
-`a_link_in_the_place_of_the_rail_is_not_read`, `a_path_that_leaves_the_directory_is_refused`,
+`a_link_in_the_place_of_the_rail_is_not_read`,
+`a_link_that_points_nowhere_is_refused_and_not_taken_for_no_rail`,
+`a_rail_of_a_stranger_is_not_read`,
+`a_file_that_is_not_the_rail_cannot_leave_its_directory`,
+`a_directory_with_a_dot_dot_is_accepted_and_lands_in_the_named_directory`,
 `a_file_with_another_name_is_refused`.
 
 **Finding:** none. The write stays in the directory of the user, and it stays
@@ -189,6 +195,22 @@ The rail of the profession is a file of the user alone, is written
 atomically, cannot be carried out of its directory by a link or by `..`, does
 not lose a meaning to a change of the rail, and a broken rail is reported
 instead of being replaced silently.
+
+## The second round — an independent correction
+
+The measurements above were taken by the team lead. A **second, independent**
+round (an attacker that had not seen this report) measured the same file
+again and found **two places where this report was wrong**:
+
+1. a link that points **nowhere** was not refused — the application carried
+   on with the standard rail, silently;
+2. the **read** path had no check of the owner — a rail of a stranger was
+   used, and the notes of the reviewer were written with the colours of the
+   stranger.
+
+Both are fixed, both have a test, and the rules above are corrected. The
+report of the second round is in
+[`redteam-palette-independent.md`](redteam-palette-independent.md).
 
 ## The limits of this report
 
