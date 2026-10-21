@@ -563,11 +563,20 @@ The licensing question is worked out in detail in
 - [ ] The licensing decision is made and the source disclosure is implemented (`RISK-009`)
 - [ ] `project/project.yaml` and `ROADMAP.md` agree with the actual state
 - [ ] For every evidence criterion there is an entry with `PASS` / `FAIL` / `NOT RUN` / `BLOCKED`, **platform**, **environment**, **command** and **result**
+- [ ] `./scripts/validate-distribution.sh` is green: the licence texts, the notice of the third-party components, the offer of the source and the local-first rules
+- [ ] `./scripts/audit-licenses.sh` is green: every component carries a known, compatible licence
+- [ ] The bundle is **signed** and **notarised** (macOS) — the commands are in `scripts/release-macos.sh`, the result is **NOT RUN** without an Apple identity
+- [ ] The package is **signed** (Android) — the commands are in `scripts/release-android.sh`
+- [ ] The **source archive** is built and its checksum is published
+- [ ] The **legal compliance review** of the project owner exists (E5). An agent cannot give that clearance
+- [ ] `PRIVACY.md` names a **responsible person** — the TODO of the project owner is answered
 
 **Do not publish before that:** No package without a green
 `verify-android-native-libs.sh`. No package without a green
 `verify-android-runtime.sh`. No release as "approved" while `RISK-009` is
-open.
+open. **No artefact without the legal clearance of the project owner (E5)** —
+and no store upload while the conflict of Apple and the AGPL is undecided
+(`RISK-041`).
 
 ---
 
