@@ -4974,6 +4974,15 @@ public struct FfiRedactionReport {
      */
     public var uninspectedPlaces: [FfiRedactionOccurrence]
     /**
+     * The places of the document that carried the removed text **before**
+     * the removal.
+     *
+     * This list is the reference of the verification: the product examined
+     * the places itself, before it changed the document. A place that
+     * carried the text before and does not carry it any more was cleaned.
+     */
+    public var placesBeforeRemoval: [FfiRedactionOccurrence]
+    /**
      * The reasons why a check could not be carried out.
      *
      * A check that could not be carried out is not a pass. The reason is
@@ -5038,6 +5047,14 @@ public struct FfiRedactionReport {
          * user.
          */uninspectedPlaces: [FfiRedactionOccurrence], 
         /**
+         * The places of the document that carried the removed text **before**
+         * the removal.
+         *
+         * This list is the reference of the verification: the product examined
+         * the places itself, before it changed the document. A place that
+         * carried the text before and does not carry it any more was cleaned.
+         */placesBeforeRemoval: [FfiRedactionOccurrence], 
+        /**
          * The reasons why a check could not be carried out.
          *
          * A check that could not be carried out is not a pass. The reason is
@@ -5064,6 +5081,7 @@ public struct FfiRedactionReport {
         self.fileBytesClean = fileBytesClean
         self.remainingOccurrences = remainingOccurrences
         self.uninspectedPlaces = uninspectedPlaces
+        self.placesBeforeRemoval = placesBeforeRemoval
         self.notCheckedReasons = notCheckedReasons
         self.verified = verified
         self.revision = revision
@@ -5107,6 +5125,9 @@ extension FfiRedactionReport: Equatable, Hashable {
         if lhs.uninspectedPlaces != rhs.uninspectedPlaces {
             return false
         }
+        if lhs.placesBeforeRemoval != rhs.placesBeforeRemoval {
+            return false
+        }
         if lhs.notCheckedReasons != rhs.notCheckedReasons {
             return false
         }
@@ -5130,6 +5151,7 @@ extension FfiRedactionReport: Equatable, Hashable {
         hasher.combine(fileBytesClean)
         hasher.combine(remainingOccurrences)
         hasher.combine(uninspectedPlaces)
+        hasher.combine(placesBeforeRemoval)
         hasher.combine(notCheckedReasons)
         hasher.combine(verified)
         hasher.combine(revision)
@@ -5155,6 +5177,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
                 fileBytesClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 remainingOccurrences: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
                 uninspectedPlaces: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
+                placesBeforeRemoval: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
                 notCheckedReasons: FfiConverterSequenceString.read(from: &buf), 
                 verified: FfiConverterBool.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf)
@@ -5172,6 +5195,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
         FfiConverterTypeFfiRedactionCheck.write(value.fileBytesClean, into: &buf)
         FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.remainingOccurrences, into: &buf)
         FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.uninspectedPlaces, into: &buf)
+        FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.placesBeforeRemoval, into: &buf)
         FfiConverterSequenceString.write(value.notCheckedReasons, into: &buf)
         FfiConverterBool.write(value.verified, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)

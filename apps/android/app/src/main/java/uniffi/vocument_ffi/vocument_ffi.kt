@@ -4153,6 +4153,15 @@ data class FfiRedactionReport (
      */
     var `uninspectedPlaces`: List<FfiRedactionOccurrence>, 
     /**
+     * The places of the document that carried the removed text **before**
+     * the removal.
+     *
+     * This list is the reference of the verification: the product examined
+     * the places itself, before it changed the document. A place that
+     * carried the text before and does not carry it any more was cleaned.
+     */
+    var `placesBeforeRemoval`: List<FfiRedactionOccurrence>, 
+    /**
      * The reasons why a check could not be carried out.
      *
      * A check that could not be carried out is not a pass. The reason is
@@ -4193,6 +4202,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
             FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
+            FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterULong.read(buf),
@@ -4210,6 +4220,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`fileBytesClean`) +
             FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`remainingOccurrences`) +
             FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`uninspectedPlaces`) +
+            FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`placesBeforeRemoval`) +
             FfiConverterSequenceString.allocationSize(value.`notCheckedReasons`) +
             FfiConverterBoolean.allocationSize(value.`verified`) +
             FfiConverterULong.allocationSize(value.`revision`)
@@ -4226,6 +4237,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.write(value.`fileBytesClean`, buf)
             FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`remainingOccurrences`, buf)
             FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`uninspectedPlaces`, buf)
+            FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`placesBeforeRemoval`, buf)
             FfiConverterSequenceString.write(value.`notCheckedReasons`, buf)
             FfiConverterBoolean.write(value.`verified`, buf)
             FfiConverterULong.write(value.`revision`, buf)
