@@ -138,6 +138,18 @@ static int vocument_object_carries_word(
                 text_len,
                 words[i]
             );
+            /* A writer can hide the text in the plain text of the document:
+               "GEHEIM" as "R0VIRU1N" is still the secret, and a reader who
+               decodes it reads the secret. The bytes of the document do not
+               carry the word in one piece, so the comparison above does not
+               see it. */
+            if (!found) {
+                found = vocument_base64_carries_word(
+                    (const unsigned char *)text,
+                    text_len,
+                    words[i]
+                );
+            }
         }
     }
     return found;
@@ -319,6 +331,27 @@ int vocument_mupdf_find_text_occurrences(
                 vocument_walk_document(&walk, pdf_doc);
             }
             fz_always(ctx) {
+                /* The places that the walk could not examine are part of the
+                   report. A place that was not examined is not a place that
+                   was examined and found clean — the redaction would make a
+                   promise it cannot keep. */
+                if (walk.uninspected) {
+                    const char *line = walk.uninspected;
+                    while (*line) {
+                        const char *end = strchr(line, '\n');
+                        size_t length = end ? (size_t)(end - line) : strlen(line);
+                        char entry[VOCUMENT_WALK_PATH_MAX + 128];
+                        if (length < sizeof(entry)) {
+                            memcpy(entry, line, length);
+                            entry[length] = '\0';
+                            vocument_report_line(&report, "uninspected", -1, entry);
+                        }
+                        if (!end) {
+                            break;
+                        }
+                        line = end + 1;
+                    }
+                }
                 vocument_walk_free(&walk);
             }
             fz_catch(ctx) {

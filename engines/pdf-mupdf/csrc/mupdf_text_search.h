@@ -149,6 +149,90 @@ static inline int vocument_contains_word(
  * well is not seen here — the limit is named in the report of the round.
  */
 
+/* The value of a character of the base64 alphabet, or -1. */
+static inline int vocument_base64_value(unsigned char value) {
+    if (value >= 'A' && value <= 'Z') return value - 'A';
+    if (value >= 'a' && value <= 'z') return value - 'a' + 26;
+    if (value >= '0' && value <= '9') return value - '0' + 52;
+    if (value == '+') return 62;
+    if (value == '/') return 63;
+    return -1;
+}
+
+/* Answers whether the text carries the word in a **base64** form.
+ *
+ * A writer can hide a text in the plain text of a document: "GEHEIM" as
+ * "R0VIRU1N" is still the secret, and a reader who decodes it reads the
+ * secret. The comparison of the bytes does not see it — the bytes of the
+ * document do not carry the word in one piece.
+ *
+ * The text is therefore decoded as base64 and the word is looked for in the
+ * decoded bytes. The decoding is strict: the text has to consist of the
+ * alphabet of base64 (with the padding) and its length has to be a multiple
+ * of four. A text that carries something else as well does not decode and
+ * is not decoded — the place is then named as a place that carries the
+ * text, and the removal is refused.
+ *
+ * The answer is never a false positive: a text that decodes to something
+ * that carries the word really carries the word. */
+static inline int vocument_base64_carries_word(
+    const unsigned char *data,
+    size_t len,
+    const char *word
+) {
+    if (!data || !word || word[0] == '\0' || len == 0) {
+        return 0;
+    }
+    /* The spaces and the line breaks of a base64 text are not part of it. */
+    size_t significant = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (data[i] != ' ' && data[i] != '\t' && data[i] != '\r' && data[i] != '\n') {
+            significant++;
+        }
+    }
+    if (significant == 0 || significant % 4 != 0) {
+        return 0;
+    }
+    size_t capacity = significant / 4 * 3;
+    unsigned char *decoded = (unsigned char *)malloc(capacity ? capacity : 1);
+    if (!decoded) {
+        return 0;
+    }
+    size_t used = 0;
+    int valid = 1;
+    int bits = 0;
+    unsigned int accumulator = 0;
+    for (size_t i = 0; i < len && valid; i++) {
+        unsigned char value = data[i];
+        if (value == ' ' || value == '\t' || value == '\r' || value == '\n') {
+            continue;
+        }
+        if (value == '=') {
+            /* The padding may only stand at the end. */
+            break;
+        }
+        int digit = vocument_base64_value(value);
+        if (digit < 0) {
+            valid = 0;
+            break;
+        }
+        accumulator = (accumulator << 6) | (unsigned int)digit;
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            if (used < capacity) {
+                decoded[used++] = (unsigned char)((accumulator >> bits) & 0xFF);
+            }
+        }
+    }
+    int found = 0;
+    if (valid && used > 0) {
+        found = vocument_contains_word(decoded, used, word);
+    }
+    free(decoded);
+    return found;
+}
+
 /* The operators that end a run of text. */
 static inline int vocument_text_operator_ends_the_run(const char *operator_name) {
     return strcmp(operator_name, "Td") == 0 ||
@@ -187,8 +271,6 @@ static inline int vocument_text_run_carries_word(
     if (!data || !word || word[0] == '\0') {
         return 0;
     }
-    size_t word_len = strlen(word);
-
     /* The text of the run that is being read. */
     size_t capacity = 512;
     size_t used = 0;
@@ -327,7 +409,13 @@ static inline int vocument_text_run_carries_word(
             name[1] = name_len > 1 ? (char)data[start + 1] : '\0';
             name[2] = '\0';
             if (vocument_text_operator_ends_the_run(name)) {
-                if (vocument_contains_bytes_ci(run, used, (const unsigned char *)word, word_len)) {
+                /* The comparison is the same as the one over the bytes of a
+                   place: the text of a run can be plain, UTF-16 in either
+                   byte order, or the hex string of the UTF-16 bytes. A word
+                   that is split over several show operations **and** stored
+                   as UTF-16 is seen as well. */
+                if (vocument_contains_word(run, used, word) ||
+                    vocument_base64_carries_word(run, used, word)) {
                     found = 1;
                     break;
                 }
@@ -335,7 +423,8 @@ static inline int vocument_text_run_carries_word(
             }
         }
     }
-    if (!found && vocument_contains_bytes_ci(run, used, (const unsigned char *)word, word_len)) {
+    if (!found && (vocument_contains_word(run, used, word) ||
+                   vocument_base64_carries_word(run, used, word))) {
         found = 1;
     }
     free(run);

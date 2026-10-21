@@ -198,7 +198,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Twenty-three traps that have already bitten once:**
+**Twenty-six traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -311,6 +311,22 @@ decision can be checked without a device.
     linear list of the seen objects made the sweep quadratic: 32,000
     objects needed 0.83 s for a single walk. The seen objects live in a
     table with open addressing now, and a test measures the growth.
+24. **A walk that stops somewhere must say so.** The limit of the depth
+    (48) and an object that cannot be read end the examination of a place.
+    A place that was not examined is not a place that was examined and
+    found clean — the walk writes both down, the redaction is refused, and
+    the refusal names the reason.
+25. **The keys of an encrypted document are not the text of the user —
+    but they are still a place of the document.** They are never emptied
+    (that would destroy the document), and they are examined all the same:
+    a key that happens to spell the removed text makes the redaction
+    refuse, and the place is named.
+26. **The proof needs a reference.** The check of a redaction used to run
+    behind the garbage collection of the writer: the objects that nothing
+    reached any more were gone before the check ran, so the places that
+    carried the text were never examined. The product examines the document
+    **before** the removal now and keeps the list of the places that
+    carried the text (`places_before_removal`).
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in

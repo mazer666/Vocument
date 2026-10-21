@@ -203,14 +203,17 @@ fn the_keys_of_the_security_dictionary_are_not_emptied() {
     );
 }
 
-/// The keys of the document are not a place that carries the text either.
+/// The keys of the document **are** a place that carries the text — for the
+/// check, not for the cleaning.
 ///
 /// The keys of an encrypted document are not the text of the user: they are
-/// bytes that the writer computed. A key that happens to spell the text of
-/// the user must not make the product believe that the text stands in the
-/// document.
+/// bytes that the writer computed, and they are never emptied. But a key
+/// that happens to spell the text of the user stands in the document, and the
+/// check has to see it: a check that cannot see it would report a success
+/// while the text is in the file. The redaction refuses such a document and
+/// names the place.
 #[test]
-fn the_security_dictionary_is_not_a_place_that_carries_the_text() {
+fn the_security_dictionary_is_a_place_that_carries_the_text() {
     let bytes = document_with_security_dictionary();
     let occurrences =
         find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
@@ -219,12 +222,96 @@ fn the_security_dictionary_is_not_a_place_that_carries_the_text() {
         .map(|entry| entry.location.as_str())
         .collect();
     assert!(
-        !places.iter().any(|place| place.contains("/Extra")),
-        "the security dictionary must not be reported as a place: {places:?}"
+        places.iter().any(|place| place.contains("/Extra")),
+        "the security dictionary must be reported as a place: {places:?}"
     );
     assert!(
         places.iter().any(|place| place.ends_with("/Contents")),
         "the text of the annotation must be found, found: {places:?}"
+    );
+}
+
+/// Builds a document whose secret lies **deeper** than the walk reaches.
+///
+/// The objects 7..67 form a chain of dictionaries, each of them pointing to
+/// the next one. The last object of the chain carries the secret. The walk
+/// stops at a depth of 48 — the secret is below that depth.
+fn document_with_a_deep_chain() -> Vec<u8> {
+    let depth = 60;
+    let mut objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Extra 7 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+    ];
+    for index in 0..depth {
+        let number = 7 + index;
+        if number == 7 + depth - 1 {
+            objects.push(
+                format!("{number} 0 obj\n<< /Secret (GEHEIM) >>\nendobj\n").into_bytes(),
+            );
+        } else {
+            objects.push(
+                format!("{number} 0 obj\n<< /Next {} 0 R >>\nendobj\n", number + 1).into_bytes(),
+            );
+        }
+    }
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A place that the walk could not examine is named.
+///
+/// A walk that stops somewhere without saying so is a walk that cannot be
+/// trusted: the redaction would report a success while a place of the
+/// document was never looked into. The limit of the depth is therefore
+/// written down.
+#[test]
+fn a_place_that_the_walk_could_not_examine_is_named() {
+    let bytes = document_with_a_deep_chain();
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+    let uninspected: Vec<&str> = occurrences
+        .iter()
+        .filter(|entry| entry.kind == "uninspected")
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        !uninspected.is_empty(),
+        "a place that could not be looked into must be named: {occurrences:?}"
+    );
+    assert!(
+        uninspected
+            .iter()
+            .any(|place| place.contains("the limit of the depth")),
+        "the reason must be named: {uninspected:?}"
     );
 }
 
@@ -833,5 +920,147 @@ fn two_words_that_stand_next_to_each_other_are_not_one_word() {
     assert!(
         occurrences.is_empty(),
         "the two words must not be joined: {occurrences:?}"
+    );
+}
+
+/// Builds a document whose form carries the secret in two pieces, both of
+/// them as UTF-16 in the hex form.
+///
+/// The comparison of the text of a run knows the encodings of a PDF: plain
+/// text, UTF-16 in either byte order and the hex string of the UTF-16 bytes.
+fn document_with_a_split_utf16_form() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    // The form carries the secret in two pieces, both of them as UTF-16 in
+    // the hex form: "GE" and "HEIM".
+    let form = "BT /F1 18 Tf 20 150 Td <00470045> <004800450049004D> Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> /XObject << /Fm0 6 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Length {} >>\nstream\n", form.len()).into_bytes();
+            obj.extend_from_slice(form.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+#[test]
+fn a_word_that_is_split_and_stored_as_utf16_is_found() {
+    let bytes = document_with_a_split_utf16_form();
+    let occurrences =
+        find_word_occurrences(&bytes, &["GEHEIM".to_owned()]).expect("the document must be readable");
+    let places: Vec<&str> = occurrences
+        .iter()
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        places.iter().any(|place| place.contains("Fm0")),
+        "the split text of the form must be found, found: {places:?}"
+    );
+}
+
+/// Builds a document whose annotation carries the secret **encoded**.
+///
+/// "GEHEIM" as base64 is "R0VIRUlN". A reader who decodes it reads the
+/// secret, and the bytes of the document do not carry the word in one piece.
+fn document_with_an_encoded_secret() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R /Annots [6 0 R] >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        b"6 0 obj\n<< /Type /Annot /Subtype /Text /Rect [20 20 40 40] /Contents (R0VIRUlN) >>\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A secret that is **encoded** is found and removed.
+///
+/// "GEHEIM" as base64 is "R0VIRUlN". The bytes of the document do not carry
+/// the word in one piece, and a comparison of bytes therefore does not see
+/// it — a reader who decodes the text reads the secret all the same.
+#[test]
+fn a_secret_that_is_encoded_is_found_and_emptied() {
+    let bytes = document_with_an_encoded_secret();
+    let occurrences =
+        find_word_occurrences(&bytes, &["GEHEIM".to_owned()]).expect("the document must be readable");
+    let places: Vec<&str> = occurrences
+        .iter()
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        places.iter().any(|place| place.ends_with("/Contents")),
+        "the encoded text of the annotation must be found, found: {places:?}"
+    );
+
+    let (scrubbed, report) =
+        scrub_words(&bytes, &["GEHEIM".to_owned()]).expect("the document must be scrubable");
+    assert_eq!(
+        report.scrubbed_annotations, 1,
+        "the encoded text of the annotation must be emptied"
+    );
+    let text = String::from_utf8_lossy(&scrubbed);
+    assert!(
+        !text.contains("R0VIRUlN"),
+        "the encoded secret must not survive the cleaning: {text}"
     );
 }

@@ -124,6 +124,20 @@ pub struct RedactionReport {
     /// **incomplete**: the redaction is not a secure document, and it is
     /// refused rather than reported as verified.
     pub uninspected_places: Vec<PdfTextOccurrence>,
+    /// The places of the document that carried the removed text **before**
+    /// the removal.
+    ///
+    /// This list is the reference of the verification. The check of the
+    /// product used to run behind the garbage collection of the writer: the
+    /// objects that nothing reached any more were removed before the check
+    /// ran, and the places that carried the text were never examined. The
+    /// safety of the redaction rested on the writer of the engine and not on
+    /// the check of the product.
+    ///
+    /// The list is the evidence that the product looked at the places
+    /// itself: a place that carried the text before and does not carry it
+    /// any more was cleaned.
+    pub places_before_removal: Vec<PdfTextOccurrence>,
     /// The reasons why a check could not be carried out.
     ///
     /// A check that could not be carried out is not a pass. The reason is
@@ -384,6 +398,37 @@ impl SessionRegistry {
         let bytes_before = self.with_session(session_id, |session| {
             Ok(session.actor.current_pdf_bytes()?.to_vec())
         })?;
+
+        // The places of the document that carry the removed text — **before**
+        // the removal. This list is the reference of the verification.
+        //
+        // The fifth round of the red team measured that the check runs
+        // behind the garbage collection of the writer: the objects that
+        // nothing reaches any more are removed before the check runs, and
+        // the places that carried the text are therefore never examined. The
+        // safety of the redaction rested on the writer of the engine and not
+        // on the check of the product.
+        //
+        // With the reference the check has something to compare with: a place
+        // that carried the text before and does not carry it any more was
+        // cleaned — by the removal itself, by the cleaning, or by the writer
+        // of the engine. And a place that carried the text before and still
+        // carries it is a failure, also when the word is too short for the
+        // check over the bytes of the file.
+        let places_before = match self.find_word_occurrences(session_id, &checked_words) {
+            Ok(occurrences) => occurrences,
+            Err(error) => {
+                // The document has not been changed yet: the redaction is
+                // refused before it touches anything.
+                return Err(SessionError::Redaction(
+                    RedactionError::VerificationFailed {
+                        details: format!(
+                            "the places of the document could not be examined before the removal, so the removal cannot be verified: {error}"
+                        ),
+                    },
+                ));
+            }
+        };
 
         // The removal itself. From here on the document is changed, and every
         // error has to put it back.
@@ -725,6 +770,11 @@ impl SessionRegistry {
             file_bytes_clean,
             remaining_occurrences,
             uninspected_places,
+            places_before_removal: places_before
+                .iter()
+                .filter(|place| place.kind != "uninspected")
+                .cloned()
+                .collect(),
             not_checked_reasons,
             revision,
         };

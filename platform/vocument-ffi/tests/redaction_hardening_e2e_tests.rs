@@ -278,6 +278,99 @@ fn a_document_with_an_indirect_encryption_dictionary_stays_encrypted() {
     vocument_ffi::document_core_close_session(session_id).expect("the session must close");
 }
 
+/// Builds a document whose secret lies **deeper** than the walk reaches.
+///
+/// The objects 7..67 form a chain of dictionaries, each of them pointing to
+/// the next one. The last object of the chain carries a secret. The walk
+/// stops at a depth of 48 — the secret is below that depth, and the walk
+/// has to say so.
+fn document_with_a_deep_chain() -> Vec<u8> {
+    let depth = 60;
+    let content = format!("BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\n");
+    let mut objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Extra 7 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+    ];
+    for index in 0..depth {
+        let number = 7 + index;
+        if number == 7 + depth - 1 {
+            objects.push(format!("{number} 0 obj\n<< /Secret (GEHEIM) >>\nendobj\n").into_bytes());
+        } else {
+            objects.push(
+                format!("{number} 0 obj\n<< /Next {} 0 R >>\nendobj\n", number + 1).into_bytes(),
+            );
+        }
+    }
+
+    let mut pdf: Vec<u8> = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets: Vec<usize> = Vec::with_capacity(objects.len());
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A place that the walk could not examine makes the redaction refuse.
+///
+/// The walk stops at a depth of 48. Everything below that depth is **not**
+/// examined — and a place that was not examined is not a place that was
+/// examined and found clean. The redaction would make a promise it cannot
+/// keep, so it refuses and names the reason.
+#[test]
+fn a_place_beyond_the_depth_of_the_walk_makes_the_redaction_refuse() {
+    let bytes = document_with_a_deep_chain();
+    let session_id = open_session(bytes);
+
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case(SECRET))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let outcome = document_core_redact_page_regions(session_id.clone(), 0, vec![region]);
+    let error = match outcome {
+        Ok(report) => panic!("the redaction must not be verified: {report:?}"),
+        Err(error) => error,
+    };
+    let details = format!("{error:?}");
+    assert!(
+        details.contains("the limit of the depth"),
+        "the refusal has to name the reason: {details}"
+    );
+
+    vocument_ffi::document_core_close_session(session_id).expect("the session must close");
+}
+
 #[test]
 fn a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word() {
     let session_id = open_session(document_with_secret());

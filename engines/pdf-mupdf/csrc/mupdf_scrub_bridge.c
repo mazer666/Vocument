@@ -63,7 +63,17 @@ static int vocument_object_carries_word(
     const char *text = pdf_to_str_buf(ctx, obj);
     size_t text_len = pdf_to_str_len(ctx, obj);
     for (size_t i = 0; i < word_count; i++) {
-        if (words[i] && words[i][0] && vocument_contains_word(
+        if (!words[i] || !words[i][0]) {
+            continue;
+        }
+        if (vocument_contains_word((const unsigned char *)text, text_len, words[i])) {
+            return 1;
+        }
+        /* A writer can hide the text in the plain text of the document:
+           "GEHEIM" as "R0VIRU1N" is still the secret. The string is emptied
+           in that case as well — otherwise the secret would stay in the
+           document in a form that nobody reads by accident. */
+        if (vocument_base64_carries_word(
                 (const unsigned char *)text, text_len, words[i])) {
             return 1;
         }
@@ -111,6 +121,18 @@ static int vocument_scrub_place(void *user, const vocument_walk_item *item) {
         return 1;
     }
     if (vocument_key_is_protected(ctx, item->key)) {
+        return 1;
+    }
+    /* The keys of an encrypted document are not the text of the user, and
+       emptying one of them destroys the document: the fourth round of the
+       red team measured a redaction of a one-letter word that broke the
+       encryption of the file, and the fifth round measured the same for the
+       case in which the encryption dictionary hangs as an indirect object.
+       The keys are therefore never emptied.
+       The **check** sees them nevertheless: a key that happens to spell the
+       text of the user is a place that carries the text, and the redaction
+       refuses and names it. */
+    if (item->parent && vocument_walk_is_security_dictionary(ctx, item->parent)) {
         return 1;
     }
     if (!vocument_object_carries_word(ctx, item->object, state->words, state->word_count)) {

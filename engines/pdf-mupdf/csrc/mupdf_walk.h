@@ -90,6 +90,16 @@ typedef struct {
     int *visited;
     int visited_capacity;
     int visited_count;
+    /* The places that the walk could **not** examine, one per line.
+     *
+     * A walk that stops somewhere without saying so is a walk that cannot
+     * be trusted: the redaction would report a success while a place of the
+     * document was never looked into. The limit of the depth and an object
+     * that cannot be read are therefore written down here, and the caller
+     * turns them into places that could not be looked into. */
+    char *uninspected;
+    size_t uninspected_len;
+    size_t uninspected_capacity;
 } vocument_walk_t;
 
 /* The number of slots of the hash table at the start. */
@@ -108,6 +118,9 @@ static inline void vocument_walk_init(
     walk->visited = NULL;
     walk->visited_capacity = 0;
     walk->visited_count = 0;
+    walk->uninspected = NULL;
+    walk->uninspected_len = 0;
+    walk->uninspected_capacity = 0;
 }
 
 /* Releases the state of the walk. */
@@ -118,6 +131,56 @@ static inline void vocument_walk_free(vocument_walk_t *walk) {
     }
     walk->visited_capacity = 0;
     walk->visited_count = 0;
+    if (walk->uninspected) {
+        free(walk->uninspected);
+        walk->uninspected = NULL;
+    }
+    walk->uninspected_len = 0;
+    walk->uninspected_capacity = 0;
+}
+
+/* Writes down a place that the walk could not examine.
+ *
+ * The reason comes first, the place second — the caller reads the lines
+ * apart. A failure of the allocation is not fatal: the walk then knows less
+ * about itself, and the caller sees an empty list. The allocation fails only
+ * when the machine has no memory left at all. */
+static inline void vocument_walk_note_uninspected(
+    vocument_walk_t *walk,
+    const char *reason,
+    const char *path
+) {
+    if (!walk || !reason) {
+        return;
+    }
+    const char *place = path ? path : "?";
+    size_t needed = strlen(reason) + strlen(place) + 3;
+    if (walk->uninspected_len + needed + 1 > walk->uninspected_capacity) {
+        size_t capacity = walk->uninspected_capacity ? walk->uninspected_capacity : 256;
+        while (walk->uninspected_len + needed + 1 > capacity) {
+            capacity *= 2;
+        }
+        char *bigger = (char *)realloc(walk->uninspected, capacity);
+        if (!bigger) {
+            return;
+        }
+        walk->uninspected = bigger;
+        walk->uninspected_capacity = capacity;
+    }
+    int written = snprintf(
+        walk->uninspected + walk->uninspected_len,
+        walk->uninspected_capacity - walk->uninspected_len,
+        "%s\t%s\n",
+        reason,
+        place
+    );
+    if (written < 0) {
+        return;
+    }
+    walk->uninspected_len += (size_t)written;
+    if (walk->uninspected_len >= walk->uninspected_capacity) {
+        walk->uninspected_len = walk->uninspected_capacity - 1;
+    }
 }
 
 /* The slot of an object number in the hash table. */
@@ -311,13 +374,6 @@ static inline void vocument_walk_dict(
         if (is_page && name && strcmp(name, "Parent") == 0) {
             continue;
         }
-        /* The encryption dictionary holds the keys of the document, not the
-           text of the user. Emptying one of those keys would destroy the
-           document: the fourth round of the red team measured a redaction
-           of a one-letter word that broke the encryption of the file. */
-        if (name && strcmp(name, "Encrypt") == 0) {
-            continue;
-        }
         char sub[VOCUMENT_WALK_PATH_MAX];
         snprintf(sub, sizeof(sub), "%s/%s", path, name ? name : "?");
         /* The content of a page is the visible text of the page. The caller
@@ -389,7 +445,18 @@ static inline void vocument_walk_object(
     const char *path
 ) {
     fz_context *ctx = walk->ctx;
-    if (!obj || depth > VOCUMENT_WALK_MAX_DEPTH) {
+    if (!obj) {
+        return;
+    }
+    if (depth > VOCUMENT_WALK_MAX_DEPTH) {
+        /* The limit of the depth keeps the walk finite. Everything below it
+           is **not** examined — and a place that was not examined must not
+           pass for a place that was examined and found clean. */
+        vocument_walk_note_uninspected(
+            walk,
+            "the limit of the depth of the walk was reached",
+            path
+        );
         return;
     }
     if (vocument_walk_seen(walk, obj)) {
@@ -397,12 +464,12 @@ static inline void vocument_walk_object(
     }
     if (pdf_is_dict(ctx, obj)) {
         /* The encryption dictionary holds the keys of the document, not the
-           text of the user. It is not descended into — neither when it hangs
-           in the trailer, nor when it is an object of the file and the sweep
-           over the cross-reference table reaches it by its number. */
-        if (vocument_walk_is_security_dictionary(ctx, obj)) {
-            return;
-        }
+           text of the user. It is **examined** nevertheless: a key that
+           happens to spell the text of the user has to be seen by the
+           check, otherwise the check would report a success while the text
+           stands in the document. It is never **cleaned** — that is the
+           business of the cleaning, which refuses the keys of the
+           document. */
         /* A stream is a dictionary with a content. Its content is a place of
            its own — the text of a page, the XMP packet, the file of an
            attachment — and the entries of its dictionary can carry the text
@@ -482,9 +549,19 @@ static inline void vocument_walk_xref(
         if (num <= 0 || vocument_walk_already_seen(walk, num)) {
             continue;
         }
-        /* The object has to be read before it can be walked. */
+        /* The object has to be read before it can be walked. An object that
+           cannot be read is a place that was **not** examined: the walk
+           writes it down, so that the caller does not mistake it for a
+           place that was examined and found clean. */
         pdf_xref_entry *cached = pdf_cache_object(ctx, pdf_doc, num);
         if (!cached || !cached->obj) {
+            char place[VOCUMENT_WALK_PATH_MAX];
+            snprintf(place, sizeof(place), "/Object[%d]", num);
+            vocument_walk_note_uninspected(
+                walk,
+                "the object could not be read",
+                place
+            );
             continue;
         }
         if (pdf_obj_num_is_stream(ctx, pdf_doc, num) &&
@@ -499,6 +576,13 @@ static inline void vocument_walk_xref(
            is remembered twice would make the walk skip the object. */
         pdf_obj *reference = pdf_new_indirect(ctx, pdf_doc, num, entry->gen);
         if (!reference) {
+            char place[VOCUMENT_WALK_PATH_MAX];
+            snprintf(place, sizeof(place), "/Object[%d]", num);
+            vocument_walk_note_uninspected(
+                walk,
+                "the object could not be addressed",
+                place
+            );
             continue;
         }
         vocument_walk_object(walk, reference, NULL, NULL, -1, -1, 0, 0, path);

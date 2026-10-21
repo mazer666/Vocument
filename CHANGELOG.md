@@ -32,6 +32,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- The verification of a redaction could report a **success that it could not
+  prove**: the walk stopped at its limit of the depth and at objects it
+  could not read **without saying so**, and the encryption dictionary was
+  not examined at all. The walk now writes down every place it could not
+  examine, the redaction **refuses** and names the reason, and the keys of
+  an encrypted document are seen by the check (and never emptied).
+- The proof of a redaction no longer rests on the garbage collection of the
+  writer: the product examines the document **before** the removal and
+  keeps the list of the places that carried the text.
 - The **fifth adversarial audit** of the redaction found that the clearing
   emptied the **`/U` of an encrypted document** when the encryption dictionary
   hangs as an indirect object — the form the specification asks for. The

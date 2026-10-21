@@ -129,6 +129,13 @@ pub struct FfiRedactionReport {
     /// the document, for example. The shell should show these places to the
     /// user.
     pub uninspected_places: Vec<FfiRedactionOccurrence>,
+    /// The places of the document that carried the removed text **before**
+    /// the removal.
+    ///
+    /// This list is the reference of the verification: the product examined
+    /// the places itself, before it changed the document. A place that
+    /// carried the text before and does not carry it any more was cleaned.
+    pub places_before_removal: Vec<FfiRedactionOccurrence>,
     /// The reasons why a check could not be carried out.
     ///
     /// A check that could not be carried out is not a pass. The reason is
@@ -164,6 +171,11 @@ impl From<RedactionReport> for FfiRedactionReport {
                 .collect(),
             uninspected_places: report
                 .uninspected_places
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            places_before_removal: report
+                .places_before_removal
                 .into_iter()
                 .map(Into::into)
                 .collect(),
