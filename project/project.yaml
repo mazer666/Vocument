@@ -1,7 +1,7 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-in-progress-four-slices-verified-on-host-m2.1-hardened-after-four-independent-audits-m2.4-comment-with-the-persistent-jurist-rail-licensing-decision-taken-app-store-readiness-in-preparation"
+  product_status: "m1-implemented-not-device-verified-m2-in-progress-four-slices-verified-on-host-m2.1-hardened-after-five-independent-audits-m2.4-comment-with-the-persistent-jurist-rail-hardened-by-a-second-independent-review-licensing-decision-taken-app-store-readiness-in-preparation"
   current_milestone: "M2"
   current_milestone_name: "macOS Professional Review"
   current_submilestone: "M2.5"
@@ -35,9 +35,12 @@ project:
     # every object of the document) and the systematic gap of the fourth
     # audit (the walk did not descend into the dictionary of a stream, so a
     # copy of the text in a form object stayed in the document while the
-    # redaction reported success). The macOS interface of the redaction is
-    # not part of M2.1 and stays open, see
-    # docs/acceptance/M2.1-ACCEPTANCE.md.
+    # redaction reported success) and the fifth audit (the keys of an
+    # encrypted document were emptied when the encryption dictionary hangs
+    # as an indirect object, and the search for the remaining text compared
+    # bytes and did not see a word that the writer split over several show
+    # operations). The macOS interface of the redaction is not part of M2.1
+    # and stays open, see docs/acceptance/M2.1-ACCEPTANCE.md.
     - "M2.1"
     # M2.2 covers the inspection of the links and actions of a document: the
     # engine reports the facts, the core decides the risk, the FFI boundary

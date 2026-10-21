@@ -198,7 +198,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Twenty traps that have already bitten once:**
+**Twenty-three traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -293,6 +293,24 @@ decision can be checked without a device.
 20. **A directory in the temporary directory can be prepared by somebody
     else.** The recovery store keeps its content private (`0700`/`0600`),
     but the applications have to hand it a directory of their own.
+21. **The keys of an encrypted document are not the text of the user.** The
+    encryption dictionary holds the keys of the file. Emptying one of them
+    destroys the document — and the specification (ISO 32000-1, Table 15)
+    asks for the `/Encrypt` of the trailer to be an **indirect reference**,
+    so the dictionary is an object of the file that the sweep over the
+    cross-reference table reaches by its number. The dictionary is
+    recognised by its content now (the keys `/O` and `/U` and the filter
+    `/Standard`) and is never descended into.
+22. **A word can be split over several show operations.** A writer may put
+    `(GE) (HEIM) Tj` on the page: the page shows "GEHEIM", but the bytes
+    of the stream do not carry the word in one piece. A comparison of bytes
+    is blind for it. The search for the places reads the **text** of the
+    content stream now: the pieces of a run are joined, as long as no
+    operator moved the writing position.
+23. **The sweep over the objects of the document must stay linear.** A
+    linear list of the seen objects made the sweep quadratic: 32,000
+    objects needed 0.83 s for a single walk. The seen objects live in a
+    table with open addressing now, and a test measures the growth.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in
@@ -456,9 +474,15 @@ small JSON file in the data directory of the application:
 
 1. **The file belongs to the user alone.** The store writes the file with the
    mode `0600` and makes the directory `0700`. The store refuses to write into
-   a directory or over a file that belongs to somebody else, and it refuses
-   every path that leaves its directory (`..`) and every file whose name is
-   not exactly `jurist_palette.json`.
+   a directory or over a file that belongs to somebody else — and it refuses
+   to **read** such a file as well, because a rail of a stranger would give
+   the notes of the reviewer the colours of the stranger. The **name** of the
+   file decides whether the rail can leave its directory: it has to be exactly
+   `jurist_palette.json`, and a name can never be `..`. The directory may
+   carry a `..` — that is the part the platform chose, and a path like
+   `/a/b/../c` means the same directory as `/a/c`. A **link** in the place of
+   the rail is refused, also when it points nowhere: the application does not
+   fall back to the standard rail without saying so.
 2. **The write is atomic.** The rail is written into a staging file that
    carries the identity of the process, and that file is renamed over the
    rail. A crash therefore leaves the rail either complete or untouched — and
@@ -476,7 +500,8 @@ application sets it to its own sandbox (the application support directory of
 the app) — **not** to the temporary directory, because the temporary directory
 is predictable and can be prepared by somebody else.
 
-Evidence: `docs/audit/redteam-palette-and-storage.md` and
+Evidence: `docs/audit/redteam-palette-and-storage.md` (the first round) and
+`docs/audit/redteam-palette-independent.md` (the second, independent round),
 `docs/acceptance/M2.4-ACCEPTANCE.md`.
 
 ## 7g. How does the user learn that the recovery does not work?
