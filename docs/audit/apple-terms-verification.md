@@ -374,6 +374,31 @@ the store rules).
 
 ---
 
+## 6a. The answer, in one paragraph
+
+**The question that was asked:** can the conditions of the Apple store be satisfied at the same time
+as the duties of the AGPL?
+
+**The answer of this verification:** **the text does not say no, and it does not say yes either.**
+What the text says is this:
+
+* the obligations of the store conditions that stand next to the duties of the AGPL are named and
+  quoted in this report (Schedule 1 §3.1, §3.2, Exhibit B, §6.3, the AMS Terms / Standard EULA with
+  its open-source carve-out);
+* the AGPL duties that stand next to them are named as well (§6 — the installation information for
+  the *users* of a *conveyed* object — the question of the network use of §13 is a different one and
+  is not at issue for a store download);
+* **whether the two can be satisfied at the same time is a legal assessment** (E5) and this
+  verification does not make it. What this verification does is hand the legal review a **correct
+  and complete** set of texts — the previous report worked with a wrong contract version
+  (Schedule 2 instead of Schedule 1) and without the AMS Terms.
+
+**What follows for the project:** the technical decision (direct macOS distribution, Google Play,
+the direct APK) does not change; the Mac App Store stays deferred; the legal clearance (E5) stays
+open; and the legal review now has the right documents.
+
+---
+
 ## 7. What is open (and stays open, because it is a legal question)
 
 1. **E5 — the AGPL clearance per channel.** Whether the store conditions (2.4.5 (vi)/(vii), Schedule 1 §3.1,
@@ -409,7 +434,7 @@ the store rules).
 |---|---|---|---|
 | **S-01** | Apple Developer Program License Agreement — `https://developer.apple.com/support/terms/apple-developer-program-license-agreement/` | live, HTTP 200, 848 279 B, SHA-256 `2c8d931943d195a9…`; extracted text **identical** to the copy used by the report | §7.1 ("…appoint Apple and Apple Subsidiaries as Your legal agent and/or commissionaire pursuant to the terms of **Schedule 1** for Licensed Applications designated by You as free-of-charge applications"); §7.2 (Schedule 2 = fee-based, Schedule 3 = paid custom apps); Schedule 1 §1.1 (i)/(ii) (agent for Exhibit A §1 regions, **commissionaire for Exhibit A §2 regions**); §1.3 ("principal and agent, or principal and commissionaire, as the case may be"); §3.1 ("in the course of acting as agent and/or commissionaire for You, is hosting … on Your behalf"); §3.2 (own EULA, **Exhibit B**, "Apple shall enable each end user to review Your EULA … at the time that Apple delivers that Licensed Application"); §3.3 ("solely between You and the end user"); §6.3 ("Apple reserves the right to cease marketing, offering, and allowing download by end users … at any time, with or without cause", incl. "(iv) … including without limitation the App Review Guidelines"); Exhibit A §1 "Apple as Agent" (Canada, Australia/New Zealand, United States, LATAM, Japan) and §2 "Apple as Commissionaire" ("You appoint Apple Distribution International Ltd. as Your commissionaire …"); Exhibit B items 1, 2, 3, 10 (AMS Terms binding on the EULA; Usage Rules; maintenance/support; Apple as third-party beneficiary); Schedule 2 §3.1/§4.2/§4.3/§7.3; Schedule 3 §3.1/§4.2/§7.3; `grep -c -i "Mac App Store"` → **0** |
 | **S-02** | App Review Guidelines — `https://developer.apple.com/app-store/review/guidelines/` | live, HTTP 200, 240 818 B, SHA-256 `4ab653ded784df81…`; extracted text **identical** to the report's copy; the page carries **no version or date** | 2.4.5 "Apps distributed via the Mac App Store have some additional requirements to keep in mind:" with (i)–(ix) verbatim; 2.5.1; 2.5.2 (incl. the educational-app exception); 3.2.1; 3.2.2 "Unacceptable" (i)–(x), (iii) at line 321 and (x) at line 328 |
-| **S-03** | Apple Media Services Terms and Conditions — `https://www.apple.com/legal/internet-services/itunes/` | live, HTTP 200, 159 666 B raw; no version number on the page; §T "CONTRACT CHANGES" allows Apple to modify the agreement at any time | TOC A–T; §O "ADDITIONAL APP STORE TERMS (EXCLUDING APPLE ARCADE APPS)"; "LICENSE OF APP STORE CONTENT" ("Apple acts as an agent for App Providers in operating the App Store and is not a party to the sales contract or user agreement"); Standard EULA "a. Scope of License" (anti-modification clause **with the open-source carve-out**); "APP MAINTENANCE AND SUPPORT"; §F Usage Rules (App Store Content; "may not modify or use modified versions of such software" refers to Apple's software) |
+| **S-03** | Apple Media Services Terms and Conditions — `https://www.apple.com/legal/internet-services/itunes/` | live, HTTP 200, 159 666 B raw; **retrieved on 2026-10-21**; the page carries **no version number and no date of the version** — §T "CONTRACT CHANGES" allows Apple to modify the agreement at any time, so the retrieval date is the only date that can be cited | TOC A–T; §O "ADDITIONAL APP STORE TERMS (EXCLUDING APPLE ARCADE APPS)"; "LICENSE OF APP STORE CONTENT" ("Apple acts as an agent for App Providers in operating the App Store and is not a party to the sales contract or user agreement"); Standard EULA "a. Scope of License" (anti-modification clause **with the open-source carve-out**); "APP MAINTENANCE AND SUPPORT"; §F Usage Rules (App Store Content; "may not modify or use modified versions of such software" refers to Apple's software) |
 | **S-04** | AMS Terms, US variant — `https://www.apple.com/legal/internet-services/itunes/us/terms.html` | live, HTTP 200, 156 608 B | cross-check of S-03 (same section O structure and wording) |
 | **S-05** | Index of developer agreements — `https://developer.apple.com/support/terms/` | live, HTTP 200 | the agreement list (ADPLA + Schedules 2/3 PDFs, TestFlight ToS, App Store Connect ToS); the AMS Terms are **not** hosted under developer.apple.com; `…/apple-media-services-terms-conditions/` returns a "Page Not Found" body |
 | **S-06** | AGPL-3.0-or-later, vendored in the repository — `/workspace/vocument/LICENSES/AGPL-3.0-or-later.txt` | commit `bbc2d0b`, SHA-256 `0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0` | §0 ("Corresponding Source"), §6 (conveyance (a)–(e), "Installation Information", "designated place"), §12 ("If you cannot convey a covered work so as to satisfy simultaneously your obligations under this License and any other pertinent obligations, then as a consequence you may not convey it at all.") |

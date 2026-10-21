@@ -1,0 +1,1536 @@
+==============================================================
+Red-Team-Runde 5 — Messprotokoll
+Stand: /workspace/vocument, Branch main, bbc2d0b + Arbeitsbaum
+==============================================================
+
+## 0. Der gepruefte Stand (Pruefsummen der angegriffenen Dateien)
+0a8584e64088daf9fb19e8ff37e4a7c3  core/vocument-core/src/redaction.rs
+6bbf4f1928799e8a821b2b82f36c99ab  core/vocument-core/src/redaction_rules.rs
+3fefc21c4f875d947eb32dc60187c901  engines/pdf-mupdf/csrc/mupdf_walk.h
+8b28c16edff03701b6c3180c07ff4037  engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c
+d41ca031d136ec723a1af9f1f619aaaa  engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c
+367feab1386439147a8dc307b118f685  engines/pdf-mupdf/csrc/mupdf_text_search.h
+e29e46a2f6257329ed98ef38c5683f9f  engines/pdf-mupdf/src/scrub.rs
+2df61c773de7b5a78c6096284bcb86d9  engines/pdf-mupdf/src/mutate.rs
+c90f269209342cb3a993646df80b4325  platform/vocument-ffi/src/redaction_dto.rs
+
+git:
+ceeca32 fix(m2.4): the rail of the profession is read like it is written — a link that points nowhere, a rail of a stranger, and a path of the platform
+ M engines/pdf-mupdf/csrc/mupdf_walk.h
+?? platform/vocument-ffi/tests/redaction_scaling_tests.rs
+
+## 1. Die Angriffsdateien: liegt das Geheimnis wirklich dort?
+----------------------------------------------------------------
+### a01_base (589 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a02_stream_in_array (843 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a03_parent_only (739 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a04_objstm_orphan (844 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a05_form_recursive (811 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a06_form_popup (1052 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a07_form_deep (10707 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #60 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a08_encrypted_form (1105 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a09_form_lzw (822 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a10_huge_length (707 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a11_broken_filter (720 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a12_many_objects (5149515 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a13_linearized (1055 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a14_circular (846 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a15_encrypted_oneletter (890 Bytes)
+Geheimnis: B
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #1 (LZW) -> Klartext
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a16_pieceinfo (670 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a17_private_stream (722 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a18_zip_attachment (883 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a19_annots_page (947 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a20_split_text (802 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a21_hex_text (817 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Dateibytes -> Hex-UTF16BE
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Hex-UTF16BE (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a22_objstm_deep (899 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a23_zip_encrypted_entry (898 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #2 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a24_form_in_array (970 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a25_objstm_broken (837 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a26_short_length (711 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a27_split_reachable (815 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a28_split_three (818 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a29_whole_reachable (812 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a30_split_surviving (857 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a31_whole_surviving (854 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a33_paragraph (604 Bytes)
+Geheimnis: GEHEIM
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+
+## 1b. Was sieht der Walk der Engine? (Diagnose, kein Orakel)
+----------------------------------------------------------------
+### a01_base
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a02_stream_in_array
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Probe[0]
+----------------------------------------------------------------
+### a03_parent_only
+  Orte, die das Wort tragen: 3
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Object[6]/PieceInfo/S
+    kind=hidden       seite=-1   ort=/Object[6]/LastModified
+----------------------------------------------------------------
+### a04_objstm_orphan
+  Orte, die das Wort tragen: 4
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+    kind=hidden       seite=-1   ort=/Object[6]/PieceInfo/S
+    kind=hidden       seite=-1   ort=/Object[7]/Private
+----------------------------------------------------------------
+### a05_form_recursive
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Object[6]
+----------------------------------------------------------------
+### a06_form_popup
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=0    ort=/Page/Annots[0]/Contents
+----------------------------------------------------------------
+### a07_form_deep
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Object[56]/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next
+----------------------------------------------------------------
+### a08_encrypted_form
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+----------------------------------------------------------------
+### a09_form_lzw
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+----------------------------------------------------------------
+### a10_huge_length
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+----------------------------------------------------------------
+### a11_broken_filter
+library error: zlib error: incorrect header check
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a12_many_objects
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a13_linearized
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a14_circular
+argument error: cannot create appearance stream for  widgets
+argument error: cannot create appearance stream for  widgets
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=0    ort=/Page/Annots[0]/Contents
+----------------------------------------------------------------
+### a15_encrypted_oneletter
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Object[6]/U
+----------------------------------------------------------------
+### a16_pieceinfo
+  Orte, die das Wort tragen: 3
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=0    ort=/Page/PieceInfo/S
+    kind=hidden       seite=-1   ort=/Root/Pages/LastModified
+----------------------------------------------------------------
+### a17_private_stream
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Private
+----------------------------------------------------------------
+### a18_zip_attachment
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=uninspected  seite=-1   ort=/Root/Names/EmbeddedFiles/Names[0]/EF/F
+----------------------------------------------------------------
+### a19_annots_page
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a20_split_text
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a21_hex_text
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+----------------------------------------------------------------
+### a22_objstm_deep
+  Orte, die das Wort tragen: 3
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+    kind=hidden       seite=-1   ort=/Object[6]/Resources/XObject/Next/PieceInfo/S
+----------------------------------------------------------------
+### a23_zip_encrypted_entry
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=uninspected  seite=-1   ort=/Root/Names/EmbeddedFiles/Names[0]/EF/F
+----------------------------------------------------------------
+### a24_form_in_array
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a25_objstm_broken
+  Orte, die das Wort tragen: 3
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+    kind=hidden       seite=-1   ort=/Object[6]/PieceInfo/S
+----------------------------------------------------------------
+### a26_short_length
+  Orte, die das Wort tragen: 2
+    kind=content      seite=0    ort=content stream of the page
+    kind=hidden       seite=-1   ort=/Root/Extra
+----------------------------------------------------------------
+### a27_split_reachable
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a28_split_three
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a29_whole_reachable
+  Orte, die das Wort tragen: 2
+    kind=hidden       seite=0    ort=/Page/Resources/XObject/Fm0
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a30_split_surviving
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a31_whole_surviving
+  Orte, die das Wort tragen: 2
+    kind=hidden       seite=0    ort=/Page/Resources/XObject/Fm0
+    kind=content      seite=0    ort=content stream of the page
+----------------------------------------------------------------
+### a33_paragraph
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+
+## 1c. Die OCR liest wirklich (Beweis fuer die Grenzen der Pruefung)
+  gerendert: 1190x1684 Pixel (Graustufen)
+  die OCR liest 1 Woerter:
+    "GEHEIM" (Konfidenz 96.21224, BBox BoundingBox { x0: 146.0, y0: 248.0, x1: 330.0, y1: 285.0 })
+--- dieselbe Seite nach der Redaction:
+  gerendert: 1190x1684 Pixel (Graustufen)
+  die OCR liest 0 Woerter:
+
+## 2. Die Kette: die Redaction ueber die exportierte FFI
+----------------------------------------------------------------
+=== a01_base ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a01_base.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.496 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a01_base.pdf
+  bytes                   = 509 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a02_stream_in_array ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a02_stream_in_array.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.480 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Probe[0] (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a02_stream_in_array.pdf
+  bytes                   = 843 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a03_parent_only ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a03_parent_only.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.490 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a03_parent_only.pdf
+  bytes                   = 609 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a04_objstm_orphan ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a04_objstm_orphan.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.463 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a04_objstm_orphan.pdf
+  bytes                   = 584 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a05_form_recursive ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a05_form_recursive.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.491 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a05_form_recursive.pdf
+  bytes                   = 529 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a06_form_popup ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a06_form_popup.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+dauer: 0.485 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a06_form_popup.pdf
+  bytes                   = 652 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a07_form_deep ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a07_form_deep.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.529 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Object[56]/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next/Resources/XObject/Next (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a07_form_deep.pdf
+  bytes                   = 10707 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #60 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a08_encrypted_form ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a08_encrypted_form.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.507 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Extra (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a08_encrypted_form.pdf
+  bytes                   = 1105 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a09_form_lzw ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a09_form_lzw.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.559 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Extra (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a09_form_lzw.pdf
+  bytes                   = 822 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a10_huge_length ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a10_huge_length.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+warning: PDF stream Length incorrect
+dauer: 0.530 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Extra (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a10_huge_length.pdf
+  bytes                   = 707 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a11_broken_filter ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a11_broken_filter.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+library error: zlib error: incorrect header check
+warning: read error; treating as end of file
+dauer: 0.667 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a11_broken_filter.pdf
+  bytes                   = 720 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a12_many_objects ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a12_many_objects.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 1.422 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a12_many_objects.pdf
+  bytes                   = 1200525 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a13_linearized ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a13_linearized.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.481 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a13_linearized.pdf
+  bytes                   = 551 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a14_circular ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a14_circular.pdf
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+dauer: 0.466 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a14_circular.pdf
+  bytes                   = 722 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+argument error: cannot create appearance stream for  widgets
+warning: cannot create appearance stream
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a15_encrypted_oneletter ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a15_encrypted_oneletter.pdf
+zielwort: "B" box=[72000,116200,88008,149176]
+warning: encryption password key too short (0)
+warning: encryption password key too short (0)
+warning: encryption password key too short (0)
+dauer: 0.274 s
+ERGEBNIS: Fehler
+  fehler: PDF requires an open password
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a15_encrypted_oneletter.pdf
+  bytes                   = 890 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["B"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #1 (LZW) -> Klartext
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a16_pieceinfo ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a16_pieceinfo.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.492 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a16_pieceinfo.pdf
+  bytes                   = 542 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a17_private_stream ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a17_private_stream.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.502 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Private (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a17_private_stream.pdf
+  bytes                   = 722 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a18_zip_attachment ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a18_zip_attachment.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.520 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the document could not be read completely: 1 place(s) could not be looked into, among them /Root/Names/EmbeddedFiles/Names[0]/EF/F; the words that were removed: GEHEIM; this place could not be read: /Root/Names/EmbeddedFiles/Names[0]/EF/F (page -1, uninspected)
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a18_zip_attachment.pdf
+  bytes                   = 883 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a19_annots_page ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a19_annots_page.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.496 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: content stream of the page (page 0, content); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a19_annots_page.pdf
+  bytes                   = 947 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a20_split_text ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a20_split_text.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.496 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a20_split_text.pdf
+  bytes                   = 771 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a21_hex_text ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a21_hex_text.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.522 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Extra (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a21_hex_text.pdf
+  bytes                   = 817 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Dateibytes -> Hex-UTF16BE
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Hex-UTF16BE (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a22_objstm_deep ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a22_objstm_deep.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.514 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a22_objstm_deep.pdf
+  bytes                   = 584 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a23_zip_encrypted_entry ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a23_zip_encrypted_entry.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.544 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the document could not be read completely: 1 place(s) could not be looked into, among them /Root/Names/EmbeddedFiles/Names[0]/EF/F; the words that were removed: GEHEIM; this place could not be read: /Root/Names/EmbeddedFiles/Names[0]/EF/F (page -1, uninspected)
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a23_zip_encrypted_entry.pdf
+  bytes                   = 898 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #2 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a24_form_in_array ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a24_form_in_array.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+syntax error: invalid key in dict
+warning: cannot load object (6 0 R) into cache
+dauer: 0.536 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a24_form_in_array.pdf
+  bytes                   = 695 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a25_objstm_broken ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a25_objstm_broken.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.669 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a25_objstm_broken.pdf
+  bytes                   = 584 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a26_short_length ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a26_short_length.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+warning: PDF stream Length incorrect
+dauer: 0.546 s
+ERGEBNIS: Fehler
+  fehler: the redaction could not be verified: the redaction could not be verified: file bytes: the content is still there; the text is still there: /Root/Extra (page -1, hidden); the words that were removed: GEHEIM
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a26_short_length.pdf
+  bytes                   = 711 Bytes
+  geheimnis im Klartext   = true
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = ["GEHEIM"]
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+=== a27_split_reachable ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a27_split_reachable.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.486 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a27_split_reachable.pdf
+  bytes                   = 529 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a28_split_three ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a28_split_three.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.472 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a28_split_three.pdf
+  bytes                   = 529 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a29_whole_reachable ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a29_whole_reachable.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.484 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a29_whole_reachable.pdf
+  bytes                   = 529 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a30_split_surviving ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a30_split_surviving.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.505 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a30_split_surviving.pdf
+  bytes                   = 652 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a31_whole_surviving ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a31_whole_surviving.pdf
+zielwort: "GEHEIM" box=[72000,116200,166680,149176]
+dauer: 0.537 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a31_whole_surviving.pdf
+  bytes                   = 652 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+=== a33_paragraph ===
+datei: /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/pdfs/a33_paragraph.pdf
+zielwort: "GEHEIM" box=[150696,116200,245376,149176]
+dauer: 0.571 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["GEHEIM"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a33_paragraph.pdf
+  bytes                   = 655 Bytes
+  geheimnis im Klartext   = false
+  geheimnis als UTF-16hex = false
+  textlayer nachher      = []
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+
+## 3. Die Ausgabedateien: steht das Geheimnis noch drin?
+----------------------------------------------------------------
+### a01_base (509 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a02_stream_in_array (843 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a03_parent_only (609 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a04_objstm_orphan (584 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a05_form_recursive (529 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a06_form_popup (652 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a07_form_deep (10707 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #60 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a08_encrypted_form (1105 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a09_form_lzw (822 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a10_huge_length (707 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a11_broken_filter (720 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a12_many_objects (1200525 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a13_linearized (551 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a14_circular (722 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a15_encrypted_oneletter (890 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #1 (LZW) -> Klartext
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a16_pieceinfo (542 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a17_private_stream (722 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a18_zip_attachment (883 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a19_annots_page (947 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a20_split_text (771 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a21_hex_text (817 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Dateibytes -> Hex-UTF16BE
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Hex-UTF16BE (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a22_objstm_deep (584 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a23_zip_encrypted_entry (898 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  Strom #2 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a24_form_in_array (695 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a25_objstm_broken (584 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a26_short_length (711 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### a27_split_reachable (529 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a28_split_three (529 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a29_whole_reachable (529 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a30_split_surviving (652 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a31_whole_surviving (652 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### a33_paragraph (655 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### ocr_test (509 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### rec_a01 (509 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+----------------------------------------------------------------
+### rec_a18 (883 Bytes)
+  eigene Prüfung der Bytes:
+  Dateibytes -> Klartext
+  Strom #0 (roh) -> Klartext (roh)
+  Strom #1 (roh) -> Klartext (roh)
+  mutool (Textextraktion): das Geheimnis steht im Text = true
+----------------------------------------------------------------
+### v_a15 (890 Bytes)
+  eigene Prüfung der Bytes:
+  (kein Fund)
+  mutool (Textextraktion): das Geheimnis steht im Text = false
+
+## 4. Der Wiederherstellungsspeicher nach den Redactions
+TMPDIR=/workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp
+/workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_be02d3ae86a64074/journal.json
+/workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_be02d3ae86a64074/manifest.json
+/workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_d36296c4599a7bee/journal.json
+/workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_d36296c4599a7bee/manifest.json
+--- der Inhalt des Journal (Auszug):
+### /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_be02d3ae86a64074/journal.json
+{
+  "schema_version": 1,
+  "document_id": "doc_be02d3ae86a64074",
+  "base_pdf_sha256": "be02d3ae86a64074c1c418a053d4371129c2efd9a7e2ca479bac594ab1942285",
+  "current_revision": 1,
+  "saved_revision": 1,
+  "committed_records": [],
+  "redo_records": [],
+  "journal_checksum_sha256": "dc2cd49320b7fbf0c258f4422b59c3029beca9a969155a593bf3c615246849fd"
+}
+### /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/tmp/xdg/vocument/vocument_recovery/doc_d36296c4599a7bee/journal.json
+{
+  "schema_version": 1,
+  "document_id": "doc_d36296c4599a7bee",
+  "base_pdf_sha256": "d36296c4599a7beee97a9bd7aae8a666a951858dec900bcb6724c2fd0d9cf6e7",
+  "current_revision": 2,
+  "saved_revision": 1,
+  "committed_records": [
+    {
+      "transaction_id": "tx_0001_6d6a5c83",
+      "sequence_number": 1,
+      "revision_before": 1,
+      "revision_after": 2,
+      "timestamp_unix_ms": 1792589608999,
+      "description": "Remove the content of 1 region(s) on page #1",
+      "affected_pages": [
+        0
+      ],
+      "affected_objects": [
+        "redaction:page:0"
+      ],
+      "forward_command": {
+        "RedactPageRegions": {
+          "page_index": 0,
+          "regions": [
+            {
+              "x0_milli_pt": 72000,
+              "y0_milli_pt": 116200,
+              "x1_milli_pt": 166680,
+              "y1_milli_pt": 149176
+            }
+          ]
+        }
+      },
+      "inverse_command": {
+        "Irreversible": {
+          "description": "The content of page #1 cannot be restored"
+        }
+      },
+      "before_pdf_sha256": "d36296c4599a7beee97a9bd7aae8a666a951858dec900bcb6724c2fd0d9cf6e7",
+      "after_pdf_sha256": "6d6a5c83903b68e6e4fbc41021b86c85c241c532fdf
+--- greppt das Gerettete in irgendeiner Datei des Speichers?
+(Ende der Grep-Ausgabe)
+
+## 4b. Der Scrub am verschluesselten Dokument (der Rest von R4-4)
+  gespeichert: /tmp/a15_scrubbed_B.pdf (786 Bytes)
+  geleert: annotationen=0 formularwerte=0 andere=1
+  /O<       -> /O<2055C756C72E1AD702608E8196ACAD447AD32D17CFF583235F6DD15FED7DAB67>/U()/P -4>>
+  /U<       -> nicht vorhanden
+  /Encrypt  -> /Encrypt 6 0 R>>
+  /ID       -> /ID[(0123456789abcdef)<9CF98E9B835C2CD0B74248C5581C33DE>]/Encrypt 6 0 R>>
+--- zum Vergleich: ein Wort, das nicht in /U steht
+  gespeichert: /tmp/a15_scrubbed_XQQ.pdf (850 Bytes)
+  geleert: annotationen=0 formularwerte=0 andere=0
+  /O<       -> /O<2055C756C72E1AD702608E8196ACAD447AD32D17CFF583235F6DD15FED7DAB67>/U<A64E367000E34D42AF6
+  /U<       -> /U<A64E367000E34D42AF67B3BE5C91F5F87F252A369C6A874EA40A79129903A526>/P -4>>
+  /Encrypt  -> /Encrypt 6 0 R>>
+  /ID       -> /ID[(0123456789abcdef)<30005BF757A03F4CF68823E1CEF94EA7>]/Encrypt 6 0 R>>
+
+## 4c. Der Scrub allein an einem Dokument mit einem verborgenen Form
+  gespeichert: /tmp/a05_scrubbed.pdf (598 Bytes)
+  geleert: annotationen=0 formularwerte=0 andere=0
+  /O<       -> nicht vorhanden
+  /U<       -> nicht vorhanden
+  /Encrypt  -> nicht vorhanden
+  /ID       -> nicht vorhanden
+--- die Stellen nach dem Scrub:
+  Orte, die das Wort tragen: 1
+    kind=content      seite=0    ort=content stream of the page
+--- die Groesse der gescrubbten Datei gegenueber der Eingabe:
+  Eingabe : 811 Bytes
+  Scrub   : 598 Bytes
+
+## 5. Die Zeitmessungen (Frage 2)
+siehe Abschnitt 2: die Dauer steht bei jeder Redaction
+
+## 6. Der Fix, der waehrend der Messung in den Arbeitsbaum kam (R5-1)
+Der Arbeitsbaum des Projekts aendert sich waehrend des Laufs: um 13:41:55
+aenderte ein anderer Agent 'engines/pdf-mupdf/csrc/mupdf_walk.h' (das Wissen des Wortes
+erscheint im Kommentar des Agenten: 'the fifth round of the red team measured a redaction
+that emptied the /U of an encrypted document and broke it').
+
+Der Lauf in Abschnitt 2 wurde mit der BINAEREN DATEI von 13:41 gemessen (vor dem Fix).
+Nach einem Neubau gegen den aktuellen Arbeitsbaum:
+
+=== a15_after_fix ===
+datei: pdfs/a15_encrypted_oneletter.pdf
+zielwort: "B" box=[72000,116200,88008,149176]
+dauer: 0.579 s
+ERGEBNIS: Ok
+  verified                = true
+  text_layer_clean        = Passed
+  search_index_clean      = Passed
+  rendered_page_clean     = Passed
+  file_bytes_clean        = Passed
+  removed_words           = ["B"]
+  remaining_occurrences   = []
+  uninspected_places      = []
+  not_checked_reasons     = []
+  revision                = 2
+  ausgabe                 = /workspace/.mavis/plans/plan_cb381bba/outputs/redteam-redaction-round-five/out/a15_after_fix.pdf
+  bytes                   = 786 Bytes
+  geheimnis im Klartext   = true
+
+und der Scrub direkt:
+  gespeichert: /tmp/a15_after_fix.pdf (850 Bytes)
+  geleert: annotationen=0 formularwerte=0 andere=0
+  /O<       -> /O<2055C756C72E1AD702608E8196ACAD447AD32D17CFF583235F6DD15FED7DAB67>/U<A64E367000E34D42AF6
+  /U<       -> /U<A64E367000E34D42AF67B3BE5C91F5F87F252A369C6A874EA40A79129903A526>/P -4>>
+  /Encrypt  -> /Encrypt 6 0 R>>
+  /ID       -> /ID[(0123456789abcdef)<DF7C6B02685C44A47629CAFF5FC87EDD>]/Encrypt 6 0 R>>
+
+Anmerkung: der Byte-Vergleich findet den Buchstaben 'B' in den Ausgabedateien — er ist ein
+Hex-Ziffer in /O und /U, kein Geheimnis.

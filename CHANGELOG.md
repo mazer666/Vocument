@@ -32,6 +32,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- The **fifth adversarial audit** of the redaction found that the clearing
+  emptied the **`/U` of an encrypted document** when the encryption dictionary
+  hangs as an indirect object — the form the specification asks for. The
+  dictionary is recognised by its content now and is never descended into; the
+  document stays encrypted and readable.
+- The **fifth adversarial audit** found that the search for the remaining text
+  compared **bytes**: a word that the writer split over several show
+  operations (`(GE) (HEIM) Tj`) was not found, and the proof of the redaction
+  was blind for it. The **text** of the content stream is read now.
+- The **second, independent review** of the rail of the profession found that
+  a link that points **nowhere** was taken for "no rail" — the application
+  carried on with the standard rail, silently — and that the read path did not
+  check the owner, so a rail of a stranger was read and used. Both are fixed,
+  and the refusal of a path with `..` now hits the **name** of the file
+  instead of the part the platform chose.
 - The **fourth adversarial audit** of the redaction found that the walk over
   the cross-reference table handed the objects on as *direct* objects, so the
   content of a form object was never looked at: a copy of the removed text

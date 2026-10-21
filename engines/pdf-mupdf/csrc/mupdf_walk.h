@@ -341,6 +341,41 @@ static inline void vocument_walk_dict(
     }
 }
 
+/* Answers whether the dictionary is the encryption dictionary of the
+   document.
+ *
+   The fourth round of the red team protected the key `/Encrypt` in the
+   trailer: the encryption dictionary hangs there, and emptying one of its
+   keys would destroy the document. But the specification (ISO 32000-1,
+   Table 15) asks for the `/Encrypt` of the trailer to be an **indirect
+   reference** — and then the dictionary is an object of the file, which the
+   sweep over the cross-reference table reaches by its number. The protection
+   of the key did not apply to that path, and the fifth round measured a
+   redaction that emptied the `/U` of an encrypted document and broke it.
+ *
+   The dictionary is therefore recognised by its **content**: the standard
+   security handler carries the two keys `/O` and `/U` and the filter
+ * `/Standard`. A dictionary that looks like that is never descended into —
+ * wherever it hangs, and whether it is reached by the walk from the root or
+   by the sweep over the table. */
+static inline int vocument_walk_is_security_dictionary(fz_context *ctx, pdf_obj *obj) {
+    if (!pdf_is_dict(ctx, obj)) {
+        return 0;
+    }
+    if (!pdf_dict_get(ctx, obj, PDF_NAME(O)) || !pdf_dict_get(ctx, obj, PDF_NAME(U))) {
+        return 0;
+    }
+    pdf_obj *filter = pdf_dict_get(ctx, obj, PDF_NAME(Filter));
+    if (pdf_is_name(ctx, filter)) {
+        const char *name = pdf_to_name(ctx, filter);
+        return name && strcmp(name, "Standard") == 0;
+    }
+    if (pdf_is_dict(ctx, filter)) {
+        return pdf_dict_get(ctx, filter, PDF_NAME(Standard)) != NULL;
+    }
+    return 0;
+}
+
 /* Walks through one object. */
 static inline void vocument_walk_object(
     vocument_walk_t *walk,
@@ -361,6 +396,13 @@ static inline void vocument_walk_object(
         return;
     }
     if (pdf_is_dict(ctx, obj)) {
+        /* The encryption dictionary holds the keys of the document, not the
+           text of the user. It is not descended into — neither when it hangs
+           in the trailer, nor when it is an object of the file and the sweep
+           over the cross-reference table reaches it by its number. */
+        if (vocument_walk_is_security_dictionary(ctx, obj)) {
+            return;
+        }
         /* A stream is a dictionary with a content. Its content is a place of
            its own — the text of a page, the XMP packet, the file of an
            attachment — and the entries of its dictionary can carry the text

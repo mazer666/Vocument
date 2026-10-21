@@ -157,10 +157,75 @@ archive, the reproducibility of the build, and the decision about the Mac App
 Store.
 
 **An agent cannot close any of them.** They are the work of a person.
+---
+
+## 3. The two independent rounds of this round
+
+The round had two independent examinations. Both were run by agents that had
+not written the code they examined.
+
+### 3.1 The fifth audit of the redaction
+
+**Method:** 32 purpose-made PDF files (built byte by byte, in Rust), the real
+chain from the core to MuPDF to the exported UniFFI functions, and **two
+independent oracles** for every output: a scanner of the auditor's own
+(plain bytes, Flate, raw Deflate, LZW, UTF-16 in both byte orders, hex-encoded
+UTF-16) and the text extractor of `mutool` 1.28.5. The encryption of the
+attack files was validated byte for byte against a file that MuPDF itself
+wrote. The check of the rendered page ran with the **real** OCR (Tesseract
+5.3.0, the language data of the project): it reads "GEHEIM" with 96 %
+confidence from the rendered page and 0 words after the redaction.
+
+**Result:** no critical finding. In every one of the 26 attacks in which a
+secret survived, the redaction **refused** and named the place, and the
+document stayed byte for byte unchanged.
+
+Three findings, two of them closed in this round:
+
+| # | Finding | State |
+|---|---|---|
+| R5-1 (medium) | The clearing emptied the `/U` of an encrypted document when the encryption dictionary hangs as an **indirect** object — the form the specification asks for | **closed** — the dictionary is recognised by its content and is never descended into; the auditor re-measured the attack against the fixed tree |
+| R5-2 (medium) | The search for the remaining text compared **bytes** and did not see a word that the writer split over several show operations | **closed** — the text of the content stream is read now |
+| R5-3 (low) | The verification runs behind the garbage collection of the writer | **open** — the right order is the first point of the recommendation of the auditor for the next round |
+
+The report and its raw protocol (1,536 lines) are in the repository:
+[`docs/audit/redteam-round-five-document-level.md`](../audit/redteam-round-five-document-level.md)
+and [`docs/audit/redteam-round-five-measurements.txt`](../audit/redteam-round-five-measurements.txt).
+
+### 3.2 The second, independent review of the rail of the profession
+
+The first report on the palette store was measured by the team lead. The
+second round was run by an agent that had not seen the first report, with a
+harness of its own against the real `libvocument_ffi.so`. It found **three
+places where the first report was wrong** — a link that points nowhere, a
+read path without the check of the owner, and a refusal of `..` that hit the
+part of the path the platform chose. All three are closed, each with a test.
+
+The round also measured that eight processes that write the rail at the same
+instant leave a **complete** rail: 5,900,144 samples of a watcher, not one
+torn or mixed state.
+
+The report is in the repository:
+[`docs/audit/redteam-palette-independent.md`](../audit/redteam-palette-independent.md).
+The first report is corrected in place.
+
+### 3.3 The Apple conditions, checked against the real contract versions
+
+The hypothesis of the examination — that a free application runs under
+Schedule 1 and that Schedule 1 does not know the *commissionaire* — was
+**refuted by the text**: Schedule 1 §1.1 (ii) and §1.3 appoint Apple as
+commissionaire, and §3.1 uses the same wording as Schedule 2 §3.1. The
+conclusion of the report stands for a free application; the evidence and the
+framing did not, and ten findings corrected the repository.
+
+The report is in the repository:
+[`docs/audit/apple-terms-verification.md`](../audit/apple-terms-verification.md);
+the living digest is
+[`docs/audit/store-requirements.md`](../audit/store-requirements.md).
 
 ---
 
-## 3. What is not proven in this round
+## 4. What is not proven in this round
 
 - **The Swift build of the application**: no macOS host, no Swift toolchain.
   The structural check is **not** a compilation, and the acceptance record
@@ -182,7 +247,7 @@ Store.
 - **The interoperability with the tools of other vendors** (Acrobat, Foxit,
   Okular): still outstanding.
 
-## 4. The state of the project
+## 5. The state of the project
 
 M2 is **started, not completed**. Four slices are done — M2.1 (redaction with
 verification), M2.2 (links and actions), M2.3 (attachments and signatures),

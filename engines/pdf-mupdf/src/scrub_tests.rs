@@ -116,6 +116,118 @@ fn the_text_of_an_annotation_and_of_a_form_field_is_emptied() {
     );
 }
 
+/// Builds a page with an annotation that carries the secret and a **security
+/// dictionary** whose keys carry the secret as well.
+///
+/// The dictionary is not the `/Encrypt` of the trailer — the trailer of this
+/// document has none, so the document stays readable. It hangs in the
+/// catalogue, where the sweep over the cross-reference table reaches it like
+/// every other object of the file.
+fn document_with_security_dictionary() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Extra 6 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R /Annots [7 0 R] >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        // The encryption dictionary: the two keys of the standard security
+        // handler and the filter `/Standard`.
+        b"6 0 obj\n<< /Filter /Standard /V 1 /R 2 /O (GEHEIM) /U (GEHEIM) /P -4 >>\nendobj\n".to_vec(),
+        b"7 0 obj\n<< /Type /Annot /Subtype /Text /Rect [20 20 40 40] /Contents (GEHEIM) >>\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// The keys of the document are not the text of the user.
+///
+/// The fifth round of the red team measured a redaction that emptied the
+/// `/U` of an encrypted document and broke it: the walk protected the key
+/// `/Encrypt` of the trailer, but the specification asks for that key to be
+/// an **indirect reference** — and then the dictionary is an object of the
+/// file, which the sweep over the cross-reference table reaches by its
+/// number. The dictionary is recognised by its content now and is never
+/// descended into.
+#[test]
+fn the_keys_of_the_security_dictionary_are_not_emptied() {
+    let bytes = document_with_security_dictionary();
+    let (scrubbed, report) =
+        scrub_words(&bytes, &[SECRET.to_owned()]).expect("the document must be scrubable");
+
+    // The annotation that really carries the text of the user is cleaned …
+    assert_eq!(
+        report.scrubbed_annotations, 1,
+        "the text of the annotation must be emptied"
+    );
+    // … and the keys of the document are not. The writer of MuPDF writes the
+    // keys without a space, so the text is counted and not matched literally.
+    let text = String::from_utf8_lossy(&scrubbed);
+    assert_eq!(
+        text.matches("GEHEIM").count(),
+        2,
+        "the two keys of the security dictionary must not be emptied: {text}"
+    );
+    assert!(
+        text.contains("/O"),
+        "the key /O of the security dictionary must survive: {text}"
+    );
+    assert!(
+        text.contains("/U"),
+        "the key /U of the security dictionary must survive: {text}"
+    );
+}
+
+/// The keys of the document are not a place that carries the text either.
+///
+/// The keys of an encrypted document are not the text of the user: they are
+/// bytes that the writer computed. A key that happens to spell the text of
+/// the user must not make the product believe that the text stands in the
+/// document.
+#[test]
+fn the_security_dictionary_is_not_a_place_that_carries_the_text() {
+    let bytes = document_with_security_dictionary();
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+    let places: Vec<&str> = occurrences
+        .iter()
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        !places.iter().any(|place| place.contains("/Extra")),
+        "the security dictionary must not be reported as a place: {places:?}"
+    );
+    assert!(
+        places.iter().any(|place| place.ends_with("/Contents")),
+        "the text of the annotation must be found, found: {places:?}"
+    );
+}
+
 /// Builds a page whose annotation carries the secret in its alternative text
 /// and whose page carries an XMP packet with the secret.
 fn document_with_alternative_text_and_page_metadata() -> Vec<u8> {
@@ -633,5 +745,93 @@ fn the_word_in_the_identifier_of_the_file_is_found() {
             .iter()
             .any(|entry| entry.location.contains("/ID") || entry.location.contains("/Trailer")),
         "the place of the word must be named: {occurrences:?}"
+    );
+}
+
+/// Builds a page whose **form** carries the secret in two pieces.
+///
+/// The writer of a document may split a word over several show operations:
+/// `(GE) (HEIM) Tj` puts "GEHEIM" on the page, but the bytes of the stream
+/// do not carry the word in one piece. A comparison of bytes is blind for it.
+fn document_with_split_text_in_a_form() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let form = "BT /F1 18 Tf 20 150 Td (GE) (HEIM) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> /XObject << /Fm0 6 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Length {} >>\nstream\n", form.len()).into_bytes();
+            obj.extend_from_slice(form.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A word that is split over several show operations is found.
+///
+/// The fifth round of the red team measured that the search for the places
+/// compares bytes: a secret that the writer split into `(GE) (HEIM)` was not
+/// found, and the verification of the redaction accepted the document. The
+/// text of the stream is read now — the pieces are joined, as long as no
+/// operator moved the writing position.
+#[test]
+fn a_word_that_is_split_over_several_show_operations_is_found() {
+    let bytes = document_with_split_text_in_a_form();
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIM".to_owned()])
+        .expect("the document must be readable");
+    let places: Vec<&str> = occurrences
+        .iter()
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        places.iter().any(|place| place.contains("Fm0")),
+        "the split text of the form must be found, found: {places:?}"
+    );
+}
+
+/// Two words that stand next to each other are not one word.
+///
+/// The text of a page is read by joining the pieces of a run. Two words that
+/// the writer wrote one after the other belong to two runs, because a
+/// positioning operator stands between them.
+#[test]
+fn two_words_that_stand_next_to_each_other_are_not_one_word() {
+    let bytes = document_with_split_text_in_a_form();
+    let occurrences = find_word_occurrences(&bytes, &["GEHEIMVERTRAULICH".to_owned()])
+        .expect("the document must be readable");
+    assert!(
+        occurrences.is_empty(),
+        "the two words must not be joined: {occurrences:?}"
     );
 }

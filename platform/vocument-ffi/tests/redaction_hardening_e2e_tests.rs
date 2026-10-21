@@ -106,6 +106,178 @@ fn open_session(pdf_bytes: Vec<u8>) -> String {
     snapshot.session_id
 }
 
+/// Reads the value of the key `/U` of the encryption dictionary out of the
+/// bytes of a document.
+fn encryption_key(text: &str) -> Option<String> {
+    let position = text.find("/U")?;
+    let rest = &text[position + 2..];
+    let start = rest.find('<')?;
+    let end = rest[start..].find('>')? + start;
+    Some(rest[start + 1..end].to_owned())
+}
+
+/// Builds a document whose **encryption dictionary** carries the secret.
+///
+/// The dictionary is *not* the `/Encrypt` of the trailer — the trailer of
+/// this document has none, so the document stays readable. The dictionary
+/// hangs in the catalogue, where the sweep over the cross-reference table
+/// reaches it like every other object of the file.
+fn document_with_security_dictionary() -> Vec<u8> {
+    let content = format!("BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\n");
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Extra 6 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut stream_object =
+                format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            stream_object.extend_from_slice(content.as_bytes());
+            stream_object.extend_from_slice(b"\nendstream\nendobj\n");
+            stream_object
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        // The encryption dictionary: the two keys of the standard security
+        // handler and the filter `/Standard`.
+        b"6 0 obj\n<< /Filter /Standard /V 1 /R 2 /O (VERTRAULICH) /U (VERTRAULICH) /P -4 >>\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf: Vec<u8> = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets: Vec<usize> = Vec::with_capacity(objects.len());
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// The keys of the document are not the text of the user.
+///
+/// The fifth round of the red team measured a redaction that emptied the
+/// `/U` of an encrypted document and broke it: the walk protected the key
+/// `/Encrypt` in the trailer, but the dictionary is an object of the file
+/// when it hangs there indirectly — and the sweep over the cross-reference
+/// table reached it by its number. The dictionary is now recognised by its
+/// content and is never descended into.
+#[test]
+fn the_keys_of_the_security_dictionary_are_never_emptied() {
+    let session_id = open_session(document_with_security_dictionary());
+
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case(SECRET))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    // The keys of the document are not the text of the user, and the
+    // redaction does not touch them. The text of the keys is still in the
+    // bytes of the document — the redaction therefore refuses, and it says
+    // why. What it must **not** do is empty the keys: that would destroy
+    // the document.
+    let outcome = document_core_redact_page_regions(session_id.clone(), 0, vec![region]);
+    let error = match outcome {
+        Ok(report) => panic!("the redaction must not be verified: {report:?}"),
+        Err(error) => error,
+    };
+    let details = format!("{error:?}");
+    assert!(
+        details.contains("still there"),
+        "the refusal has to name the reason: {details}"
+    );
+
+    // The keys of the dictionary have to be untouched.
+    let exported = document_core_export_session_bytes(session_id.clone()).expect("the export");
+    let text = String::from_utf8_lossy(&exported);
+    assert!(
+        text.contains("/O (VERTRAULICH)") && text.contains("/U (VERTRAULICH)"),
+        "the two keys of the security dictionary must not be emptied: {text}"
+    );
+
+    vocument_ffi::document_core_close_session(session_id).expect("the session must close");
+}
+
+/// A document whose `/Encrypt` hangs **indirectly** in the trailer stays
+/// encrypted after a redaction.
+///
+/// The specification (ISO 32000-1, Table 15) asks for the `/Encrypt` of the
+/// trailer to be an indirect reference — and then the encryption dictionary
+/// is an object of the file. The fifth round of the red team measured that
+/// the removal emptied the `/U` of such a document and broke it. The
+/// document of the corpus is exactly of that form.
+#[test]
+fn a_document_with_an_indirect_encryption_dictionary_stays_encrypted() {
+    let mut path = std::path::PathBuf::from("tests/corpus/difficult/encrypted.pdf");
+    if !path.exists() {
+        path = std::path::PathBuf::from("../../tests/corpus/difficult/encrypted.pdf");
+    }
+    assert!(
+        path.exists(),
+        "the corpus must carry the encrypted document"
+    );
+    let bytes = std::fs::read(&path).expect("the document must be readable");
+    let before = String::from_utf8_lossy(&bytes).to_string();
+    assert!(
+        before.contains("/Encrypt 6 0 R"),
+        "the encryption dictionary must hang indirectly: {before}"
+    );
+
+    let session_id = open_session(bytes);
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case("verschluesselt"))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let report = document_core_redact_page_regions(session_id.clone(), 0, vec![region])
+        .expect("the redaction must succeed");
+    assert!(
+        report.verified,
+        "the redaction must be verified: {report:?}"
+    );
+
+    let exported = document_core_export_session_bytes(session_id.clone()).expect("the export");
+    let after = String::from_utf8_lossy(&exported).to_string();
+    // The key of the document has to survive the redaction. The writer of
+    // MuPDF writes the dictionary in its own way, so the **value** of the
+    // key is compared, not the way it is written.
+    let key = encryption_key(&before).expect("the document must carry the key");
+    let key_after = encryption_key(&after).expect("the redacted document must carry the key");
+    assert_eq!(
+        key.to_lowercase(),
+        key_after.to_lowercase(),
+        "the key of the encrypted document must survive the redaction"
+    );
+
+    vocument_ffi::document_core_close_session(session_id).expect("the session must close");
+}
+
 #[test]
 fn a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word() {
     let session_id = open_session(document_with_secret());

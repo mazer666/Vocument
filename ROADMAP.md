@@ -557,6 +557,21 @@ Delivered:
   name than `/EmbeddedFiles`, the values of the `/Encrypt` dictionary (which
   are keys and not text — clearing them would destroy the encryption), and a
   quadratic sweep over the cross-reference table. All four are closed
+- the **fifth** audit attacked the whole chain with 32 purpose-made files and
+  two independent oracles. No critical finding: in every attack in which a
+  secret survived, the redaction refused and named the place. Two findings
+  are closed: the encryption dictionary is recognised by its content and is
+  never descended into — the keys of an encrypted document survived a
+  redaction that had emptied them — and the search for the remaining text
+  reads the **text** of the content stream, so a word that the writer split
+  over several show operations is found. The third finding — the verification
+  runs behind the garbage collection of the writer — stays **open**
+- the **second, independent** review of the rail of the profession found three
+  places where the first report was wrong: a link that points nowhere was
+  taken for "no rail" (the application carried on with the standard rail,
+  silently), the read path did not check the owner (a rail of a stranger was
+  used), and the refusal of a path with `..` hit the part of the path that
+  the **platform** chose, which bricks the application at the start
 
 Open: the **redaction surface** of the applications (the user marks the
 region, sees the report and the warnings) and the **clipboard**, which has to
@@ -569,8 +584,11 @@ Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
 [the second audit along the chain](docs/audit/redteam-platform-chain.md),
 [the third audit on the document level](docs/audit/redteam-round-three-document-level.md),
 [the third audit along the chain](docs/audit/redteam-round-three-platform-chain.md)
-and [the fourth audit on the document level](docs/audit/redteam-round-four-document-level.md)
-with its [raw protocol](docs/audit/redteam-round-four-measurements.txt).
+[the fourth audit on the document level](docs/audit/redteam-round-four-document-level.md)
+with its [raw protocol](docs/audit/redteam-round-four-measurements.txt),
+[the fifth audit on the document level](docs/audit/redteam-round-five-document-level.md)
+with its [raw protocol](docs/audit/redteam-round-five-measurements.txt)
+and [the second, independent review of the rail of the profession](docs/audit/redteam-palette-independent.md).
 
 ## M2.4 — The comment of the reviewer and the rail of the profession *(Implemented, host-verified)*
 

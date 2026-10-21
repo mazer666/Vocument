@@ -91,6 +91,28 @@ static int vocument_buffer_carries_word(
     return 0;
 }
 
+/* Answers whether the **text** of the content carries one of the words.
+ *
+ * A writer can split a word over several show operations: `(GE) (HEIM) Tj`
+ * puts "GEHEIM" on the page, but the bytes of the stream do not carry the
+ * word in one piece. The comparison of bytes is blind for it, and the fifth
+ * round of the red team measured that the verification of a redaction
+ * accepted a document whose hidden form carried the secret in such pieces.
+ * The text of the stream is therefore read as well. */
+static int vocument_text_carries_word(
+    const unsigned char *data,
+    size_t len,
+    const char *const *words,
+    size_t word_count
+) {
+    for (size_t i = 0; i < word_count; i++) {
+        if (words[i] && words[i][0] && vocument_text_run_carries_word(data, len, words[i])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* Answers whether the object carries one of the words. */
 static int vocument_object_carries_word(
     fz_context *ctx,
@@ -215,7 +237,8 @@ static int vocument_report_place(
             vocument_report_line(
                 state->report, "uninspected", item->page_index, item->path
             );
-        } else if (vocument_buffer_carries_word(data, len, state->words, state->word_count)) {
+        } else if (vocument_buffer_carries_word(data, len, state->words, state->word_count) ||
+                   vocument_text_carries_word(data, len, state->words, state->word_count)) {
             vocument_report_line(
                 state->report,
                 item->is_page_content ? "content" : "hidden",
