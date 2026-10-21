@@ -7,7 +7,10 @@ import VocumentFFI
 /// The client reports what the core could not promise: a redaction whose
 /// verification did not succeed in every respect. The core has already
 /// refused such a redaction — the check here is the second line, in case the
-/// boundary ever changes.
+/// boundary ever changes. The error of the boundary itself is thrown, so that
+/// a shell that catches the errors of the core catches this one as well: a
+/// shell that only knows its own error type would swallow the refusal and
+/// show a refused redaction as a successful one.
 public enum DocumentCoreClientError: Error, CustomStringConvertible {
     /// The redaction could not be verified in every respect.
     case redactionNotVerified(String)
@@ -302,11 +305,38 @@ public struct DocumentCoreClient: Sendable {
             ("the bytes of the file", report.fileBytesClean),
         ]
         for (what, check) in checks where check != .passed {
-            throw DocumentCoreClientError.redactionNotVerified(
-                "the redaction of the page \(pageIndex) could not be verified: \(what) is not clean"
+            // The error of the boundary itself: a shell that catches the
+            // errors of the core catches this one as well, and it cannot
+            // mistake a refused redaction for a successful one.
+            throw DocumentCoreError.RedactionUnverified(
+                details: "the redaction of the page \(pageIndex) could not be verified: \(what) is not clean"
             )
         }
         return report
+    }
+
+    /// The warnings of a redaction: the places of the document where the same
+    /// text still stands, and the places that could not be read.
+    ///
+    /// The redaction removes what the user marked. The same word can stand
+    /// somewhere else in the document — on another page, in another place of
+    /// the same page — and a place that cannot be read at all is not a proof
+    /// that the text is gone. The shell **has to** show these warnings: a
+    /// user who is told only that the redaction succeeded would believe that
+    /// the word is gone from the document, while it is still in it.
+    public static func redactionWarnings(_ report: FfiRedactionReport) -> [String] {
+        var warnings: [String] = []
+        for place in report.remainingOccurrences {
+            warnings.append(
+                "the same text still stands at \(place.location) (page \(place.pageIndex))"
+            )
+        }
+        for place in report.uninspectedPlaces {
+            warnings.append(
+                "this place could not be read: \(place.location) (page \(place.pageIndex))"
+            )
+        }
+        return warnings
     }
 
     /// Undoes the last committed transaction on `sessionId` via `TransactionManager` (`UNDO-001`, `UNDO-004`).

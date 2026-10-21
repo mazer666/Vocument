@@ -524,20 +524,37 @@ Delivered:
   checkpoints of the recovery store are deleted with it
 - the transaction command carries no text, so the persistent journal does not
   contain the removed content either
-- the redaction was hardened twice, each time after an independent
+- the redaction was hardened **three** times, each time after an independent
   adversarial audit: a marked region removes **every word it touches** (and
   the word goes as a whole), every error after the removal puts the document
   back, every removed word is checked, the places of the document that the
   engine could not clean are named, the checkpoints of the recovery store
   belong to the user alone, and the crash recovery does not replay a
   redaction
+- the third audit found the systematic gap of the first two: the search and
+  the cleaning worked with a **list of known places**. Both walk through
+  **every** object of the document now — a popup that does not stand in
+  `/Annots`, the structure tree, the name tree, the optional content and the
+  private data of a page are cleaned and searched as well
+- the checks are scoped to the **marked place**: the same word twice on one
+  page does not refuse the redaction any more, the other place is named
+- a place that cannot be read — the content of an attached archive — is named
+  and does not pass for clean
 - the applications call the redaction and check the report themselves — the
-  `verified` flag is not a check
+  `verified` flag is not a check — and they turn the places where the same
+  text still stands into warnings that the shell has to show
+
+Open: the **redaction surface** of the applications (the user marks the
+region, sees the report and the warnings) and the **clipboard**, which has to
+be cleared after a redaction. Both belong to the macOS slice of M2, which
+cannot be built or run here.
 
 Evidence: [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md),
 [the two audits](docs/audit/redaction-security-audit.md),
-[the second audit on the document level](docs/audit/redteam-document-level.md)
-and [the second audit along the chain](docs/audit/redteam-platform-chain.md).
+[the second audit on the document level](docs/audit/redteam-document-level.md),
+[the second audit along the chain](docs/audit/redteam-platform-chain.md),
+[the third audit on the document level](docs/audit/redteam-round-three-document-level.md)
+and [the third audit along the chain](docs/audit/redteam-round-three-platform-chain.md).
 
 ## M2.2 — Link and action inspection *(Implemented, host-verified)*
 

@@ -3773,6 +3773,15 @@ data class FfiRedactionReport (
      */
     var `remainingOccurrences`: List<FfiRedactionOccurrence>, 
     /**
+     * The places of the document that could not be read.
+     *
+     * The redaction does not claim that the text is gone from a place it
+     * could not look into — the content of a container that is attached to
+     * the document, for example. The shell should show these places to the
+     * user.
+     */
+    var `uninspectedPlaces`: List<FfiRedactionOccurrence>, 
+    /**
      * The removal was verified in every respect.
      */
     var `verified`: kotlin.Boolean, 
@@ -3800,6 +3809,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterTypeFfiRedactionCheck.read(buf),
             FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
+            FfiConverterSequenceTypeFfiRedactionOccurrence.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterULong.read(buf),
         )
@@ -3815,6 +3825,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`renderedPageClean`) +
             FfiConverterTypeFfiRedactionCheck.allocationSize(value.`fileBytesClean`) +
             FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`remainingOccurrences`) +
+            FfiConverterSequenceTypeFfiRedactionOccurrence.allocationSize(value.`uninspectedPlaces`) +
             FfiConverterBoolean.allocationSize(value.`verified`) +
             FfiConverterULong.allocationSize(value.`revision`)
     )
@@ -3829,6 +3840,7 @@ public object FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer<FfiReda
             FfiConverterTypeFfiRedactionCheck.write(value.`renderedPageClean`, buf)
             FfiConverterTypeFfiRedactionCheck.write(value.`fileBytesClean`, buf)
             FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`remainingOccurrences`, buf)
+            FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.`uninspectedPlaces`, buf)
             FfiConverterBoolean.write(value.`verified`, buf)
             FfiConverterULong.write(value.`revision`, buf)
     }

@@ -359,3 +359,39 @@ fn a_redaction_that_cannot_be_verified_leaves_the_document_and_the_checkpoints_a
     );
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// A redaction that fails its verification puts the document back — and the
+/// session back: the revision and the dirty flag have to be the ones of the
+/// state before the attempt. A session that claims the revision of a
+/// redaction that never happened would make the next save write a document
+/// that the user never saw.
+#[test]
+fn a_redaction_that_fails_puts_the_revision_and_the_dirty_flag_back() {
+    let root = temp_root("redaction_state");
+    let (registry, session_id) = open_session(true, &root);
+
+    let before = registry
+        .session_snapshot(&session_id)
+        .expect("the snapshot must be readable");
+    assert_eq!(before.revision, 1, "the document starts at revision 1");
+    assert!(!before.is_dirty, "the document starts without changes");
+
+    let result = registry.redact_page_regions(&session_id, 0, &[region()]);
+    assert!(
+        result.is_err(),
+        "the redaction must fail: the text survives the removal"
+    );
+
+    let after = registry
+        .session_snapshot(&session_id)
+        .expect("the snapshot must be readable");
+    assert_eq!(
+        after.revision, before.revision,
+        "the revision must be the one of the state before the attempt"
+    );
+    assert!(
+        !after.is_dirty,
+        "the session must not claim unsaved changes after a rolled back redaction"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}

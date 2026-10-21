@@ -675,6 +675,15 @@ embedded files, the metadata and the XMP packet — as plain text, as UTF-16 in
 both byte orders and as the hex string of the UTF-16 bytes. A place that
 carries the text means that the redaction could not be verified.
 
+The search for the places and the cleaning of the document do **not** work
+with a list of known places: they walk through **every** object of the
+document. Otherwise a secret survives in a place that the list does not know —
+the popup of an annotation that does not stand in `/Annots`, the structure
+tree, the name tree, the optional content, the private data of a page — while
+the redaction reports a success. A place that cannot be read — the content of
+an attached archive — is **named** as such: the redaction does not claim that
+the text is gone from there.
+
 A redaction that cannot be verified is **rolled back**: the document keeps the
 bytes it had before the attempt, the search index is built again, and the
 transaction of the attempt leaves no trace in the journal of the recovery
@@ -684,13 +693,20 @@ The check against the rendered page is the decisive one: the page is rendered an
 
 The promise of the redaction is about the **marked region**. A word that occurs somewhere else in the document — on another page, or a second time on the same page — is not part of the redaction: the user marked a region, not the word in the whole document. The report **names** those places, so that the shell can show them and nobody believes that a word is gone from the document when it is still in it. Such a place does not stop the redaction; a remainder in the bytes of the file **without** a known place — an old version of the file, an unreachable object — does.
 
-A marked region removes **every word it touches**, and the word goes as a whole. The removal works character by character, so a region that covers only a part of a word would leave the rest of the word behind — and the rest of a secret is still a secret. The region therefore grows to the box of every word it touches; the words of the picture count as well, because a scan has no text layer and its pixels are the content there. The report names the words that were removed.
+A marked region removes **every word it touches** — a real overlap of the
+areas, not two boxes that only share their edge — and the word goes as a whole. The removal works character by character, so a region that covers only a part of a word would leave the rest of the word behind — and the rest of a secret is still a secret. The region therefore grows to the box of every word it touches; the words of the picture count as well, because a scan has no text layer and its pixels are the content there. The report names the words that were removed.
 
 **Every error after the removal puts the document back.** The removal happens before the verification, and an error in the text extraction, in the reindexing, in the rendering of the page or while reading the bytes must not leave a changed document behind with an error that says nothing about it. A rollback that fails itself is reported as its own error: the session then holds a document in an unknown state, and the user has to be told that the document has to be opened again. The crash recovery does **not** replay a redaction — the journal cannot say whether it was ever verified — and restores the state before it.
 
-The checkpoints of the recovery store hold the bytes of the earlier states of the document, and those bytes still contain the removed content. They belong to the user alone: the directory is `0700`, the file `0600`.
+The checkpoints of the recovery store hold the bytes of the earlier states of the document, and those bytes still contain the removed content. They belong to the user alone: the directory is `0700`, the file `0600` — and a checkpoint that an older version of the application has written stays readable until the next one is written, so it is made private again at that moment.
 
-A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success.
+The rendered tiles and the thumbnails of the document are dropped after a
+redaction: they still show the removed text, and the process would keep it in
+its memory until the cache evicts it.
+
+A redaction that cannot be verified in every aspect is not a redaction. The platform must refuse it instead of reporting a success. The refusal reaches the user as the error of the boundary itself — an application that catches the errors of the core catches the refusal as well and cannot mistake a refused redaction for a successful one.
+
+The places where the same text still stands and the places that could not be read reach the user as **warnings** — the shell has to show them. A success that hides them would be a success the user cannot trust.
 
 ### REDACT-004a — The pixels of an image are replaced
 A document can carry the same text twice: as a text layer and as pixels in an image. For a scan the text layer is invisible and the picture carries the words. The redaction therefore has to replace the pixels of the image under the region, not cover them. The rest of the image must survive — a redaction may not destroy the page.

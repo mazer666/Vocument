@@ -72,7 +72,16 @@ impl SessionRegistry {
             .execute_command(&actor, command)?;
         session.sync_from_transaction_manager();
         drop(guard);
-        let _ = self.record_recovery_mutation(session_id);
+        // The state of the transaction is secured in the recovery store. If
+        // that fails, the state of the document is not protected against a
+        // crash any more. The transaction itself has succeeded — the error
+        // belongs to the recovery store and must not turn a change that
+        // happened into a failure. It is reported, not swallowed.
+        if let Err(error) = self.record_recovery_mutation(session_id) {
+            eprintln!(
+                "vocument: the state of the document could not be secured for the crash recovery: {error}"
+            );
+        }
         Ok(record)
     }
 
@@ -198,7 +207,16 @@ impl SessionRegistry {
         let record = session.transaction_manager.undo(&actor)?;
         session.sync_from_transaction_manager();
         drop(guard);
-        let _ = self.record_recovery_mutation(session_id);
+        // The state of the transaction is secured in the recovery store. If
+        // that fails, the state of the document is not protected against a
+        // crash any more. The transaction itself has succeeded — the error
+        // belongs to the recovery store and must not turn a change that
+        // happened into a failure. It is reported, not swallowed.
+        if let Err(error) = self.record_recovery_mutation(session_id) {
+            eprintln!(
+                "vocument: the state of the document could not be secured for the crash recovery: {error}"
+            );
+        }
         Ok(record)
     }
 
@@ -217,7 +235,16 @@ impl SessionRegistry {
         let record = session.transaction_manager.redo(&actor)?;
         session.sync_from_transaction_manager();
         drop(guard);
-        let _ = self.record_recovery_mutation(session_id);
+        // The state of the transaction is secured in the recovery store. If
+        // that fails, the state of the document is not protected against a
+        // crash any more. The transaction itself has succeeded — the error
+        // belongs to the recovery store and must not turn a change that
+        // happened into a failure. It is reported, not swallowed.
+        if let Err(error) = self.record_recovery_mutation(session_id) {
+            eprintln!(
+                "vocument: the state of the document could not be secured for the crash recovery: {error}"
+            );
+        }
         Ok(record)
     }
 

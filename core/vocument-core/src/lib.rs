@@ -11,6 +11,7 @@ pub mod jobs;
 pub mod navigation;
 pub mod pdf_engine;
 pub mod recovery;
+pub mod recovery_actions;
 pub mod redaction;
 pub mod redaction_rules;
 pub mod render;

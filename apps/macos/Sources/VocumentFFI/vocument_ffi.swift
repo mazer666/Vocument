@@ -4384,6 +4384,15 @@ public struct FfiRedactionReport {
      */
     public var remainingOccurrences: [FfiRedactionOccurrence]
     /**
+     * The places of the document that could not be read.
+     *
+     * The redaction does not claim that the text is gone from a place it
+     * could not look into — the content of a container that is attached to
+     * the document, for example. The shell should show these places to the
+     * user.
+     */
+    public var uninspectedPlaces: [FfiRedactionOccurrence]
+    /**
      * The removal was verified in every respect.
      */
     public var verified: Bool
@@ -4428,6 +4437,14 @@ public struct FfiRedactionReport {
          * under the region that was marked.
          */remainingOccurrences: [FfiRedactionOccurrence], 
         /**
+         * The places of the document that could not be read.
+         *
+         * The redaction does not claim that the text is gone from a place it
+         * could not look into — the content of a container that is attached to
+         * the document, for example. The shell should show these places to the
+         * user.
+         */uninspectedPlaces: [FfiRedactionOccurrence], 
+        /**
          * The removal was verified in every respect.
          */verified: Bool, 
         /**
@@ -4442,6 +4459,7 @@ public struct FfiRedactionReport {
         self.renderedPageClean = renderedPageClean
         self.fileBytesClean = fileBytesClean
         self.remainingOccurrences = remainingOccurrences
+        self.uninspectedPlaces = uninspectedPlaces
         self.verified = verified
         self.revision = revision
     }
@@ -4481,6 +4499,9 @@ extension FfiRedactionReport: Equatable, Hashable {
         if lhs.remainingOccurrences != rhs.remainingOccurrences {
             return false
         }
+        if lhs.uninspectedPlaces != rhs.uninspectedPlaces {
+            return false
+        }
         if lhs.verified != rhs.verified {
             return false
         }
@@ -4500,6 +4521,7 @@ extension FfiRedactionReport: Equatable, Hashable {
         hasher.combine(renderedPageClean)
         hasher.combine(fileBytesClean)
         hasher.combine(remainingOccurrences)
+        hasher.combine(uninspectedPlaces)
         hasher.combine(verified)
         hasher.combine(revision)
     }
@@ -4523,6 +4545,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
                 renderedPageClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 fileBytesClean: FfiConverterTypeFfiRedactionCheck.read(from: &buf), 
                 remainingOccurrences: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
+                uninspectedPlaces: FfiConverterSequenceTypeFfiRedactionOccurrence.read(from: &buf), 
                 verified: FfiConverterBool.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf)
         )
@@ -4538,6 +4561,7 @@ public struct FfiConverterTypeFfiRedactionReport: FfiConverterRustBuffer {
         FfiConverterTypeFfiRedactionCheck.write(value.renderedPageClean, into: &buf)
         FfiConverterTypeFfiRedactionCheck.write(value.fileBytesClean, into: &buf)
         FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.remainingOccurrences, into: &buf)
+        FfiConverterSequenceTypeFfiRedactionOccurrence.write(value.uninspectedPlaces, into: &buf)
         FfiConverterBool.write(value.verified, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)
     }

@@ -22,11 +22,40 @@ internal fun requireVerifiedRedaction(pageIndex: UInt, report: FfiRedactionRepor
     )
     for ((what, check) in checks) {
         if (check != FfiRedactionCheck.PASSED) {
-            throw DocumentCoreBridgeException(
+            // The error of the boundary itself: a shell that catches the
+            // errors of the core catches this one as well, and it cannot
+            // mistake a refused redaction for a successful one.
+            throw DocumentCoreException.RedactionUnverified(
                 "the redaction of the page $pageIndex could not be verified: $what is not clean"
             )
         }
     }
+}
+
+/**
+ * The warnings of a redaction: the places of the document where the same
+ * text still stands, and the places that could not be read.
+ *
+ * The redaction removes what the user marked. The same word can stand
+ * somewhere else in the document — on another page, in another place of the
+ * same page — and a place that cannot be read at all is not a proof that the
+ * text is gone. The shell **has to** show these warnings: a user who is told
+ * only that the redaction succeeded would believe that the word is gone from
+ * the document, while it is still in it.
+ */
+internal fun redactionWarnings(report: FfiRedactionReport): List<String> {
+    val warnings = mutableListOf<String>()
+    for (place in report.remainingOccurrences) {
+        warnings.add(
+            "the same text still stands at ${place.location} (page ${place.pageIndex})"
+        )
+    }
+    for (place in report.uninspectedPlaces) {
+        warnings.add(
+            "this place could not be read: ${place.location} (page ${place.pageIndex})"
+        )
+    }
+    return warnings
 }
 
 /**

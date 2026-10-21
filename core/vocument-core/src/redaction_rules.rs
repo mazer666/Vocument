@@ -99,6 +99,11 @@ pub fn is_fragment_of(candidate: &str, reference: &str) -> bool {
 /// therefore belongs to the region — and the region is extended to the whole
 /// word, so that the word goes as a whole.
 ///
+/// The overlap has to be a real one: two boxes that only share their edge do
+/// not overlap. A word that stands directly next to the region — the next
+/// word of the same line — is not part of the redaction, and removing it
+/// would take away something the user did not mark.
+///
 /// The rule is the one of the common tools: a marked region removes every
 /// word it touches, completely. The report names the words that were
 /// removed, so that nobody is surprised by a word that goes further than the
@@ -108,10 +113,10 @@ pub fn word_touches_region(word: &PdfTextWord, regions: &[RedactionRegion]) -> b
     // words of the picture, which the OCR estimates.
     regions.iter().any(|region| {
         let rect = region.as_rect();
-        word.bbox.x0_milli_pt <= rect.x1_milli_pt
-            && word.bbox.x1_milli_pt >= rect.x0_milli_pt
-            && word.bbox.y0_milli_pt <= rect.y1_milli_pt
-            && word.bbox.y1_milli_pt >= rect.y0_milli_pt
+        word.bbox.x0_milli_pt < rect.x1_milli_pt
+            && word.bbox.x1_milli_pt > rect.x0_milli_pt
+            && word.bbox.y0_milli_pt < rect.y1_milli_pt
+            && word.bbox.y1_milli_pt > rect.y0_milli_pt
     })
 }
 
@@ -233,6 +238,21 @@ mod tests {
             &word("Anhang", 100, 2_000, 900, 2_100),
             &regions
         ));
+    }
+
+    #[test]
+    fn a_word_that_only_stands_next_to_the_region_is_not_removed() {
+        // The region covers the first word of the line. The next word stands
+        // directly next to it: it shares the edge of the boxes, and that is
+        // not an overlap. The user did not mark it.
+        let regions = [region(0, 0, 100, 200)];
+        let next = word("Anhang", 100, 0, 400, 200);
+        assert!(!word_touches_region(&next, &regions));
+        let extended = extend_regions_to_touching_words(&regions, &[next]);
+        assert_eq!(
+            extended[0].x1_milli_pt, 100,
+            "the region must not grow to the word next to it"
+        );
     }
 
     #[test]

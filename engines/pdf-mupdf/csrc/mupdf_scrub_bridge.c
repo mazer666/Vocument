@@ -1,16 +1,24 @@
-/* Removing the redacted text from the places of a document that do not lie
+/* Removing the redacted words from the places of a document that do not lie
  * on the page.
  *
- * The redaction of MuPDF removes the content of a page: the text of the
- * content stream and the pixels of the images. Everything else that carries
- * the text stays where it is — the text of an annotation, the value of a form
- * field, the subject of the document, the XMP packet, the content of an
- * embedded file. A redaction that reports success while the text is still in
- * the document is a lie.
+ * The redaction of MuPDF removes the content of a page. The same text can lie
+ * in other places of the document: in the text of an annotation, in the popup
+ * of an annotation, in the value of a form field, in the metadata, in the
+ * XMP packet, in the structure tree, in the name tree, in the optional
+ * content, in the private data of a page. A redaction that reports success
+ * while the text is still in the document is a lie.
  *
- * This bridge removes the text from the places where that can be done
- * without destroying the document, and it leaves the places that cannot be
- * cleaned alone — the caller has to report them. */
+ * The second round of the red team worked with a list of known places. The
+ * third round showed what a list misses: a popup that does not stand in
+ * `/Annots`, the structure tree, the optional content, the name tree — every
+ * one of them carried the secret, and the redaction reported success. The
+ * scrub therefore walks through **every** object of the document
+ * (`mupdf_walk.h`) and empties every string that carries the word.
+ *
+ * The embedded files are not touched: a file that is attached to the document
+ * cannot be cleaned partly without destroying it, and destroying the data of
+ * the user is worse than a redaction that is refused. The caller has to
+ * report the text that is still in the document. */
 
 #include <mupdf/fitz.h>
 #include <mupdf/pdf.h>
@@ -19,15 +27,20 @@
 
 #include "mupdf_serialize.h"
 #include "mupdf_text_search.h"
+#include "mupdf_walk.h"
 
-/* The text that replaces a redacted word in the metadata. */
-#define VOCUMENT_REDACTION_PLACEHOLDER "[redacted]"
+/* The placeholder that replaces a word in a text that cannot be emptied. */
+#define VOCUMENT_REDACTION_PLACEHOLDER ""
 
-/* Answers whether the object carries one of the words.
- *
- * The text of a PDF object is decoded by MuPDF: a string that is stored as
- * UTF-16 or as a hex string is handed out as UTF-8. The comparison of the
- * plain text is therefore enough here. */
+/* The keys whose value names something of the document and not the text of
+ * the user: the name of a font, the name of an encoding, the identifier of
+ * the document. Emptying them would break the document instead of removing a
+ * secret. A word in such a key is reported by the search instead. */
+static const char *const VOCUMENT_PROTECTED_KEYS[] = {
+    "BaseFont", "FontName", "Encoding", "ID", "Filter", "Length", "Type", "Subtype"
+};
+
+/* Answers whether the object carries one of the words. */
 static int vocument_object_carries_word(
     fz_context *ctx,
     pdf_obj *obj,
@@ -42,149 +55,93 @@ static int vocument_object_carries_word(
        characters. */
     const char *text = pdf_to_str_buf(ctx, obj);
     size_t text_len = pdf_to_str_len(ctx, obj);
-    int found = 0;
-    for (size_t i = 0; i < word_count && !found; i++) {
-        if (words[i] && words[i][0]) {
-            /* The text of a PDF object can be plain text, UTF-16 or the
-               hex string of the UTF-16 bytes. All of them have to be seen. */
-            found = vocument_contains_word(
-                (const unsigned char *)text,
-                text_len,
-                words[i]
-            );
+    for (size_t i = 0; i < word_count; i++) {
+        if (words[i] && words[i][0] && vocument_contains_word(
+                (const unsigned char *)text, text_len, words[i])) {
+            return 1;
         }
     }
-    return found;
+    return 0;
 }
 
-/* Empties the text of the annotations of the page.
+/* Answers whether the key names something of the document and not the text
+   of the user. */
+static int vocument_key_is_protected(fz_context *ctx, pdf_obj *key) {
+    if (!key) {
+        return 0;
+    }
+    const char *name = pdf_to_name(ctx, key);
+    if (!name) {
+        return 0;
+    }
+    for (size_t i = 0; i < sizeof(VOCUMENT_PROTECTED_KEYS) / sizeof(VOCUMENT_PROTECTED_KEYS[0]); i++) {
+        if (strcmp(name, VOCUMENT_PROTECTED_KEYS[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* The state of the scrub. */
+typedef struct {
+    fz_context *ctx;
+    const char *const *words;
+    size_t word_count;
+    int annotations;
+    int form_values;
+    int other;
+} vocument_scrub_state;
+
+/* Empties a string of the document that carries one of the words.
  *
- * The annotations are read from the `/Annots` array of the page instead of
- * the annotation handles of MuPDF: the handle does not give access to the
- * object of the annotation, and the array is where the text lives. */
-static int vocument_scrub_annotations(
-    fz_context *ctx,
-    pdf_page *page,
-    const char *const *words,
-    size_t word_count,
-    int *out_changed
-) {
-    int changed = 0;
-    pdf_obj *annots = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
-    if (!pdf_is_array(ctx, annots)) {
-        return 0;
-    }
-    int count = pdf_array_len(ctx, annots);
-    for (int i = 0; i < count; i++) {
-        pdf_obj *annot = pdf_resolve_indirect(ctx, pdf_array_get(ctx, annots, i));
-        if (!pdf_is_dict(ctx, annot)) {
-            continue;
-        }
-        pdf_obj *contents = pdf_dict_get(ctx, annot, PDF_NAME(Contents));
-        if (pdf_is_array(ctx, contents)) {
-            /* A text array holds the text in several languages. */
-            int entries = pdf_array_len(ctx, contents);
-            for (int e = 0; e < entries; e++) {
-                pdf_obj *entry = pdf_resolve_indirect(ctx, pdf_array_get(ctx, contents, e));
-                if (!vocument_object_carries_word(ctx, entry, words, word_count)) {
-                    continue;
-                }
-                pdf_array_put(ctx, contents, e, pdf_new_string(ctx, "", 0));
-                changed++;
-            }
-            continue;
-        }
-        /* The text of the annotation is emptied, the annotation itself stays:
-           it belongs to the document and may carry information that the user
-           wants to keep.
+ * The string is replaced by an empty one in the place it stands: the
+ * document keeps its structure, the text of the user is gone. */
+static int vocument_scrub_place(void *user, const vocument_walk_item *item) {
+    vocument_scrub_state *state = (vocument_scrub_state *)user;
+    fz_context *ctx = state->ctx;
 
-           An annotation carries more than its text: the title, the
-           alternative text, the subject, the reply and the name of the file.
-           All of them can carry the text of the user, and all of them are
-           emptied. */
-        static const char *const text_fields[] = {
-            "Contents", "T", "RC", "Alt", "Subj", "R", "IT", "DS"
-        };
-        for (size_t f = 0; f < sizeof(text_fields) / sizeof(text_fields[0]); f++) {
-            pdf_obj *value = pdf_dict_gets(ctx, annot, text_fields[f]);
-            if (!vocument_object_carries_word(ctx, value, words, word_count)) {
-                continue;
-            }
-            pdf_dict_puts(ctx, annot, text_fields[f], pdf_new_string(ctx, "", 0));
-            changed++;
-        }
+    if (!pdf_is_string(ctx, item->object)) {
+        return 1;
+    }
+    if (vocument_key_is_protected(ctx, item->key)) {
+        return 1;
+    }
+    if (!vocument_object_carries_word(ctx, item->object, state->words, state->word_count)) {
+        return 1;
     }
 
-    if (out_changed) {
-        *out_changed += changed;
+    pdf_obj *empty = pdf_new_string(ctx, "", 0);
+    if (!empty) {
+        return 1;
     }
-    return changed;
-}
-
-/* Empties the value of a form field. */
-static int vocument_scrub_field(
-    fz_context *ctx,
-    pdf_obj *field,
-    const char *const *words,
-    size_t word_count
-) {
-    if (!field || !pdf_is_dict(ctx, field)) {
-        return 0;
-    }
-    int changed = 0;
-    /* The value of the field and its default value. */
-    if (vocument_object_carries_word(ctx, pdf_dict_get(ctx, field, PDF_NAME(V)), words, word_count)) {
-        pdf_dict_puts(ctx, field, "V", pdf_new_string(ctx, "", 0));
-        changed++;
-    }
-    if (vocument_object_carries_word(ctx, pdf_dict_get(ctx, field, PDF_NAME(DV)), words, word_count)) {
-        pdf_dict_puts(ctx, field, "DV", pdf_new_string(ctx, "", 0));
-        changed++;
-    }
-    return changed;
-}
-
-/* Empties the values of the form fields of the page. */
-static int vocument_scrub_form_values(
-    fz_context *ctx,
-    pdf_page *page,
-    const char *const *words,
-    size_t word_count,
-    int *out_changed
-) {
-    int changed = 0;
-    pdf_obj *annots = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
-    if (!pdf_is_array(ctx, annots)) {
-        return 0;
-    }
-    int count = pdf_array_len(ctx, annots);
-    for (int i = 0; i < count; i++) {
-        pdf_obj *widget = pdf_resolve_indirect(ctx, pdf_array_get(ctx, annots, i));
-        if (!pdf_is_dict(ctx, widget)) {
-            continue;
-        }
-        /* Only the widgets carry a form field. */
-        if (!pdf_dict_get(ctx, widget, PDF_NAME(FT))) {
-            continue;
-        }
-        /* A widget carries the value itself, or it inherits it from the
-           field it belongs to. */
-        changed += vocument_scrub_field(ctx, widget, words, word_count);
-        pdf_obj *parent = pdf_dict_get(ctx, widget, PDF_NAME(Parent));
-        if (pdf_is_dict(ctx, parent)) {
-            changed += vocument_scrub_field(ctx, parent, words, word_count);
-        }
+    if (item->parent && item->key) {
+        pdf_dict_put(ctx, item->parent, item->key, empty);
+    } else if (item->parent && item->index >= 0) {
+        pdf_array_put(ctx, item->parent, item->index, empty);
+    } else {
+        pdf_drop_obj(ctx, empty);
+        return 1;
     }
 
-    if (out_changed) {
-        *out_changed += changed;
+    /* The counters tell what was cleaned. A value of a form field is the
+       value of a widget — an annotation that carries a field. */
+    int is_form_value = 0;
+    if (item->parent && pdf_dict_get(ctx, item->parent, PDF_NAME(FT))) {
+        is_form_value = 1;
     }
-    return changed;
+    if (is_form_value) {
+        state->form_values++;
+    } else if (strstr(item->path, "/Annots") || strstr(item->path, "/Popup")) {
+        state->annotations++;
+    } else {
+        state->other++;
+    }
+    return 1;
 }
 
 /* Copies the buffer and replaces every occurrence of one of the words with
-   the placeholder. The result is a newly allocated buffer that the caller
-   has to release with `free`. */
+ * the placeholder. The result is a newly allocated buffer that the caller
+ * has to release with `free`. */
 static unsigned char *vocument_replace_words(
     const unsigned char *data,
     size_t len,
@@ -244,6 +201,11 @@ static unsigned char *vocument_replace_words(
     return out;
 }
 
+/* Removes the words from the XMP packet of a stream.
+ *
+ * The XMP packet is an XML text: it cannot be emptied like a string of the
+ * document, because the packet has to stay a valid packet. The words are
+ * replaced by a placeholder instead. */
 static int vocument_scrub_xmp_stream(
     fz_context *ctx,
     pdf_document *pdf_doc,
@@ -296,95 +258,66 @@ static int vocument_scrub_xmp_stream(
     return changed;
 }
 
-static int vocument_scrub_page_metadata(
+/* Removes the words from the XMP packets of the document and of its pages. */
+static int vocument_scrub_xmp_packets(
     fz_context *ctx,
     pdf_document *pdf_doc,
     const char *const *words,
-    size_t word_count,
-    int *out_changed
+    size_t word_count
 ) {
     int changed = 0;
+    pdf_obj *trailer = pdf_trailer(ctx, pdf_doc);
+    pdf_obj *root = pdf_dict_get(ctx, trailer, PDF_NAME(Root));
+    changed += vocument_scrub_xmp_stream(
+        ctx, pdf_doc, pdf_dict_get(ctx, root, PDF_NAME(Metadata)), words, word_count
+    );
+
     int page_count = pdf_count_pages(ctx, pdf_doc);
     for (int i = 0; i < page_count; i++) {
-        pdf_page *page = pdf_load_page(ctx, pdf_doc, i);
-        if (!page) {
-            continue;
-        }
-        /* The metadata of the page: the object of the dictionary is the
-           stream itself, an indirect object that MuPDF knows. */
-        pdf_obj *metadata = pdf_dict_get(ctx, page->obj, PDF_NAME(Metadata));
-        changed += vocument_scrub_xmp_stream(ctx, pdf_doc, metadata, words, word_count);
-        pdf_drop_page(ctx, page);
-    }
-    if (out_changed) {
-        *out_changed += changed;
-    }
-    return 0;
-}
-
-/* Empties the metadata of the document: the fields of the document
-   information dictionary and the XMP packet. */
-static int vocument_scrub_metadata(
-    fz_context *ctx,
-    pdf_document *pdf_doc,
-    const char *const *words,
-    size_t word_count,
-    int *out_changed
-) {
-    int changed = 0;
-    fz_buffer *xmp_buffer = NULL;
-    fz_var(xmp_buffer);
-
-    fz_try(ctx) {
-        /* The document information dictionary: the subject, the keywords and
-           the other text fields. */
-        pdf_obj *trailer = pdf_trailer(ctx, pdf_doc);
-        pdf_obj *info = pdf_dict_get(ctx, trailer, PDF_NAME(Info));
-        if (pdf_is_dict(ctx, info)) {
-            static const char *const fields[] = {
-                "Title", "Subject", "Author", "Keywords", "Creator", "Producer"
-            };
-            for (size_t f = 0; f < sizeof(fields) / sizeof(fields[0]); f++) {
-                pdf_obj *value = pdf_dict_gets(ctx, info, fields[f]);
-                if (!vocument_object_carries_word(ctx, value, words, word_count)) {
-                    continue;
-                }
-                pdf_dict_puts(ctx, info, fields[f], pdf_new_string(ctx, "", 0));
-                changed++;
+        pdf_page *page = NULL;
+        fz_var(page);
+        fz_try(ctx) {
+            page = pdf_load_page(ctx, pdf_doc, i);
+            if (page) {
+                /* The metadata of the page: the object of the dictionary is
+                   the stream itself, an indirect object that MuPDF knows. */
+                changed += vocument_scrub_xmp_stream(
+                    ctx,
+                    pdf_doc,
+                    pdf_dict_get(ctx, page->obj, PDF_NAME(Metadata)),
+                    words,
+                    word_count
+                );
             }
         }
-
-        /* The XMP packet of the document. */
-        pdf_obj *root = pdf_dict_get(ctx, trailer, PDF_NAME(Root));
-        pdf_obj *metadata = pdf_dict_get(ctx, root, PDF_NAME(Metadata));
-        changed += vocument_scrub_xmp_stream(ctx, pdf_doc, metadata, words, word_count);
-    }
-    fz_always(ctx) {
-        if (xmp_buffer) {
-            fz_drop_buffer(ctx, xmp_buffer);
+        fz_always(ctx) {
+            if (page) {
+                pdf_drop_page(ctx, page);
+            }
+        }
+        fz_catch(ctx) {
+            fz_rethrow(ctx);
         }
     }
-    fz_catch(ctx) {
-        fz_rethrow(ctx);
-    }
-
-    if (out_changed) {
-        *out_changed += changed;
-    }
-    return 0;
+    return changed;
 }
 
 /**
- * Removes the given words from the annotations, the form fields and the
- * metadata of the document.
+ * Removes the given words from the places of the document that do not lie
+ * on the page.
+ *
+ * Every string of the document is emptied when it carries one of the words:
+ * the text of an annotation, the popup of an annotation, the value of a
+ * form field, the metadata, the structure tree, the name tree, the optional
+ * content, the private data of a page.
  *
  * The embedded files are not touched: a file that is attached to the
  * document cannot be cleaned partly without destroying it, and destroying
  * the data of the user is worse than a redaction that is refused. The caller
  * has to report the text that is still in the document.
  *
- * The counters tell how many annotations, form values and metadata fields
- * were changed.
+ * The counters tell how many annotations, form values and other places were
+ * changed.
  */
 int vocument_mupdf_scrub_document(
     const unsigned char *bytes,
@@ -419,12 +352,14 @@ int vocument_mupdf_scrub_document(
     fz_stream *stream = NULL;
     fz_document *doc = NULL;
     pdf_document *pdf_doc = NULL;
+    vocument_walk_t walk;
     int status = 0;
 
     fz_var(stream);
     fz_var(doc);
     fz_var(pdf_doc);
     fz_var(status);
+    fz_var(walk);
 
     fz_try(ctx) {
         fz_register_document_handlers(ctx);
@@ -434,27 +369,37 @@ int vocument_mupdf_scrub_document(
         if (!pdf_doc) {
             status = 2;
         } else {
-            int page_count = fz_count_pages(ctx, doc);
-            for (int i = 0; i < page_count; i++) {
-                pdf_page *page = pdf_load_page(ctx, pdf_doc, i);
-                fz_try(ctx) {
-                    vocument_scrub_annotations(ctx, page, words, word_count, out_scrubbed_annotations);
-                    vocument_scrub_form_values(ctx, page, words, word_count, out_scrubbed_form_values);
-                }
-                fz_always(ctx) {
-                    pdf_drop_page(ctx, page);
-                }
-                fz_catch(ctx) {
-                    fz_rethrow(ctx);
-                }
+            vocument_scrub_state state;
+            state.ctx = ctx;
+            state.words = words;
+            state.word_count = word_count;
+            state.annotations = 0;
+            state.form_values = 0;
+            state.other = 0;
+
+            vocument_walk_init(&walk, ctx, vocument_scrub_place, &state);
+            fz_try(ctx) {
+                vocument_walk_document(&walk, pdf_doc);
             }
-            status = vocument_scrub_metadata(ctx, pdf_doc, words, word_count, out_scrubbed_metadata);
-            if (status == 0) {
-                status = vocument_scrub_page_metadata(ctx, pdf_doc, words, word_count, out_scrubbed_metadata);
+            fz_always(ctx) {
+                vocument_walk_free(&walk);
             }
-            if (status == 0) {
-                vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+            fz_catch(ctx) {
+                fz_rethrow(ctx);
             }
+
+            if (out_scrubbed_annotations) *out_scrubbed_annotations = state.annotations;
+            if (out_scrubbed_form_values) *out_scrubbed_form_values = state.form_values;
+            if (out_scrubbed_metadata) *out_scrubbed_metadata = state.other;
+
+            /* The XMP packets are XML: their words are replaced by a
+               placeholder instead of being emptied. */
+            int xmp_changed = vocument_scrub_xmp_packets(ctx, pdf_doc, words, word_count);
+            if (xmp_changed > 0 && out_scrubbed_metadata) {
+                *out_scrubbed_metadata += xmp_changed;
+            }
+
+            vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
         }
     }
     fz_always(ctx) {

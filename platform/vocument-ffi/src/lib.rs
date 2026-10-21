@@ -177,7 +177,17 @@ impl From<SessionError> for DocumentCoreError {
                 ),
             },
             SessionError::RedactionRollbackFailed { original, rollback } => {
-                Self::RedactionRollbackFailed { original, rollback }
+                // The bindings show the fields, not the message of the Rust
+                // error. The instruction has to travel in the fields: without
+                // it the user sees two error strings and does not learn that
+                // the document has to be opened again.
+                Self::RedactionRollbackFailed {
+                    original: format!(
+                        "the redaction failed and the document could not be put back; \
+                         the document has to be opened again. The error was: {original}"
+                    ),
+                    rollback: format!("The rollback failed with: {rollback}"),
+                }
             }
             SessionError::Redaction(redaction_err) => match redaction_err {
                 vocument_core::redaction::RedactionError::VerificationFailed { details } => {

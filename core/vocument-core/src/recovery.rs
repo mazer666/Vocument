@@ -15,8 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::file_broker::FileBroker;
 use crate::identity::{FileIdentity, FileIdentityComparison, compute_sha256_hex};
-use crate::save::generate_collision_free_path;
-use crate::session::{DocumentSessionSnapshot, SessionError, SessionRegistry};
+use crate::session::DocumentSessionSnapshot;
 use crate::transactions::{PersistentTransactionJournal, TransactionError};
 
 /// Schema version for recovery manifests and containers.
@@ -198,8 +197,18 @@ impl RecoveryContainer {
     /// Creates the container directory with restrictive permissions.
     ///
     /// The container holds the name and the path of the document of the user.
-    /// It must not be readable for anyone else on the machine.
+    /// It must not be readable for anyone else on the machine. The root
+    /// directory of the store is the parent of the container and belongs to the
+    /// user as well: it shows which documents are recoverable, and in a
+    /// world-writable place like the temporary directory a stranger could
+    /// prepare the directory before the application does.
     fn ensure_container_dir(&self) -> Result<(), RecoveryError> {
+        if let Some(root) = self.container_dir.parent()
+            && !root.as_os_str().is_empty()
+        {
+            fs::create_dir_all(root)?;
+            Self::set_private_directory_permissions(root)?;
+        }
         fs::create_dir_all(&self.container_dir)?;
         Self::set_private_directory_permissions(&self.container_dir)
     }
@@ -312,6 +321,42 @@ impl RecoveryContainer {
         Ok(Some(journal))
     }
 
+    /// Makes a file private to its owner.
+    fn set_private_file_permissions(file: &Path) -> Result<(), RecoveryError> {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(file)?.permissions();
+            if permissions.mode() & 0o077 != 0 {
+                permissions.set_mode(0o600);
+                fs::set_permissions(file, permissions)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Makes every checkpoint of this document private to its owner.
+    ///
+    /// The mode of a file is only set when it is created. A checkpoint of an
+    /// older version of the application can therefore still be readable for
+    /// everybody on the machine, and it holds the document in plain text. The
+    /// older files are corrected when the next checkpoint is written.
+    fn enforce_private_checkpoint_files(dir: &Path) -> Result<(), RecoveryError> {
+        let entries = match fs::read_dir(dir) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error.into()),
+        };
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                Self::set_private_file_permissions(&path)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Atomically writes a periodic full document checkpoint PDF to `checkpoints/`.
     ///
     /// A checkpoint holds the document in plain text. It therefore belongs to
@@ -341,6 +386,11 @@ impl RecoveryContainer {
         file.write_all(pdf_bytes)?;
         file.sync_all()?;
         fs::rename(temp, dest)?;
+
+        // The checkpoints of an older version of the application can still be
+        // readable for everybody on the machine. They hold the document in
+        // plain text, so they are corrected now.
+        Self::enforce_private_checkpoint_files(&dir)?;
 
         let hash = compute_sha256_hex(pdf_bytes);
         Ok((filename, hash))
@@ -507,264 +557,4 @@ pub fn current_unix_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
-}
-
-/// Recovery execution methods on `SessionRegistry` (`ROADMAP.md` M0.6).
-impl SessionRegistry {
-    /// Dispatches a `RecoveryAction` (`Restore`, `Preview`, `Discard`, `OpenAsNew`) on `document_id`.
-    pub fn execute_recovery_action(
-        &self,
-        document_id: &str,
-        action: RecoveryAction,
-    ) -> Result<RecoveryActionResult, SessionError> {
-        let container = self.recovery_store.container_for(document_id);
-        let manifest = container
-            .read_manifest()
-            .map_err(SessionError::Recovery)?
-            .ok_or_else(|| {
-                SessionError::Recovery(RecoveryError::NotFound {
-                    document_id: document_id.to_owned(),
-                })
-            })?;
-
-        match action {
-            RecoveryAction::Restore => self.execute_recovery_restore(&container, manifest),
-            RecoveryAction::Preview => self.execute_recovery_preview(&container, manifest),
-            RecoveryAction::Discard => {
-                container.purge().map_err(SessionError::Recovery)?;
-                Ok(RecoveryActionResult {
-                    document_id: document_id.to_owned(),
-                    action: RecoveryAction::Discard,
-                    session_snapshot: None,
-                    target_token: None,
-                    message: "Recovery container discarded successfully.".to_owned(),
-                })
-            }
-            RecoveryAction::OpenAsNew => self.execute_recovery_open_as_new(&container, manifest),
-        }
-    }
-
-    fn execute_recovery_restore(
-        &self,
-        container: &RecoveryContainer,
-        manifest: RecoveryManifest,
-    ) -> Result<RecoveryActionResult, SessionError> {
-        let journal = container
-            .read_journal()
-            .map_err(SessionError::Recovery)?
-            .ok_or_else(|| {
-                SessionError::Recovery(RecoveryError::NotFound {
-                    document_id: manifest.document_id.clone(),
-                })
-            })?;
-
-        // Read baseline file via broker without modifying it:
-        let brokered = self.file_broker.read_file(&manifest.source_token)?;
-        let snap = self.open_brokered_file(brokered)?;
-
-        // Replay transactions from the recovery journal onto the live session:
-        let restored_snap = {
-            let mut guard = self
-                .sessions
-                .lock()
-                .map_err(|_| SessionError::RegistryPoisoned)?;
-            let session = guard.get_mut(snap.session_id.as_str()).ok_or_else(|| {
-                SessionError::SessionNotFound {
-                    session_id: snap.session_id.to_string(),
-                }
-            })?;
-            let actor = session.actor();
-            session
-                .transaction_manager
-                .restore_and_replay_journal(&actor, &journal)?;
-            session.sync_from_transaction_manager();
-            session.snapshot()
-        };
-
-        Ok(RecoveryActionResult {
-            document_id: manifest.document_id,
-            action: RecoveryAction::Restore,
-            session_snapshot: Some(restored_snap),
-            target_token: Some(manifest.source_token),
-            message: if journal
-                .committed_records
-                .iter()
-                .any(|record| record.forward_command.is_redaction())
-            {
-                "Document session restored from crash recovery journal, but the last redaction was not replayed: a redaction cannot be verified from the journal, and the document stands at the state before it. Original file on disk remains unchanged until save.".to_owned()
-            } else {
-                "Document session restored from crash recovery journal. Original file on disk remains unchanged until save.".to_owned()
-            },
-        })
-    }
-
-    fn execute_recovery_preview(
-        &self,
-        container: &RecoveryContainer,
-        manifest: RecoveryManifest,
-    ) -> Result<RecoveryActionResult, SessionError> {
-        let journal = container
-            .read_journal()
-            .map_err(SessionError::Recovery)?
-            .ok_or_else(|| {
-                SessionError::Recovery(RecoveryError::NotFound {
-                    document_id: manifest.document_id.clone(),
-                })
-            })?;
-
-        // Open read-only preview session:
-        let brokered = self.file_broker.read_file(&manifest.source_token)?;
-        let snap = self.open_brokered_file(brokered)?;
-
-        let preview_snap = {
-            let mut guard = self
-                .sessions
-                .lock()
-                .map_err(|_| SessionError::RegistryPoisoned)?;
-            let session = guard.get_mut(snap.session_id.as_str()).ok_or_else(|| {
-                SessionError::SessionNotFound {
-                    session_id: snap.session_id.to_string(),
-                }
-            })?;
-            let actor = session.actor();
-            session
-                .transaction_manager
-                .restore_and_replay_journal(&actor, &journal)?;
-            session.sync_from_transaction_manager();
-            session.snapshot()
-        };
-
-        Ok(RecoveryActionResult {
-            document_id: manifest.document_id,
-            action: RecoveryAction::Preview,
-            session_snapshot: Some(preview_snap),
-            target_token: Some(manifest.source_token),
-            message: "Preview session created. Recovery container and on-disk file are unchanged."
-                .to_owned(),
-        })
-    }
-
-    fn execute_recovery_open_as_new(
-        &self,
-        container: &RecoveryContainer,
-        manifest: RecoveryManifest,
-    ) -> Result<RecoveryActionResult, SessionError> {
-        // First restore state into session:
-        let restored = self.execute_recovery_restore(container, manifest.clone())?;
-        let restored_snap = restored.session_snapshot.ok_or_else(|| {
-            SessionError::Recovery(RecoveryError::MissingSessionSnapshot {
-                document_id: manifest.document_id.clone(),
-            })
-        })?;
-
-        // Generate collision-free path for recovered file:
-        let normalized = manifest
-            .source_token
-            .strip_prefix("file://")
-            .unwrap_or(&manifest.source_token);
-        let new_path = generate_collision_free_path(Path::new(normalized), "Recovered");
-        let new_token = new_path.to_string_lossy().into_owned();
-
-        // Safe save as new document:
-        let save_res = self.save_session_as(restored_snap.session_id.as_str(), &new_token)?;
-        let final_snap = match save_res {
-            crate::save::SaveResult::Success(succ) => {
-                self.session_snapshot(succ.session_id.as_str())?
-            }
-            crate::save::SaveResult::Conflict(_) => {
-                return Err(SessionError::Recovery(RecoveryError::Session {
-                    details: "conflict saving recovered copy as new document".to_owned(),
-                }));
-            }
-        };
-
-        // Purge recovery container of original document:
-        let _ = container.purge();
-
-        Ok(RecoveryActionResult {
-            document_id: manifest.document_id,
-            action: RecoveryAction::OpenAsNew,
-            session_snapshot: Some(final_snap),
-            target_token: Some(new_token),
-            message: "Recovered state saved as new document. Original file and recovery container cleaned up.".to_owned(),
-        })
-    }
-
-    /// Internal hook called after every transaction/mutation to persist recovery journal and manifest.
-    pub(crate) fn record_recovery_mutation(&self, session_id: &str) -> Result<(), SessionError> {
-        let (doc_id, src_token, disp_name, file_id, journal, rev, bytes_opt) = {
-            let guard = self
-                .sessions
-                .lock()
-                .map_err(|_| SessionError::RegistryPoisoned)?;
-            let s = guard
-                .get(session_id)
-                .ok_or_else(|| SessionError::SessionNotFound {
-                    session_id: session_id.to_owned(),
-                })?;
-            let journal = s.transaction_manager.export_persistent_journal();
-            let bytes_opt = if s.revision % 10 == 0 {
-                // Periodic checkpoint every 10 revisions
-                s.actor().current_pdf_bytes().ok()
-            } else {
-                None
-            };
-            (
-                s.document_id.clone(),
-                s.file_identity.source_token.clone(),
-                s.file_identity.display_name.clone(),
-                s.file_identity.clone(),
-                journal,
-                s.revision,
-                bytes_opt,
-            )
-        };
-
-        let container = self.recovery_store.container_for(doc_id.as_str());
-        container
-            .write_journal(&journal)
-            .map_err(SessionError::Recovery)?;
-
-        let mut chk_file = None;
-        let mut chk_sha = None;
-        if let Some((f, h)) =
-            bytes_opt.and_then(|bytes| container.write_checkpoint(rev, &bytes).ok())
-        {
-            chk_file = Some(f);
-            chk_sha = Some(h);
-        }
-
-        let now = current_unix_ms();
-        let manifest = RecoveryManifest {
-            schema_version: RECOVERY_SCHEMA_VERSION,
-            document_id: doc_id.to_string(),
-            source_token: src_token.clone(),
-            display_name: disp_name,
-            original_file_identity: file_id,
-            active_pid: std::process::id(),
-            is_clean_shutdown: false,
-            has_unsaved_changes: true,
-            uncommitted_revisions: rev,
-            last_saved_revision: journal.saved_revision,
-            created_unix_ms: now,
-            updated_unix_ms: now,
-            last_checkpoint_file: chk_file,
-            last_checkpoint_sha256: chk_sha.clone(),
-            manifest_checksum_sha256: RecoveryManifest::compute_checksum(
-                RECOVERY_SCHEMA_VERSION,
-                doc_id.as_str(),
-                &src_token,
-                std::process::id(),
-                false,
-                true,
-                rev,
-                now,
-                chk_sha.as_deref(),
-            ),
-        };
-        container
-            .write_manifest(&manifest)
-            .map_err(SessionError::Recovery)?;
-        Ok(())
-    }
 }

@@ -95,11 +95,24 @@ each of which has already bitten once.
 | The same word on another page is named in the report, a remainder without a place still stops the redaction | `the_same_word_on_another_page_is_named_in_the_report`, `a_remainder_without_a_place_still_stops_the_redaction` |
 | The checkpoints of the recovery store are deleted after a successful redaction | `a_successful_redaction_deletes_the_checkpoints_of_the_recovery_store` |
 
-### 3.2 The two audits
+### 3.2 The three audits
 
 They are part of the documentation now: `docs/audit/redaction-security-audit.md`
-and `docs/audit/redaction-pdf-qa-audit.md`. They name the measurements, the
-commands and the limits of what could be checked.
+and `docs/audit/redaction-pdf-qa-audit.md` name the measurements, the
+commands and the limits of what could be checked. The second round is in
+`docs/audit/redteam-document-level.md` and
+`docs/audit/redteam-platform-chain.md`, the third round in
+`docs/audit/redteam-round-three-document-level.md` and
+`docs/audit/redteam-round-three-platform-chain.md`.
+
+The third round found the systematic gap of the first two: the search and the
+cleaning worked with a **list of known places**, so a secret in a place that
+the list did not know survived while the redaction reported a success. Both
+walk through **every** object of the document now. The third round also showed
+that the checks have to be scoped to the marked place, that the places of the
+document where the same text still stands have to reach the user as warnings,
+and that the recovery store, the errors of the recovery write and the caches
+of the process have to be treated as carefully as the redaction itself.
 
 ### 3.3 The gates
 
@@ -109,6 +122,7 @@ commands and the limits of what could be checked.
 | M2.1 (hardening) | the normalised word boxes, the fragment and the region check, the search for the places of the document, the cleaning of the annotations, the form values and the metadata, the rollback, the seven new proofs |
 | M2.2 | the engine reports the actions, the core decides the risk, the FFI function, the tests |
 | M2.3 | the engine reports the attachments and the signatures, the core decides the risk, the tests |
+| M2.1 (third audit) | the walk through every object of the document, the three kinds of the places, the private recovery root, the warning helpers of the two callers, the new proofs |
 
 ## 4. Architecture and platform
 
@@ -137,6 +151,8 @@ commands and the limits of what could be checked.
 | A document whose text is drawn with a Type 3 font | **NOT RUN** (residual) | The first audit assumed that MuPDF 1.28.5 cannot remove such a text. The second audit **could not reproduce** that: the text of a Type 3 font was removed completely in the construction it built. The claim is withdrawn for that construction; the others were not checked exhaustively. Should a construction survive, the check over the region sees it and the redaction is refused |
 | A secret in Base64 | **NOT RUN** | the search looks for plain text, for UTF-16 in both byte orders and for the hex string of the UTF-16 bytes |
 | A word whose parts lie apart from each other | **NOT RUN** | the region takes every word it touches, but two pieces of a word that lie far apart are not one word in the text layer. The full sanitising (`SAN-001`) is the place for that |
+| The clipboard of the user keeps the removed text | **open** | the clearing belongs to the redaction surface of the applications, which does not exist yet |
+| The content of an attached archive cannot be read | **open** | the redaction names such a place (`uninspected_places`) and does not claim that the text is gone from there. An attachment is never deleted |
 | The full sanitize of a document (metadata, hidden content, attachments, actions, comments, form remnants) | **open** | `SAN-001`, the separate feature of the roadmap. The redaction now reports the places it cannot clean, instead of staying silent about them |
 | The licence decision | **open** | the decision paper `docs/decisions/LICENSING-AND-DISTRIBUTION-DECISION.md` is waiting for the choice of the variant |
 | AddressSanitizer | **NOT RUN** | only with a nightly toolchain (`-Zbuild-std`); the substitute is the valgrind memcheck of the difficult corpus |
@@ -149,6 +165,8 @@ profession. The pattern of the last two slices applies again — the engine
 reports the facts, the core decides, the FFI boundary makes the report
 available, and the interface is the macOS part that cannot be built here.
 
-The second round of the audit runs against the hardened redaction. Whatever it
-finds goes back into the code, and the result is written down in the same way
-as the first round: with the measurement, not with the assurance.
+The audit continues: the third round ran against the redaction that the first
+two rounds had hardened, and it found the systematic gap of both. Whatever the
+next round finds goes back into the code, and the result is written down in
+the same way as the rounds before: with the measurement, not with the
+assurance.

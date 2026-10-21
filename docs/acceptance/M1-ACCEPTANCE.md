@@ -3,8 +3,8 @@
 - **Milestone:** `M1 — Android Scan & OCR` (`ROADMAP.md` §M1, `project/project.yaml`)
 - **Status:** **PARTIALLY PASSED** — the functional requirements are proven on the host; the device- and platform-dependent evidence remains **NOT RUN**
 - **Date:** 2026-10-20
-- **Sub-milestones:** [M1.0](M1.0-ACCEPTANCE.md) · [M1.1](M1.1-ACCEPTANCE.md) · [M1.2](M1.2-ACCEPTANCE.md) · [M1.3](M1.3-ACCEPTANCE.md) · [M1.4](M1.4-ACCEPTANCE.md) · [M1.4b/M1.5](M1.4b-M1.5-ABSCHLUSSBERICHT.md) · [M1.6](M1.6-ACCEPTANCE.md)
-- **Final report:** `docs/reports/M1.6-ABSCHLUSSBERICHT.md`
+- **Sub-milestones:** [M1.0](M1.0-ACCEPTANCE.md) · [M1.1](M1.1-ACCEPTANCE.md) · [M1.2](M1.2-ACCEPTANCE.md) · [M1.3](M1.3-ACCEPTANCE.md) · [M1.4](M1.4-ACCEPTANCE.md) · [M1.4b/M1.5](M1.4b-M1.5-COMPLETION-REPORT.md) · [M1.6](M1.6-ACCEPTANCE.md)
+- **Final report:** `docs/reports/M1.6-COMPLETION-REPORT.md`
 
 ---
 
@@ -153,5 +153,5 @@ the package green. The **platform-dependent** evidence from section 4 remains
 unchanged **NOT RUN** — the follow-up did not replace it.
 
 The follow-up and the beginning of M2 are described in
-`docs/reports/M1-NACHBEREITUNG-UND-M2-BEGINN.md`, the redaction in
+`docs/reports/M1-FINALISATION-AND-M2-START.md`, the redaction in
 `docs/acceptance/M2.1-ACCEPTANCE.md`.

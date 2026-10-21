@@ -131,6 +131,28 @@ impl TileCache {
         self.entries.insert(key, tile);
     }
 
+    /// Removes every cached tile of one document.
+    ///
+    /// A redaction removes content from the document. The tiles of the
+    /// earlier revision still show that content, and they stay readable in the
+    /// memory of the process until the cache evicts them. After a redaction
+    /// the tiles of the document are therefore dropped.
+    pub fn purge_document(&mut self, document_id: &str) {
+        let keys: Vec<TileKey> = self
+            .entries
+            .keys()
+            .filter(|key| key.document_id == document_id)
+            .cloned()
+            .collect();
+        for key in keys {
+            if let Some(tile) = self.entries.remove(&key) {
+                self.current_used_bytes = self.current_used_bytes.saturating_sub(tile.byte_len());
+            }
+            self.remove_from_lru(&key);
+            self.eviction_count += 1;
+        }
+    }
+
     /// Applies an OS memory-pressure signal (`Normal`, `Warning`, `Critical`) (`ARCHITECTURE.md` §9).
     pub fn apply_memory_pressure(&mut self, level: MemoryPressureLevel) -> TileCacheStats {
         self.pressure_level = level;

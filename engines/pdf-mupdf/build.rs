@@ -66,6 +66,7 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/mupdf_scrub_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_occurrences_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_text_search.h");
+    println!("cargo:rerun-if-changed=csrc/mupdf_walk.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_serialize.h");
     println!("cargo:rerun-if-env-changed=MUPDF_DIR");
     println!("cargo:rerun-if-env-changed=MUPDF_ANDROID_DIR");

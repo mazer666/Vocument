@@ -215,3 +215,187 @@ fn a_region_without_content_is_refused_and_the_document_stays_unchanged() {
         "a redaction that could not be verified must leave the document unchanged"
     );
 }
+
+/// Builds a document that carries the word twice on the same page — once at
+/// the place the user marks, once somewhere else on the page.
+fn document_with_the_word_twice_on_one_page() -> Vec<u8> {
+    let content = format!(
+        "BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\nBT /F1 18 Tf 20 60 Td ({SECRET}) Tj ET\n"
+    );
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// The same word twice on the same page: the redaction removes the place the
+/// user marked and reports the other place. A redaction that would refuse
+/// every word that occurs twice would be useless — a name, a word that
+/// matters, occurs in every document more than once.
+#[test]
+fn the_same_word_twice_on_the_same_page_is_redacted_and_the_other_place_is_named() {
+    let session_id = open_session(document_with_the_word_twice_on_one_page());
+
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case(SECRET))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let report = document_core_redact_page_regions(session_id.clone(), 0, vec![region])
+        .expect("the redaction of the marked place must succeed");
+    assert!(
+        report.verified,
+        "the marked place is clean in every respect: {report:?}"
+    );
+
+    // The marked place is empty, the other place still carries the word — and
+    // the report says so.
+    let after =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    assert_eq!(
+        after
+            .iter()
+            .filter(|word| word.text.eq_ignore_ascii_case(SECRET))
+            .count(),
+        1,
+        "the marked place is empty, the other place is not"
+    );
+    assert!(
+        !report.remaining_occurrences.is_empty(),
+        "the place of the word that is still in the document is named: {report:?}"
+    );
+}
+
+/// Builds a document with an attached ZIP archive. The archive holds a
+/// compressed file — the content of the archive cannot be read without
+/// unpacking it.
+fn document_with_a_zip_attachment() -> Vec<u8> {
+    let content = format!("BT /F1 18 Tf 20 150 Td ({SECRET}) Tj ET\n");
+    // A ZIP archive with one stored member: the header is enough for the
+    // redaction to recognise the container.
+    let archive: Vec<u8> = vec![
+        0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    let mut archive_object =
+        format!("8 0 obj\n<< /Length {} >>\nstream\n", archive.len()).into_bytes();
+    archive_object.extend_from_slice(&archive);
+    archive_object.extend_from_slice(b"\nendstream\nendobj\n");
+
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Names 6 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"6 0 obj\n<< /EmbeddedFiles 7 0 R >>\nendobj\n".to_vec(),
+        b"7 0 obj\n<< /Names [(Anhang) 9 0 R] >>\nendobj\n".to_vec(),
+        archive_object,
+        b"9 0 obj\n<< /Type /Filespec /F (Anhang.zip) /EF << /F 8 0 R >> >>\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{:010} 00000 n \n", offset).as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// An attached archive cannot be read without unpacking it. The redaction
+/// does not claim that the text is gone from there — it names the place, so
+/// that the user can decide what to do with it.
+#[test]
+fn an_attached_archive_is_named_as_a_place_that_could_not_be_read() {
+    let session_id = open_session(document_with_a_zip_attachment());
+
+    let words =
+        document_core_page_words(session_id.clone(), 0).expect("the words must be readable");
+    let word = words
+        .iter()
+        .find(|word| word.text.eq_ignore_ascii_case(SECRET))
+        .expect("the word must be in the text of the page");
+    let region = FfiRedactionRegion {
+        x0_milli_pt: word.rect.x0_milli_pt,
+        y0_milli_pt: word.rect.y0_milli_pt,
+        x1_milli_pt: word.rect.x1_milli_pt,
+        y1_milli_pt: word.rect.y1_milli_pt,
+    };
+
+    let report = document_core_redact_page_regions(session_id, 0, vec![region])
+        .expect("the redaction of the marked place must succeed");
+    assert!(
+        report.verified,
+        "the marked place is clean in every respect: {report:?}"
+    );
+    assert!(
+        !report.uninspected_places.is_empty(),
+        "the place that could not be read is named: {report:?}"
+    );
+}

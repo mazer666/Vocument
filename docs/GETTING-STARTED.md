@@ -198,7 +198,7 @@ decision can be checked without a device.
 | The redaction across the FFI boundary | `platform/vocument-ffi/src/redaction_dto.rs` |
 | Transaction and undo | `core/vocument-core/src/transactions.rs` (`RedactPageRegions`, `Irreversible`) |
 
-**Fourteen traps that have already bitten once:**
+**Twenty traps that have already bitten once:**
 
 1. **A redaction that only covers is not a redaction.** The text has to be
    removed from the document. MuPDF offers `PDF_REDACT_TEXT_REMOVE` for that;
@@ -266,6 +266,33 @@ decision can be checked without a device.
     text.** They belong to the user alone: the directory is `0700`, the
     file `0600`. A file that anybody on the machine could read would be a
     second copy of the document outside of the place the user expects it.
+    A checkpoint that an older version of the application has written keeps
+    its old mode until the next one is written — so the next one makes it
+    private again.
+15. **A list of known places is not a search.** The redaction has to look
+    everywhere: a popup that does not stand in `/Annots`, the structure
+    tree, the name tree, the optional content, the private data of a page
+    — a secret that stands in one of those places survives, and the
+    redaction reports a success. Both the search and the cleaning walk
+    through every object of the document
+    (`engines/pdf-mupdf/csrc/mupdf_walk.h`).
+16. **A place that cannot be read is not a clean place.** The content of an
+    attached archive is compressed. The redaction names such a place and
+    does not claim that the text is gone from there; an attachment is
+    never deleted.
+17. **Two boxes that only share their edge do not overlap.** The region
+    takes every word it really covers, not every word that stands next
+    to it.
+18. **The cache keeps what the page showed.** The tiles and the thumbnails
+    of a redacted page still hold the removed text. They are dropped after
+    a redaction.
+19. **The clipboard is the copy of the user.** The text of the page is
+    copied into the clipboard, and the clipboard history of the system
+    keeps it. The redaction surface has to clear the clipboard — it does
+    not exist yet.
+20. **A directory in the temporary directory can be prepared by somebody
+    else.** The recovery store keeps its content private (`0700`/`0600`),
+    but the applications have to hand it a directory of their own.
 
 **The coordinates:** the boxes lie in the page space of the engine —
 milli-points, origin at the top left, y descending. That is the same space in

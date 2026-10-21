@@ -113,6 +113,13 @@ pub struct RedactionReport {
     /// user has to know about it: the report names the places, so that nobody
     /// believes that a word is gone from the document when it is still in it.
     pub remaining_occurrences: Vec<PdfTextOccurrence>,
+    /// The places of the document that could not be read.
+    ///
+    /// The redaction does not claim that the text is gone from a place it
+    /// could not look into — the content of a container that is attached to
+    /// the document, for example. The places are named here, so that the
+    /// user can decide what to do with them.
+    pub uninspected_places: Vec<PdfTextOccurrence>,
     /// The revision of the document after the redaction.
     pub revision: u64,
 }
@@ -377,29 +384,46 @@ impl SessionRegistry {
 
         // The text layer. Two things have to hold:
         //
-        // 1. The removed words are no longer extractable.
-        // 2. Nothing is left in the redacted region. A word that was only
+        // 1. Nothing is left in the redacted region. A word that was only
         //    partly covered can survive as a fragment — and a fragment is
         //    still content.
+        // 2. No removed word stands any more **at the place of the
+        //    removal**. The removal works on the text layer of the page, and
+        //    this is where its result has to show.
+        //
+        // The same word may stand somewhere else — on another line of the
+        // same page, on another page. That is not a failure of the
+        // redaction: the user marked a region, and the word belongs to the
+        // document. The places are reported, so that nobody believes that
+        // the word is gone from the document when it is still in it.
         let residue: Vec<&PdfTextWord> = words_after
             .iter()
             .filter(|word| word_remains_in_region(word, &regions))
             .collect();
-        let fragment: Option<(&str, &str)> = checked_words.iter().find_map(|target| {
-            words_after
-                .iter()
-                .find(|word| is_fragment_of(&word.text, target))
-                .map(|word| (word.text.as_str(), target.as_str()))
-        });
-        let word_still_present = checked_words.iter().any(|removed| {
-            words_after
-                .iter()
-                .any(|word| is_same_word(&word.text, removed))
-        });
-        let text_layer_clean = if residue.is_empty() && fragment.is_none() && !word_still_present {
+        let survivor_at_the_place: Vec<&PdfTextWord> = words_after
+            .iter()
+            .filter(|word| {
+                removed_words.iter().any(|removed| {
+                    (is_same_word(&word.text, &removed.text)
+                        || is_fragment_of(&word.text, &removed.text))
+                        && boxes_overlap(word.bbox, removed.bbox)
+                })
+            })
+            .collect();
+        let text_layer_clean = if residue.is_empty() && survivor_at_the_place.is_empty() {
             RedactionCheck::Passed
         } else {
             RedactionCheck::Failed
+        };
+
+        // A removed word that stands elsewhere on the page. The place is
+        // reported, and the checks below do not treat it as a failure: the
+        // word belongs to the document, and the user marked a region.
+        let word_still_elsewhere = |word: &str| {
+            words_after.iter().any(|candidate| {
+                (is_same_word(&candidate.text, word) || is_fragment_of(&candidate.text, word))
+                    && !word_remains_in_region(candidate, &regions)
+            })
         };
 
         // The search index holds the text of the page. It has to be updated,
@@ -414,6 +438,13 @@ impl SessionRegistry {
         } else {
             let mut failed = false;
             for removed in &checked_words {
+                // A word that stands elsewhere on the page is in the index as
+                // well: the index is right, and the redaction is not at
+                // fault. The index is only wrong when it carries a word that
+                // the page does not carry any more.
+                if word_still_elsewhere(removed) {
+                    continue;
+                }
                 match self.search_exact(session_id, removed) {
                     Ok(response) => {
                         if response.hits.iter().any(|hit| hit.page_index == page_index) {
@@ -510,16 +541,22 @@ impl SessionRegistry {
         };
 
         // The places of the document that still carry the removed text: the
-        // text of an annotation, the value of a form field, the metadata, the
-        // XMP packet, the content of an embedded file. The engine reports the
-        // places, the core decides what they mean. A place that still carries
-        // the text means that the redaction could not be verified.
+        // text of an annotation, in the popup of an annotation, the value of a
+        // form field, the metadata, the structure tree, the name tree, the
+        // optional content, the private data, the content of an embedded
+        // file. The engine reports the places, the core decides what they
+        // mean. A place that still carries the text means that the redaction
+        // could not be verified.
         let mut remaining_occurrences: Vec<PdfTextOccurrence> = Vec::new();
-        // The places of the document that the engine could not clean: the
-        // text of an annotation, the value of a form field, the metadata, the
-        // content of an embedded file. They are named in the error, so that
-        // the user knows where the text is still standing.
+        // The places of the document that the engine could not clean: they
+        // are named in the error, so that the user knows where the text is
+        // still standing.
         let mut uncleaned_places: Vec<PdfTextOccurrence> = Vec::new();
+        // The places that could not be read at all: the content of a
+        // container that is attached to the document. The redaction does not
+        // claim that the text is gone from them — it says that it could not
+        // look.
+        let mut uninspected_places: Vec<PdfTextOccurrence> = Vec::new();
         let file_bytes_clean = if checked_words.is_empty() {
             // Nothing to look for: the check was not carried out, and that is
             // not a pass.
@@ -529,29 +566,63 @@ impl SessionRegistry {
                 Ok(occurrences) => {
                     // The content of the other pages is not part of the
                     // redaction: the user marked a region of this page. Those
-                    // places are reported, they do not stop the redaction. The
-                    // other places — an annotation, a form value, the
+                    // places are reported, they do not stop the redaction.
+                    //
+                    // The content of the marked page is part of it — unless
+                    // the word stands elsewhere on the page. The text layer
+                    // knows where the word stands: a word that the text layer
+                    // still shows outside of the region belongs to the
+                    // document and is reported. A word that the text layer
+                    // does not show any more stands in the content stream in
+                    // a way that nobody can read — that stops the redaction.
+                    //
+                    // The other places — an annotation, a form value, the
                     // metadata — were cleaned before the check, and a place
                     // that survives the cleaning stops the redaction.
+                    let explained = |occurrence: &PdfTextOccurrence| {
+                        occurrence.kind == "content"
+                            && checked_words.iter().any(|word| word_still_elsewhere(word))
+                    };
                     let inside: Vec<&PdfTextOccurrence> = occurrences
                         .iter()
-                        .filter(|occurrence| {
-                            !(occurrence.kind == "content"
-                                && occurrence.page_index != page_index as i32)
+                        .filter(|occurrence| match occurrence.kind.as_str() {
+                            // A place that could not be read is a warning, not
+                            // a failure: the redaction does not claim that the
+                            // text is gone from there.
+                            "uninspected" => false,
+                            // The content of another page is a remainder, not a
+                            // failure — it is named in the report.
+                            "content" => {
+                                occurrence.page_index == page_index as i32 && !explained(occurrence)
+                            }
+                            // A hidden place — a place of the document that is
+                            // not the content of a page — was not cleaned: that
+                            // stops the redaction.
+                            "hidden" => true,
+                            // A kind the core does not know is treated like a
+                            // hidden place: the core does not trust a kind it
+                            // does not know.
+                            _ => true,
                         })
                         .collect();
                     let outside: Vec<&PdfTextOccurrence> = occurrences
                         .iter()
                         .filter(|occurrence| {
-                            occurrence.kind == "content"
-                                && occurrence.page_index != page_index as i32
+                            (occurrence.kind == "content"
+                                && occurrence.page_index != page_index as i32)
+                                || explained(occurrence)
                         })
+                        .collect();
+                    let uninspected: Vec<&PdfTextOccurrence> = occurrences
+                        .iter()
+                        .filter(|occurrence| occurrence.kind == "uninspected")
                         .collect();
                     remaining_occurrences = outside
                         .iter()
                         .map(|occurrence| (*occurrence).clone())
                         .collect();
                     uncleaned_places = inside.iter().map(|place| (*place).clone()).collect();
+                    uninspected_places = uninspected.iter().map(|place| (*place).clone()).collect();
                     if !inside.is_empty() {
                         RedactionCheck::Failed
                     } else {
@@ -563,13 +634,14 @@ impl SessionRegistry {
                                 continue;
                             }
                             // A word that stands in a place the engine
-                            // knows — on another page — is reported, not
-                            // refused: the user marked a region, and the word
-                            // belongs to the document. A word that the
-                            // engine does not know any more but that still
-                            // stands in the bytes is a remainder without a
-                            // place: an old version of the file, an
-                            // unreachable object. That stops the redaction.
+                            // knows — on another page, elsewhere on this
+                            // page — is reported, not refused: the user
+                            // marked a region, and the word belongs to the
+                            // document. A word that the engine does not know
+                            // any more but that still stands in the bytes is
+                            // a remainder without a place: an old version of
+                            // the file, an unreachable object. That stops
+                            // the redaction.
                             if haystack.contains(&needle) && remaining_occurrences.is_empty() {
                                 failed = true;
                                 break;
@@ -600,6 +672,7 @@ impl SessionRegistry {
             rendered_page_clean,
             file_bytes_clean,
             remaining_occurrences,
+            uninspected_places,
             revision,
         };
 
@@ -610,6 +683,28 @@ impl SessionRegistry {
             for place in &uncleaned_places {
                 failures.push(format!(
                     "the text is still there: {} (page {}, {})",
+                    place.location, place.page_index, place.kind
+                ));
+            }
+            // The report is lost when the redaction fails — the caller gets
+            // the error and nothing else. The error therefore carries what
+            // the report would have carried: the words that were removed and
+            // the places where the same text still stands.
+            if !report.removed_words.is_empty() {
+                failures.push(format!(
+                    "the words that were removed: {}",
+                    report.removed_words.join(", ")
+                ));
+            }
+            for place in &report.remaining_occurrences {
+                failures.push(format!(
+                    "the same text still stands here: {} (page {}, {})",
+                    place.location, place.page_index, place.kind
+                ));
+            }
+            for place in &report.uninspected_places {
+                failures.push(format!(
+                    "this place could not be read: {} (page {}, {})",
                     place.location, place.page_index, place.kind
                 ));
             }
@@ -628,6 +723,14 @@ impl SessionRegistry {
         // the removal has been proven. A failure here does not undo the
         // redaction: the content is gone, and the verification has said so.
         self.purge_checkpoints_after_success(session_id);
+
+        // The rendered tiles and the thumbnails of the earlier revision still
+        // show the removed content. They are dropped, so that the text is not
+        // readable in the memory of the process any more.
+        self.with_session(session_id, |session| {
+            self.purge_render_cache(session.document_id.as_str());
+            Ok(())
+        })?;
 
         Ok(report)
     }
@@ -652,9 +755,23 @@ impl SessionRegistry {
         // text again.
         self.reindex_page(session_id, page_index)?;
         self.with_session_mut(session_id, |session| {
-            Ok(session.transaction_manager.discard_last_transaction())
+            session.transaction_manager.discard_last_transaction();
+            // The session keeps its own copy of the revision and of the dirty
+            // flag. They have to go back with the transaction: a session that
+            // was rolled back to the state before the redaction may not claim
+            // the revision of the redaction, and it may not claim to have
+            // unsaved changes any more.
+            session.sync_from_transaction_manager();
+            Ok(())
         })?;
-        let _ = self.record_recovery_mutation(session_id);
+        // The journal of the recovery store must not hold a redaction that
+        // never happened. If it cannot be written, the error is reported: the
+        // state of the document is not secured against a crash.
+        if let Err(error) = self.record_recovery_mutation(session_id) {
+            eprintln!(
+                "vocument: the journal of the recovery store could not be written after a rolled back redaction: {error}"
+            );
+        }
         Ok(())
     }
 

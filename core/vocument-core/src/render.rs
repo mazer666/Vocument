@@ -280,6 +280,22 @@ impl RenderPipeline {
         self.prefetch_radius
     }
 
+    /// Drops the cached tiles and thumbnails of one document.
+    ///
+    /// After a redaction the earlier revision must not stay in the memory of
+    /// the process: the cached pictures still show the removed content. The
+    /// cache is disposable — a failure to drop it does not change the
+    /// document — and the revision is part of the key of every tile, so the
+    /// tiles of the earlier revision are never shown again.
+    pub fn purge_document_cache(&self, document_id: &str) {
+        if let Ok(mut cache) = self.tile_cache.lock() {
+            cache.purge_document(document_id);
+        }
+        if let Ok(mut cache) = self.thumbnail_cache.lock() {
+            cache.purge_document(document_id);
+        }
+    }
+
     /// Renders (or serves from `TileCache`) a single tile for `(session_id, document_id, revision)`.
     #[allow(clippy::too_many_arguments)]
     pub fn render_tile_with_priority(

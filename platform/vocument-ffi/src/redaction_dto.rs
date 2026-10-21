@@ -122,6 +122,13 @@ pub struct FfiRedactionReport {
     /// these places to the user: the word is still in the document, only not
     /// under the region that was marked.
     pub remaining_occurrences: Vec<FfiRedactionOccurrence>,
+    /// The places of the document that could not be read.
+    ///
+    /// The redaction does not claim that the text is gone from a place it
+    /// could not look into — the content of a container that is attached to
+    /// the document, for example. The shell should show these places to the
+    /// user.
+    pub uninspected_places: Vec<FfiRedactionOccurrence>,
     /// The removal was verified in every respect.
     pub verified: bool,
     /// The revision of the document after the redaction.
@@ -142,6 +149,11 @@ impl From<RedactionReport> for FfiRedactionReport {
             file_bytes_clean: report.file_bytes_clean.into(),
             remaining_occurrences: report
                 .remaining_occurrences
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            uninspected_places: report
+                .uninspected_places
                 .into_iter()
                 .map(Into::into)
                 .collect(),

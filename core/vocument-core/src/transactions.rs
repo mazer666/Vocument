@@ -570,7 +570,24 @@ impl TransactionManager {
             .cloned()
             .collect();
         self.redo_stack = journal.redo_records.clone();
-        self.current_revision = journal.current_revision;
+        // The revision has to describe the state of the document, not the state
+        // of the journal. A redaction was not replayed, so the document stands
+        // one step back: every redaction in the journal has consumed a
+        // revision, and that revision belongs to a state the document does not
+        // have any more. Without the correction the document would claim a
+        // revision it never reached, and the next transaction would be
+        // numbered as if it were the second one.
+        let dropped_redactions = journal
+            .committed_records
+            .iter()
+            .filter(|record| {
+                matches!(
+                    record.forward_command,
+                    TransactionCommand::RedactPageRegions { .. }
+                )
+            })
+            .count() as u64;
+        self.current_revision = journal.current_revision.saturating_sub(dropped_redactions);
         self.saved_revision = journal.saved_revision;
         self.next_sequence = self
             .undo_stack

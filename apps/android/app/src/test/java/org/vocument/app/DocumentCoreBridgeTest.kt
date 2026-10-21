@@ -6,7 +6,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.vocument_ffi.FfiFileAccessOrigin
+import uniffi.vocument_ffi.DocumentCoreException
 import uniffi.vocument_ffi.FfiRedactionCheck
+import uniffi.vocument_ffi.FfiRedactionOccurrence
 import uniffi.vocument_ffi.FfiRedactionReport
 import uniffi.vocument_ffi.FfiMemoryPressureLevel
 import uniffi.vocument_ffi.FfiTileRenderRequest
@@ -29,17 +31,62 @@ class DocumentCoreBridgeTest {
             renderedPageClean = FfiRedactionCheck.NOT_CHECKED,
             fileBytesClean = FfiRedactionCheck.PASSED,
             remainingOccurrences = emptyList(),
+            uninspectedPlaces = emptyList(),
             verified = true,
             revision = 2u
         )
         val failure = runCatching { requireVerifiedRedaction(0u, report) }.exceptionOrNull()
         assertTrue(
             "a report with a check that was not carried out must be refused",
-            failure is DocumentCoreBridgeException
+            failure is DocumentCoreException.RedactionUnverified
         )
         assertTrue(
             "the error has to name the check that failed",
             failure?.message?.contains("the picture of the page") == true
+        )
+    }
+
+    @Test
+    fun thePlacesWhereTheSameTextStillStandsAreTurnedIntoWarnings() {
+        val report = FfiRedactionReport(
+            pageIndex = 0u,
+            regionCount = 1u,
+            removedWords = listOf("VERTRAULICH"),
+            removedWordCount = 1u,
+            textLayerClean = FfiRedactionCheck.PASSED,
+            searchIndexClean = FfiRedactionCheck.PASSED,
+            renderedPageClean = FfiRedactionCheck.PASSED,
+            fileBytesClean = FfiRedactionCheck.PASSED,
+            remainingOccurrences = listOf(
+                FfiRedactionOccurrence(
+                    "content",
+                    1,
+                    "content stream of the page"
+                )
+            ),
+            uninspectedPlaces = listOf(
+                FfiRedactionOccurrence(
+                    "uninspected",
+                    -1,
+                    "/Root/Names/EmbeddedFiles/Names[1]"
+                )
+            ),
+            verified = true,
+            revision = 2u
+        )
+        val warnings = redactionWarnings(report)
+        assertEquals(
+            "every place the user has to know about is named: $warnings",
+            2,
+            warnings.size
+        )
+        assertTrue(
+            "the place where the same text still stands is named",
+            warnings.any { it.contains("still stands") && it.contains("page 1") }
+        )
+        assertTrue(
+            "the place that could not be read is named",
+            warnings.any { it.contains("could not be read") }
         )
     }
 

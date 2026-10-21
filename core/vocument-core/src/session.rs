@@ -323,6 +323,15 @@ impl SessionRegistry {
         f(session)
     }
 
+    /// Drops the cached tiles and thumbnails of a document.
+    ///
+    /// After a redaction the pictures of the earlier revision still show the
+    /// removed content. They are dropped, so that the text is not readable in
+    /// the memory of the process any more.
+    pub(crate) fn purge_render_cache(&self, document_id: &str) {
+        self.render_pipeline.purge_document_cache(document_id);
+    }
+
     /// Grants mutable access to a session (`REDACT-002`).
     ///
     /// A redaction that cannot be verified is rolled back. The rollback

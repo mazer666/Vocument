@@ -76,7 +76,7 @@ REQUIRED_FILES=(
   "docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md"
   "docs/acceptance/M1.4b-ACCEPTANCE.md"
   "docs/acceptance/M1.5-ACCEPTANCE.md"
-  "docs/reports/M1.4b-M1.5-ABSCHLUSSBERICHT.md"
+  "docs/reports/M1.4b-M1.5-COMPLETION-REPORT.md"
   "scripts/verify-android-arm64-pdf.sh"
   "scripts/compare-render-images.py"
   "scripts/generate-android-render-reference.py"
@@ -509,6 +509,77 @@ for proof in \
   name="${proof##*|}"
   if [[ ! -f "$file" ]] || ! grep -q "$name" "$file"; then
     echo "ERROR (M2.1 Gate): the proof '$name' is missing ($file)!" >&2
+    exit 1
+  fi
+done
+
+# --- M2.1 Gate, third review: every place of the document, not a list ---
+# The third adversarial audit found the systematic gap of the first two: the
+# search and the cleaning worked with a list of known places. A secret in a
+# place that the list did not know survived while the redaction reported a
+# success.
+if [[ ! -f engines/pdf-mupdf/csrc/mupdf_walk.h ]]; then
+  echo "ERROR (M2.1 Gate): the engine has no walk through the objects of the document — a list of known places is not a search!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_walk_document" engines/pdf-mupdf/csrc/mupdf_walk.h; then
+  echo "ERROR (M2.1 Gate): the walk through the document is missing!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_walk_document" engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c; then
+  echo "ERROR (M2.1 Gate): the search for the places of the document must walk through every object, not through a list of known places!" >&2
+  exit 1
+fi
+if ! grep -q "vocument_walk_document" engines/pdf-mupdf/csrc/mupdf_scrub_bridge.c; then
+  echo "ERROR (M2.1 Gate): the cleaning of the document must walk through every object, not through a list of known places!" >&2
+  exit 1
+fi
+for kind in content hidden uninspected; do
+  if ! grep -q "\"$kind\"" engines/pdf-mupdf/csrc/mupdf_occurrences_bridge.c; then
+    echo "ERROR (M2.1 Gate): the kind of the place '$kind' is missing — a place that cannot be read must not pass for clean!" >&2
+    exit 1
+  fi
+  if ! grep -q "\"$kind\"" core/vocument-core/src/redaction.rs; then
+    echo "ERROR (M2.1 Gate): the core has to judge the kind of the place '$kind' — the engine reports the facts, the core decides!" >&2
+    exit 1
+  fi
+done
+if ! grep -q "uninspected_places" core/vocument-core/src/redaction.rs; then
+  echo "ERROR (M2.1 Gate): the report has to name the places that could not be read — the redaction must not claim that the text is gone from there!" >&2
+  exit 1
+fi
+if ! grep -q "redactionWarnings" apps/macos/Sources/VocumentMacKit/DocumentCoreClient.swift; then
+  echo "ERROR (M2.1 Gate): the macOS client has to turn the places into warnings — the user has to know that the word is still in the document!" >&2
+  exit 1
+fi
+if ! grep -q "redactionWarnings" apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt; then
+  echo "ERROR (M2.1 Gate): the Android bridge has to turn the places into warnings — the user has to know that the word is still in the document!" >&2
+  exit 1
+fi
+if ! grep -q "enforce_private_checkpoint_files" core/vocument-core/src/recovery.rs; then
+  echo "ERROR (M2.1 Gate): a checkpoint of an older version has to be made private again — it holds the document in plain text!" >&2
+  exit 1
+fi
+for proof in \
+    "engines/pdf-mupdf/src/scrub_tests.rs|the_places_that_a_list_of_known_places_does_not_reach_are_found" \
+    "engines/pdf-mupdf/src/scrub_tests.rs|the_places_that_a_list_of_known_places_does_not_reach_are_emptied" \
+    "core/vocument-core/src/redaction_rules.rs|a_word_that_only_stands_next_to_the_region_is_not_removed" \
+    "core/vocument-core/tests/redaction_rollback_tests.rs|a_redaction_that_fails_puts_the_revision_and_the_dirty_flag_back" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|the_same_word_twice_on_the_same_page_is_redacted_and_the_other_place_is_named" \
+    "platform/vocument-ffi/tests/redaction_hardening_e2e_tests.rs|an_attached_archive_is_named_as_a_place_that_could_not_be_read" \
+    "apps/android/app/src/test/java/org/vocument/app/DocumentCoreBridgeTest.kt|thePlacesWhereTheSameTextStillStandsAreTurnedIntoWarnings"; do
+  file="${proof%%|*}"
+  name="${proof##*|}"
+  if [[ ! -f "$file" ]] || ! grep -q "$name" "$file"; then
+    echo "ERROR (M2.1 Gate): the proof '$name' is missing ($file)!" >&2
+    exit 1
+  fi
+done
+for report in \
+    "docs/audit/redteam-round-three-document-level.md" \
+    "docs/audit/redteam-round-three-platform-chain.md"; do
+  if [[ ! -f "$report" ]]; then
+    echo "ERROR (M2.1 Gate): the report of the third audit is missing ($report) — an audit that is not written down did not happen!" >&2
     exit 1
   fi
 done

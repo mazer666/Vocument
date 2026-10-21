@@ -113,6 +113,28 @@ impl ThumbnailCache {
         self.entries.insert(key, thumbnail);
     }
 
+    /// Removes every cached thumbnail of one document.
+    ///
+    /// A redaction removes content from the document. The thumbnails of the
+    /// earlier revision still show that content, and they stay readable in the
+    /// memory of the process until the cache evicts them. After a redaction
+    /// the thumbnails of the document are therefore dropped.
+    pub fn purge_document(&mut self, document_id: &str) {
+        let keys: Vec<ThumbnailKey> = self
+            .entries
+            .keys()
+            .filter(|key| key.document_id == document_id)
+            .cloned()
+            .collect();
+        for key in keys {
+            if let Some(thumb) = self.entries.remove(&key) {
+                self.current_used_bytes = self.current_used_bytes.saturating_sub(thumb.byte_len());
+            }
+            self.remove_from_lru(&key);
+            self.eviction_count += 1;
+        }
+    }
+
     pub fn apply_memory_pressure(&mut self, level: MemoryPressureLevel) -> ThumbnailCacheStats {
         self.pressure_level = level;
         match level {

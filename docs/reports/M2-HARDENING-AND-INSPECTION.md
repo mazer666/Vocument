@@ -1,6 +1,6 @@
 # Interim Report — Round 2: M2.1 hardened, M2.2 and M2.3 started
 
-- **Period:** Round 2 (continuation of `docs/reports/M1-NACHBEREITUNG-UND-M2-BEGINN.md`)
+- **Period:** Round 2 (continuation of `docs/reports/M1-FINALISATION-AND-M2-START.md`)
 - **Starting point:** `main` = `5f615da`
 - **End point of this round (before the final report):** `main` = `cc564e6`
 - **Key figures:** 161 tests / 23 suites / 0 failures · clippy 0 · fmt 0 · `validate-repo.sh` 0 · Android `assembleDebug` green · 8/8 Android unit tests · every native library 16 KB page compatible
@@ -203,7 +203,59 @@ a secret in Base64 stays undetected; a word whose parts lie apart from each
 other needs the full sanitising; and the proof of the picture rests on the
 OCR.
 
-### 3.7 The gates
+### 3.7 The third audit: the list of known places was the gap
+
+A third independent audit attacked the redaction that two audits before it had
+hardened. Two checkers worked in parallel: one on the document itself, one on
+the chain from the call to the application. The document checker built 30
+purpose-made PDF files — a popup that does not stand in `/Annots`, a structure
+tree, a name tree, optional content, private data, an attached archive, a word
+that occurs twice on the same page — and measured the redaction against
+`mutool` and against the raw bytes of the file. The chain checker measured the
+exported UniFFI ABI with a C program and compared the generated bindings with
+the checked-in ones.
+
+The systematic gap of the first two audits: **the search and the cleaning
+worked with a list of known places.** A secret in a place that the list did not
+know — the popup of an annotation that does not stand in `/Annots`, the
+structure tree, the name tree, the optional content, the private data of a page
+— survived, and the redaction reported a success.
+
+What changed:
+
+- both walk through **every** object of the document now
+  (`engines/pdf-mupdf/csrc/mupdf_walk.h`): the pages, the annotations with
+  their popups, the form fields, the metadata, the structure and name tree,
+  the optional content, the private data and the embedded files. Every string
+  and every stream is offered with the place it lies in.
+- the kinds of the places are now three: `content` (the content of a page),
+  `hidden` (everything else that carries text) and `uninspected` (a place that
+  could not be read, the content of an archive). `hidden` is fatal, and
+  `uninspected` is a named warning.
+- the checks of the text layer and of the search index are scoped to the
+  **marked place**: the same word twice on one page does not refuse the
+  redaction any more, the other place is named in the report.
+- the region takes a word only when the areas **really overlap**: two boxes
+  that only share their edge do not.
+- the rollback synchronises the session with the transaction manager, so the
+  revision and the dirty flag go back as well.
+- the recovery store keeps its content private — the root directory is `0700`
+  as well, and a checkpoint of an older version is made private again.
+- the errors of the recovery write are reported instead of being discarded.
+- the callers throw the error of the boundary itself and turn the places where
+  the same text still stands into warnings for the shell.
+- the tiles and the thumbnails of the document are dropped after a redaction,
+  so the removed text does not stay in the memory of the process.
+
+What stays open: the **redaction surface** of the applications (the user marks
+the region and sees the report and the warnings), the **clipboard**, which has
+to be cleared after a redaction, and the **content of an attached archive**,
+which cannot be read and is therefore named rather than cleaned.
+
+Evidence: [the third audit on the document level](../audit/redteam-round-three-document-level.md)
+and [the third audit along the chain](../audit/redteam-round-three-platform-chain.md).
+
+### 3.8 The gates
 
 `scripts/validate-repo.sh` now checks in addition:
 
@@ -213,6 +265,7 @@ OCR.
 | M2.1 (hardening) | the normalised word boxes of the text bridge, the fragment and the region check in the core, the search for the places of the document that still carry the text, the cleaning of the annotations, the form values and the metadata, the rollback of a redaction that cannot be verified, and the seven new proofs |
 | M2.2 | `document_actions` in the engine interface, `inspect_document` in the core, the risk policy in the core, the FFI function, the three tests |
 | M2.3 | `document_attachments` and `document_signatures`, `changed_since_signing` and `is_risky_attachment` in the core, the engine and end-to-end tests |
+| M2.1 (third audit) | the walk through every object of the document (`mupdf_walk.h`), the three kinds of the places, the private recovery root, the warning helpers of the two callers, and the new proofs |
 
 ## 4. Architecture and platform
 
@@ -234,7 +287,7 @@ OCR.
 | The macOS interface of all three functions | **NOT RUN** | no macOS host |
 | The behaviour on a device (Android, macOS) | **NOT RUN** | no device, no `/dev/kvm` |
 | Interoperability with Acrobat/Foxit/Okular | **NOT RUN** | M2 gate, open for all M2 functions |
-| A document whose text is drawn with a Type 3 font | **NOT RUN** | MuPDF 1.28.5 cannot remove such a text. The redaction is refused for such a document (the verification fails, the document stays unchanged), but the text is not removed — a different approach is needed |
+| A document whose text is drawn with a Type 3 font | partly **NOT RUN** | The first audit assumed that MuPDF 1.28.5 cannot remove such a text; the second audit **could not reproduce** that in the construction it built. The other constructions — glyph procedures with their own CTM, a Type 3 font in an XObject — were not checked exhaustively. Should such a construction survive, the verification sees it and the redaction is refused (the document stays unchanged) |
 | The redaction in the applications | **NOT RUN** | The function is available across the FFI boundary, but neither the macOS nor the Android application calls it yet: the tool of the interface belongs to the macOS slice of M2 |
 | The verification of the signature itself (chain, certificate) | **not started** | MuPDF offers no public interface for it in this version; what is checked is the *coverage* of the signature |
 | M2: comments, stamps, comparison, jurist palette | **not started** | the next slices |
