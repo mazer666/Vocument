@@ -403,16 +403,27 @@ done <<< "$fonts_table"
 
 # --- The Android components ---------------------------------------------
 lines+=("")
-lines+=("### The Android components (the POMs of the Gradle cache)")
+lines+=("### The Android components (the licences that were read from the POMs of Maven Central on 2026-10-21)")
 lines+=("")
 lines+=("| Component | Version | Licence as declared in the POM |")
 lines+=("|---|---|---|")
 
 GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1"
+# The **inventory** of the Android components does not depend on the machine
+# that runs the audit: the cache of Gradle belongs to the build environment
+# and holds whatever that environment happened to download. A row that came
+# from the cache would make the inventory of the repository differ from the
+# inventory of a machine with a warm cache — and the check of the inventory
+# would fail for a reason that has nothing to do with the licences.
+#
+# The POMs of the cache are therefore read as a **check** (every component
+# that the cache holds must carry a known licence ✗ — a finding ✗), and the
+# rows of the inventory are the ones that were read from the POMs of Maven
+# Central on 2026-10-21 ✗ — the same on every machine ✗.
 if [[ ! -d "$GRADLE_CACHE" ]]; then
-    lines+=("| — | — | the Gradle cache is not present in this build environment: the POMs could not be read here; the licences below were read from the POMs of Maven Central on 2026-10-21 |")
     echo "NOTE: the Gradle cache $GRADLE_CACHE is not present — the licences of the Android components could not be read here." >&2
 else
+    android_components=0
     while IFS= read -r pom; do
         component_dir="$(dirname "$pom")"
         component="$(basename "$(dirname "$component_dir")")"
@@ -426,11 +437,15 @@ licences = re.findall(r"<license>\s*([^<]+?)\s*</license>", text)
 print(", ".join(sorted(set(licences))) if licences else "UNKNOWN (the POM names no licence)")
 PYTHON
 )"
-        lines+=("| ${component} | ${version} | ${licence} |")
+        android_components=$((android_components + 1))
         case "$licence" in
-            *UNKNOWN*) failures=$((failures + 1)) ;;
+            *UNKNOWN*)
+                echo "FINDING: the POM of ${component}:${version} names no licence." >&2
+                failures=$((failures + 1))
+                ;;
         esac
     done < <(find "$GRADLE_CACHE" -name "*.pom" 2>/dev/null | sort)
+    echo "NOTE: ${android_components} POM(s) of the Gradle cache were read and their licences checked." >&2
 fi
 
 # The Android components whose licences were read from the POMs on Maven

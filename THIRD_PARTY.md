@@ -198,11 +198,10 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | Source Han | 1 | OFL-1.1 | `target/mupdf-android-build/mupdf-1.28.5-source/resources/fonts/han/LICENSE.txt` |
 | Droid | 2 | Apache-2.0 | `target/mupdf-android-build/mupdf-1.28.5-source/resources/fonts/droid/NOTICE` |
 
-### The Android components (the POMs of the Gradle cache)
+### The Android components (the licences that were read from the POMs of Maven Central on 2026-10-21)
 
 | Component | Version | Licence as declared in the POM |
 |---|---|---|
-| — | — | the Gradle cache is not present in this build environment: the POMs could not be read here; the licences below were read from the POMs of Maven Central on 2026-10-21 |
 | `androidx.compose:compose-bom` | 2024.10.01 | Apache-2.0 |
 | `androidx.activity:activity-compose` | 1.9.3 | Apache-2.0 |
 | `androidx.compose.ui:ui` | via the BOM | Apache-2.0 |
