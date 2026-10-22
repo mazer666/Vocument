@@ -615,8 +615,17 @@ fn worker_loop(
             }
             // The slot is reserved under the lock of the queue, so that two
             // workers can never both pass the limit.
-            if !queue.reserve_slot().unwrap_or(false) {
-                return;
+            //
+            // A worker that finds no slot **waits** for one — it does not
+            // leave the pool. A worker that left would shrink the pool with
+            // every race for the last slot, and a job that waits in the queue
+            // would never run: the pool would be empty while the queue is
+            // full. (The pool is shut down in another way — the flag of the
+            // queue ✗ — and then the wait returns false ✗.)
+            while !queue.reserve_slot().unwrap_or(false) {
+                if !queue.await_free_slot().unwrap_or(false) {
+                    return;
+                }
             }
             match queue.take_next_ready() {
                 Ok(Some(job)) => break job,
