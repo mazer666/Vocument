@@ -20,6 +20,7 @@ use vocument_ffi::redaction_dto::{FfiRedactionRegion, document_core_redact_page_
 use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::{document_core_open_brokered_file, document_core_page_words};
+mod common;
 
 /// The word on the page.
 const SECRET: &str = "GEHEIM";
@@ -129,6 +130,7 @@ fn open_session(pdf_bytes: Vec<u8>) -> String {
 /// examined that nobody ever looked into.
 #[test]
 fn a_place_that_the_walk_could_not_reach_is_named_even_in_a_long_document() {
+    common::use_a_temporary_data_directory();
     let bytes = document_with_many_places();
     let session_id = open_session(bytes.clone());
 

@@ -16,22 +16,7 @@ use vocument_ffi::mutation_dto::{document_core_redo, document_core_undo};
 use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::{document_core_get_session_snapshot, document_core_open_brokered_file};
-
-/// The lock of the tests that touch the rail of the profession.
-///
-/// The rail of the user is **one** rail: it lives in the data directory of
-/// the user and in the registry of the sessions, and both are shared by the
-/// whole process. The tests that write a rail would therefore write over
-/// each other when they run at the same time — the result depends on which
-/// of them wins the race, not on what the product does. The tests that
-/// touch the rail hold this lock; the other tests do not need it.
-static RAIL: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// Takes the lock of the rail. A poisoned lock is no reason to fail a test:
-/// the rail is written again by the test itself.
-fn lock_rail() -> std::sync::MutexGuard<'static, ()> {
-    RAIL.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-}
+mod common;
 
 /// Builds a document with one page and a line of text.
 fn document_with_one_page() -> Vec<u8> {
@@ -113,6 +98,8 @@ fn note(annotation_id: &str, key: &str, contents: &str) -> FfiCommentAnnotation 
 
 #[test]
 fn a_note_reaches_the_document_and_is_read_back_with_its_meaning() {
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-write");
 
     // The rail is available to the caller: it does not have to know the
@@ -151,6 +138,8 @@ fn a_note_reaches_the_document_and_is_read_back_with_its_meaning() {
 
 #[test]
 fn a_note_survives_the_save_and_is_found_in_the_file_again() {
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-save");
     document_core_add_comment_annotation(
         session_id.clone(),
@@ -179,6 +168,8 @@ fn a_note_survives_the_save_and_is_found_in_the_file_again() {
 
 #[test]
 fn a_note_can_be_taken_back_and_brought_again() {
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-undo");
     document_core_add_comment_annotation(
         session_id.clone(),
@@ -211,6 +202,8 @@ fn a_note_can_be_taken_back_and_brought_again() {
 
 #[test]
 fn a_removed_note_is_gone_from_the_page() {
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-remove");
     document_core_add_comment_annotation(
         session_id.clone(),
@@ -230,6 +223,8 @@ fn a_removed_note_is_gone_from_the_page() {
 
 #[test]
 fn a_note_with_a_key_that_the_rail_does_not_carry_is_refused_and_the_document_stays() {
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-refused");
     let before = document_core_export_session_bytes(session_id.clone()).expect("the bytes");
 
@@ -255,7 +250,8 @@ fn a_note_with_a_key_that_the_rail_does_not_carry_is_refused_and_the_document_st
 
 #[test]
 fn the_rail_of_the_user_may_replace_the_default() {
-    let _rail = lock_rail();
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-rail");
     let before = document_core_jurist_palette();
 
@@ -296,7 +292,8 @@ fn the_rail_of_the_user_may_replace_the_default() {
 /// they stay the same when the rail of the user is replaced.
 #[test]
 fn the_meaning_of_the_rail_travels_with_the_note() {
-    let _rail = lock_rail();
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-meaning");
     document_core_add_comment_annotation(
         session_id.clone(),
@@ -346,7 +343,8 @@ fn the_meaning_of_the_rail_travels_with_the_note() {
 
 #[test]
 fn the_key_of_the_rail_travels_with_the_note() {
-    let _rail = lock_rail();
+    common::use_a_temporary_data_directory();
+    let _rail = common::the_rail_of_the_user();
     let session_id = open_session(document_with_one_page(), "comment-key");
     document_core_add_comment_annotation(
         session_id.clone(),

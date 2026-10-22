@@ -11,6 +11,7 @@ use vocument_ffi::{
     FfiPdfActionKind, document_core_close_session, document_core_inspect_document,
     document_core_open_macos_scoped_file,
 };
+mod common;
 
 fn temp_dir(name: &str) -> PathBuf {
     let directory = std::env::temp_dir().join(format!("vocument-e2e-{name}"));
@@ -173,6 +174,7 @@ fn pdf_with_attachment_and_signature(changed_after_signing: bool) -> Vec<u8> {
 
 #[test]
 fn the_inspection_of_a_document_shows_where_the_links_lead_and_what_they_do() {
+    common::use_a_temporary_data_directory();
     let path = temp_dir("inspection").join("links.pdf");
     std::fs::write(&path, pdf_with_actions()).expect("the fixture must be writable");
 
@@ -247,6 +249,7 @@ fn the_inspection_of_a_document_shows_where_the_links_lead_and_what_they_do() {
 
 #[test]
 fn the_inspection_shows_the_attachments_and_the_signatures_of_the_document() {
+    common::use_a_temporary_data_directory();
     let path = temp_dir("inspection-attach").join("anhang.pdf");
     std::fs::write(&path, pdf_with_attachment_and_signature(false))
         .expect("the fixture must be writable");
@@ -303,6 +306,7 @@ fn the_inspection_shows_the_attachments_and_the_signatures_of_the_document() {
 
 #[test]
 fn a_document_that_was_changed_after_the_signature_is_reported_as_such() {
+    common::use_a_temporary_data_directory();
     let path = temp_dir("inspection-changed").join("geaendert.pdf");
     std::fs::write(&path, pdf_with_attachment_and_signature(true))
         .expect("the fixture must be writable");

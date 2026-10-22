@@ -6,9 +6,11 @@
 //! a revision says so instead of pretending to be releasable.
 
 use vocument_ffi::build_info_dto::document_core_build_info;
+mod common;
 
 #[test]
 fn the_build_carries_the_identification_of_its_source() {
+    common::use_a_temporary_data_directory();
     let info = document_core_build_info();
 
     assert_eq!(info.product_name, "Vocument");
@@ -20,6 +22,7 @@ fn the_build_carries_the_identification_of_its_source() {
 
 #[test]
 fn the_build_that_was_built_from_a_dirty_tree_names_the_reason() {
+    common::use_a_temporary_data_directory();
     let info = document_core_build_info();
 
     // The tree of this checkout carries the changes of the working state, so

@@ -38,6 +38,7 @@ use vocument_ffi::{
     document_core_index_search_batch, document_core_page_words, document_core_search_exact,
     document_core_select_page_text, document_core_undo,
 };
+mod common;
 
 /// Longest time the whole workflow may take. A workflow that needs longer is a
 /// defect: the user is waiting for it.
@@ -130,6 +131,7 @@ fn temp_dir(name: &str) -> PathBuf {
 
 #[test]
 fn the_mobile_scan_workflow_produces_a_saved_searchable_pdf() {
+    common::use_a_temporary_data_directory();
     let begin = Instant::now();
 
     // --- 1. Capture: the camera hands over a raw frame -------------------
@@ -303,6 +305,7 @@ fn the_mobile_scan_workflow_produces_a_saved_searchable_pdf() {
 
 #[test]
 fn the_scanned_document_can_be_exported_and_opened_again() {
+    common::use_a_temporary_data_directory();
     // The same chain as the workflow test, but the document leaves the
     // application through the export: the bytes go to a place that the user
     // owns, and the file that is written there must be a complete PDF that
@@ -385,6 +388,7 @@ fn the_scanned_document_can_be_exported_and_opened_again() {
 
 #[test]
 fn a_redaction_removes_the_scanned_text_from_the_document_and_from_the_search() {
+    common::use_a_temporary_data_directory();
     // The hardest case for a redaction: the text of a scan is an invisible
     // text layer over the image. A redaction that only removes the text layer
     // leaves the picture of the page readable — the words are still in the
@@ -558,6 +562,7 @@ fn a_redaction_removes_the_scanned_text_from_the_document_and_from_the_search() 
 
 #[test]
 fn a_redaction_that_does_not_remove_the_content_is_refused() {
+    common::use_a_temporary_data_directory();
     // The verification must be able to fail. A region that misses the word
     // removes nothing — and such a redaction must not be reported as a
     // success.

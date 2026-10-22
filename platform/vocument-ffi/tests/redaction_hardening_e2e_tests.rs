@@ -14,6 +14,7 @@ use vocument_ffi::redaction_dto::{FfiRedactionRegion, document_core_redact_page_
 use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::{document_core_open_brokered_file, document_core_page_words};
+mod common;
 
 /// The word on the page. It is long enough that the redaction has to find it,
 /// and short enough that a part of it can stay behind.
@@ -174,6 +175,7 @@ fn document_with_security_dictionary() -> Vec<u8> {
 /// content and is never descended into.
 #[test]
 fn the_keys_of_the_security_dictionary_are_never_emptied() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_security_dictionary());
 
     let words =
@@ -226,6 +228,7 @@ fn the_keys_of_the_security_dictionary_are_never_emptied() {
 /// document of the corpus is exactly of that form.
 #[test]
 fn a_document_with_an_indirect_encryption_dictionary_stays_encrypted() {
+    common::use_a_temporary_data_directory();
     let mut path = std::path::PathBuf::from("tests/corpus/difficult/encrypted.pdf");
     if !path.exists() {
         path = std::path::PathBuf::from("../../tests/corpus/difficult/encrypted.pdf");
@@ -341,6 +344,7 @@ fn document_with_a_deep_chain() -> Vec<u8> {
 /// keep, so it refuses and names the reason.
 #[test]
 fn a_place_beyond_the_depth_of_the_walk_makes_the_redaction_refuse() {
+    common::use_a_temporary_data_directory();
     let bytes = document_with_a_deep_chain();
     let session_id = open_session(bytes);
 
@@ -373,6 +377,7 @@ fn a_place_beyond_the_depth_of_the_walk_makes_the_redaction_refuse() {
 
 #[test]
 fn a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_secret());
 
     let words =
@@ -421,6 +426,7 @@ fn a_region_that_only_covers_a_part_of_a_word_removes_the_whole_word() {
 
 #[test]
 fn the_same_word_on_another_page_is_named_in_the_report() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_secret_on_pages(2));
 
     let words =
@@ -453,6 +459,7 @@ fn the_same_word_on_another_page_is_named_in_the_report() {
 
 #[test]
 fn a_region_without_content_is_refused_and_the_document_stays_unchanged() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_secret());
     let before = document_core_export_session_bytes(session_id.clone())
         .expect("the bytes of the document must be readable");
@@ -530,6 +537,7 @@ fn document_with_the_word_twice_on_one_page() -> Vec<u8> {
 /// matters, occurs in every document more than once.
 #[test]
 fn the_same_word_twice_on_the_same_page_is_redacted_and_the_other_place_is_named() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_the_word_twice_on_one_page());
 
     let words =
@@ -642,6 +650,7 @@ fn document_with_a_zip_attachment() -> Vec<u8> {
 /// the secret can still stand in the archive.
 #[test]
 fn an_attached_archive_makes_the_redaction_refuse_and_names_the_place() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_a_zip_attachment());
     let before = document_core_export_session_bytes(session_id.clone()).expect("the bytes");
 
@@ -749,6 +758,7 @@ fn document_with_a_copy_in_a_form_xobject() -> Vec<u8> {
 /// team measured `verified = true` while the secret stood in the file.
 #[test]
 fn a_copy_in_a_form_xobject_makes_the_redaction_refuse_and_names_the_place() {
+    common::use_a_temporary_data_directory();
     let session_id = open_session(document_with_a_copy_in_a_form_xobject());
     let before = document_core_export_session_bytes(session_id.clone()).expect("the bytes");
 

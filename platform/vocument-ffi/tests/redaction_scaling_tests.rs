@@ -20,6 +20,7 @@ use std::time::{Duration, Instant};
 use vocument_ffi::redaction_dto::{FfiRedactionRegion, document_core_redact_page_regions};
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::{document_core_open_brokered_file, document_core_page_words};
+mod common;
 
 /// The word on the page.
 const SECRET: &str = "VERTRAULICH";
@@ -117,6 +118,7 @@ fn measure_redaction(ballast: usize) -> Duration {
 /// **linearly**, not quadratically.
 #[test]
 fn the_sweep_over_the_objects_grows_linearly_and_not_quadratically() {
+    common::use_a_temporary_data_directory();
     let small = measure_redaction(1_000);
     let large = measure_redaction(50_000);
 
