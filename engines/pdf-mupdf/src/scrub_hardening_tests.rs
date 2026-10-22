@@ -11,7 +11,7 @@
 //!    over several show operations is found — also as UTF-16 — and a secret
 //!    that is encoded is found and removed.
 
-use crate::scrub::{find_word_occurrences, find_word_occurrences_with_note_budget, scrub_words};
+use crate::scrub::{find_word_occurrences, find_word_occurrences_with_note_limit, scrub_words};
 
 /// The word that stands in the places of the document.
 const SECRET: &str = "GEHEIM";
@@ -578,14 +578,14 @@ fn the_report_of_the_places_is_not_cut_off() {
 /// everything: a place that was never named must not pass for a place that
 /// was examined and found clean.
 ///
-/// The budget is the way to reproduce the case of the exhausted memory: it
-/// can only make the walk stricter, never laxer.
+/// The limit of the length of a note is the way to reproduce the case of the
+/// exhausted memory: it can only make the walk stricter, never laxer.
 #[test]
 fn a_place_that_cannot_be_written_down_is_not_lost_silently() {
     let bytes = document_with_a_deep_chain();
 
-    // A budget of one byte: no note fits.
-    let occurrences = find_word_occurrences_with_note_budget(&bytes, &[SECRET.to_owned()], 1)
+    // A limit of one byte for a note: no note fits.
+    let occurrences = find_word_occurrences_with_note_limit(&bytes, &[SECRET.to_owned()], 1)
         .expect("the document must be readable");
 
     let uninspected: Vec<&str> = occurrences
@@ -598,5 +598,201 @@ fn a_place_that_cannot_be_written_down_is_not_lost_silently() {
             .iter()
             .any(|place| place.contains("could not write down")),
         "the walk must say that it could not write down every place: {uninspected:?}"
+    );
+}
+
+/// The zlib stream of the secret, without a defect: the content of the
+/// stream can be read.
+const INTACT_ZLIB_OF_THE_SECRET: [u8; 14] = [
+    0x78, 0x9c, 0x73, 0x77, 0xf5, 0x70, 0xf5, 0xf4, 0x05, 0x00, 0x05, 0xd7, 0x01, 0xb0,
+];
+
+/// The same stream with a **broken** first byte: the content of the stream
+/// cannot be read any more. MuPDF does not throw when it reads such a
+/// stream — it warns and hands out an empty buffer.
+const BROKEN_ZLIB_OF_THE_SECRET: [u8; 14] = [
+    0x87, 0x9c, 0x73, 0x77, 0xf5, 0x70, 0xf5, 0xf4, 0x05, 0x00, 0x05, 0xd7, 0x01, 0xb0,
+];
+
+/// Builds a document with a page that carries the secret and an attached
+/// file whose stream carries the compressed secret.
+fn document_with_an_attached_file(stream: &[u8]) -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Names 6 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        b"6 0 obj\n<< /Names 7 0 R >>\nendobj\n".to_vec(),
+        b"7 0 obj\n<< /EmbeddedFiles 8 0 R >>\nendobj\n".to_vec(),
+        b"8 0 obj\n<< /Names [(geheim.txt) 9 0 R] >>\nendobj\n".to_vec(),
+        b"9 0 obj\n<< /Type /Filespec /F (geheim.txt) /EF << /F 10 0 R >> >>\nendobj\n".to_vec(),
+        {
+            let mut obj = b"10 0 obj\n<< /Type /EmbeddedFile /Filter /FlateDecode /Length ".to_vec();
+            obj.extend_from_slice(format!("{} >>\nstream\n", stream.len()).as_bytes());
+            obj.extend_from_slice(stream);
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A stream whose content cannot be read is a place that could **not** be
+/// examined.
+///
+/// MuPDF does not throw when the content of a stream cannot be decoded: it
+/// writes a warning and hands out an **empty** buffer. The walk compared the
+/// empty buffer with the word, found nothing and reported **nothing** — the
+/// place was neither examined nor named, and the redaction of such a
+/// document was reported as verified while the secret stood in the file.
+///
+/// A place that could not be read is therefore named as a place that could
+/// not be looked into.
+#[test]
+fn a_stream_that_cannot_be_read_is_named_as_a_place_that_was_not_examined() {
+    let bytes = document_with_an_attached_file(&BROKEN_ZLIB_OF_THE_SECRET);
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+    let uninspected: Vec<&str> = occurrences
+        .iter()
+        .filter(|entry| entry.kind == "uninspected")
+        .map(|entry| entry.location.as_str())
+        .collect();
+    assert!(
+        !uninspected.is_empty(),
+        "a stream that cannot be read must be named as a place that was not examined: {occurrences:?}"
+    );
+    assert!(
+        uninspected
+            .iter()
+            .any(|place| place.contains("could not be read")),
+        "the reason must be named: {uninspected:?}"
+    );
+    assert!(
+        !occurrences
+            .iter()
+            .any(|entry| entry.kind == "hidden" && entry.location.contains("EmbeddedFiles")),
+        "the place must not be reported as a place that carries the text: {occurrences:?}"
+    );
+}
+
+/// The control of the test above: the same document with a stream that can
+/// be read. The attached file carries the text — the walk finds it and
+/// reports the place as a place that carries the text.
+#[test]
+fn a_stream_that_can_be_read_is_examined() {
+    let bytes = document_with_an_attached_file(&INTACT_ZLIB_OF_THE_SECRET);
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+    assert!(
+        occurrences
+            .iter()
+            .any(|entry| entry.kind == "hidden" && entry.location.contains("EmbeddedFiles")),
+        "the attached file carries the text and must be found: {occurrences:?}"
+    );
+    assert!(
+        !occurrences
+            .iter()
+            .any(|entry| entry.kind == "uninspected" && entry.location.contains("EmbeddedFiles")),
+        "a stream that can be read is a place that was examined: {occurrences:?}"
+    );
+}
+
+/// Builds a document with a stream whose **filter does not exist**.
+///
+/// The reader of the document throws when it meets such a filter. The place
+/// is a place that could **not** be examined — not a place that carries the
+/// text.
+fn document_with_an_unknown_filter() -> Vec<u8> {
+    let content = "BT /F1 18 Tf 20 150 Td (VERTRAULICH) Tj ET\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Broken 7 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!("4 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_vec(),
+        b"6 0 obj\n<< /Type /Broken /Filter /NoSuchFilter /Length 6 >>\nstream\nGEHEIM\nendstream\nendobj\n".to_vec(),
+    ];
+
+    let mut pdf = Vec::new();
+    pdf.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::new();
+    for object in &objects {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(object);
+    }
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in &offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+/// A stream that cannot be read is a place that could not be examined.
+///
+/// The reader throws when it meets a filter that does not exist. The place
+/// used to be reported as a place that **carries** the text — and the
+/// pre-check of the redaction looks only at the places of the kind
+/// `uninspected`. The document was therefore changed first and the refusal
+/// came late. A place that could not be read belongs to the other kind.
+#[test]
+fn a_stream_with_an_unknown_filter_is_a_place_that_was_not_examined() {
+    let bytes = document_with_an_unknown_filter();
+    let occurrences =
+        find_word_occurrences(&bytes, &[SECRET.to_owned()]).expect("the document must be readable");
+    let broken: Vec<String> = occurrences
+        .iter()
+        .filter(|entry| entry.location.contains("could not be read"))
+        .map(|entry| format!("{}: {}", entry.kind, entry.location))
+        .collect();
+    assert!(
+        broken.iter().any(|entry| entry.starts_with("uninspected:")),
+        "a stream that cannot be read is a place that was not examined: {occurrences:?}"
+    );
+    assert!(
+        !occurrences.iter().any(|entry| entry.kind == "hidden"),
+        "the place must not be reported as a place that carries the text: {occurrences:?}"
     );
 }

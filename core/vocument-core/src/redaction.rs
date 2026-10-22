@@ -260,7 +260,7 @@ impl SessionRegistry {
             return Err(SessionError::Redaction(
                 RedactionError::VerificationFailed {
                     details: format!(
-                        "the places of the document could not all be examined before the removal, so the removal cannot be verified: {} place(s) could not be looked into, among them {}",
+                        "the places of the document could not all be examined before the removal, so the removal cannot be verified: at least {} place(s) could not be looked into, among them {}",
                         unexamined_before.len(),
                         unexamined_before.join(", ")
                     ),

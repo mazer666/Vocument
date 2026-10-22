@@ -133,6 +133,35 @@ static int vocument_text_carries_word(
     return 0;
 }
 
+/* The warnings that MuPDF raises while a stream is loaded.
+ *
+ * MuPDF does **not** throw when the content of a stream cannot be decoded:
+ * it writes a warning ("library error: zlib error: incorrect header check",
+ * "warning: read error; treating as end of file") and hands out an **empty**
+ * buffer. A walk that compares an empty buffer with the word finds nothing
+ * and reports nothing — the place is neither examined nor named, and the
+ * redaction is reported as verified while the text stands in the document.
+ *
+ * The warning is therefore counted: a stream whose content could not be read
+ * completely is a place that could **not** be examined, and it is named as
+ * one. */
+typedef struct {
+    int count;
+    char message[256];
+} vocument_warning_state_t;
+
+/* Counts the warnings and lets the previous callback do its work — the
+ * warnings of MuPDF still reach the log of the application. */
+static void vocument_count_warning(void *user, const char *message) {
+    vocument_warning_state_t *state = (vocument_warning_state_t *)user;
+    if (state) {
+        state->count++;
+        if (state->message[0] == '\0' && message) {
+            snprintf(state->message, sizeof(state->message), "%s", message);
+        }
+    }
+}
+
 /* Answers whether the object carries one of the words. */
 static int vocument_object_carries_word(
     fz_context *ctx,
@@ -241,16 +270,52 @@ static int vocument_report_place(
 
     fz_buffer *buffer = NULL;
     fz_var(buffer);
+    /* The warnings of MuPDF are counted while the stream is loaded. */
+    vocument_warning_state_t warnings;
+    warnings.count = 0;
+    warnings.message[0] = '\0';
+    fz_warning_cb *previous_callback = fz_warning_callback(ctx, NULL);
+    void *previous_user = NULL;
+    previous_callback = fz_warning_callback(ctx, &previous_user);
+    fz_set_warning_callback(ctx, vocument_count_warning, &warnings);
+
     fz_try(ctx) {
         buffer = pdf_load_stream(ctx, item->object);
     }
+    fz_always(ctx) {
+        /* The warning of the application is put back, whatever happened. */
+        fz_set_warning_callback(ctx, previous_callback, previous_user);
+    }
     fz_catch(ctx) {
-        /* A stream that cannot be read cannot carry a word that is read: the
-           redaction reports the place as uncleaned, so that nothing is
-           silently ignored. */
+        /* A stream that cannot be read is a place that could **not** be
+           examined — not a place that carries the text. The redaction
+           refuses it before it touches the document. */
         vocument_report_line(
-            state->report, "hidden", item->page_index, item->path
+            state->report, "uninspected", item->page_index, item->path
         );
+        return 1;
+    }
+    if (warnings.count > 0) {
+        /* MuPDF could not read the content of the stream completely: it
+           warned and handed out what it had. The place could not be examined
+           — the redaction does not claim that the text is gone from there. */
+        /* The reason, the message of the reader and the way of the place:
+         * the buffer is big enough for all three — a truncated reason would
+         * be a reason that does not say where the place is. */
+        char reason[768];
+        snprintf(
+            reason,
+            sizeof(reason),
+            "the content of the stream could not be read completely: %s\t%s",
+            warnings.message[0] ? warnings.message : "the reader of the document warned",
+            item->path
+        );
+        vocument_report_line(
+            state->report, "uninspected", item->page_index, reason
+        );
+        if (buffer) {
+            fz_drop_buffer(ctx, buffer);
+        }
         return 1;
     }
     if (buffer) {
@@ -299,7 +364,7 @@ int vocument_mupdf_find_text_occurrences(
     size_t out_cap,
     char *err_buf,
     size_t err_buf_len,
-    size_t note_budget
+    size_t note_limit
 ) {
     if (!bytes || !out_buf || out_cap == 0 || !words) {
         return 3;
@@ -348,7 +413,7 @@ int vocument_mupdf_find_text_occurrences(
             state.word_count = word_count;
 
             vocument_walk_init(&walk, ctx, vocument_report_place, &state);
-            walk.note_budget = note_budget;
+            walk.note_limit = note_limit;
             fz_try(ctx) {
                 vocument_walk_document(&walk, pdf_doc);
             }
@@ -370,9 +435,11 @@ int vocument_mupdf_find_text_occurrences(
                             /* A line that is longer than the buffer is
                              * **shortened**, not dropped: a place that cannot
                              * be named in full is still a place that was not
-                             * examined. */
+                             * examined. The line is terminated — the report
+                             * reads it as a string. */
                             memcpy(entry, line, sizeof(entry) - 4);
-                            memcpy(entry + sizeof(entry) - 4, "...", 4);
+                            memcpy(entry + sizeof(entry) - 4, "...", 3);
+                            entry[sizeof(entry) - 1] = '\0';
                         }
                         vocument_report_line(&report, "uninspected", -1, entry);
                         if (!end) {
@@ -384,15 +451,19 @@ int vocument_mupdf_find_text_occurrences(
                 if (walk.note_failed) {
                     /* The walk could not write down every place it did not
                      * examine — the memory of the machine was exhausted, or
-                     * the budget of the notes was too small. The place is
-                     * named with a fixed text, so that the note itself needs
-                     * no memory. */
-                    vocument_report_line(
-                        &report,
-                        "uninspected",
-                        -1,
-                        "the walk could not write down every place that it could not examine"
+                     * the note was longer than the limit. The place is named
+                     * with a fixed text, so that the note itself needs no
+                     * memory. The **number** of the lost places belongs into
+                     * the report: a report that announces a number it does
+                     * not know is a report that lies. */
+                    char reason[192];
+                    snprintf(
+                        reason,
+                        sizeof(reason),
+                        "the walk could not write down %d place(s) that it could not examine",
+                        walk.note_failures
                     );
+                    vocument_report_line(&report, "uninspected", -1, reason);
                 }
                 vocument_walk_free(&walk);
             }

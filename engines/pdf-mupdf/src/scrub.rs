@@ -47,7 +47,7 @@ unsafe extern "C" {
         out_cap: usize,
         err_buf: *mut c_char,
         err_buf_len: usize,
-        note_budget: usize,
+        note_limit: usize,
     ) -> c_int;
 
     fn vocument_mupdf_free_bytes(ptr: *mut c_uchar);
@@ -160,24 +160,25 @@ pub fn find_word_occurrences(
     pdf_bytes: &[u8],
     words: &[String],
 ) -> Result<Vec<PdfTextOccurrence>, PdfEngineError> {
-    find_word_occurrences_with_note_budget(pdf_bytes, words, 0)
+    find_word_occurrences_with_note_limit(pdf_bytes, words, 0)
 }
 
-/// The same search, with a **budget** for the places that could not be
-/// examined.
+/// The same search, with a **limit of the length** of one note about a place
+/// that could not be examined.
 ///
-/// A budget of zero means that the walk may write as many notes as it needs.
-/// The budget exists for one thing: the test that proves that a place which
+/// A limit of zero means that a note may be as long as it needs to be. The
+/// limit exists for one thing: the test that proves that a place which
 /// **cannot** be written down is not lost silently. The walk then says that
-/// it could not examine everything, the report names that, and the redaction
-/// is refused — instead of a report that looks complete and a redaction
-/// that is verified in spite of a place that was never looked into.
+/// it could not examine everything, the report names that — with the number
+/// of the lost places — and the redaction is refused — instead of a report
+/// that looks complete and a redaction that is verified in spite of a place
+/// that was never looked into.
 ///
-/// The budget can only make the walk stricter, never laxer.
-pub fn find_word_occurrences_with_note_budget(
+/// The limit can only make the walk stricter, never laxer.
+pub fn find_word_occurrences_with_note_limit(
     pdf_bytes: &[u8],
     words: &[String],
-    note_budget: usize,
+    note_limit: usize,
 ) -> Result<Vec<PdfTextOccurrence>, PdfEngineError> {
     const FIRST_CAPACITY: usize = 16 * 1024;
     const MAX_CAPACITY: usize = 8 * 1024 * 1024;
@@ -203,7 +204,7 @@ pub fn find_word_occurrences_with_note_budget(
                 report.len(),
                 err_buf.as_mut_ptr(),
                 err_buf.len(),
-                note_budget,
+                note_limit,
             )
         };
 

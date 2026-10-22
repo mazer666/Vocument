@@ -45,6 +45,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- **A stream whose content cannot be read was examined as if it were empty.**
+  MuPDF does not throw when the content of a stream cannot be decoded: it
+  writes a warning and hands out an empty buffer. The walk compared the
+  empty buffer with the word, found nothing and reported **nothing** — the
+  place was neither examined nor named, and the removal of such a document
+  was reported as **verified** while the text stood in the file. The reader
+  of the engine counts the warnings of MuPDF while a stream is loaded: a
+  stream that could not be read completely is a place that could **not** be
+  examined, and it is named as one with the reason of the reader. A stream
+  whose filter cannot be applied is a place of the same kind now — it is not
+  a place that carries the text, and the pre-check of the removal refuses it
+  **before** the document is touched.
 - A place of the document that the walk could **not** examine could be
   **lost silently**: the note was written into a buffer of the walk, and if
   the memory of the machine was exhausted the note was dropped without a

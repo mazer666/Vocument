@@ -100,18 +100,27 @@ typedef struct {
     char *uninspected;
     size_t uninspected_len;
     size_t uninspected_capacity;
-    /* The budget of the places that could not be examined. Zero means that
-     * the walk may write as many as it needs. A budget is only used by the
-     * test that proves that a place which **cannot** be written down is not
-     * lost silently — it can only make the walk stricter, never laxer. */
-    size_t note_budget;
+    /* The **limit of the length** of one note about a place that could not be
+     * examined. Zero means that a note may be as long as it needs to be.
+     *
+     * The limit is only used by the test that proves that a place which
+     * **cannot** be written down is not lost silently — it can only make the
+     * walk stricter, never laxer. It is a limit of the *length* of a note,
+     * not a budget of the number of the notes: the number of the notes is
+     * not limited at all. */
+    size_t note_limit;
     /* Set when a place could not be written down — because the memory of the
-     * machine was exhausted, or because the budget was too small.
+     * machine was exhausted, or because the note was longer than the limit.
      *
      * A walk that knows less about itself must say so: the caller turns this
      * flag into a place that could not be looked into, and a redaction that
      * cannot name every place it did not examine is refused. */
     int note_failed;
+    /* The number of the places that could not be written down. The flag
+     * stands for a number of places that the report does not name one by
+     * one — the number belongs into the report, or the report would announce
+     * a number that it does not know. */
+    int note_failures;
 } vocument_walk_t;
 
 /* The number of slots of the hash table at the start. */
@@ -133,8 +142,9 @@ static inline void vocument_walk_init(
     walk->uninspected = NULL;
     walk->uninspected_len = 0;
     walk->uninspected_capacity = 0;
-    walk->note_budget = 0;
+    walk->note_limit = 0;
     walk->note_failed = 0;
+    walk->note_failures = 0;
 }
 
 /* Releases the state of the walk. */
@@ -171,8 +181,9 @@ static inline void vocument_walk_note_uninspected(
     size_t needed = strlen(reason) + strlen(place) + 3;
     /* The budget: a place that does not fit into it is a place that cannot
      * be written down. The flag says so — the note is not lost silently. */
-    if (walk->note_budget > 0 && needed + 1 > walk->note_budget) {
+    if (walk->note_limit > 0 && needed + 1 > walk->note_limit) {
         walk->note_failed = 1;
+        walk->note_failures++;
         return;
     }
     if (walk->uninspected_len + needed + 1 > walk->uninspected_capacity) {
@@ -186,6 +197,7 @@ static inline void vocument_walk_note_uninspected(
              * less about itself — and it has to say so, or the caller
              * mistakes an unexamined place for an examined one. */
             walk->note_failed = 1;
+            walk->note_failures++;
             return;
         }
         walk->uninspected = bigger;
@@ -200,6 +212,7 @@ static inline void vocument_walk_note_uninspected(
     );
     if (written < 0) {
         walk->note_failed = 1;
+        walk->note_failures++;
         return;
     }
     walk->uninspected_len += (size_t)written;
