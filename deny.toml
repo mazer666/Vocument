@@ -7,11 +7,18 @@ yanked = "deny"
 [licenses]
 version = 2
 confidence-threshold = 0.8
-# The GNU licences are written in their bare form: `AGPL-3.0` covers
-# `AGPL-3.0-only` and `AGPL-3.0-or-later`. cargo-deny rejects the suffixed
-# spellings with "expected a <bare-gnu-license> here".
+# The licences that may travel with the product.
+#
+# The GNU licences are written in **both** spellings: `AGPL-3.0` is the
+# *only* variant and `AGPL-3.0-or-later` the *or later* variant — in SPDX
+# they are two different licences, and the bare name does not cover the
+# suffixed one. The crates of the workspace carry `AGPL-3.0-or-later`, and
+# cargo-deny checks the members of the workspace as well: without the
+# suffixed spelling the check failed with "license is not explicitly
+# allowed" on the crates of the project itself.
 allow = [
     "AGPL-3.0",
+    "AGPL-3.0-or-later",
     "GPL-3.0",
     "LGPL-3.0",
     "MPL-2.0",
