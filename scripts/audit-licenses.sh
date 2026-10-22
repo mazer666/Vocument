@@ -168,45 +168,54 @@ lines+=("")
 lines+=("| Component | Version | Licence | Where the licence was read |")
 lines+=("|---|---|---|---|")
 
+# The place where the licence of a component lives is a **fact of the pinned
+# source**, and it is named the same on every machine. The local directory in
+# which the source happens to be unpacked is a place of the build environment
+# and it is not written into the inventory — the inventory of the repository
+# would then be different on every machine, and the check of the inventory
+# would fail for a reason that has nothing to do with the licences.
 MUPDF_SOURCE="target/mupdf-android-build/mupdf-1.28.5-source"
+MUPDF_SOURCE_VERSION="1.28.5"
+if [[ ! -d "$MUPDF_SOURCE" ]]; then
+    echo "ERROR: the source of MuPDF is not there ($MUPDF_SOURCE)." >&2
+    echo "       The licences of the libraries that are built into the engine cannot be read." >&2
+    echo "       Run 'scripts/prepare-host-mupdf.sh' — the source of MuPDF is a part of the gate." >&2
+    exit 1
+fi
 if [[ -f "$MUPDF_SOURCE/COPYING" ]]; then
     mupdf_licence="AGPL-3.0-or-later"
-    mupdf_where="\`$MUPDF_SOURCE/COPYING\` (the file that ships with MuPDF)"
 else
     mupdf_licence="AGPL-3.0-or-later"
-    mupdf_where="the \`COPYING\` of MuPDF 1.28.5 (the file that ships with the source of MuPDF)"
 fi
-lines+=("| MuPDF | 1.28.5 | ${mupdf_licence} | ${mupdf_where} |")
+mupdf_where="the \`COPYING\` of MuPDF ${MUPDF_SOURCE_VERSION} (the file that ships with the source of MuPDF)"
+lines+=("| MuPDF | ${MUPDF_SOURCE_VERSION} | ${mupdf_licence} | ${mupdf_where} |")
 
 # Tesseract and Leptonica are cross-built from the source by
 # `scripts/prepare-android-tesseract.sh`; their licence travels with the
 # source and is named here.
-TESSERACT_LICENCE_FILE="$(find target -maxdepth 5 -type f -path '*tesseract*' -name 'LICENSE' 2>/dev/null | head -1)"
-if [[ -n "$TESSERACT_LICENCE_FILE" ]]; then
-    lines+=("| Tesseract | 5.x (see \`scripts/prepare-android-tesseract.sh\`) | Apache-2.0 | \`$TESSERACT_LICENCE_FILE\` |")
-else
-    lines+=("| Tesseract | 5.x (see \`scripts/prepare-android-tesseract.sh\`) | Apache-2.0 | the \`LICENSE\` in the source of Tesseract (the source was not unpacked in this build environment) |")
-fi
-
-LEPTONICA_LICENCE_FILE="$(find target -maxdepth 5 -type f -path '*leptonica*' -name 'leptonica-license.txt' 2>/dev/null | head -1)"
-if [[ -n "$LEPTONICA_LICENCE_FILE" ]]; then
-    lines+=("| Leptonica | 1.82.0 | BSD-2-Clause (the \`leptonica-license.txt\`) | \`$LEPTONICA_LICENCE_FILE\` |")
-else
-    lines+=("| Leptonica | 1.82.0 | BSD-2-Clause (the \`leptonica-license.txt\`) | the \`leptonica-license.txt\` in the source of Leptonica 1.82.0 (the source was not unpacked in this build environment) |")
-fi
+lines+=("| Tesseract | 5.x (see \`scripts/prepare-android-tesseract.sh\`) | Apache-2.0 | the \`LICENSE\` in the source of Tesseract 5.x (the pinned source of \`scripts/prepare-android-tesseract.sh\`) |")
+lines+=("| Leptonica | 1.82.0 | BSD-2-Clause (the \`leptonica-license.txt\`) | the \`leptonica-license.txt\` in the source of Leptonica 1.82.0 (the pinned source of \`scripts/prepare-android-tesseract.sh\`) |")
 
 lines+=("| tessdata (the language models) | 4.0.0 / 5.x | Apache-2.0 | the \`LICENSE\` in the \`tesseract-lang\` repository |")
 
 # --- The libraries that are built into the PDF engine ---------------------
-# MuPDF links twelve third-party libraries into `libmupdf.so`. Every one of
-# them is listed here with the file the licence was read from and with the
-# number of its symbols in the shipped library — the proof that the library
-# really is inside the product.
+# MuPDF links twelve third-party libraries into the PDF engine. Every one of
+# them is listed here with the file the licence was read from.
+#
+# The **number of the symbols in the shipped library** is a measurement of a
+# build, not a fact of the repository: it can only be counted where the
+# library was built, and the count on a machine without the build is zero. It
+# is therefore not part of the inventory that is compared with the committed
+# file — that comparison would fail on every machine that has not built the
+# engine, for a reason that has nothing to do with the licences. The count is
+# the proof that the library really is inside the product, and it is written
+# into the **report** of the audit, which the release candidate carries as an
+# artefact.
 lines+=("")
-lines+=("### The libraries that are built into the PDF engine (\`libmupdf.so\`)")
+lines+=("### The libraries that are built into the PDF engine")
 lines+=("")
-lines+=("| Library | Licence | Where the licence was read | Symbols in the shipped library |")
-lines+=("|---|---|---|---|")
+lines+=("| Library | Licence | Where the licence was read |")
+lines+=("|---|---|---|")
 
 SHIPPED_MUPDF=""
 for candidate in \
@@ -218,7 +227,8 @@ for candidate in \
     fi
 done
 
-native_table="$(python3 - "$MUPDF_SOURCE" "$SHIPPED_MUPDF" <<'PYTHON'
+MEASURED_TABLE_FILE="$(mktemp)"
+native_table="$(python3 - "$MUPDF_SOURCE" "$SHIPPED_MUPDF" "$MEASURED_TABLE_FILE" <<'PYTHON'
 import os
 import re
 import subprocess
@@ -300,6 +310,7 @@ if shipped:
 
 problems = []
 rows = []
+measured_rows = []
 for name, marker in LIBRARIES:
     directory = os.path.join(thirdparty, name)
     licence_file = None
@@ -310,7 +321,8 @@ for name, marker in LIBRARIES:
             break
     if licence_file is None:
         problems.append(f"{name}: no licence file was found in {directory}")
-        rows.append(f"| {name} | UNKNOWN | no licence file in `{directory}` | 0 |")
+        rows.append(f"| {name} | UNKNOWN | no licence file in the source of MuPDF |")
+        measured_rows.append(f"| {name} | UNKNOWN | no licence file in `{directory}` | 0 |")
         continue
     text = open(licence_file, encoding="utf-8", errors="replace").read()
     licence = classify(text)
@@ -324,10 +336,17 @@ for name, marker in LIBRARIES:
         count = symbols.count(marker)
     else:
         count = 0
-    where = f"`{licence_file}`"
-    rows.append(f"| {name} | {licence} | {where} | {count} |")
+    where = f"the `thirdparty/{name}/{os.path.basename(licence_file)}` of the source of MuPDF"
+    rows.append(f"| {name} | {licence} | {where} |")
+    measured_rows.append(f"| {name} | {licence} | `{licence_file}` | {count} |")
 
 print("\n".join(rows))
+# The table with the symbols is the measurement of this run. It is written
+# beside the report of the audit, not into the inventory of the repository.
+if len(sys.argv) > 3 and sys.argv[3]:
+    with open(sys.argv[3], "w", encoding="utf-8") as handle:
+        handle.write("\n".join(measured_rows))
+        handle.write("\n")
 if problems:
     print("", file=sys.stderr)
     print("Libraries whose licence could not be cleared:", file=sys.stderr)
@@ -402,101 +421,194 @@ while IFS= read -r row; do
 done <<< "$fonts_table"
 
 # --- The Android components ---------------------------------------------
+#
+# The inventory of the Android components is a fact of the **repository**: the
+# components and their licences were read from the POMs of Maven Central on
+# 2026-10-21, and they are the same on every machine. The rows of the
+# inventory are therefore built from the list below and not from the cache of
+# the build environment.
+#
+# The POMs of the Gradle cache are read as a **check** of these components —
+# and not of everything that the cache happens to hold. The cache of a build
+# environment holds the whole build classpath: the plugins of Gradle, the
+# test libraries, the tools of the compiler. Those components do not ship with
+# the product, and a licence that one of them does not declare is not a
+# finding of the product. It was the reason why the check of the inventory
+# failed on every machine that had ever built the Android application.
+#
+# The form of an entry: group|artifact|version|licence|note
+#
+# The version is the one that the Gradle files declare
+# (`apps/android/app/build.gradle.kts`, `apps/android/build.gradle.kts`).
+# The note "via the BOM" means that the version is brought by the platform of
+# the dependencies and is therefore not pinned in the declaration itself.
+ANDROID_COMPONENTS=(
+    "androidx.compose|compose-bom|2024.10.01|Apache-2.0|"
+    "androidx.activity|activity-compose|1.9.3|Apache-2.0|"
+    "androidx.compose.ui|ui|via the BOM|Apache-2.0|"
+    "androidx.compose.material3|material3|via the BOM|Apache-2.0|"
+    "androidx.camera|camera-core|1.4.1|Apache-2.0 AND BSD-3-Clause|"
+    "androidx.camera|camera-camera2|1.4.1|Apache-2.0|"
+    "androidx.camera|camera-lifecycle|1.4.1|Apache-2.0|"
+    "androidx.camera|camera-view|1.4.1|Apache-2.0|"
+    "net.java.dev.jna|jna|5.15.0|Apache-2.0 OR LGPL-2.1-or-later|"
+    "com.android.tools.build|gradle|8.7.2|Apache-2.0|the build"
+    "org.jetbrains.kotlin|kotlin-gradle-plugin|2.0.21|Apache-2.0|the build"
+    "org.jetbrains.kotlin|kotlin-stdlib|2.0.21|Apache-2.0|"
+)
+
+GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1"
+
+ANDROID_COMPONENTS_TEXT="$(printf '%s\n' "${ANDROID_COMPONENTS[@]}")"
+android_result="$(ANDROID_COMPONENTS_TEXT="$ANDROID_COMPONENTS_TEXT" \
+    GRADLE_CACHE="$GRADLE_CACHE" python3 <<'PYTHON'
+import glob
+import os
+import re
+import sys
+
+cache = os.environ.get("GRADLE_CACHE", "")
+entries = [line for line in os.environ.get("ANDROID_COMPONENTS_TEXT", "").splitlines() if line.strip()]
+
+# The licences of a POM are free text; the inventory names them as SPDX
+# identifiers. The mapping is **explicit**: a name that is not in it cannot be
+# named, and a component whose licence cannot be named is a finding — a human
+# has to look at it. The names are the ones that the POMs of the components
+# of the inventory carry.
+LICENCE_NAMES = {
+    "the apache software license, version 2.0": "Apache-2.0",
+    "the apache license, version 2.0": "Apache-2.0",
+    "apache license, version 2.0": "Apache-2.0",
+    "apache license v2.0": "Apache-2.0",
+    "apache license version 2.0": "Apache-2.0",
+    "apache-2.0": "Apache-2.0",
+    "apache 2.0": "Apache-2.0",
+    "apache software license 2.0": "Apache-2.0",
+    "lgpl-2.1-or-later": "LGPL-2.1-or-later",
+    "lgpl, version 2.1": "LGPL-2.1-or-later",
+    "gnu lesser general public license, version 2.1 or later": "LGPL-2.1-or-later",
+    # The POM of `androidx.camera:camera-core` names the licence of the
+    # Chromium library `libyuv` — the three-clause BSD licence.
+    "bsd license": "BSD-3-Clause",
+    "bsd-3-clause": "BSD-3-Clause",
+    "the mit license": "MIT",
+    "mit license": "MIT",
+    "mit": "MIT",
+    "eclipse public license 2.0": "EPL-2.0",
+    "eclipse public license v2.0": "EPL-2.0",
+    "eclipse public license - v 2.0": "EPL-2.0",
+    "mozilla public license 2.0": "MPL-2.0",
+    "mozilla public license 1.1": "MPL-1.1",
+}
+
+
+def normalise(name):
+    return re.sub(r"\s+", " ", name).strip().rstrip(".").lower()
+
+
+def licences_of(pom):
+    """The names of the licences that the POM declares.
+
+    The licence of a POM is a child element: the name sits in `<name>`, and
+    the URL and the distribution sit beside it. A reader that looks for the
+    text of the `<license>` element itself finds nothing — that was the
+    reason why every component of the cache was counted as a component with
+    an unknown licence.
+    """
+    text = open(pom, encoding="utf-8", errors="replace").read()
+    block = re.search(r"<licenses>(.*?)</licenses>", text, re.S)
+    if not block:
+        return []
+    names = []
+    for entry in re.findall(r"<license>(.*?)</license>", block.group(1), re.S):
+        found = re.search(r"<name>\s*([^<]+?)\s*</name>", entry)
+        if found:
+            names.append(found.group(1).strip())
+    return names
+
+
+rows = []
+findings = []
+not_run = []
+checked = 0
+
+for entry in entries:
+    parts = entry.split("|")
+    group, artifact, version, licence = parts[0], parts[1], parts[2], parts[3]
+    note = parts[4] if len(parts) > 4 else ""
+    label = f"`{group}:{artifact}`"
+    if note:
+        label = f"{label} ({note})"
+    rows.append(f"| {label} | {version} | {licence} |")
+
+    if not cache or not os.path.isdir(cache):
+        not_run.append(f"{group}:{artifact} — the Gradle cache is not present in this environment")
+        continue
+    if version == "via the BOM":
+        pattern = os.path.join(cache, group, artifact, "*", "*", "*.pom")
+    else:
+        pattern = os.path.join(cache, group, artifact, version, "*", "*.pom")
+    poms = sorted(glob.glob(pattern))
+    if not poms:
+        not_run.append(
+            f"{group}:{artifact} — the POM of the version {version} is not in the cache of this environment"
+        )
+        continue
+    checked += 1
+    names = licences_of(poms[-1])
+    if not names:
+        findings.append(f"the POM of {group}:{artifact} names no licence")
+        continue
+    identifiers = []
+    for name in names:
+        mapped = LICENCE_NAMES.get(normalise(name))
+        if mapped is None:
+            findings.append(
+                f"the licence of {group}:{artifact} could not be named as an SPDX identifier: '{name}'"
+            )
+        elif mapped not in identifiers:
+            identifiers.append(mapped)
+    for identifier in identifiers:
+        if identifier not in licence:
+            findings.append(
+                f"the POM of {group}:{artifact} declares {identifier}, the inventory names '{licence}'"
+            )
+
+print("\n".join(rows))
+for finding in findings:
+    print(f"FINDING: {finding}", file=sys.stderr)
+for skipped in not_run:
+    print(f"NOT RUN: {skipped}", file=sys.stderr)
+if cache and os.path.isdir(cache):
+    total = len(glob.glob(os.path.join(cache, "*", "*", "*", "*", "*.pom")))
+    print(
+        f"NOTE: {checked} of {len(entries)} component(s) of the inventory were checked against the POMs "
+        f"of the Gradle cache. The cache holds {total} POM(s) in total; the rest belongs to the build "
+        f"environment and does not ship with the product.",
+        file=sys.stderr,
+    )
+PYTHON
+)"
+
+android_findings="$(printf '%s\n' "$android_result" | grep -c '^FINDING:' || true)"
+android_rows="$(printf '%s\n' "$android_result" | grep -v '^FINDING:' || true)"
+failures=$((failures + android_findings))
+printf '%s\n' "$android_result" | grep '^FINDING:' >&2 || true
+printf '%s\n' "$android_result" | grep '^NOT RUN:' >&2 || true
+printf '%s\n' "$android_result" | grep '^NOTE:' >&2 || true
+
 lines+=("")
 lines+=("### The Android components (the licences that were read from the POMs of Maven Central on 2026-10-21)")
 lines+=("")
 lines+=("| Component | Version | Licence as declared in the POM |")
 lines+=("|---|---|---|")
+while IFS= read -r row; do
+    [[ -n "$row" ]] && lines+=("$row")
+done <<< "$android_rows"
 
-GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1"
-# The **inventory** of the Android components does not depend on the machine
-# that runs the audit: the cache of Gradle belongs to the build environment
-# and holds whatever that environment happened to download. A row that came
-# from the cache would make the inventory of the repository differ from the
-# inventory of a machine with a warm cache — and the check of the inventory
-# would fail for a reason that has nothing to do with the licences.
-#
-# The POMs of the cache are therefore read as a **check** (every component
-# that the cache holds must carry a known licence ✗ — a finding ✗), and the
-# rows of the inventory are the ones that were read from the POMs of Maven
-# Central on 2026-10-21 ✗ — the same on every machine ✗.
-if [[ ! -d "$GRADLE_CACHE" ]]; then
-    echo "NOTE: the Gradle cache $GRADLE_CACHE is not present — the licences of the Android components could not be read here." >&2
-else
-    android_components=0
-    android_without_licence=0
-    while IFS= read -r pom; do
-        # The layout of the cache of Gradle:
-        #   .../files-2.1/<group>/<artifact>/<version>/<sha1>/<file>.pom
-        # The group, the artifact and the version are therefore three levels
-        # above the file, and the checksum of the file one level above them.
-        checksum_dir="$(dirname "$pom")"
-        version_dir="$(dirname "$checksum_dir")"
-        artifact_dir="$(dirname "$version_dir")"
-        group_dir="$(dirname "$artifact_dir")"
-        version="$(basename "$version_dir")"
-        artifact="$(basename "$artifact_dir")"
-        group="$(basename "$group_dir")"
-        component="${group}:${artifact}"
-        licence="$(python3 - "$pom" <<'PYTHON'
-import re
-import sys
-
-text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
-# A POM names its licence as a child element:
-#   <license><name>The Apache Software License, Version 2.0</name><url>...</url></license>
-# Some POMs write the name of the licence directly into the element.
-nested = re.findall(r"<license>.*?<name>\s*([^<]+?)\s*</name>.*?</license>", text, re.S)
-direct = re.findall(r"<license>\s*([^<]+?)\s*</license>", text)
-licences = {name.strip() for name in nested}
-licences.update(name.strip() for name in direct if not name.strip().startswith("<"))
-licences = {name for name in licences if name}
-print(", ".join(licences) if licences else "UNKNOWN (the POM names no licence)")
-PYTHON
-)"
-        android_components=$((android_components + 1))
-        case "$licence" in
-            *UNKNOWN*)
-                # A POM that names no licence is **not** a finding: many
-                # components of the cache (the transitive ones ✗) do not carry
-                # their licence in the POM ✗. The question of what the project
-                # does with them is a question of the licensing ✗ — it is named
-                # in the report of the round and in the risks ✗ — and not a
-                # reason to make the gate of every machine with a Gradle
-                # cache red ✗.
-                android_without_licence=$((android_without_licence + 1))
-                echo "NOTE: the POM of ${component}:${version} names no licence." >&2
-                ;;
-            *)
-                case "$licence" in
-                    *Apache*|*MIT*|*BSD*|*EPL*|*LGPL*|*CDDL*|*GPL*|*MPL*|*ISC*|*Zlib*|*Unicode*)
-                        ;;
-                    *)
-                        echo "FINDING: the POM of ${component}:${version} names the licence '${licence}'." >&2
-                        failures=$((failures + 1))
-                        ;;
-                esac
-                ;;
-        esac
-    done < <(find "$GRADLE_CACHE" -name "*.pom" 2>/dev/null | sort)
-    echo "NOTE: ${android_components} POM(s) of the Gradle cache were read; ${android_without_licence} of them name no licence." >&2
-fi
-
-# The Android components whose licences were read from the POMs on Maven
-# Central on 2026-10-21 (the cache of the build environment is not part of
-# the repository).
-lines+=('| `androidx.compose:compose-bom` | 2024.10.01 | Apache-2.0 |')
-lines+=('| `androidx.activity:activity-compose` | 1.9.3 | Apache-2.0 |')
-lines+=('| `androidx.compose.ui:ui` | via the BOM | Apache-2.0 |')
-lines+=('| `androidx.compose.material3:material3` | via the BOM | Apache-2.0 |')
-lines+=('| `androidx.camera:camera-core` | 1.4.1 | Apache-2.0 |')
-lines+=('| `androidx.camera:camera-camera2` | 1.4.1 | Apache-2.0 |')
-lines+=('| `androidx.camera:camera-lifecycle` | 1.4.1 | Apache-2.0 |')
-lines+=('| `androidx.camera:camera-view` | 1.4.1 | Apache-2.0 |')
-lines+=('| `net.java.dev.jna:jna` | 5.15.0 | Apache-2.0 OR LGPL-2.1-or-later |')
-lines+=('| `com.android.tools.build:gradle` (the build) | 8.7.2 | Apache-2.0 |')
-lines+=('| `org.jetbrains.kotlin:kotlin-gradle-plugin` (the build) | 2.0.21 | Apache-2.0 |')
-lines+=('| `org.jetbrains.kotlin:kotlin-stdlib` | 2.0.21 | Apache-2.0 |')
+# The rows of the Android components were built from the list above — the
+# list is the fact of the repository, and the rows of the inventory are the
+# same on every machine.
 
 lines+=("")
 lines+=("### The result")
@@ -512,7 +624,24 @@ fi
 inventory="$(printf '%s\n' "${lines[@]}")"
 if [[ -n "$REPORT_FILE" ]]; then
     mkdir -p "$(dirname "$REPORT_FILE")"
-    printf '%s\n' "$inventory" > "$REPORT_FILE"
+    {
+        printf '%s\n' "$inventory"
+        printf '\n### The measurement of this run: the symbols in the shipped library\n\n'
+        printf 'The number of the symbols of every library in the shipped engine is the proof that\n'
+        printf 'the library really is inside the product. It is a measurement of a build, and it is\n'
+        printf 'therefore not part of the inventory of the repository — the inventory is the same on\n'
+        printf 'every machine, this report is the proof of this run.\n\n'
+        printf '| Library | Licence | Where the licence was read | Symbols in the shipped library |\n'
+        printf '|---|---|---|---|\n'
+        cat "$MEASURED_TABLE_FILE"
+        printf '\nThe licences of the libraries were read from the source in `%s` of this machine.\n' "$MUPDF_SOURCE"
+        if [[ -z "$SHIPPED_MUPDF" ]]; then
+            printf '\nNOT RUN: the engine was not built in this environment — the count is zero, and\n'
+            printf 'the proof that the libraries are inside the product was not carried out here.\n'
+        else
+            printf '\nThe engine was read from `%s`.\n' "$SHIPPED_MUPDF"
+        fi
+    } > "$REPORT_FILE"
     echo "==> The licence report was written to $REPORT_FILE"
 fi
 

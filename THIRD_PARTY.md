@@ -166,27 +166,27 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 
 | Component | Version | Licence | Where the licence was read |
 |---|---|---|---|
-| MuPDF | 1.28.5 | AGPL-3.0-or-later | `target/mupdf-android-build/mupdf-1.28.5-source/COPYING` (the file that ships with MuPDF) |
-| Tesseract | 5.x (see `scripts/prepare-android-tesseract.sh`) | Apache-2.0 | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/tesseract/LICENSE` |
-| Leptonica | 1.82.0 | BSD-2-Clause (the `leptonica-license.txt`) | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/leptonica/leptonica-license.txt` |
+| MuPDF | 1.28.5 | AGPL-3.0-or-later | the `COPYING` of MuPDF 1.28.5 (the file that ships with the source of MuPDF) |
+| Tesseract | 5.x (see `scripts/prepare-android-tesseract.sh`) | Apache-2.0 | the `LICENSE` in the source of Tesseract 5.x (the pinned source of `scripts/prepare-android-tesseract.sh`) |
+| Leptonica | 1.82.0 | BSD-2-Clause (the `leptonica-license.txt`) | the `leptonica-license.txt` in the source of Leptonica 1.82.0 (the pinned source of `scripts/prepare-android-tesseract.sh`) |
 | tessdata (the language models) | 4.0.0 / 5.x | Apache-2.0 | the `LICENSE` in the `tesseract-lang` repository |
 
-### The libraries that are built into the PDF engine (`libmupdf.so`)
+### The libraries that are built into the PDF engine
 
-| Library | Licence | Where the licence was read | Symbols in the shipped library |
-|---|---|---|---|
-| brotli | MIT | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/brotli/LICENSE` | 2 |
-| cmark-gfm | BSD-2-Clause | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/cmark-gfm/COPYING` | 1 |
-| extract | AGPL-3.0 | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/extract/COPYING` | 4 |
-| freetype | FTL-or-GPL-2.0 (the project uses the FTL) | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/freetype/LICENSE.TXT` | 1 |
-| gumbo-parser | Apache-2.0 | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/gumbo-parser/COPYING` | 4 |
-| harfbuzz | MIT | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/harfbuzz/COPYING` | 2 |
-| jbig2dec | AGPL-3.0 | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/jbig2dec/COPYING` | 1 |
-| lcms2 | MIT | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/lcms2/LICENSE` | 1 |
-| libjpeg | IJG | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/libjpeg/README` | 1 |
-| mujs | ISC | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/mujs/COPYING` | 1 |
-| openjpeg | BSD-2-Clause | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/openjpeg/LICENSE` | 208 |
-| zlib | Zlib | `target/mupdf-android-build/mupdf-1.28.5-source/thirdparty/zlib/LICENSE` | 1 |
+| Library | Licence | Where the licence was read |
+|---|---|---|
+| brotli | MIT | the `thirdparty/brotli/LICENSE` of the source of MuPDF |
+| cmark-gfm | BSD-2-Clause | the `thirdparty/cmark-gfm/COPYING` of the source of MuPDF |
+| extract | AGPL-3.0 | the `thirdparty/extract/COPYING` of the source of MuPDF |
+| freetype | FTL-or-GPL-2.0 (the project uses the FTL) | the `thirdparty/freetype/LICENSE.TXT` of the source of MuPDF |
+| gumbo-parser | Apache-2.0 | the `thirdparty/gumbo-parser/COPYING` of the source of MuPDF |
+| harfbuzz | MIT | the `thirdparty/harfbuzz/COPYING` of the source of MuPDF |
+| jbig2dec | AGPL-3.0 | the `thirdparty/jbig2dec/COPYING` of the source of MuPDF |
+| lcms2 | MIT | the `thirdparty/lcms2/LICENSE` of the source of MuPDF |
+| libjpeg | IJG | the `thirdparty/libjpeg/README` of the source of MuPDF |
+| mujs | ISC | the `thirdparty/mujs/COPYING` of the source of MuPDF |
+| openjpeg | BSD-2-Clause | the `thirdparty/openjpeg/LICENSE` of the source of MuPDF |
+| zlib | Zlib | the `thirdparty/zlib/LICENSE` of the source of MuPDF |
 
 ### The fonts that are built into the PDF engine
 
@@ -206,7 +206,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `androidx.activity:activity-compose` | 1.9.3 | Apache-2.0 |
 | `androidx.compose.ui:ui` | via the BOM | Apache-2.0 |
 | `androidx.compose.material3:material3` | via the BOM | Apache-2.0 |
-| `androidx.camera:camera-core` | 1.4.1 | Apache-2.0 |
+| `androidx.camera:camera-core` | 1.4.1 | Apache-2.0 AND BSD-3-Clause |
 | `androidx.camera:camera-camera2` | 1.4.1 | Apache-2.0 |
 | `androidx.camera:camera-lifecycle` | 1.4.1 | Apache-2.0 |
 | `androidx.camera:camera-view` | 1.4.1 | Apache-2.0 |
