@@ -68,6 +68,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   of a public release** (`docs/releasing/RELEASE-BLOCKERS.md`).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
+### Changed
+- **The document about the optional local interfaces (MCP) is a change
+  request, not an architecture decision record.** It was filed as
+  `docs/adr/ADR-0021` while it was still `proposed`; it adds the milestone
+  M7 to the roadmap, states what has to be true before that milestone is
+  built and names the CR that defers the macOS App Store and the Android
+  variants — the form of a change request in `PROJECT_MANAGEMENT.md` §4 and
+  §5. It is `docs/cr/CR-0004` now, the reference in `ROADMAP.md` follows, and
+  the architecture of the interface itself stays open for an ADR at the time
+  the interface is built.
+- **The format of the acceptance records is measured and open for a decision**
+  (`docs/project/ACCEPTANCE-RECORD-FORMAT-ANALYSIS.md`): two of the
+  twenty-six records follow the template of
+  `docs/acceptance/ACCEPTANCE_TEMPLATE.md`, the four round records are not
+  milestone records at all, and the cause of the drift is that
+  `scripts/validate-repo.sh` checks whether the files are **there**, never
+  how they look. **Nothing was restructured** — the analysis names the
+  options with their costs and the questions that the owner decides.
+
 ### Fixed
 - **The inventory of the licences depended on the machine that computed it.** The
   inventory carried a row about the state of the Gradle cache of the build
@@ -79,6 +98,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   unknown licence is a finding), the group, the artifact and the version are
   read from the right levels of the cache, and the licence is read from the
   nested `<license><name>` of a POM.
+- **The inventory of the licences was different on every machine, and the gate
+  of the distribution was therefore red on every machine that had ever built
+  the Android application.** The audit read the POMs of the **whole** Gradle
+  cache — 389 of them, the entire build classpath — and demanded a declared
+  licence from each. Sixty of them name none, and none of them ships with the
+  product. Three errors came with it: the path of the POM was read one level
+  too deep (the version became the SHA-1 of the file), the pattern for the
+  licence could not match a POM of the ordinary Maven layout (the name of the
+  licence is a child element), and the column *"where the licence was read
+  from"* named the local build directory. The inventory of the Android
+  components is now a **list of the repository** — the components and the
+  licences that the Gradle files declare — and the check reads the POMs of
+  exactly those components, maps the licence to an SPDX identifier and
+  compares it with the list. A component whose POM is not in the cache of this
+  machine is `NOT RUN` and is named; the other POMs of the cache are counted
+  as the build environment and are not findings. The number of the symbols in
+  the shipped library is a measurement of a build and stands in the **report**
+  of the audit, which the release candidate carries as an artefact. One
+  finding came out of it: the POM of `androidx.camera:camera-core` declares
+  **two** licences — Apache-2.0 and the three-clause BSD licence of the
+  Chromium library `libyuv` — and the inventory named only the first one.
+- **cargo-deny rejected the licence of the project itself.** `deny.toml`
+  allowed `AGPL-3.0`, which in SPDX is the *only* variant, and not
+  `AGPL-3.0-or-later`, which the crates of the workspace carry; cargo-deny
+  checks the members of the workspace as well. The list carries both
+  spellings now, and `cargo deny check licenses` reports "licenses ok".
+- **The release path ended silently on macOS.** `tar --wildcards` is a GNU
+  extension that the `tar` of macOS refuses, and the error was sent into
+  `2>/dev/null`: the release candidate stopped after the first line of its
+  output, with the exit code 1 and without a word. The member is looked up in
+  the list of the archive and read by its exact name now, and the failure is
+  recorded as a check with a reason. The build record died the same way when
+  a `java` without a runtime was installed — a tool that is missing is named
+  `not-installed`, one that is there and does not answer is named
+  `not-usable`, and neither ends the record. The shared libraries were looked
+  for under their Linux name (`libmupdf.so`, `libvocument_ffi.so`) while
+  macOS names them `libmupdf.dylib` and `libvocument_ffi.dylib`, and the
+  search path of the loader was set in `LD_LIBRARY_PATH` while macOS reads
+  `DYLD_LIBRARY_PATH`.
+- **The tests of the FFI layer wrote into the data directory of the user.**
+  The rail of the profession is a setting of the user, and the recovery store
+  holds the document of the user in plain text; a test run overwrote the rail
+  and left its documents in the recovery store of the user. Every test of
+  every FFI test binary points the data directory at a temporary one now,
+  before it touches the registry of the sessions.
+- **The tests of the rail wrote over each other.** The rail is one rail, in
+  the registry of the sessions and in the data directory of the user, and the
+  tests share both: a test that replaces the rail changed it under a test
+  that was reading it, and the result depended on the order of the threads —
+  two to six of eight tests failed in four of five parallel runs. The tests
+  hold a lock now, and the standard rail is put back when a test ends, also
+  when the test failed. The lock alone was not enough: the test that replaces
+  the rail never put the standard rail back, and the next test found the rail
+  of the test before it.
+- **The measurement of the peak memory only ran on Linux.** The test read
+  `/proc/self/status`, which macOS does not have; the other systems ask
+  `getrusage` now, which reports the value in bytes on macOS.
+- **The NDK was assumed to be a Linux installation.** Three scripts took the
+  path `/opt/android-ndk/android-ndk-r27c` and the toolchain
+  `linux-x86_64` for granted, so there was no Android build on a Mac. The
+  NDK is searched the way `build-android-rust.sh` already did it.
 - **A stream whose content cannot be read was examined as if it were empty.**
   MuPDF does not throw when the content of a stream cannot be decoded: it
   writes a warning and hands out an empty buffer. The walk compared the

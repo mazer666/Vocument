@@ -258,21 +258,20 @@ platforms without a change of the build scripts.
 
 ## 4. The findings that need a decision of the project owner
 
-### 4.1 The licence inventory cannot be the same on two machines
+### 4.1 The licence inventory could not be the same on two machines — **resolved**
 
-`scripts/audit-licenses.sh` compares the inventory it computes from the
+`scripts/audit-licenses.sh` compared the inventory it computes from the
 machine with the inventory that is committed in `THIRD_PARTY.md`. The two
-can only be equal on the machine where the committed one was produced:
+could only be equal on the machine where the committed one was produced:
 
-1. **The Android components come from the Gradle cache of the machine.** The
+1. **The Android components came from the Gradle cache of the machine.** The
    cache is a directory of the user (`~/.gradle/caches/…`). A machine
-   without a cache gets a placeholder row, a machine with a cache gets one
-   row per component. The committed inventory was written on a machine
-   *without* a cache.
-2. **The reader of the POMs is wrong.** The component and the version are
-   read one level too deep: the version becomes the SHA-1 of the file
-   (`3727a4b2224a…`) and the component becomes the version (`1.9.3`).
-3. **The licence of a POM is never found.** The pattern
+   without a cache got a placeholder row, a machine with a cache got one
+   row per component.
+2. **The reader of the POMs was wrong.** The component and the version were
+   read one level too deep: the version became the SHA-1 of the file
+   (`3727a4b2224a…`) and the component became the version (`1.9.3`).
+3. **The licence of a POM was never found.** The pattern
    `<license>\s*([^<]+?)\s*</license>` cannot match a POM of the ordinary
    Maven layout, in which the licence is a child element:
    ```xml
@@ -281,27 +280,55 @@ can only be equal on the machine where the committed one was produced:
      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
    </license>
    ```
-   Every component is therefore counted as *"a component carries an unknown
+   Every component was therefore counted as *"a component carries an unknown
    licence"*.
-4. **Sixty of the 389 POMs of the cache name no licence at all** — among
-   them `io.netty`, `com.google.guava`, `org.apache.httpcomponents`. A
-   correct reader would still find them without a licence, and the question
-   of what the project does with them is a question of the licensing, not of
-   the script.
-5. **The column of the symbols can only match the format it was measured
+4. **The check covered the whole cache.** The cache of a build environment
+   holds the whole build classpath — the plugins of Gradle, the test
+   libraries, the tools of the compiler. Sixty of the 389 POMs name no
+   licence at all (`io.netty`, `com.google.guava`,
+   `org.apache.httpcomponents`), and none of them ships with the product.
+5. **The column of the symbols could only match the format it was measured
    in.** The committed numbers come from the ELF library of the host
    (`readelf -sW`); the library of macOS is a Mach-O file and reports other
    numbers.
 
-**The question:** where does the truth about the Android components live —
-in the repository or in the cache of the machine? A machine-local cache
-cannot be the source of truth of a committed file. The options are to read
-the POMs from a directory of the repository, to compare only the parts of
-the inventory that are independent of the machine, or to write the inventory
-into the build record instead of into `THIRD_PARTY.md`.
+**Resolved.** The decision that the audit itself already stated in its own
+comment — *"the inventory of the Android components does not depend on the
+machine that runs the audit"* — is now carried out:
 
-Until that is decided, the gate of the distribution is red on every machine
-that has a Gradle cache — which is every machine of a developer.
+* the inventory of the Android components is a **list of the repository**
+  (the components and the licences that the Gradle files declare), not a
+  reading of the cache;
+* the check reads the POMs of **exactly those components**, maps the licence
+  to an SPDX identifier and compares it with the list. A component whose POM
+  is not in the cache of this machine is `NOT RUN` and is named — the audit
+  does not claim that it checked it;
+* the other POMs of the cache are counted and named as the build
+  environment. They are not findings, because they do not ship;
+* the number of the symbols in the shipped library is a **measurement of a
+  build** and stands in the **report** of the audit, which the release
+  candidate carries as an artefact;
+* the column *"where the licence was read from"* names the place in the
+  **pinned source** and not the directory of the local build.
+
+One finding came out of the corrected check: the POM of
+`androidx.camera:camera-core` declares **two** licences — *"The Apache
+Software License, Version 2.0"* and *"BSD License"* (the licence of the
+Chromium library `libyuv`, the three-clause BSD licence). The inventory named
+only Apache-2.0 and therefore under-reported a licence obligation. The row
+names both now.
+
+**The proof**: the audit ends with the exit code 0 on this machine (12 of 12
+components checked, no findings) **and** without a Gradle cache (12 × `NOT
+RUN`, the inventory still matches). Without the source of MuPDF it ends with
+a clear message and the hint to `scripts/prepare-host-mupdf.sh` instead of an
+empty table.
+
+A second blocker was hidden behind this one: `cargo deny check licenses`
+rejected the **licence of the project itself**, because `deny.toml` allowed
+`AGPL-3.0` — which in SPDX is the *only* variant — and not
+`AGPL-3.0-or-later`, which the crates of the workspace carry. The list
+carries both spellings now, and `cargo-deny` reports "licenses ok".
 
 ### 4.2 The build of the macOS application needs the licence of Xcode
 
