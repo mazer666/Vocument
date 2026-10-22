@@ -57,6 +57,15 @@ jobs:
       TESSERACT_DIR: /usr
       # The language models of the OCR. They are part of the repository.
       TESSDATA_PREFIX: ${{ github.workspace }}/apps/android/app/src/main/assets/tessdata
+      # The image of the runner carries an Android SDK, and the gate of the
+      # project would therefore start the **runtime proof of Android** — the
+      # build of the packages and their unit tests. That proof belongs to the
+      # job of Android (`ci-android.yml`), which carries the NDK and builds
+      # the native libraries. Here the path of the SDK points at a directory
+      # that does not exist, so the gate says NOT RUN with the reason
+      # instead of carrying out a proof that belongs to the other job.
+      ANDROID_HOME: ${{ github.workspace }}/no-android-sdk-in-this-job
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/no-android-sdk-in-this-job
 
     steps:
       - name: Checkout the repository

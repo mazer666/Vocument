@@ -232,8 +232,12 @@ jobs:
       - name: The diagnostics of the unit tests
         if: steps.unit-tests.outcome == 'failure'
         run: |
-          echo "::error::The unit tests of Gradle failed. What went wrong:"
-          grep -A 14 "What went wrong" "$RUNNER_TEMP/unit-tests.log" | head -n 14 | while IFS= read -r line; do
+          echo "::error::The unit tests of Gradle failed. The errors of the compiler:"
+          grep -E "^e: |error: " "$RUNNER_TEMP/unit-tests.log" | head -n 8 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          echo "::error::What went wrong:"
+          grep -A 10 "What went wrong" "$RUNNER_TEMP/unit-tests.log" | head -n 10 | while IFS= read -r line; do
             echo "::error::${line}"
           done
           echo "::error::The last 8 lines of the output:"
