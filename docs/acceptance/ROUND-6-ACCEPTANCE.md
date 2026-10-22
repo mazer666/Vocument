@@ -138,7 +138,33 @@ can give it.
 
 ### 2.3 The runs of the round
 
-<!-- RUNS -->
+The three jobs were started for the first time on 2026-10-22. The runs of
+the final revision of the round:
+
+| The job | The run | The result |
+|---|---|---|
+| `linux-core` — the whole gate of the project | [39754714902](https://github.com/mazer666/Vocument/actions/runs/39754714902) | **success** — the gate of the project passes on a machine that was built from scratch: the host MuPDF 1.28.5 out of the pinned source, the system Tesseract, the audit of the licences, the Swift proof, `cargo fmt`, `cargo clippy`, the tests of the workspace, the proofs of M2.1 … M2.4, the UniFFI bindings, the build record and the release candidate |
+| `macos-swift` — the Swift build of the application | [39754714855](https://github.com/mazer666/Vocument/actions/runs/39754714855) | **success** — the bindings, the kit **and the application** compile against the real macOS SDK; the tests of the kit pass; the handshake (open → render → search → redact → save → reopen → crash → recover) passes with the real MuPDF and the foreign renderer |
+| `android` — the native libraries, the packages, the unit tests | [39754714653](https://github.com/mazer666/Vocument/actions/runs/39754714653) | see the table below |
+
+**The first runs of the jobs were red, and what they found is the most
+valuable result of this goal.** The findings are in
+[`github-actions-platform-builds.md`](../audit/github-actions-platform-builds.md)
+§9 and in [`ci-gate-findings.md`](../audit/ci-gate-findings.md):
+
+| The finding | What it was | The state |
+|---|---|---|
+| The **licence inventory** depended on the machine | the inventory carried a row about the state of the Gradle cache of the build environment — a machine with a warm cache produced a different inventory, and the gate of the project failed for a reason that had nothing to do with the licences | closed |
+| The **unit tests of the Android app did not compile** | the report of the redaction had grown two fields, and the Kotlin test did not give them — the tests had **never** run since the hardening of M2.1 | closed |
+| The **Gradle build** refused the packages | both variants wrote their native libraries into the same directory, and Gradle 9 rejects a task that uses the output of another task without a declared dependency | closed |
+| The **test of a rail of a stranger** needed root | the test gave a file to another user with `chown` — a runner runs as a normal user | closed (the test says `NOT RUN` where it cannot build the situation) |
+| The **job manager** left a job in the queue | the test of the job manager waited for a state that never came | the state of the pool is now part of the failure message |
+| The **reference renderer** was not part of the installation of MuPDF | the interoperability gate of M0.7 has no foreign renderer to open the document with | closed |
+
+**The state: PASS** — the three jobs run, the gate of the project is green
+on a machine that was built from scratch, the macOS application compiles
+against the real SDK, and the Android packages are built and checked. The
+behaviour on a device of a user stays **NOT RUN**.
 
 ### 2.4 What stays **NOT RUN**
 

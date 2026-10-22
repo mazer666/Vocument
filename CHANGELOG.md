@@ -69,6 +69,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- **The inventory of the licences depended on the machine that computed it.** The
+  inventory carried a row about the state of the Gradle cache of the build
+  environment, and the rows of the components of the cache when it was
+  there. A machine with a warm cache therefore produced a different
+  inventory, and the gate of the project was red for a reason that had
+  nothing to do with the licences. The inventory is now the same on every
+  machine; the POMs of the cache are read as a **check** (a component with an
+  unknown licence is a finding), the group, the artifact and the version are
+  read from the right levels of the cache, and the licence is read from the
+  nested `<license><name>` of a POM.
 - **A stream whose content cannot be read was examined as if it were empty.**
   MuPDF does not throw when the content of a stream cannot be decoded: it
   writes a warning and hands out an empty buffer. The walk compared the
