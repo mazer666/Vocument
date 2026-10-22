@@ -236,7 +236,8 @@ happened:
 * the roadmap carries the milestone **M7 — Optional local interfaces (MCP)**
   after M6 (the Linux shell),
 * the decision is written down in
-  [`ADR-0021`](../adr/ADR-0021-optional-local-interfaces-mcp.md): MCP over
+  [`CR-0004`](../cr/CR-0004-optional-local-interfaces-mcp.md) (it was filed as
+  `ADR-0021` and was reclassified while it was still `proposed` ✗): MCP over
   stdio as the first shell, optional and off by default, local and
   offline, no network right, no account, no telemetry — and **every
   writing operation goes through the same core with the same verification**
