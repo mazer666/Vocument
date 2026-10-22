@@ -15,15 +15,37 @@ fi
 # part of the source of the product: the build links against them, and the
 # version of the installation that is linked belongs into the record.
 export MUPDF_DIR="${MUPDF_DIR:-$REPO_ROOT/target/mupdf-host}"
-export TESSERACT_DIR="${TESSERACT_DIR:-$REPO_ROOT/target/tesseract-host}"
+# The project builds MuPDF for the host (`scripts/prepare-host-mupdf.sh`), but
+# it does **not** build Tesseract: the installation of the system is used, and
+# the build script finds it by itself when the variable is not set. The
+# variable is therefore only set when such an installation exists — a variable
+# that points at a directory that no script of the project ever builds makes
+# the linker fail with *"library 'tesseract' not found"*, and the reason of
+# the failure is then nowhere to be seen.
+if [[ -z "${TESSERACT_DIR:-}" ]]; then
+    for candidate in /opt/homebrew/opt/tesseract /usr/local/opt/tesseract; do
+        if [[ -d "$candidate/lib" ]]; then
+            TESSERACT_DIR="$candidate"
+            export TESSERACT_DIR
+            echo "==> The OCR engine of the host is the Tesseract in ${TESSERACT_DIR}."
+            break
+        fi
+    done
+    if [[ -z "${TESSERACT_DIR:-}" ]]; then
+        echo "NOT RUN: no installation of Tesseract was found on this machine."
+        echo "         Tesseract is a third-party component and has to be installed"
+        echo "         by the system (on macOS: 'brew install tesseract'). The OCR"
+        echo "         engine was NOT built here and must not be reported as built."
+    fi
+fi
 # The libraries of the host have to be found when the tests and the binaries
 # run. The name of the variable differs between the platforms: Linux reads
 # `LD_LIBRARY_PATH`, macOS reads `DYLD_LIBRARY_PATH` and **ignores** the other
 # one. Without the second one the binaries that link MuPDF die on macOS with
 # "Library not loaded: @rpath/libmupdf.dylib". Both are therefore set, so
 # that the same gate runs on both platforms.
-export LD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${LD_LIBRARY_PATH:-}"
-export DYLD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${DYLD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$MUPDF_DIR/lib${TESSERACT_DIR:+:$TESSERACT_DIR/lib}:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$MUPDF_DIR/lib${TESSERACT_DIR:+:$TESSERACT_DIR/lib}:${DYLD_LIBRARY_PATH:-}"
 
 # --- The build record ----------------------------------------------------
 # A release always leaves a record of what was built: the revision, the

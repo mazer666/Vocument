@@ -556,6 +556,30 @@ verification of the candidate is green afterwards: *"every file of the archive
 is byte for byte the file of the revision"* and *"the third build of the
 archive has the same checksum as the two of the manifest"*.
 
+### 4.8 The gate pointed at a Tesseract that no script of the project builds — **fixed**
+
+The gate set `TESSERACT_DIR` to `target/tesseract-host`. That directory is
+built for **MuPDF** (`scripts/prepare-host-mupdf.sh`) — the project does not
+build Tesseract at all: the installation of the system is used, and the build
+script of the OCR engine finds it by itself (`/opt/homebrew/opt/tesseract`,
+`/usr/local/opt/tesseract`) when the variable is **not** set. The gate set it
+anyway, and a variable that points at a directory that does not exist makes the
+linker fail:
+
+```text
+ld: warning: search path '…/target/tesseract-host/lib' not found
+ld: library 'tesseract' not found
+```
+
+The reason of the failure was nowhere to be seen: the warning names a
+directory that the reader believes the project builds.
+
+**Fixed.** The variable is set to the installation of the system when there is
+one, and the gate names it. A machine without an installation of Tesseract is
+a **NOT RUN** with the reason — the OCR engine is a third-party component
+(`brew install tesseract`), and a proof that was not carried out is never
+reported as a passed one.
+
 ## 5. What this document does not claim
 
 * It does **not** claim that the hosted CI would have been green. It was

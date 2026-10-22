@@ -88,6 +88,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   options with their costs and the questions that the owner decides.
 
 ### Fixed
+- **The gate pointed at a Tesseract that no script of the project ever builds.**
+  The gate set `TESSERACT_DIR` to `target/tesseract-host` — a directory that
+  only MuPDF has (`scripts/prepare-host-mupdf.sh`); there is no build of
+  Tesseract in the project, the installation of the system is used. A variable
+  that points at a directory that does not exist makes the linker fail with
+  *"library 'tesseract' not found"*, and the reason of the failure is nowhere
+  to be seen. The variable is now set to the installation of the system when
+  there is one, and a machine without one is a **NOT RUN** with the reason.
 - **The verification of the release candidate verified the wrong archive.** The
   check took the path of the source archive from the manifest by its
   **position** — and a position is not an address in JSON, so the lookup
