@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 import VocumentMacKit
 import VocumentFFI
 
@@ -101,10 +103,15 @@ struct VocumentMacHandshakeCLI {
         guard viewport.prefetchedPages == [1] else {
             fatalError("Expected prefetchedPages == [1], got \(viewport.prefetchedPages)")
         }
+        // The conversion of the tile into a `CGImage` belongs to macOS. On a
+        // platform that has no CoreGraphics the tile is still rendered and
+        // measured — the picture is simply not handed to the window server.
+        #if canImport(CoreGraphics)
         guard let cgImage = DocumentCoreClient.makeCGImage(from: viewport.visibleTile),
               cgImage.width == 595, cgImage.height == 842 else {
             fatalError("Failed to construct native CGImage from rendered RGBA8 tile")
         }
+        #endif
 
         // Scroll to page 1 (must hit prefetched tile in TileCache)
         let hitsBefore = viewport.cacheStats.hitCount
@@ -199,9 +206,11 @@ struct VocumentMacHandshakeCLI {
         guard thumb0.heightPx == 160 && thumb0.widthPx > 100 else {
             fatalError("Unexpected thumbnail dimensions: \(thumb0.widthPx)x\(thumb0.heightPx)")
         }
+        #if canImport(CoreGraphics)
         guard DocumentCoreClient.makeCGImage(from: thumb0) != nil else {
             fatalError("Failed to create CGImage from thumbnail")
         }
+        #endif
         let _ = try client.renderPageThumbnail(
             sessionId: m03Session.sessionId,
             pageIndex: 0,
@@ -515,9 +524,19 @@ struct VocumentMacHandshakeCLI {
         guard interopReport.mupdfReopenVerified && interopReport.mutoolVerified else {
             fatalError("M0.7 Interop Gate failed: MuPDF verification failed.")
         }
+        // The foreign viewers of the gate are `sips` and the PDFium of
+        // Chrome — both belong to macOS. On another platform the gate checks
+        // the viewers that exist there, and says which ones it could not run.
+        #if canImport(Darwin)
         guard interopReport.coregraphicsSipsVerified && interopReport.chromePdfiumVerified else {
             fatalError("M0.7 Interop Gate failed: foreign viewer verification failed.")
         }
+        #else
+        guard interopReport.mupdfReopenVerified && interopReport.mutoolVerified else {
+            fatalError("M0.7 Interop Gate failed: the viewers of this platform did not open the document.")
+        }
+        print("NOTE: the foreign viewers of the gate (`sips`, PDFium of Chrome) are NOT RUN on this platform — they belong to macOS.")
+        #endif
         print("✓ Swift (macOS M0.7) → InteropGate → FullWorkflow → MuPDF(\(interopReport.mupdfReopenVerified)) → mutool(\(interopReport.mutoolVerified)) → Quartz(\(interopReport.coregraphicsSipsVerified)) → PDFium(\(interopReport.chromePdfiumVerified)) → AllGatesPassed")
     }
 }

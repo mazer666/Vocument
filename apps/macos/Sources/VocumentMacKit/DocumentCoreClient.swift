@@ -1,5 +1,4 @@
 import Foundation
-import CoreGraphics
 import VocumentFFI
 
 /// The errors of the Swift-side client.
@@ -35,12 +34,19 @@ public struct DocumentCoreClient: Sendable {
 
     /// Opens a PDF document selected via Finder / Open With security-scoped URL on macOS (`ROADMAP.md` M0.1).
     public func openScopedDocument(at url: URL) throws -> FfiDocumentSessionSnapshot {
+        // The sandbox of macOS hands a file to an application as a
+        // *security-scoped* URL: the application has to tell the system that
+        // it uses the file, and the access ends when it says so. The API
+        // belongs to macOS — on a platform that has no sandbox, the access is
+        // a no-op, and a file that was opened is a file that is open.
+        #if canImport(Darwin)
         let didStartAccessing = url.startAccessingSecurityScopedResource()
         defer {
             if didStartAccessing {
                 url.stopAccessingSecurityScopedResource()
             }
         }
+        #endif
         return try documentCoreOpenMacosScopedFile(scopedPathOrUrl: url.path)
     }
 
@@ -395,9 +401,9 @@ public struct DocumentCoreClient: Sendable {
             ("the bytes of the file", report.fileBytesClean),
         ]
         let failed = checks.filter { $0.1 != .passed }
-        if !failed.is_empty || !report.verified {
+        if !failed.isEmpty || !report.verified {
             var details = "the redaction of the page \(pageIndex) could not be verified: "
-            if failed.is_empty {
+            if failed.isEmpty {
                 details += "the report of the core does not promise the removal"
             } else {
                 details += failed
@@ -548,55 +554,5 @@ public struct DocumentCoreClient: Sendable {
     /// Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers (`ROADMAP.md` M0.7, `M0-ACCEPTANCE.md`).
     public func runInteropGateSuite() throws -> FfiInteropReport {
         try documentCoreRunInteropGateSuite()
-    }
-
-    /// Converts an immutable `FfiRenderedTile` RGBA8 buffer into a native `CGImage` (`ARCHITECTURE.md` §10).
-    public static func makeCGImage(from tile: FfiRenderedTile) -> CGImage? {
-        makeCGImageFromRgba8(
-            width: Int(tile.widthPx),
-            height: Int(tile.heightPx),
-            stride: Int(tile.strideBytes),
-            rgbaBytes: tile.rgbaBytes
-        )
-    }
-
-    /// Converts an immutable `FfiRenderedThumbnail` RGBA8 buffer into a native `CGImage`.
-    public static func makeCGImage(from thumbnail: FfiRenderedThumbnail) -> CGImage? {
-        makeCGImageFromRgba8(
-            width: Int(thumbnail.widthPx),
-            height: Int(thumbnail.heightPx),
-            stride: Int(thumbnail.strideBytes),
-            rgbaBytes: thumbnail.rgbaBytes
-        )
-    }
-
-    private static func makeCGImageFromRgba8(
-        width: Int,
-        height: Int,
-        stride: Int,
-        rgbaBytes: Data
-    ) -> CGImage? {
-        guard width > 0, height > 0, rgbaBytes.count >= stride * height else {
-            return nil
-        }
-        let data = rgbaBytes as CFData
-        guard let provider = CGDataProvider(data: data) else {
-            return nil
-        }
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue)
-        return CGImage(
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bitsPerPixel: 32,
-            bytesPerRow: stride,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo,
-            provider: provider,
-            decode: nil,
-            shouldInterpolate: true,
-            intent: .defaultIntent
-        )
     }
 }

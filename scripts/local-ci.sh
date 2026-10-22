@@ -109,19 +109,46 @@ if [[ "$BINDING_HASH_BEFORE" != "$BINDING_HASH_AFTER" ]]; then
 fi
 echo "✓ Generated UniFFI bindings are clean and in sync."
 
-if [[ -f "apps/macos/Package.swift" ]] && command -v swift >/dev/null 2>&1; then
+# --- The Swift proof ------------------------------------------------------
+# The compiler is looked for on the PATH and in the two places where a
+# toolchain that was installed by hand usually lives. A compiler that is not
+# there is a missing proof, not a defect of the product: the step says
+# `NOT RUN` and the gate goes on.
+SWIFT_BIN=""
+for candidate in "$(command -v swift 2>/dev/null || true)" /opt/swift/usr/bin/swift /usr/share/swift/usr/bin/swift; do
+  if [[ -n "$candidate" && -x "$candidate" ]]; then
+    SWIFT_BIN="$candidate"
+    break
+  fi
+done
+
+if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
+  export PATH="$(dirname "$SWIFT_BIN"):$PATH"
   if [[ "$(uname -s)" == "Darwin" ]]; then
     echo "==> Building macOS Swift targets (VocumentMacApp & VocumentMacHandshakeCLI) and running Swift → UniFFI → Rust handshake..."
     swift build --package-path apps/macos --product VocumentMacApp
     swift run --package-path apps/macos vocument-mac-handshake
   else
-    echo "==> Building the generated Swift bindings with the Swift compiler..."
+    # On a platform without the macOS SDK the **application** cannot be
+    # built — SwiftUI, AppKit and CoreGraphics do not exist there. The
+    # **data path** can: the kit, the generated bindings and the handshake
+    # command are free of them, and the handshake opens real documents,
+    # renders them, searches in them, writes into them, saves them, detects
+    # a conflict, recovers a crash and runs the gate of the interoperability.
+    echo "==> Building the Swift data path (generated bindings, kit, handshake) and running Swift → UniFFI → Rust handshake..."
     swift build --package-path apps/macos --target VocumentFFI
-    echo "NOTE: the application itself is NOT built here — SwiftUI, AppKit and CoreGraphics"
-    echo "      are part of the macOS SDK, and this runner is not a Mac. The build of the"
-    echo "      application and the handshake are NOT RUN here and must not be reported"
-    echo "      as passed."
+    swift build --package-path apps/macos --target VocumentMacKit
+    swift build --package-path apps/macos --product vocument-mac-handshake
+    swift run --package-path apps/macos vocument-mac-handshake
+    echo "NOTE: the **application** itself is NOT built here — SwiftUI, AppKit and"
+    echo "      CoreGraphics are part of the macOS SDK, and this runner is not a Mac."
+    echo "      The build of the application and the surface of the review are NOT RUN"
+    echo "      here and must not be reported as passed."
   fi
+else
+  echo "NOT RUN: the Swift proof needs a Swift toolchain — the compiler is neither on"
+  echo "         the PATH nor in /opt/swift/usr/bin. The Swift sources were NOT read"
+  echo "         by a compiler in this run and must not be reported as compiled."
 fi
 
 echo "==> Verifying the native Android libraries (dependency closure, SONAME, 16 KB page alignment)..."

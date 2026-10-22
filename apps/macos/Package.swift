@@ -1,5 +1,42 @@
 // swift-tools-version: 6.0
 import PackageDescription
+import Foundation
+
+// The library of the FFI and the MuPDF that it needs are built next to the
+// repository. On a Mac they come from the package manager of the platform; on
+// every other system the environment says where they are — so that the data
+// path of the application can be **compiled and tested** there as well.
+//
+// The macOS setting is unchanged: the same paths, the same flags, the same
+// binary.
+let environment = ProcessInfo.processInfo.environment
+let mupdfDirectory = environment["MUPDF_DIR"] ?? "/opt/homebrew/opt/mupdf"
+let repositoryRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+    .path
+
+var ffiLinkerFlags: [String] = [
+    "-L\(repositoryRoot)/target/debug",
+    "-lvocument_ffi",
+    // The library of the FFI is found at the run time without an environment
+    // variable: the path of the build directory stands in the binary.
+    "-Xlinker",
+    "-rpath",
+    "-Xlinker",
+    "\(repositoryRoot)/target/debug",
+]
+if FileManager.default.fileExists(atPath: "\(mupdfDirectory)/lib") {
+    ffiLinkerFlags.append(contentsOf: [
+        "-L\(mupdfDirectory)/lib",
+        "-lmupdf",
+        "-Xlinker",
+        "-rpath",
+        "-Xlinker",
+        "\(mupdfDirectory)/lib",
+    ])
+}
 
 let package = Package(
     name: "VocumentMac",
@@ -34,16 +71,7 @@ let package = Package(
                 .swiftLanguageMode(.v5)
             ],
             linkerSettings: [
-                .unsafeFlags([
-                    "-L../../target/debug",
-                    "-lvocument_ffi",
-                    "-L/opt/homebrew/opt/mupdf/lib",
-                    "-lmupdf",
-                    "-Xlinker",
-                    "-rpath",
-                    "-Xlinker",
-                    "/opt/homebrew/opt/mupdf/lib"
-                ])
+                .unsafeFlags(ffiLinkerFlags)
             ]
         ),
         .target(

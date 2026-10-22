@@ -50,8 +50,11 @@ func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
     #expect(viewport.visibleTile.widthPx == 595)
     #expect(viewport.visibleTile.heightPx == 842)
     #expect(viewport.prefetchedPages == [1])
+    // The conversion of the tile into a `CGImage` belongs to macOS.
+    #if canImport(CoreGraphics)
     let cgImage = DocumentCoreClient.makeCGImage(from: viewport.visibleTile)
     #expect(cgImage != nil)
+    #endif
 
     let criticalStats = try client.handleMemoryPressure(level: .critical)
     #expect(criticalStats.cachedTileCount == 0)
@@ -75,7 +78,9 @@ func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
 
     let thumb = try client.renderPageThumbnail(sessionId: m03Session.sessionId, pageIndex: 0, maxDimensionPx: 128)
     #expect(thumb.heightPx == 128)
+    #if canImport(CoreGraphics)
     #expect(DocumentCoreClient.makeCGImage(from: thumb) != nil)
+    #endif
 
     let selection = try client.selectPageText(sessionId: m03Session.sessionId, pageIndex: 1, selectionRect: nil)
     #expect(selection.cleanedText.contains("trustworthy"))
