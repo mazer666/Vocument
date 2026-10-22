@@ -118,8 +118,10 @@ androidComponents {
     onVariants { variant ->
         val profile = if (variant.buildType == "release") "release" else "debug"
         val variantName = variant.name.replaceFirstChar { it.uppercase() }
-        // The source set of the variant: `debug` or `release`.
-        val sourceSet = variant.buildType
+        // The source set of the variant: `debug` or `release`. The build type
+        // is nullable in the API of the plugin; the name of the variant
+        // carries the same word when the project has no flavours.
+        val sourceSet = variant.buildType ?: variant.name
         val task = registerBuildRustCore("buildRustCore$variantName", profile, sourceSet)
         tasks.matching { it.name == "merge${variantName}JniLibFolders" }.configureEach {
             dependsOn(task)
