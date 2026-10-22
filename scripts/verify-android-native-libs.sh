@@ -100,10 +100,28 @@ is_system_library() {
   return 1
 }
 
-if ! command -v readelf >/dev/null 2>&1; then
-  echo "ERROR: readelf is required to verify the native libraries" >&2
-  exit 1
+# The tool that reads the ELF headers of the libraries.
+#
+# `readelf` comes with the binutils of the build machines (Linux); macOS has
+# no binutils, but the toolchain of LLVM carries `llvm-readelf`, which takes
+# the same options (`-sW`, `-d`, `-lW`). Without one of the two the
+# verification cannot be carried out at all, and that is an error — a proof
+# that was not carried out is not a proof.
+READELF=""
+for readelf_candidate in readelf llvm-readelf \
+    /opt/homebrew/opt/llvm/bin/llvm-readelf \
+    /usr/local/opt/llvm/bin/llvm-readelf \
+    /usr/bin/llvm-readelf; do
+    if command -v "$readelf_candidate" >/dev/null 2>&1; then
+        READELF="$readelf_candidate"
+        break
+    fi
+done
+if [[ -z "$READELF" ]]; then
+    echo "ERROR: neither readelf nor llvm-readelf is available to verify the native libraries" >&2
+    exit 1
 fi
+echo "    The ELF headers are read with: $READELF"
 
 errors=0
 
@@ -133,7 +151,7 @@ verify_directory() {
 
     # 16 KB page alignment: every PT_LOAD segment must be aligned to at least
     # 0x4000 bytes.
-    min_alignment="$(readelf -lW "$library" | awk '/LOAD/ {print $NF}' | sort -u | head -n1)"
+    min_alignment="$("$READELF" -lW "$library" | awk '/LOAD/ {print $NF}' | sort -u | head -n1)"
     if [[ -z "$min_alignment" ]]; then
       echo "    ERROR: $name has no PT_LOAD segment" >&2
       errors=$((errors + 1))
@@ -145,7 +163,7 @@ verify_directory() {
     fi
 
     # Resolvable dependency closure.
-    needed_names="$(readelf -d "$library" | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p')"
+    needed_names="$("$READELF" -d "$library" | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p')"
     for needed in $needed_names; do
       if is_system_library "$needed"; then
         continue
@@ -159,7 +177,7 @@ verify_directory() {
       fi
       # The shipped file must be the one that is actually loaded, so its SONAME
       # has to match the requested name.
-      soname="$(readelf -d "$directory/$needed" | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
+      soname="$("$READELF" -d "$directory/$needed" | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
       if [[ -n "$soname" && "$soname" != "$needed" ]]; then
         echo "    ERROR: $name needs '$needed', but that file declares the SONAME '$soname'." >&2
         errors=$((errors + 1))

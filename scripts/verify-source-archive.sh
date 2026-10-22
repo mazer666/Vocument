@@ -91,6 +91,24 @@ sha256_of() {
     fi
 }
 
+# The identification of the revision is read out of the archive of the source.
+#
+# The name pattern `*/SOURCE-IDENTIFICATION.txt` is **not portable**: the
+# option `--wildcards` is a GNU extension, and the `tar` of macOS refuses it
+# with "Option --wildcards is not supported". The member is therefore looked up
+# in the list of the archive and then read by its exact name — which every
+# `tar` understands.
+archive_identification() {
+    local archive="$1"
+    local member
+    member="$(tar -tzf "$archive" 2>/dev/null \
+        | grep -E '(^|/)SOURCE-IDENTIFICATION\.txt$' | head -n 1 || true)"
+    if [[ -z "$member" ]]; then
+        return 1
+    fi
+    tar -xzf "$archive" -O "$member" 2>/dev/null || return 1
+}
+
 # --- The environment of the build -----------------------------------------
 # The build of the FFI library links against the MuPDF and the Tesseract of
 # the host. Both are third-party components that are not part of the source
@@ -99,7 +117,14 @@ sha256_of() {
 # and their versions belong into the report.
 export MUPDF_DIR="${MUPDF_DIR:-$REPO_ROOT/target/mupdf-host}"
 export TESSERACT_DIR="${TESSERACT_DIR:-$REPO_ROOT/target/tesseract-host}"
+# The libraries of the host have to be found when the tests and the binaries
+# run. The name of the variable differs between the platforms: Linux reads
+# `LD_LIBRARY_PATH`, macOS reads `DYLD_LIBRARY_PATH` and **ignores** the other
+# one. Without the second one the binaries that link MuPDF die on macOS with
+# "Library not loaded: @rpath/libmupdf.dylib". Both are therefore set, so
+# that the same gate runs on both platforms.
 export LD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${DYLD_LIBRARY_PATH:-}"
 export TESSDATA_PREFIX="${TESSDATA_PREFIX:-$REPO_ROOT/apps/android/app/src/main/assets/tessdata}"
 
 PROFILE_FLAG=""
@@ -121,8 +146,8 @@ if [[ -z "$ARCHIVE_FILE" ]] || [[ ! -f "$ARCHIVE_FILE" ]]; then
 fi
 ARCHIVE_SHA256="$(sha256_of "$ARCHIVE_FILE")"
 ARCHIVE_BYTES="$(wc -c < "$ARCHIVE_FILE" | tr -d ' ')"
-ARCHIVE_REVISION="$(tar xzf "$ARCHIVE_FILE" -O --wildcards "*/SOURCE-IDENTIFICATION.txt" 2>/dev/null \
-    | sed -n 's/^Source revision: //p' | head -n 1)"
+ARCHIVE_REVISION="$(archive_identification "$ARCHIVE_FILE" \
+    | sed -n 's/^Source revision: //p' | head -n 1 || true)"
 if [[ -z "$ARCHIVE_REVISION" ]]; then
     ARCHIVE_REVISION="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 fi

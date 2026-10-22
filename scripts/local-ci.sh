@@ -16,7 +16,14 @@ fi
 # version of the installation that is linked belongs into the record.
 export MUPDF_DIR="${MUPDF_DIR:-$REPO_ROOT/target/mupdf-host}"
 export TESSERACT_DIR="${TESSERACT_DIR:-$REPO_ROOT/target/tesseract-host}"
+# The libraries of the host have to be found when the tests and the binaries
+# run. The name of the variable differs between the platforms: Linux reads
+# `LD_LIBRARY_PATH`, macOS reads `DYLD_LIBRARY_PATH` and **ignores** the other
+# one. Without the second one the binaries that link MuPDF die on macOS with
+# "Library not loaded: @rpath/libmupdf.dylib". Both are therefore set, so
+# that the same gate runs on both platforms.
 export LD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${DYLD_LIBRARY_PATH:-}"
 
 # --- The build record ----------------------------------------------------
 # A release always leaves a record of what was built: the revision, the

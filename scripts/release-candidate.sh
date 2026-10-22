@@ -66,7 +66,14 @@ fi
 # of the installation that is linked belongs into the manifest.
 export MUPDF_DIR="${MUPDF_DIR:-$REPO_ROOT/target/mupdf-host}"
 export TESSERACT_DIR="${TESSERACT_DIR:-$REPO_ROOT/target/tesseract-host}"
+# The libraries of the host have to be found when the tests and the binaries
+# run. The name of the variable differs between the platforms: Linux reads
+# `LD_LIBRARY_PATH`, macOS reads `DYLD_LIBRARY_PATH` and **ignores** the other
+# one. Without the second one the binaries that link MuPDF die on macOS with
+# "Library not loaded: @rpath/libmupdf.dylib". Both are therefore set, so
+# that the same gate runs on both platforms.
 export LD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${DYLD_LIBRARY_PATH:-}"
 
 REVISION_ARGUMENT=""
 OUTPUT_DIRECTORY="$REPO_ROOT/target/release-candidate"
@@ -155,6 +162,29 @@ sha256_of() {
     else
         echo "not-available"
     fi
+}
+
+# The identification of the revision is read out of the archive of the source.
+#
+# The name pattern `*/SOURCE-IDENTIFICATION.txt` is **not portable**: the
+# option `--wildcards` is a GNU extension, and the `tar` of macOS refuses it
+# with "Option --wildcards is not supported". The member is therefore looked up
+# in the list of the archive and then read by its exact name — which every
+# `tar` understands.
+#
+# The function returns 1 when the archive carries no identification. The caller
+# records that as a failed check with a reason; a silent `set -e` abort would
+# be a failure without a trace, and the gate of the project is not allowed to
+# fail silently.
+archive_identification() {
+    local archive="$1"
+    local member
+    member="$(tar -tzf "$archive" 2>/dev/null \
+        | grep -E '(^|/)SOURCE-IDENTIFICATION\.txt$' | head -n 1 || true)"
+    if [[ -z "$member" ]]; then
+        return 1
+    fi
+    tar -xzf "$archive" -O "$member" 2>/dev/null || return 1
 }
 
 version_line() {
@@ -247,20 +277,24 @@ check_add "the source archive of the revision is built and reproducible" \
 # the header of the tar and in the identification inside it. A reader of the
 # archive has to know which source it is, without a network.
 if [[ -f "$ARCHIVE_FILE" ]]; then
-    ARCHIVE_NAMED_REVISION="$(tar xzf "$ARCHIVE_FILE" -O --wildcards "*/SOURCE-IDENTIFICATION.txt" 2>/dev/null \
-        | sed -n 's/^Source revision: //p' | head -n 1)"
+    ARCHIVE_NAMED_REVISION="$(archive_identification "$ARCHIVE_FILE" \
+        | sed -n 's/^Source revision: //p' | head -n 1 || true)"
     if [[ "$ARCHIVE_NAMED_REVISION" == "$REVISION" ]]; then
         check_add "the archive names the revision it carries" \
-            "tar xzf <archive> -O --wildcards '*/SOURCE-IDENTIFICATION.txt'" \
+            "tar -tzf <archive> | tar -xzf <archive> -O <member>" \
             "PASS" "" "the identification of the archive names the revision $REVISION"
+    elif [[ -z "$ARCHIVE_NAMED_REVISION" ]]; then
+        check_add "the archive names the revision it carries" \
+            "tar -tzf <archive> | tar -xzf <archive> -O <member>" \
+            "FAIL" "the identification of the revision could not be read out of the archive" ""
     else
         check_add "the archive names the revision it carries" \
-            "tar xzf <archive> -O --wildcards '*/SOURCE-IDENTIFICATION.txt'" \
+            "tar -tzf <archive> | tar -xzf <archive> -O <member>" \
             "FAIL" "the identification of the archive names '$ARCHIVE_NAMED_REVISION' and not $REVISION" ""
     fi
 else
     check_add "the archive names the revision it carries" \
-        "tar xzf <archive> -O --wildcards '*/SOURCE-IDENTIFICATION.txt'" \
+        "tar -tzf <archive> | tar -xzf <archive> -O <member>" \
         "NOT RUN" "the archive was not built — there is nothing to read" ""
 fi
 
@@ -367,8 +401,25 @@ LIBRARY_DIGEST="not-available"
 LIBRARY_STATE="NOT RUN"
 LIBRARY_REASON=""
 LIBRARY_EVIDENCE=""
-MUPDF_LIBRARY="$MUPDF_DIR/lib/libmupdf.so"
-TESSERACT_LIBRARY="$TESSERACT_DIR/lib/libtesseract.so"
+MUPDF_LIBRARY=""
+TESSERACT_LIBRARY=""
+# The name of the shared library differs between the platforms: on Linux the
+# linker uses `libmupdf.so` (the version is part of the name of the file),
+# and on macOS the library is `libmupdf.dylib`. The candidate names the
+# library that is actually linked — a candidate that reports a missing
+# library that exists says the environment is broken when it is not.
+for library_candidate in "$MUPDF_DIR/lib/libmupdf.so" "$MUPDF_DIR/lib/libmupdf.dylib"; do
+    if [[ -f "$library_candidate" ]]; then
+        MUPDF_LIBRARY="$library_candidate"
+        break
+    fi
+done
+for library_candidate in "$TESSERACT_DIR/lib/libtesseract.so" "$TESSERACT_DIR/lib/libtesseract.dylib"; do
+    if [[ -f "$library_candidate" ]]; then
+        TESSERACT_LIBRARY="$library_candidate"
+        break
+    fi
+done
 LIBRARY_FILE=""
 
 if [[ "$SKIP_LIBRARY" -eq 1 ]]; then

@@ -135,13 +135,75 @@ sha256_of() {
     fi
 }
 
+# The identification of the revision is read out of the archive of the source.
+#
+# The name pattern `*/SOURCE-IDENTIFICATION.txt` is **not portable**: the
+# option `--wildcards` is a GNU extension, and the `tar` of macOS refuses it
+# with "Option --wildcards is not supported". The member is therefore looked up
+# in the list of the archive and then read by its exact name — which every
+# `tar` understands.
+archive_identification() {
+    local archive="$1"
+    local member
+    member="$(tar -tzf "$archive" 2>/dev/null \
+        | grep -E '(^|/)SOURCE-IDENTIFICATION\.txt$' | head -n 1 || true)"
+    if [[ -z "$member" ]]; then
+        return 1
+    fi
+    tar -xzf "$archive" -O "$member" 2>/dev/null || return 1
+}
+
 version_line() {
     # The version of a tool, or the reason why there is none.
-    if command -v "$1" >/dev/null 2>&1; then
-        "$1" --version 2>&1 | head -n 1
-    else
+    #
+    # A tool may be missing, and a tool may be there and still not answer: a
+    # `java` without a runtime answers with an error and the exit code 1.
+    # Neither is a reason to end the record — the record says which tools
+    # were there, and a tool that is not there is named as such. A failure of
+    # the tool must therefore not leave the record unwritten.
+    if ! command -v "$1" >/dev/null 2>&1; then
         echo "not-installed"
+        return 0
     fi
+    local output status
+    output="$("$1" --version 2>&1)" && status=0 || status=$?
+    output="$(printf '%s\n' "$output" | head -n 1)"
+    if [[ "$status" -ne 0 ]]; then
+        echo "not-usable: ${output:-the tool answered with an error}"
+        return 0
+    fi
+    printf '%s\n' "${output:-unknown}"
+}
+
+# The path of the shared library of MuPDF in an installation.
+#
+# The name of the file differs between the platforms: on Linux the version is
+# part of the name (`libmupdf.so.28.5`, with `libmupdf.so` as the link that
+# the linker uses), and on macOS the file is `libmupdf.dylib`. The record
+# names the library that is actually linked — a record that names a file that
+# does not exist says nothing.
+mupdf_library_path() {
+    local candidate
+    for candidate in "$1/lib/libmupdf.so" "$1/lib/libmupdf.dylib"; do
+        if [[ -f "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# The path of the shared library of Tesseract in an installation. The name
+# differs between the platforms in the same way as the one of MuPDF.
+tesseract_library_path() {
+    local candidate
+    for candidate in "$1/lib/libtesseract.so" "$1/lib/libtesseract.dylib"; do
+        if [[ -f "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
 }
 
 echo "==> Collecting the build record..."
@@ -210,7 +272,7 @@ MUPDF_VERSION="not-available"
 MUPDF_LIBRARY="not-available"
 if [[ -f "$MUPDF_DIR_USED/include/mupdf/fitz/version.h" ]]; then
     MUPDF_VERSION="$(sed -n 's/.*#define FZ_VERSION "\([^"]*\)".*/\1/p' "$MUPDF_DIR_USED/include/mupdf/fitz/version.h" | head -n 1)"
-    MUPDF_LIBRARY="$MUPDF_DIR_USED/lib/libmupdf.so"
+    MUPDF_LIBRARY="$(mupdf_library_path "$MUPDF_DIR_USED" || echo "not-available")"
 fi
 
 # The Tesseract of the host: the same, from the header of the installation.
@@ -219,8 +281,17 @@ TESSERACT_VERSION="not-available"
 TESSERACT_LIBRARY="not-available"
 if [[ -f "$TESSERACT_DIR_USED/include/tesseract/version.h" ]]; then
     TESSERACT_VERSION="$(sed -n 's/.*#define TESSERACT_VERSION_STR "\([^"]*\)".*/\1/p' "$TESSERACT_DIR_USED/include/tesseract/version.h" | head -n 1)"
-    TESSERACT_LIBRARY="$TESSERACT_DIR_USED/lib/libtesseract.so"
+    TESSERACT_LIBRARY="$(tesseract_library_path "$TESSERACT_DIR_USED" || echo "not-available")"
 fi
+
+# The libraries of the host have to be found when the tests run. The name of
+# the variable differs between the platforms: Linux reads `LD_LIBRARY_PATH`,
+# macOS reads `DYLD_LIBRARY_PATH` and **ignores** the other one. Without the
+# second one the test binaries of the crates that link MuPDF die on macOS
+# with "Library not loaded: @rpath/libmupdf.dylib". Both are therefore set,
+# so that the same gate runs on both platforms.
+export LD_LIBRARY_PATH="$MUPDF_DIR_USED/lib:$TESSERACT_DIR_USED/lib:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$MUPDF_DIR_USED/lib:$TESSERACT_DIR_USED/lib:${DYLD_LIBRARY_PATH:-}"
 
 SWIFT_VERSION="$(version_line swift)"
 JAVA_VERSION="$(version_line java)"
@@ -413,7 +484,7 @@ if bash scripts/release-source-archive.sh --revision "$REVISION" --output "$ARCH
         ARCHIVE_SHA256="$(sha256_of "$ARCHIVE_FILE")"
         ARCHIVE_SECOND_SHA256="$(sha256_of "$ARCHIVE_SECOND_FILE")"
         ARCHIVE_BYTES="$(wc -c < "$ARCHIVE_FILE" | tr -d ' ')"
-        ARCHIVE_IDENTIFICATION="$(tar xzf "$ARCHIVE_FILE" -O --wildcards "*/SOURCE-IDENTIFICATION.txt" 2>/dev/null | head -n 8 | tr '\n' ' ' || echo "not-available")"
+        ARCHIVE_IDENTIFICATION="$(archive_identification "$ARCHIVE_FILE" | head -n 8 | tr '\n' ' ' || echo "not-available")"
         if [[ "$ARCHIVE_SHA256" == "$ARCHIVE_SECOND_SHA256" ]]; then
             ARCHIVE_STATE="PASS"
             ARCHIVE_REPRODUCIBLE="true"

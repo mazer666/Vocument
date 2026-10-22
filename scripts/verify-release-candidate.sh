@@ -69,6 +69,28 @@ sha256_of() {
     fi
 }
 
+# The identification of the revision is read out of the archive of the source.
+#
+# The name pattern `*/SOURCE-IDENTIFICATION.txt` is **not portable**: the
+# option `--wildcards` is a GNU extension, and the `tar` of macOS refuses it
+# with "Option --wildcards is not supported". The member is therefore looked up
+# in the list of the archive and then read by its exact name — which every
+# `tar` understands.
+#
+# The function returns 1 when the archive carries no identification, so that
+# the caller can fail the check with a reason instead of dying silently.
+archive_identification() {
+    local archive="$1"
+    local name="$2"
+    local member
+    member="$(tar -tzf "$archive" 2>/dev/null \
+        | grep -E "(^|/)${name}$" | head -n 1 || true)"
+    if [[ -z "$member" ]]; then
+        return 1
+    fi
+    tar -xzf "$archive" -O "$member" 2>/dev/null || return 1
+}
+
 manifest_value() {
     # A value of the manifest, read with python: the manifest is JSON.
     python3 -c 'import json, sys
@@ -282,10 +304,12 @@ else
             pass "every file of the archive is byte for byte the file of the revision."
         fi
 
-        ARCHIVE_REVISION="$(tar xzf "$ARCHIVE_PATH" -O --wildcards "*/$IDENTIFICATION_NAME" 2>/dev/null \
-            | sed -n 's/^Source revision: //p' | head -n 1)"
+        ARCHIVE_REVISION="$(archive_identification "$ARCHIVE_PATH" "$IDENTIFICATION_NAME" \
+            | sed -n 's/^Source revision: //p' | head -n 1 || true)"
         if [[ "$ARCHIVE_REVISION" == "$REVISION" ]]; then
             pass "the archive names the revision $REVISION."
+        elif [[ -z "$ARCHIVE_REVISION" ]]; then
+            fail "the identification of the revision could not be read out of the archive."
         else
             fail "the archive names the revision '$ARCHIVE_REVISION' and not $REVISION."
         fi
