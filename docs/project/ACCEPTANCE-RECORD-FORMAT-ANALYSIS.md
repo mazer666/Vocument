@@ -69,29 +69,24 @@ this document. §7 describes how it becomes permanent.
 
 | Record | Header fields | Sections | The sections that are missing |
 |---|---|---|---|
-| `M0.0-ACCEPTANCE.md` | 4/4 | 9/9 | — |
-| `M0.1-ACCEPTANCE.md` | 4/4 | 9/9 | — |
+| `M0.0-ACCEPTANCE.md`, `M0.1-ACCEPTANCE.md` | 4/4 | 9/9 | — |
 | `M0-ACCEPTANCE.md` | 1/4 | 0/9 | all nine |
 | `M0.2`–`M0.7` | 1/4 | 0–1/9 | all nine |
 | `M1-ACCEPTANCE.md` | 1/4 | 1/9 | all nine |
 | `M1.0`–`M1.3` | 1/4 | 0–1/9 | all nine |
 | `M1.4`, `M1.4b`, `M1.5` | 1/4 | 0/9 | all nine |
 | `M1.6-ACCEPTANCE.md` | 1/4 | 2/9 | all nine |
-| `M2.1-ACCEPTANCE.md` | **0/4** | 0/9 | all nine |
-| `M2.2-ACCEPTANCE.md` | **0/4** | 0/9 | all nine |
-| `M2.3-ACCEPTANCE.md` | **0/4** | 0/9 | all nine |
+| `M2.1`, `M2.2`, `M2.3` | **0/4** | 0/9 | all nine |
 | `M2.4-ACCEPTANCE.md` | 1/4 | 0/9 | all nine |
-| `ROUND-3-ACCEPTANCE.md` | 1/4 | 0/9 | all nine |
-| `ROUND-4-ACCEPTANCE.md` | 1/4 | 0/9 | all nine |
-| `ROUND-5-ACCEPTANCE.md` | 1/4 | 0/9 | all nine |
+| `ROUND-3`, `ROUND-4`, `ROUND-5`, `ROUND-6` | 1/4 | 0–1/9 | all nine |
 
-**Two of twenty-four records follow the template.** Both are from the first
+**Two of twenty-six records follow the template.** Both are from the first
 two days of the project (2026-10-17).
 
 ### 4.1 The drift is not new — it is continuous
 
 The deviation is not a mistake of "the last records". It runs without a break
-from `M0.2` (2026-10-17) through `M2.4` and the three round records
+from `M0.2` (2026-10-17) through `M2.4` and the four round records
 (2026-10-21/22). The last records are only the **most complete** instance of
 a drift that has been open for five days.
 
@@ -99,7 +94,6 @@ a drift that has been open for five days.
 
 `M2.1`, `M2.2` and `M2.3` carry **none** of the four header fields. They name
 the milestone, the status and the requirements in free text instead:
-
 ```text
 - **Milestone:** `M2.2 — Link and action inspection` (second slice of `M2 …`)
 - **Status:** **PASS (host)** — …
@@ -149,8 +143,8 @@ exception: the usability of the M2 workflow *is* claimed in the
 
 ## 6. A second, separate defect: three records are in the wrong place
 
-`ROUND-3-ACCEPTANCE.md`, `ROUND-4-ACCEPTANCE.md` and `ROUND-5-ACCEPTANCE.md`
-are **not milestone acceptance records**:
+`ROUND-3-ACCEPTANCE.md`, `ROUND-4-ACCEPTANCE.md`, `ROUND-5-ACCEPTANCE.md`
+and `ROUND-6-ACCEPTANCE.md` are **not milestone acceptance records**:
 
 * no milestone, no requirement IDs, no slice — they describe a *round* of
   adversarial audits and release preparation;
@@ -162,7 +156,7 @@ are **not milestone acceptance records**:
 
 The project already has the right place for this kind of document — and it
 already used it once: **`docs/reports/ROUND-2-COMPLETION.md`**. Round 2 has
-its closeout in `docs/reports/`; rounds 3, 4 and 5 were filed in
+its closeout in `docs/reports/`; rounds 3, 4, 5 and 6 were filed in
 `docs/acceptance/` instead.
 
 This is the one deviation that is a **misfiling** rather than a **shape**, and
@@ -203,7 +197,7 @@ Every record receives the four header fields and the nine sections. The
 content that exists is moved into the matching section; the sections that
 cannot be measured get an explicit `NOT RUN` with its technical cause.
 
-* **What it costs:** 22 records to touch. The work is mechanical for the
+* **What it costs:** 24 records to touch. The work is mechanical for the
   header fields and for the result/decision sections. The functional
   evidence stays where it is and is referenced from the matching section.
   The largest single cost is `M2.1-ACCEPTANCE.md` (434 lines) — it needs its
@@ -233,12 +227,12 @@ with a cause.
 
 ### Option C — Only the misfilings are corrected
 
-`ROUND-3/4/5` move to `docs/reports/ROUND-{3,4,5}-COMPLETION.md`, next to
+`ROUND-3/4/5/6` move to `docs/reports/ROUND-{3,4,5,6}-COMPLETION.md`, next to
 `ROUND-2-COMPLETION.md`, and the references in `ROADMAP.md` and
 `project/project.yaml` follow. The form of the remaining records is decided
 later.
 
-* **What it costs:** three files and their references.
+* **What it costs:** four files and their references.
 * **What it buys:** the directory holds only acceptance records; the
   precedent of round 2 is restored.
 * **Risk:** the form question stays open, and the drift continues.
@@ -247,7 +241,7 @@ later.
 
 | | A: template binding | B: template follows practice | C: only the misfiling |
 |---|---|---|---|
-| Records touched | 22 | 24 | 3 |
+| Records touched | 24 | 26 | 4 |
 | Machine-checkable form | yes | partly (mandatory statements) | no |
 | Evidence at risk in the restructuring | medium (all records) | low (no restructuring) | none |
 | Comparability of two records | high | medium | unchanged (low) |
