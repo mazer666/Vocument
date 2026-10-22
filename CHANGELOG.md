@@ -88,6 +88,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   options with their costs and the questions that the owner decides.
 
 ### Fixed
+- **The local gate measured something else than the runner.** The gate of the
+  project chose the toolchain of the command line tools, and those carry no
+  macros of SwiftUI: the build of the macOS application stopped with
+  *"external macro implementation type 'SwiftUIMacros.StateMacro' could not be
+  found"*. The hosted runner chooses a full Xcode (`ci-macos.yml`), and the
+  local gate now chooses the same one — a gate that measures something else
+  than the runner is not the gate of the project. A machine without a full
+  Xcode, and an Xcode whose licence was not accepted, are now a **NOT RUN**
+  with the reason: the acceptance of the licence is a decision of the owner of
+  the machine and needs `sudo xcodebuild -license`. A proof that was not
+  carried out is never reported as a passed one.
 - **A job of the pool of the job manager could stay `Queued` for ever.** Two
   defects of the worker pool worked together, and the gate found them on the
   runner of the continuous integration and on a Mac under load (RISK-060).

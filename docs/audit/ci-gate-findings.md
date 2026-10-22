@@ -246,7 +246,7 @@ platforms without a change of the build scripts.
 | `cargo fmt --check` | PASS | PASS |
 | `cargo clippy -D warnings` | PASS | PASS |
 | `cargo test --workspace` | **FAIL** (1 failure as non-root, 4–6 intermittent failures) | **PASS** (every suite, exit 0) |
-| the Swift app build | **FAIL** (see §4.2) | unchanged — the environment is missing the licence of Xcode |
+| the Swift app build | **FAIL** (see §4.2) | **PASS** — the licence of the Xcode has been accepted on the machine, and the gate chooses the same toolchain as the runner (§4.2) |
 | the Swift handshake | PASS | PASS |
 | the UniFFI bindings are in sync | PASS | PASS |
 | the native Android libraries | **FAIL** (no `readelf`) | **FAIL** — but for a different and correct reason: the directory of this machine holds a `libvocument_ffi.so` from an earlier Android build without the libraries it needs (§4.4) |
@@ -356,6 +356,29 @@ it was not carried out as part of this run, and no licence was accepted on
 the machine. Until it is accepted, the application of macOS cannot be built
 or measured here; the handshake of the FFI layer, which needs no
 `SwiftUIMacro`, passes.
+
+**Resolved in the meantime.** The licence of the Xcode on the machine of the
+author **has** been accepted since — an agent cannot accept it, the owner of
+the machine did. Two things were missing for the local gate, and both are
+done:
+
+1. **The local gate chose the toolchain of the command line tools**, while the
+   hosted runner chooses a full Xcode (`ci-macos.yml`). A gate that measures
+   something else than the runner is not the gate of the project, so
+   `scripts/local-ci.sh` now selects the same toolchain: the newest Xcode in
+   `/Applications` that carries Swift 6 or 7.
+2. **The gate had no answer for a machine without a full Xcode.** It stops
+   the build with a confusing error of the compiler. It now says **NOT RUN**
+   with the reason — and the same for a Xcode whose licence was not accepted:
+   the acceptance is a decision of the owner of the machine and needs
+   `sudo xcodebuild -license`. A proof that was not carried out is never
+   reported as a passed one.
+
+With the toolchain chosen, `swift build --package-path apps/macos --product
+VocumentMacApp` succeeds on the machine of the author, and the local gate
+runs the build of the application, the handshake and the tests of the kit.
+
+
 ### 4.3 The Android runtime — **measured**
 
 `scripts/verify-android-runtime.sh` was **NOT RUN** in the first pass: the

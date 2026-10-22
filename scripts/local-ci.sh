@@ -155,8 +155,37 @@ done
 if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
   export PATH="$(dirname "$SWIFT_BIN"):$PATH"
   if [[ "$(uname -s)" == "Darwin" ]]; then
+    # The **application** needs the macros of SwiftUI (`SwiftUIMacros`). The
+    # command line tools carry them not: a build with them stops with
+    # *"external macro implementation type 'SwiftUIMacros.StateMacro' could
+    # not be found"*. The hosted runner chooses a full Xcode for that reason
+    # (`ci-macos.yml`), and the local gate has to choose the same one — a
+    # gate that measures something else than the runner is not the gate of
+    # the project.
+    XCODE_SELECTED=""
+    for xcode in $(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V -r); do
+      swift_version="$(DEVELOPER_DIR="$xcode" /usr/bin/xcrun swift --version 2>/dev/null | head -n 1 || true)"
+      echo "  ${xcode}: ${swift_version}"
+      if [[ "$swift_version" == *"Swift version 6."* ]] || [[ "$swift_version" == *"Swift version 7."* ]]; then
+        export DEVELOPER_DIR="$xcode"
+        XCODE_SELECTED="$xcode"
+        break
+      fi
+    done
+
     echo "==> Building macOS Swift targets (VocumentMacApp & VocumentMacHandshakeCLI) and running Swift → UniFFI → Rust handshake..."
-    swift build --package-path apps/macos --product VocumentMacApp
+    if [[ -z "$XCODE_SELECTED" ]]; then
+      echo "NOT RUN: no full Xcode with Swift 6 was found on this machine, and the"
+      echo "         command line tools carry no macros of SwiftUI. The application"
+      echo "         of macOS was NOT built and must not be reported as built."
+    elif ! DEVELOPER_DIR="$XCODE_SELECTED" xcodebuild -license check >/dev/null 2>&1; then
+      echo "NOT RUN: the licence of the Xcode in ${XCODE_SELECTED} was not accepted."
+      echo "         The acceptance is a decision of the owner of the machine and"
+      echo "         needs 'sudo xcodebuild -license'. The application of macOS was"
+      echo "         NOT built and must not be reported as built."
+    else
+      swift build --package-path apps/macos --product VocumentMacApp
+    fi
     swift run --package-path apps/macos vocument-mac-handshake
   else
     # On a platform without the macOS SDK the **application** cannot be
