@@ -840,8 +840,8 @@ Deliver:
 
 # M7 — Optional local interfaces (MCP)
 
-**Status:** planned — the decision is in
-[ADR-0021](docs/adr/ADR-0021-optional-local-interfaces-mcp.md)
+**Status:** planned — the change request is in
+[CR-0004](docs/cr/CR-0004-optional-local-interfaces-mcp.md)
 
 A user may want to work with a document **from an assistant**: the assistant
 reads the pages, searches in the document, marks a place that has to go,
