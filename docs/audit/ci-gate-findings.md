@@ -357,12 +357,47 @@ the machine. Until it is accepted, the application of macOS cannot be built
 or measured here; the handshake of the FFI layer, which needs no
 `SwiftUIMacro`, passes.
 
-### 4.3 The Android runtime was not measured here
+### 4.3 The Android runtime — **measured**
 
-`scripts/verify-android-runtime.sh` needs the NDK and the cross-build of
-MuPDF and Tesseract for `arm64-v8a`, which takes hours. It was not run in
-this pass. The verification of the native libraries (`readelf` against the
-committed `libvocument_ffi.so`) **was** run and passes.
+`scripts/verify-android-runtime.sh` was **NOT RUN** in the first pass: the
+build of the native libraries needs the NDK, and three scripts assumed a Linux
+installation (`/opt/android-ndk/android-ndk-r27c`, the toolchain
+`linux-x86_64`). The NDK was on the machine — at
+`/opt/homebrew/share/android-commandlinetools/ndk/29.0.14206865`, with the
+toolchain `darwin-x86_64`.
+
+With the NDK searched instead of assumed, the measurement ran — and found
+something that no run had ever looked for: **the application did not start.**
+
+```text
+FATAL EXCEPTION: main
+java.lang.UnsatisfiedLinkError: Unable to load library 'vocument_ffi':
+dlopen failed: cannot locate symbol "_ZNSt6__ndk13cinE" referenced by "libtesseract.so"
+```
+
+Two causes, both in the link and not in the code:
+
+1. `libtesseract.so` carried **134 undefined symbols** of the C++ runtime of
+   the NDK and no entry for `libc++_shared.so` — the linker links the runtime
+   dynamically and `--as-needed` drops the entry. The runtime of the NDK is
+   **not** a library of the platform; an application that uses it has to ship
+   it, and the package did not.
+2. `libtesseract.so` carried **170 undefined symbols** of Leptonica and again
+   no entry for it: *"dlopen failed: cannot locate symbol pixGetSpp"*.
+
+The runtime is now linked **statically** (with the C++ driver — the C driver
+says "argument unused during compilation" and leaves the symbols undefined),
+and Leptonica is linked **before** Tesseract, so that the entry of the
+dependency survives.
+
+**The result**: `scripts/verify-android-runtime.sh` ends with *"✓ Real
+Android runtime & scan-capture verification completed successfully."* — the
+application starts on the device, the OCR quality is proven on the emulator
+(CER ≤ 5 %, word and character accuracy ≥ 95 %, language German), and the
+Kotlin handshake verifies M0.1 to M1.4.
+
+The verification now also **catches** this class of defect: a shipped library
+must not carry undefined symbols that none of the shipped libraries provides.
 
 ### 4.4 The directory of the native libraries of this machine is incomplete
 
@@ -409,16 +444,27 @@ it passes in 0.01 seconds:
 | isolated, three times in a row | 1 passed, 0 failed, 0.01 s |
 | the whole module, three times in a row | 5 passed, 0 failed, 0.01 s |
 | under a parallel `cargo` build | 1 failed after 20.01 s |
+| the module in parallel, ten times in a row | **two runs failed** (≈ 20 %) |
+| the module with `--test-threads=1` | 5 passed, 0 failed, 0.01 s |
 
 The job has to fail in milliseconds, so the budget of 20 seconds was a guard
 against a hang and not a measurement. **The mechanism under load was not
 established** — the pool of workers is started once per process
 (`OnceLock`) and the failure was observed exactly once.
 
+The state of the pool at the failure names where the fault lies: the job
+stands at `Queued`, **the queue holds 0 jobs** and **1 job runs**. The job
+was therefore removed from the queue without ever being started, and the
+reserved slot of the worker was not given back — the pool serves its queue
+with one worker less from then on. That is `RISK-060` of
+`docs/project/RISKS.md`, and it is **not closed**.
+
 **Addressed in the meantime** by the commit `de09276`: the budget is now a
 named constant of 180 seconds, with the reason — *"what the tests prove is
-the state of the job, not how fast it came"*. The observation that the
-mechanism under load was not established stands.
+the state of the job, not how fast it came"*. The gate runs the tests with
+`--test-threads=1`, so the gate itself is not the lottery. The observation
+that the mechanism under load was not established stands, and with it the
+risk.
 
 ### 4.6 A debug file in the root of the repository
 
