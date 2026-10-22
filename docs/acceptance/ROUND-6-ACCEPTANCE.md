@@ -143,9 +143,9 @@ the final revision of the round:
 
 | The job | The run | The result |
 |---|---|---|
-| `linux-core` — the whole gate of the project | [39754714902](https://github.com/mazer666/Vocument/actions/runs/39754714902) | **success** — the gate of the project passes on a machine that was built from scratch: the host MuPDF 1.28.5 out of the pinned source, the system Tesseract, the audit of the licences, the Swift proof, `cargo fmt`, `cargo clippy`, the tests of the workspace, the proofs of M2.1 … M2.4, the UniFFI bindings, the build record and the release candidate |
-| `macos-swift` — the Swift build of the application | [39754714855](https://github.com/mazer666/Vocument/actions/runs/39754714855) | **success** — the bindings, the kit **and the application** compile against the real macOS SDK; the tests of the kit pass; the handshake (open → render → search → redact → save → reopen → crash → recover) passes with the real MuPDF and the foreign renderer |
-| `android` — the native libraries, the packages, the unit tests | [39754714653](https://github.com/mazer666/Vocument/actions/runs/39754714653) | see the table below |
+| `linux-core` — the whole gate of the project | [39762025869](https://github.com/mazer666/Vocument/actions/runs/39762025869) | **success** — the gate of the project passes on a machine that was built from scratch: the host MuPDF 1.28.5 out of the pinned source, the system Tesseract, the audit of the licences, the Swift proof, `cargo fmt`, `cargo clippy`, the tests of the workspace, the proofs of M2.1 … M2.4, the UniFFI bindings, the build record and the release candidate |
+| `macos-swift` — the Swift build of the application | [39762025857](https://github.com/mazer666/Vocument/actions/runs/39762025857) | **success** — the bindings, the kit **and the application** compile against the real macOS SDK; the tests of the kit pass; the handshake (open → render → search → redact → save → reopen → crash → recover) passes with the real MuPDF and the foreign renderer |
+| `android` — the native libraries, the packages, the unit tests | [39762025863](https://github.com/mazer666/Vocument/actions/runs/39762025863) | **success** — the native libraries are cross-built for `aarch64-v8a` with the NDK r27c and 16 KB pages, the debug and the release package are built, the libraries are really **inside** the packages (the closure and the alignment are checked), and the unit tests of Gradle pass |
 
 **The first runs of the jobs were red, and what they found is the most
 valuable result of this goal.** The findings are in
