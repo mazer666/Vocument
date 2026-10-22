@@ -118,11 +118,25 @@ jobs:
         run: swift test --package-path apps/macos
 
       - name: Run the handshake (Swift → UniFFI → Rust → MuPDF)
+        id: handshake
+        # The step does not stop the job: the diagnostics below name the place
+        # where the handshake stopped.
+        continue-on-error: true
         run: |
           # The handshake opens the document `tests/corpus/m0_1_sample_two_pages.pdf`
           # relative to the working directory, so it runs in the root of the
           # repository.
-          swift run --package-path apps/macos vocument-mac-handshake
+          set -o pipefail
+          swift run --package-path apps/macos vocument-mac-handshake 2>&1 | tee "$RUNNER_TEMP/handshake.log"
+
+      - name: The diagnostics of the handshake
+        if: steps.handshake.outcome == 'failure'
+        run: |
+          echo "::error::The handshake failed. The last lines of its output:"
+          tail -n 60 "$RUNNER_TEMP/handshake.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
 
       - name: The proofs that need a device are NOT RUN here
         run: |

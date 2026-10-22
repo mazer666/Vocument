@@ -146,7 +146,23 @@ jobs:
           ls ~/.cargo/registry/src/*/ | head -n 5
 
       - name: Run the gate of the project
-        run: ./scripts/local-ci.sh
+        id: gate
+        # The step does not stop the job: the diagnostics below name the step
+        # that failed — a CI that says *that* it failed is worth more than a
+        # red mark without a reason.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./scripts/local-ci.sh 2>&1 | tee "$RUNNER_TEMP/gate.log"
+
+      - name: The diagnostics of the gate
+        if: steps.gate.outcome == 'failure'
+        run: |
+          echo "::error::The gate of the project failed. The last lines of its output:"
+          tail -n 60 "$RUNNER_TEMP/gate.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
 
       - name: Show the build record of the run
         if: always()

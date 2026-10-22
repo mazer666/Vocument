@@ -155,11 +155,25 @@ jobs:
           echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build the native library of the application (aarch64-v8a, 16 KB pages)
+        id: native
+        # The step does not stop the job: the diagnostics below name the
+        # place where the cross-build stopped.
+        continue-on-error: true
         run: |
           # The script cross-builds MuPDF and Tesseract for Android with the
           # NDK, builds the FFI layer for `aarch64-linux-android` and checks
           # the closure and the page alignment of the produced libraries.
-          ./scripts/build-android-rust.sh
+          set -o pipefail
+          ./scripts/build-android-rust.sh 2>&1 | tee "$RUNNER_TEMP/native.log"
+
+      - name: The diagnostics of the cross-build
+        if: steps.native.outcome == 'failure'
+        run: |
+          echo "::error::The cross-build of the native libraries failed. The last lines of its output:"
+          tail -n 60 "$RUNNER_TEMP/native.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
 
       - name: Build the debug and the release package
         run: |
