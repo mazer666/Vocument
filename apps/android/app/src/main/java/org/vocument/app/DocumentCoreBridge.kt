@@ -22,12 +22,17 @@ internal fun requireVerifiedRedaction(pageIndex: UInt, report: FfiRedactionRepor
     )
     for ((what, check) in checks) {
         if (check != FfiRedactionCheck.PASSED) {
+            // The reasons why a check could not be carried out belong to the
+            // message: the user has to know **why** the removal could not be
+            // proven. The macOS shell says the same.
+            var details = "the redaction of the page $pageIndex could not be verified: $what is not clean"
+            if (report.notCheckedReasons.isNotEmpty()) {
+                details += " — the reasons: " + report.notCheckedReasons.joinToString("; ")
+            }
             // The error of the boundary itself: a shell that catches the
             // errors of the core catches this one as well, and it cannot
             // mistake a refused redaction for a successful one.
-            throw DocumentCoreException.RedactionUnverified(
-                "the redaction of the page $pageIndex could not be verified: $what is not clean"
-            )
+            throw DocumentCoreException.RedactionUnverified(details)
         }
     }
 }
@@ -53,6 +58,18 @@ internal fun redactionWarnings(report: FfiRedactionReport): List<String> {
     for (place in report.uninspectedPlaces) {
         warnings.add(
             "this place could not be read: ${place.location} (page ${place.pageIndex})"
+        )
+    }
+    // The reasons of the checks that could not be carried out belong to the
+    // warnings as well: they name the places at which the removal could not
+    // be proven. The macOS shell says the same.
+    for (reason in report.notCheckedReasons) {
+        warnings.add("a check of the removal could not be carried out: $reason")
+    }
+    if (!report.verified) {
+        warnings.add(
+            "the removal could not be verified in every respect — the document " +
+                "is not free of the marked text"
         )
     }
     return warnings

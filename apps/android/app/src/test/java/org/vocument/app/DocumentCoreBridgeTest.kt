@@ -33,6 +33,8 @@ class DocumentCoreBridgeTest {
             fileBytesClean = FfiRedactionCheck.PASSED,
             remainingOccurrences = emptyList(),
             uninspectedPlaces = emptyList(),
+            placesBeforeRemoval = emptyList(),
+            notCheckedReasons = emptyList(),
             verified = true,
             revision = 2u
         )
@@ -72,13 +74,15 @@ class DocumentCoreBridgeTest {
                     "/Root/Names/EmbeddedFiles/Names[1]"
                 )
             ),
+            placesBeforeRemoval = emptyList(),
+            notCheckedReasons = listOf("the picture of the page could not be compared"),
             verified = true,
             revision = 2u
         )
         val warnings = redactionWarnings(report)
         assertEquals(
             "every place the user has to know about is named: $warnings",
-            2,
+            3,
             warnings.size
         )
         assertTrue(
@@ -88,6 +92,10 @@ class DocumentCoreBridgeTest {
         assertTrue(
             "the place that could not be read is named",
             warnings.any { it.contains("could not be read") }
+        )
+        assertTrue(
+            "the reason why a check could not be carried out is named",
+            warnings.any { it.contains("could not be carried out") }
         )
     }
 
