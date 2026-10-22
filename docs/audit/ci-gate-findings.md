@@ -253,7 +253,7 @@ platforms without a change of the build scripts.
 | the source archive is reproducible | **FAIL** (`tar --wildcards`) | **PASS** |
 | the archive names its revision | **FAIL** (silent) | **PASS** |
 | the build record is written | **FAIL** (silent abort) | **PASS** |
-| the verification of the candidate | **FAIL** (the archive could not be read) | **PASS** |
+| the verification of the candidate | **FAIL** (the archive could not be read) | **PASS** — and it verifies the archive of the manifest now, not an archive of an earlier run (§4.7) |
 | the licence audit | **FAIL** (§4.1) | unchanged — it needs a decision |
 
 ## 4. The findings that need a decision of the project owner
@@ -531,6 +531,30 @@ location: https://productionresultssa9.blob.core.windows.net/…/job-logs.txt?�
 It is the output of a diagnosis, not a part of the product. It also carries
 a **signed address** of a log of a run — a signature that is valid for a
 limited time, but that does not belong in a public repository.
+
+### 4.7 The verification of the release candidate verified the wrong archive — **fixed**
+
+`scripts/verify-release-candidate.sh` is the check that has to prove that the
+candidate holds the revision it names. It took the path of the archive from
+the manifest with `manifest_value "artifacts.0.path"` — and **a position is
+not an address in JSON**: the reader walks the manifest with dictionary keys
+only, so the lookup of a list returns nothing. The check fell back to *"the
+first archive that the directory of the source holds"* — and the directory
+holds the archives of **every earlier run**. The check therefore verified an
+archive of an earlier revision and said nothing about the candidate in front
+of it.
+
+The gate of this run showed it: the check reported that eleven files of the
+archive were not the files of the revision — the files of the commits that
+came after the old archive was built. The candidate itself was correct; the
+check was looking at the wrong file.
+
+**Fixed.** The path of the archive is read from the manifest by its **kind**
+(`source-archive`), and the fallback names the archive after the revision
+(`*-source-<revision>.tar.gz`) instead of taking an arbitrary one. The
+verification of the candidate is green afterwards: *"every file of the archive
+is byte for byte the file of the revision"* and *"the third build of the
+archive has the same checksum as the two of the manifest"*.
 
 ## 5. What this document does not claim
 

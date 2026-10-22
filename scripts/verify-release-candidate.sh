@@ -104,6 +104,20 @@ print(node if node is not None else "not-available")' "$MANIFEST_JSON" "$1" 2>/d
         || echo "not-available"
 }
 
+manifest_artifact_path() {
+    # The path of the artefact of the manifest with the given kind.
+    #
+    # A kind is searched and not a position: the position of an artefact in a
+    # list is no address in JSON, and the path that a wrong address returns
+    # is empty — which would send the check to another archive.
+    python3 -c 'import json, sys
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+for entry in manifest.get("artifacts", []):
+    if entry.get("kind") == sys.argv[2]:
+        print(entry.get("path", ""))
+        break' "$MANIFEST_JSON" "$1" 2>/dev/null || true
+}
+
 manifest_rows() {
     # The rows of a list of the manifest, tab separated:
     #   artefacts: name, path, sha256, bytes, kind, reproducibility
@@ -267,9 +281,18 @@ while IFS=$'\t' read -r name path digest bytes kind reproducibility; do
 done < <(manifest_rows "artifacts")
 
 # --- 5. The archive carries the revision completely ------------------------
-ARCHIVE_PATH="$(manifest_value "artifacts.0.path")"
+# The archive that is verified is the archive **of the manifest**. The path
+# is read from the manifest by its kind ("source-archive") and not by its
+# position: a position is not an address in JSON, and the fallback that
+# takes an arbitrary archive out of the directory would verify a **stale**
+# archive of an earlier run — the check would then say nothing about the
+# candidate in front of it.
+ARCHIVE_PATH="$(manifest_artifact_path "source-archive")"
 if [[ -z "$ARCHIVE_PATH" || ! -f "$ARCHIVE_PATH" ]]; then
-    ARCHIVE_PATH="$(find "$CANDIDATE_DIRECTORY/source" -name '*-source-*.tar.gz' 2>/dev/null | head -n 1)"
+    # The fallback names the archive after the revision, so that it is the
+    # archive of this revision and not one of an earlier run.
+    ARCHIVE_PATH="$(find "$CANDIDATE_DIRECTORY/source" \
+        -name "*-source-${REVISION:0:12}.tar.gz" 2>/dev/null | head -n 1)"
 fi
 if [[ -z "$ARCHIVE_PATH" || ! -f "$ARCHIVE_PATH" ]]; then
     fail "the candidate holds no source archive."

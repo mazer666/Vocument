@@ -88,6 +88,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   options with their costs and the questions that the owner decides.
 
 ### Fixed
+- **The verification of the release candidate verified the wrong archive.** The
+  check took the path of the source archive from the manifest by its
+  **position** — and a position is not an address in JSON, so the lookup
+  returned nothing. The check fell back to *"the first archive in the
+  directory"*, and that directory holds the archives of every earlier run: the
+  check verified an archive of an earlier revision and said nothing about the
+  candidate in front of it. The path is now read by the **kind** of the
+  artefact (`source-archive`), and the fallback names the archive after the
+  revision.
 - **The local gate measured something else than the runner.** The gate of the
   project chose the toolchain of the command line tools, and those carry no
   macros of SwiftUI: the build of the macOS application stopped with
