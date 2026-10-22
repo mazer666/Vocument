@@ -356,7 +356,6 @@ it was not carried out as part of this run, and no licence was accepted on
 the machine. Until it is accepted, the application of macOS cannot be built
 or measured here; the handshake of the FFI layer, which needs no
 `SwiftUIMacro`, passes.
-
 ### 4.3 The Android runtime — **measured**
 
 `scripts/verify-android-runtime.sh` was **NOT RUN** in the first pass: the
@@ -448,23 +447,52 @@ it passes in 0.01 seconds:
 | the module with `--test-threads=1` | 5 passed, 0 failed, 0.01 s |
 
 The job has to fail in milliseconds, so the budget of 20 seconds was a guard
-against a hang and not a measurement. **The mechanism under load was not
-established** — the pool of workers is started once per process
-(`OnceLock`) and the failure was observed exactly once.
-
-The state of the pool at the failure names where the fault lies: the job
-stands at `Queued`, **the queue holds 0 jobs** and **1 job runs**. The job
-was therefore removed from the queue without ever being started, and the
-reserved slot of the worker was not given back — the pool serves its queue
-with one worker less from then on. That is `RISK-060` of
-`docs/project/RISKS.md`, and it is **not closed**.
+against a hang and not a measurement.
 
 **Addressed in the meantime** by the commit `de09276`: the budget is now a
 named constant of 180 seconds, with the reason — *"what the tests prove is
 the state of the job, not how fast it came"*. The gate runs the tests with
-`--test-threads=1`, so the gate itself is not the lottery. The observation
-that the mechanism under load was not established stands, and with it the
-risk.
+`--test-threads=1`, so the gate itself is not the lottery.
+
+**The mechanism is now established** — it was measured in the core, not
+guessed. Two defects of the worker pool worked together, and both of them are
+fixed:
+
+1. **The job was published into the queue before the tracker knew it.**
+   `JobExecutor::submit` put the job into the queue and registered it
+   afterwards. A worker that took the job in that window found a job that the
+   tracker did not know: every state transition of it — `mark_running`,
+   `finish` — answered *"unknown job"*, and the errors were swallowed. The
+   work was done, but the state of the job stayed `Queued` for ever. That is
+   exactly what the failure message showed: **the queue holds 0 jobs** (the
+   worker took the job) **and the job stands at `Queued`** (the tracker never
+   learned that it ran).
+2. **A job that was cancelled while it waited took a worker slot with it.**
+   The worker reserved a slot for the job, found the job cancelled before it
+   started and left the loop without giving the slot back. The counter of the
+   running jobs therefore stayed one higher than it was — **1 job runs** in the
+   failure message, although nothing ran — and the pool served its queue with
+   one worker less after every such job. The test
+   `closing_a_session_cancels_its_jobs` of the same module cancels a job while
+   it waits, so the pool of the module lost a worker on every run.
+
+The two defects explain the observation that the failure appeared only under
+load and only in parallel runs: the window between the publication and the
+registration is narrow, and it is widened by a busy machine and by a second
+thread that submits at the same time.
+
+**The proof** — two tests in the core, both of which fail without the fix:
+
+| Test | Without the fix | With the fix |
+|---|---|---|
+| `a_job_cancelled_while_it_is_queued_does_not_take_a_worker_slot_away_from_the_pool` | fails after 5 s — the pool cannot run a job anymore | passes |
+| `every_submitted_job_reaches_a_terminal_state_under_parallel_submission` | **three of five runs failed** (200 jobs, four threads) | ten of ten runs green |
+
+The fix: the job is registered in the tracker **before** it becomes visible to
+the workers (`JobQueue::allocate` and `JobQueue::publish`), and the slot of a
+job that is cancelled before it starts goes back to the pool. `RISK-060` of
+`docs/project/RISKS.md` is therefore closed with a mechanism and a proof.
+
 
 ### 4.6 A debug file in the root of the repository
 

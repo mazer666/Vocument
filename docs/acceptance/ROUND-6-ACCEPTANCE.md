@@ -158,7 +158,7 @@ valuable result of this goal.** The findings are in
 | The **unit tests of the Android app did not compile** | the report of the redaction had grown two fields, and the Kotlin test did not give them — the tests had **never** run since the hardening of M2.1 | closed |
 | The **Gradle build** refused the packages | both variants wrote their native libraries into the same directory, and Gradle 9 rejects a task that uses the output of another task without a declared dependency | closed |
 | The **test of a rail of a stranger** needed root | the test gave a file to another user with `chown` — a runner runs as a normal user | closed (the test says `NOT RUN` where it cannot build the situation) |
-| The **job manager** left a job in the queue | the test of the job manager waited for a state that never came | the state of the pool is now part of the failure message |
+| The **job manager** left a job in the queue | the test of the job manager waited for a state that never came | closed — the mechanism is established and the defect is fixed: the job was published into the queue before the tracker knew it, and a job that was cancelled while it waited took a worker slot with it and never gave it back (`docs/audit/ci-gate-findings.md` §4.5, `RISK-060`) |
 | The **reference renderer** was not part of the installation of MuPDF | the interoperability gate of M0.7 has no foreign renderer to open the document with | closed |
 
 **The state: PASS** — the three jobs run, the gate of the project is green

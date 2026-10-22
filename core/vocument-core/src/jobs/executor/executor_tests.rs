@@ -14,18 +14,18 @@ use std::sync::Arc;
 /// joins the blocked worker: the test run would hang instead of reporting the
 /// failure. A test that hangs is far worse than a test that fails, because it
 /// burns the whole CI timeout without naming the defect.
-struct BlockerGuard {
+pub(super) struct BlockerGuard {
     flag: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl BlockerGuard {
-    fn new(flag: &Arc<std::sync::atomic::AtomicBool>) -> Self {
+    pub(super) fn new(flag: &Arc<std::sync::atomic::AtomicBool>) -> Self {
         Self {
             flag: Arc::clone(flag),
         }
     }
 
-    fn release(&self) {
+    pub(super) fn release(&self) {
         self.flag.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }
@@ -36,7 +36,7 @@ impl Drop for BlockerGuard {
     }
 }
 
-fn test_budgets(workers: usize, queued: usize) -> JobBudgets {
+pub(super) fn test_budgets(workers: usize, queued: usize) -> JobBudgets {
     JobBudgets {
         max_concurrent_render_workers: workers,
         max_concurrent_background_ocr_workers: 1,

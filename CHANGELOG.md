@@ -88,6 +88,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   options with their costs and the questions that the owner decides.
 
 ### Fixed
+- **A job of the pool of the job manager could stay `Queued` for ever.** Two
+  defects of the worker pool worked together, and the gate found them on the
+  runner of the continuous integration and on a Mac under load (RISK-060).
+  **The job was published into the queue before the tracker knew it**: a
+  worker that took it in that window found a job that the tracker did not
+  know, every state transition of it answered *"unknown job"*, and the job
+  stayed `Queued` although its work had been done. **A job that was cancelled
+  while it waited took a worker slot with it** and never gave it back, so the
+  pool served its queue with one worker less after every such job — until a
+  job waited for ever. The job is now registered in the tracker **before** it
+  becomes visible to the workers (`JobQueue::allocate` and
+  `JobQueue::publish`), and the slot of a job that is cancelled before it
+  starts goes back to the pool. Two tests prove it: the pool still runs jobs
+  after a job was cancelled while it was queued (fails after 5 s without the
+  fix), and every job of 200 parallel submissions reaches a terminal state
+  (three of five runs failed without the fix, ten of ten green with it).
 - **The Android application did not start on the device.** The end-to-end proof
   of the Android runtime — the only measurement that had never been carried
   out — found it: the application died at the start with *"dlopen failed:

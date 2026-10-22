@@ -316,14 +316,25 @@ impl JobQueue {
         self.inner.lock().map_err(|_| JobError::LockPoisoned)
     }
 
-    /// Enqueues a job, applying the priority and fairness rules.
-    pub fn enqueue(
+    /// Reserves a descriptor for a new job **without** making it visible to
+    /// the workers.
+    ///
+    /// The reservation and the publication are two steps on purpose: the
+    /// tracker of the jobs has to know a job before a worker is able to take
+    /// it. A worker that starts a job the tracker does not know loses every
+    /// state transition of that job — the tracker answers "unknown job" and
+    /// the state of the job stays `Queued` for ever, although the work has
+    /// been done.
+    ///
+    /// The sequence of the job is reserved here and is not given back if the
+    /// publication fails: the ids of the jobs are a monotonic series, and a
+    /// gap in that series is harmless.
+    pub fn allocate(
         &self,
         session_id: String,
         document_revision: u64,
         kind: JobKind,
         resumable: bool,
-        task: JobTask,
     ) -> Result<JobDescriptor, JobError> {
         let mut guard = self.lock()?;
         if guard.shutdown {
@@ -332,18 +343,12 @@ impl JobQueue {
                 details: "job manager is shut down".to_owned(),
             });
         }
-        if guard.entries.len() >= self.budgets.max_queued_jobs {
-            return Err(JobError::QueueFull {
-                queued: guard.entries.len(),
-                limit: self.budgets.max_queued_jobs,
-            });
-        }
 
         let sequence = guard.next_sequence;
         guard.next_sequence += 1;
 
         let class = kind.class();
-        let descriptor = JobDescriptor {
+        Ok(JobDescriptor {
             job_id: sequence + 1,
             session_id,
             document_revision,
@@ -354,10 +359,32 @@ impl JobQueue {
             progress_percent: 0,
             resumable,
             sequence,
-        };
+        })
+    }
+
+    /// Makes a reserved job visible to the workers.
+    ///
+    /// The queue is bounded: publishing beyond `max_queued_jobs` fails with a
+    /// typed error instead of growing without limit. The caller keeps the
+    /// ownership of the descriptor when this fails — the job never entered the
+    /// queue and therefore never runs.
+    pub fn publish(&self, descriptor: JobDescriptor, task: JobTask) -> Result<(), JobError> {
+        let mut guard = self.lock()?;
+        if guard.shutdown {
+            return Err(JobError::JobFailed {
+                job_id: descriptor.job_id,
+                details: "job manager is shut down".to_owned(),
+            });
+        }
+        if guard.entries.len() >= self.budgets.max_queued_jobs {
+            return Err(JobError::QueueFull {
+                queued: guard.entries.len(),
+                limit: self.budgets.max_queued_jobs,
+            });
+        }
 
         guard.entries.push_back(QueueEntry {
-            descriptor: descriptor.clone(),
+            descriptor,
             task,
             enqueued_at: Instant::now(),
         });
@@ -365,6 +392,24 @@ impl JobQueue {
         // Every waiting worker has to re-evaluate: whether a job may run
         // depends on the power limits, which are the same for all of them.
         self.signal.notify_all();
+        Ok(())
+    }
+
+    /// Enqueues a job, applying the priority and fairness rules.
+    ///
+    /// This is the combination of [`JobQueue::allocate`] and
+    /// [`JobQueue::publish`] for the callers that do not keep a tracker of the
+    /// jobs themselves.
+    pub fn enqueue(
+        &self,
+        session_id: String,
+        document_revision: u64,
+        kind: JobKind,
+        resumable: bool,
+        task: JobTask,
+    ) -> Result<JobDescriptor, JobError> {
+        let descriptor = self.allocate(session_id, document_revision, kind, resumable)?;
+        self.publish(descriptor.clone(), task)?;
         Ok(descriptor)
     }
 

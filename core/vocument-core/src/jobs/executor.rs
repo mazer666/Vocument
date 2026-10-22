@@ -279,6 +279,19 @@ impl JobTracker {
             guard.tokens.remove(&job_id);
         }
     }
+
+    /// Removes a job from the tracker that never entered the queue.
+    ///
+    /// A job that was reserved but not published cannot run and therefore
+    /// cannot reach a terminal state. It must not stay in the tracker as a
+    /// job that waits for ever.
+    pub fn forget(&self, job_id: u64) {
+        if let Ok(mut guard) = self.lock() {
+            guard.statuses.remove(&job_id);
+            guard.tokens.remove(&job_id);
+            guard.cancelled_while_running.remove(&job_id);
+        }
+    }
 }
 
 /// A worker thread together with the signal that reports its end.
@@ -397,6 +410,12 @@ impl JobExecutor {
     }
 
     /// Submits a job for background execution.
+    ///
+    /// The job is registered in the tracker **before** it becomes visible to
+    /// the workers. The order is not a matter of taste: a worker that takes a
+    /// job the tracker does not know loses every state transition of that job,
+    /// because the tracker answers "unknown job" — and the job then stays
+    /// `Queued` for ever, although its work has been done.
     pub fn submit(
         &self,
         session_id: String,
@@ -405,10 +424,17 @@ impl JobExecutor {
         resumable: bool,
         task: JobTask,
     ) -> Result<JobDescriptor, JobError> {
-        let descriptor =
-            self.queue
-                .enqueue(session_id, document_revision, kind, resumable, task)?;
+        let descriptor = self
+            .queue
+            .allocate(session_id, document_revision, kind, resumable)?;
         self.tracker.register(descriptor.clone())?;
+        if let Err(error) = self.queue.publish(descriptor.clone(), task) {
+            // The job never entered the queue and therefore never runs. The
+            // tracker must not keep a job that can never reach a terminal
+            // state.
+            self.tracker.forget(descriptor.job_id);
+            return Err(error);
+        }
         Ok(descriptor)
     }
 
@@ -648,6 +674,12 @@ fn worker_loop(
         {
             // The job was cancelled while it was still queued.
             let _ = tracker.finish(descriptor.job_id, JobState::Cancelled, None);
+            // The slot was reserved for this job and the job never runs: the
+            // slot goes back to the pool. A slot that is not given back takes
+            // a worker away from the pool for ever — the pool would serve its
+            // queue with fewer and fewer workers, and a job that waits in the
+            // queue would never run.
+            queue.release_slot();
             continue;
         }
 
@@ -736,3 +768,5 @@ pub fn wait_for_terminal(
 
 #[cfg(test)]
 mod executor_tests;
+#[cfg(test)]
+mod pool_regression_tests;

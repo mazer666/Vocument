@@ -263,6 +263,13 @@ scheduler.
   termination is used anywhere.**
 * A job cancelled while running can never report success: the tracker converts a
   late `Completed` into `Cancelled`. A job cancelled while queued never starts.
+* A job is registered in the tracker **before** it becomes visible to the
+  workers. A worker that takes a job the tracker does not know loses every
+  state transition of that job, and the job would never reach a terminal state.
+* A worker that takes a job which was cancelled before it started gives the
+  reserved slot back to the pool. The slot belongs to the pool and not to the
+  job: a slot that is not given back takes a worker away from the pool for
+  ever, and the queue would wait for ever.
 * A panic inside a job body is caught and turned into a `Failed` job, so a single
   faulty job cannot terminate a worker thread.
 * Closing a document cancels every job of that session before the session is
