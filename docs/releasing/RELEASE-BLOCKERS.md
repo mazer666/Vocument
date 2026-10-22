@@ -43,6 +43,7 @@ in the build record (`target/build-record/`).
 | **Android, Google Play** | Prepared, not signed | B-1, B-3, B-4, plus the data safety form of Play |
 | **macOS, Mac App Store** | **Deferred by the decision of the project owner (2026-10-21)** | B-7 — not a blocker for the other channels |
 | **The source archive** | **Built and checked (2026-10-21)** | B-1 (the legal review of the offer) |
+| **The alpha release on GitHub (source only)** | **Published 2026-10-22** (`v0.1.0-alpha.1`) | none — it publishes the **source** of a revision, which the public repository is anyway (decision E1). No binary, no store, no package of a signed application: the alpha uses none of the channels above and therefore needs none of their blockers. The description is in [`ALPHA-RELEASE.md`](ALPHA-RELEASE.md) |
 
 ## The blockers of the project owner
 

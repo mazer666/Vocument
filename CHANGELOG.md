@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-10-22
+
+### Added
+- **The alpha release `v0.1.0-alpha.1`** — the source of the revision, published
+  as a pre-release on GitHub. The alpha carries **no binary**: the legal
+  compliance review (E5) and the signing identities (B-2, B-3) are open, and
+  nothing is published that would need one of them. The description of the
+  alpha is in [`docs/releasing/ALPHA-RELEASE.md`](docs/releasing/ALPHA-RELEASE.md).
+
 ### Added
 - **The continuous integration of the project** — three jobs on the hosted
   runners of GitHub, one per platform: the whole gate of the project on
