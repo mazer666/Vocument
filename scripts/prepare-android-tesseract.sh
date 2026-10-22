@@ -52,6 +52,23 @@ BIN="${TOOLCHAIN_HOST}/bin"
 TARGET_API=24
 TARGET_TRIPLE="aarch64-linux-android"
 
+# The number of the parallel jobs of the build.
+#
+# `nproc` does not exist on macOS; `sysctl` does not exist on Linux. A build
+# that asks for `$(nproc)` without a fallback ends with "command not found"
+# (exit code 127) — on a Mac, and in the middle of the cross-compilation.
+detected_jobs() {
+    local jobs=""
+    jobs="$(nproc 2>/dev/null || true)"
+    if [[ -z "$jobs" ]]; then
+        jobs="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+    fi
+    if [[ -z "$jobs" ]]; then
+        jobs=2
+    fi
+    echo "$jobs"
+}
+
 TESSERACT_VERSION="${TESSERACT_VERSION:-5.3.0}"
 LEPTONICA_VERSION="${LEPTONICA_VERSION:-1.82.0}"
 
@@ -166,7 +183,7 @@ echo "==> Building Leptonica $LEPTONICA_VERSION for $TARGET_TRIPLE"
       --without-libwebp --without-libwebpmux --without-gif \
       --without-libopenjpeg >/dev/null
   fi
-  make -j"$(nproc)" >/dev/null
+  make -j"$(detected_jobs)" >/dev/null
   # Only the library is needed. The Leptonica command line tools pull in
   # additional image format libraries that the OCR engine does not use.
   make -C src install >/dev/null
@@ -184,7 +201,7 @@ echo "==> Building Tesseract $TESSERACT_VERSION for $TARGET_TRIPLE"
       --with-leptonica="$INSTALL_DIR" --without-curl --without-archive \
       --without-libarchive --without-tcl --without-icu >/dev/null
   fi
-  make -j"$(nproc)" >/dev/null
+  make -j"$(detected_jobs)" >/dev/null
   make install >/dev/null
 )
 

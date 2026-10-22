@@ -133,7 +133,24 @@ echo "==> Cross-compiling MuPDF ${MUPDF_VERSION} for aarch64-linux-android..."
 # `libmupdf.so` and gets the SONAME `libmupdf.so`.
 MUPDF_SO_NAME="libmupdf.so"
 
-make -C "$SOURCE_DIR" -j"$(nproc)" \
+# The number of the parallel jobs of the build.
+#
+# `nproc` does not exist on macOS; `sysctl` does not exist on Linux. A build
+# that asks for `$(nproc)` without a fallback ends with "command not found"
+# (exit code 127) — on a Mac, and in the middle of the cross-compilation.
+detected_jobs() {
+    local jobs=""
+    jobs="$(nproc 2>/dev/null || true)"
+    if [[ -z "$jobs" ]]; then
+        jobs="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+    fi
+    if [[ -z "$jobs" ]]; then
+        jobs=2
+    fi
+    echo "$jobs"
+}
+
+make -C "$SOURCE_DIR" -j"$(detected_jobs)" \
   shared=yes build=release \
   CC="$CC_BIN" \
   CXX="$CXX_BIN" \
