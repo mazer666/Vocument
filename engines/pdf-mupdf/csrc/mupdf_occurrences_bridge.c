@@ -298,7 +298,8 @@ int vocument_mupdf_find_text_occurrences(
     char *out_buf,
     size_t out_cap,
     char *err_buf,
-    size_t err_buf_len
+    size_t err_buf_len,
+    size_t note_budget
 ) {
     if (!bytes || !out_buf || out_cap == 0 || !words) {
         return 3;
@@ -347,6 +348,7 @@ int vocument_mupdf_find_text_occurrences(
             state.word_count = word_count;
 
             vocument_walk_init(&walk, ctx, vocument_report_place, &state);
+            walk.note_budget = note_budget;
             fz_try(ctx) {
                 vocument_walk_document(&walk, pdf_doc);
             }
@@ -364,13 +366,33 @@ int vocument_mupdf_find_text_occurrences(
                         if (length < sizeof(entry)) {
                             memcpy(entry, line, length);
                             entry[length] = '\0';
-                            vocument_report_line(&report, "uninspected", -1, entry);
+                        } else {
+                            /* A line that is longer than the buffer is
+                             * **shortened**, not dropped: a place that cannot
+                             * be named in full is still a place that was not
+                             * examined. */
+                            memcpy(entry, line, sizeof(entry) - 4);
+                            memcpy(entry + sizeof(entry) - 4, "...", 4);
                         }
+                        vocument_report_line(&report, "uninspected", -1, entry);
                         if (!end) {
                             break;
                         }
                         line = end + 1;
                     }
+                }
+                if (walk.note_failed) {
+                    /* The walk could not write down every place it did not
+                     * examine — the memory of the machine was exhausted, or
+                     * the budget of the notes was too small. The place is
+                     * named with a fixed text, so that the note itself needs
+                     * no memory. */
+                    vocument_report_line(
+                        &report,
+                        "uninspected",
+                        -1,
+                        "the walk could not write down every place that it could not examine"
+                    );
                 }
                 vocument_walk_free(&walk);
             }

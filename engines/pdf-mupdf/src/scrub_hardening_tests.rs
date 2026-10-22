@@ -11,7 +11,7 @@
 //!    over several show operations is found — also as UTF-16 — and a secret
 //!    that is encoded is found and removed.
 
-use crate::scrub::{find_word_occurrences, scrub_words};
+use crate::scrub::{find_word_occurrences, find_word_occurrences_with_note_budget, scrub_words};
 
 /// The word that stands in the places of the document.
 const SECRET: &str = "GEHEIM";
@@ -567,5 +567,36 @@ fn the_report_of_the_places_is_not_cut_off() {
         !uninspected.is_empty(),
         "the place that the walk could not examine must be named — a report that is cut off \
          before the end does not say that a place was examined"
+    );
+}
+
+/// A place that cannot be written down is not lost silently.
+///
+/// The walk writes down every place it could not examine. When the memory of
+/// the machine is exhausted — or when the budget of the notes is too small —
+/// the note does not fit. The walk then has to say that it could not examine
+/// everything: a place that was never named must not pass for a place that
+/// was examined and found clean.
+///
+/// The budget is the way to reproduce the case of the exhausted memory: it
+/// can only make the walk stricter, never laxer.
+#[test]
+fn a_place_that_cannot_be_written_down_is_not_lost_silently() {
+    let bytes = document_with_a_deep_chain();
+
+    // A budget of one byte: no note fits.
+    let occurrences = find_word_occurrences_with_note_budget(&bytes, &[SECRET.to_owned()], 1)
+        .expect("the document must be readable");
+
+    let uninspected: Vec<&str> = occurrences
+        .iter()
+        .filter(|place| place.kind == "uninspected")
+        .map(|place| place.location.as_str())
+        .collect();
+    assert!(
+        uninspected
+            .iter()
+            .any(|place| place.contains("could not write down")),
+        "the walk must say that it could not write down every place: {uninspected:?}"
     );
 }

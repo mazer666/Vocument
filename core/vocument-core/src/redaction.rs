@@ -242,6 +242,32 @@ impl SessionRegistry {
             }
         };
 
+        // The **pre-check** has to be complete as well. It is the reference of
+        // the verification: the list of the places that carried the text
+        // before the removal. A place that the walk could not examine makes
+        // that reference incomplete — and an incomplete reference is a proof
+        // that proves nothing.
+        //
+        // The refusal happens here, **before** the document is touched: a
+        // refused redaction then changes nothing at all, not even for a
+        // moment.
+        let unexamined_before: Vec<String> = places_before
+            .iter()
+            .filter(|place| place.kind == "uninspected")
+            .map(|place| place.location.clone())
+            .collect();
+        if !unexamined_before.is_empty() {
+            return Err(SessionError::Redaction(
+                RedactionError::VerificationFailed {
+                    details: format!(
+                        "the places of the document could not all be examined before the removal, so the removal cannot be verified: {} place(s) could not be looked into, among them {}",
+                        unexamined_before.len(),
+                        unexamined_before.join(", ")
+                    ),
+                },
+            ));
+        }
+
         // The removal itself. From here on the document is changed, and every
         // error has to put it back.
         if let Err(error) = self.apply_redaction(session_id, page_index, rects.clone()) {

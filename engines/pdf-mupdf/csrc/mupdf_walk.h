@@ -100,6 +100,18 @@ typedef struct {
     char *uninspected;
     size_t uninspected_len;
     size_t uninspected_capacity;
+    /* The budget of the places that could not be examined. Zero means that
+     * the walk may write as many as it needs. A budget is only used by the
+     * test that proves that a place which **cannot** be written down is not
+     * lost silently — it can only make the walk stricter, never laxer. */
+    size_t note_budget;
+    /* Set when a place could not be written down — because the memory of the
+     * machine was exhausted, or because the budget was too small.
+     *
+     * A walk that knows less about itself must say so: the caller turns this
+     * flag into a place that could not be looked into, and a redaction that
+     * cannot name every place it did not examine is refused. */
+    int note_failed;
 } vocument_walk_t;
 
 /* The number of slots of the hash table at the start. */
@@ -121,6 +133,8 @@ static inline void vocument_walk_init(
     walk->uninspected = NULL;
     walk->uninspected_len = 0;
     walk->uninspected_capacity = 0;
+    walk->note_budget = 0;
+    walk->note_failed = 0;
 }
 
 /* Releases the state of the walk. */
@@ -155,6 +169,12 @@ static inline void vocument_walk_note_uninspected(
     }
     const char *place = path ? path : "?";
     size_t needed = strlen(reason) + strlen(place) + 3;
+    /* The budget: a place that does not fit into it is a place that cannot
+     * be written down. The flag says so — the note is not lost silently. */
+    if (walk->note_budget > 0 && needed + 1 > walk->note_budget) {
+        walk->note_failed = 1;
+        return;
+    }
     if (walk->uninspected_len + needed + 1 > walk->uninspected_capacity) {
         size_t capacity = walk->uninspected_capacity ? walk->uninspected_capacity : 256;
         while (walk->uninspected_len + needed + 1 > capacity) {
@@ -162,6 +182,10 @@ static inline void vocument_walk_note_uninspected(
         }
         char *bigger = (char *)realloc(walk->uninspected, capacity);
         if (!bigger) {
+            /* The machine has no memory for this note. The walk then knows
+             * less about itself — and it has to say so, or the caller
+             * mistakes an unexamined place for an examined one. */
+            walk->note_failed = 1;
             return;
         }
         walk->uninspected = bigger;
@@ -175,6 +199,7 @@ static inline void vocument_walk_note_uninspected(
         place
     );
     if (written < 0) {
+        walk->note_failed = 1;
         return;
     }
     walk->uninspected_len += (size_t)written;

@@ -45,6 +45,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The structural check of the Swift sources** (`scripts/check-swift-structure.py`).
 
 ### Fixed
+- A place of the document that the walk could **not** examine could be
+  **lost silently**: the note was written into a buffer of the walk, and if
+  the memory of the machine was exhausted the note was dropped without a
+  word. The walk looked complete, the report was complete, and the removal
+  was reported as verified while a place of the document had never been
+  looked into. The walk says now when it could not write a note down, the
+  bridge reports that as a place that could not be looked into, and a line
+  that is too long is shortened instead of dropped. The **pre-check** — the
+  places of the text before the removal, the reference of the verification —
+  must be complete as well: an incomplete reference is a proof that proves
+  nothing, so the removal is refused **before** the document is touched.
 - The **archive of the source was not reproducible**: the header of the gzip
   stream carried the time of the build, so two archives of the same revision
   had two different checksums — and the first measurement of the day had
