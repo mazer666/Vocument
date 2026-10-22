@@ -510,10 +510,32 @@ fact_string "source_archive.log" "target/build-record/source-archive.log"
 # --- 7. What could not be measured here ----------------------------------
 # A record that hides the limits of the environment is a record that lies.
 # Every limit is written down with the reason.
-NOT_RUN_ITEMS=(
-    "macOS application (Swift target)|no macOS host and therefore no macOS SDK in this environment — SwiftUI, AppKit and CoreGraphics do not exist for Linux. The Swift compiler (6.0.3) parses every file of the application and builds the generated bindings; the application itself needs the SDK|the sources of the target are in the archive (apps/macos), the parse of every file is proved by scripts/check-swift-sources.py, the build of the application is NOT RUN"
-    "Android package (Gradle)|no Android SDK in this environment (a JDK is installed)|the sources of the package are in the archive (apps/android), the build of the package is NOT RUN"
-    "macOS notarisation|no Apple identity and no macOS host in this environment|the commands are in scripts/release-macos.sh, the notarisation is NOT RUN"
+# The limits belong to **this** run: the gate tells the record what it has
+# built. A record that names a limit that the machine does not have is a
+# record that lies — and a record that hides a limit that the machine has is
+# a record that hides a gap.
+#
+# Without the answer of the gate (the script may be run on its own), the
+# limit is named: what is not proven is not claimed.
+GATE_MACOS_APPLICATION="${VOCUMENT_GATE_MACOS_APPLICATION:-unknown}"
+GATE_ANDROID_PACKAGE="${VOCUMENT_GATE_ANDROID_PACKAGE:-unknown}"
+
+NOT_RUN_ITEMS=()
+
+if [[ "$GATE_MACOS_APPLICATION" != "built" ]]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        NOT_RUN_ITEMS+=("macOS application (Swift target)|no full Xcode with an accepted licence on this machine — the command line tools carry no macros of SwiftUI|the sources of the target are in the archive (apps/macos), the parse of every file is proved by scripts/check-swift-sources.py, the build of the application is NOT RUN")
+    else
+        NOT_RUN_ITEMS+=("macOS application (Swift target)|no macOS host and therefore no macOS SDK in this environment — SwiftUI, AppKit and CoreGraphics do not exist for Linux. The Swift compiler parses every file of the application and builds the generated bindings; the application itself needs the SDK|the sources of the target are in the archive (apps/macos), the parse of every file is proved by scripts/check-swift-sources.py, the build of the application is NOT RUN")
+    fi
+fi
+
+if [[ "$GATE_ANDROID_PACKAGE" != "built" ]]; then
+    NOT_RUN_ITEMS+=("Android package (Gradle)|no Android SDK in this environment (a JDK is installed)|the sources of the package are in the archive (apps/android), the build of the package is NOT RUN")
+fi
+
+NOT_RUN_ITEMS+=(
+    "macOS notarisation|no Apple identity in this environment — the notarisation needs a Developer ID certificate and the credentials of the notary tool|the commands are in scripts/release-macos.sh, the notarisation is NOT RUN"
     "Android release signature|no release key in this environment|the signing is left to Gradle, the signature of a release build is NOT RUN"
 )
 
@@ -532,6 +554,10 @@ for entry in "${NOT_RUN_ITEMS[@]}"; do
 done
 not_run_json="${not_run_json}]"
 fact_raw "not_run" "$not_run_json"
+
+# What the gate has built **here**. The limits above are the complement of
+# this list: a thing that was built here is not a limit of this machine.
+fact_raw "built_here" "{\"macos_application\": $(json_string "$GATE_MACOS_APPLICATION"), \"android_package\": $(json_string "$GATE_ANDROID_PACKAGE")}"
 
 # --- 8. The record -------------------------------------------------------
 GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -659,6 +685,13 @@ PYTHON
     echo "| The SHA-256 of the second build | \`$ARCHIVE_SECOND_SHA256\` |"
     echo "| Bit for bit the same | $ARCHIVE_REPRODUCIBLE |"
     echo "| The size | $ARCHIVE_BYTES bytes |"
+    echo
+    echo "## What was built here"
+    echo
+    echo "| What | The state of this run |"
+    echo "|---|---|"
+    echo "| The macOS application (Swift target) | $GATE_MACOS_APPLICATION |"
+    echo "| The Android package (Gradle) | $GATE_ANDROID_PACKAGE |"
     echo
     echo "## What was **not** run here"
     echo

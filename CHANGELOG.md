@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The gate of the project runs the tests of the kit of macOS.** The hosted
   runner ran them, the local gate did not — a gate that measures something
   else than the runner is not the gate of the project.
+- **The build record names the limits of *this* run.** The record listed the
+  macOS application and the Android package as **NOT RUN** on every machine —
+  including the machines that build them. The gate now tells the record what
+  it has built, and the record names only the limits that this run really has.
+  A record that names a limit that the machine does not have is a record that
+  lies; one that hides a limit is a record that hides a gap.
 
 ## [0.1.0-alpha.1] - 2026-10-22
 

@@ -197,16 +197,19 @@ if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
 
     echo "==> Building macOS Swift targets (VocumentMacApp & VocumentMacHandshakeCLI) and running Swift → UniFFI → Rust handshake..."
     if [[ -z "$XCODE_SELECTED" ]]; then
+      export VOCUMENT_GATE_MACOS_APPLICATION="not-run"
       echo "NOT RUN: no full Xcode with Swift 6 was found on this machine, and the"
       echo "         command line tools carry no macros of SwiftUI. The application"
       echo "         of macOS was NOT built and must not be reported as built."
     elif ! DEVELOPER_DIR="$XCODE_SELECTED" xcodebuild -license check >/dev/null 2>&1; then
+      export VOCUMENT_GATE_MACOS_APPLICATION="not-run"
       echo "NOT RUN: the licence of the Xcode in ${XCODE_SELECTED} was not accepted."
       echo "         The acceptance is a decision of the owner of the machine and"
       echo "         needs 'sudo xcodebuild -license'. The application of macOS was"
       echo "         NOT built and must not be reported as built."
     else
       swift build --package-path apps/macos --product VocumentMacApp
+      export VOCUMENT_GATE_MACOS_APPLICATION="built"
     fi
     # The **tests of the kit** belong to the gate: the hosted runner runs
     # them (`ci-macos.yml`), and a gate that measures something else than the
@@ -226,6 +229,7 @@ if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
     swift build --package-path apps/macos --target VocumentMacKit
     swift build --package-path apps/macos --product vocument-mac-handshake
     swift run --package-path apps/macos vocument-mac-handshake
+    export VOCUMENT_GATE_MACOS_APPLICATION="not-run"
     echo "NOTE: the **application** itself is NOT built here — SwiftUI, AppKit and"
     echo "      CoreGraphics are part of the macOS SDK, and this runner is not a Mac."
     echo "      The build of the application and the surface of the review are NOT RUN"
@@ -259,7 +263,9 @@ echo "==> Running real Android runtime & scan-capture verification (Gradle assem
 ANDROID_SDK_DIRECTORY="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
 if [[ -d "$ANDROID_SDK_DIRECTORY" ]]; then
   ./scripts/verify-android-runtime.sh
+  export VOCUMENT_GATE_ANDROID_PACKAGE="built"
 else
+  export VOCUMENT_GATE_ANDROID_PACKAGE="not-run"
   echo "SKIPPED: the Android runtime proof needs the Android SDK ($ANDROID_SDK_DIRECTORY)."
   echo "         The Android runtime proof is NOT RUN here and must not be reported as passed."
 fi
