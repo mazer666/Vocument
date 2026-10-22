@@ -84,10 +84,19 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 # The output of the tests is kept: the build record reads the counts of the
 # tests out of it, so that the tests are not run twice for one gate run.
+#
+# The tests run **one after the other** (`--test-threads=1`). Several of them
+# share the state of the process: the rail of the profession, the cache of
+# the thumbnails, the pool of the jobs and the registry of the sessions are
+# global. Run at the same time, the tests of one crate write over each other
+# — the result then depends on which of them wins the race and not on what
+# the product does. The tests of the crate that shares the state hold a lock
+# for the part that they share; the rest of the suite runs serially, so that
+# a run of the gate is a **reproducible** proof and not a lottery.
 mkdir -p "$REPO_ROOT/target/build-record"
 TEST_LOG="$REPO_ROOT/target/build-record/cargo-test.log"
 set +e
-cargo test --workspace > "$TEST_LOG" 2>&1
+cargo test --workspace -- --test-threads=1 > "$TEST_LOG" 2>&1
 TEST_EXIT_CODE=$?
 set -e
 cat "$TEST_LOG"

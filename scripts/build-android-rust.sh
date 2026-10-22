@@ -98,7 +98,15 @@ cargo build -p vocument-ffi --target aarch64-linux-android "${CARGO_PROFILE_ARGS
 #
 # The check inspects the dynamic dependencies of the produced library: a build
 # that silently fell back to a placeholder would not depend on libmupdf.
-JNI_ARM64_DIR="$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
+# The directory the libraries are deployed to.
+#
+# Every **variant** has its own directory (`src/debug/jniLibs`, `src/release/
+# jniLibs`): the debug build and the release build produce *different*
+# libraries, and one build must never ship the library of the other. Two
+# tasks that write into the same directory are also a problem for Gradle: it
+# reports a task that uses the output of another task without a declared
+# dependency, and it refuses the build.
+JNI_ARM64_DIR="${JNI_DIR:-$REPO_ROOT/apps/android/app/src/debug/jniLibs/arm64-v8a}"
 mkdir -p "$JNI_ARM64_DIR"
 # Remove the previously deployed libraries. A stale file would otherwise be
 # shipped inside the APK: it would waste space, and an outdated library could

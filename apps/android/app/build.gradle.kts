@@ -76,11 +76,20 @@ dependencies {
  * variant that was configured. The debug build would then ship the release
  * library, or the other way round.
  */
-fun registerBuildRustCore(name: String, profile: String): TaskProvider<Exec> {
+fun registerBuildRustCore(name: String, profile: String, sourceSet: String): TaskProvider<Exec> {
     return tasks.register<Exec>(name) {
         description = "Compiles native Rust core library (libvocument_ffi.so) for Android ARM64 ($profile)"
         val repoRoot = rootProject.projectDir.parentFile.parentFile
-        val jniArm64File = projectDir.resolve("src/main/jniLibs/arm64-v8a/libvocument_ffi.so")
+        // Every variant deploys its libraries into **its own** source set.
+        //
+        // The debug build and the release build produce different libraries
+        // (the release build has no debug symbols), so one build must never
+        // ship the library of the other. Two Gradle tasks that write into
+        // the same directory are also a problem for Gradle itself: it reports
+        // a task that uses the output of another task without a declared
+        // dependency and refuses the build.
+        val jniDir = projectDir.resolve("src/$sourceSet/jniLibs/arm64-v8a")
+        val jniArm64File = jniDir.resolve("libvocument_ffi.so")
 
         inputs.dir(repoRoot.resolve("engines"))
         inputs.dir(repoRoot.resolve("core"))
@@ -95,6 +104,7 @@ fun registerBuildRustCore(name: String, profile: String): TaskProvider<Exec> {
         commandLine(repoRoot.resolve("scripts/build-android-rust.sh").absolutePath)
         environment("BUILD_PROFILE", profile)
         environment("ANDROID_MAX_PAGE_SIZE", "16384")
+        environment("JNI_DIR", jniDir.absolutePath)
     }
 }
 
@@ -108,7 +118,9 @@ androidComponents {
     onVariants { variant ->
         val profile = if (variant.buildType == "release") "release" else "debug"
         val variantName = variant.name.replaceFirstChar { it.uppercase() }
-        val task = registerBuildRustCore("buildRustCore$variantName", profile)
+        // The source set of the variant: `debug` or `release`.
+        val sourceSet = variant.buildType
+        val task = registerBuildRustCore("buildRustCore$variantName", profile, sourceSet)
         tasks.matching { it.name == "merge${variantName}JniLibFolders" }.configureEach {
             dependsOn(task)
         }

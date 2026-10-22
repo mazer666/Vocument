@@ -210,7 +210,7 @@ lines+=("|---|---|---|---|")
 
 SHIPPED_MUPDF=""
 for candidate in \
-    "apps/android/app/src/main/jniLibs/arm64-v8a/libmupdf.so" \
+    "apps/android/app/src/debug/jniLibs/arm64-v8a/libmupdf.so" \
     "target/mupdf-host/lib/libmupdf.so"; do
     if [[ -f "$candidate" ]]; then
         SHIPPED_MUPDF="$candidate"

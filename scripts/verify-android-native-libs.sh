@@ -56,7 +56,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$JNI_DIR" && -z "$APK_PATH" ]]; then
-  JNI_DIR="$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
+  # Every variant deploys its libraries into its own source set; the check
+  # without an argument looks at the debug build (`src/debug/jniLibs`), which
+  # is the one the local build produces.
+  JNI_DIR="$REPO_ROOT/apps/android/app/src/debug/jniLibs/arm64-v8a"
   # The mode without an argument looks at the build directory of the project.
   # That directory is **not** part of the repository: it is filled by
   # `scripts/build-android-rust.sh`. On a machine that has not built the
