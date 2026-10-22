@@ -206,7 +206,13 @@ echo "==> Building Tesseract $TESSERACT_VERSION for $TARGET_TRIPLE"
 )
 
 echo "==> Installing the runtime libraries into $OUTPUT_DIR"
-for library in libtesseract libleptonica; do
+# Leptonica is linked **first**: the Tesseract library needs it, and the
+# linker only keeps the entry of the dependency when it is asked to
+# (`--as-needed` is the default of the linker and drops it otherwise).
+# Without the entry the device answered "dlopen failed: cannot locate
+# symbol pixGetSpp" — the library carried 170 undefined symbols of
+# Leptonica and nothing that would have loaded it.
+for library in libleptonica libtesseract; do
   source_file="$(find "$INSTALL_DIR/lib" -maxdepth 1 -name "${library}.a" | head -n1)"
   if [[ -z "$source_file" ]]; then
     echo "ERROR: ${library}.a was not produced" >&2
@@ -223,9 +229,33 @@ for library in libtesseract libleptonica; do
     # Bionic provides the threading primitives as part of libc; there is no
     # separate `-lpthread` on Android. The 16 KB page alignment is requested
     # explicitly, because the NDK linker defaults to 4 KB.
-    "$CC" -shared -o "$OUTPUT_DIR/${library}.so" \
+    #
+    # The C++ runtime is linked **statically**. The compiler of the NDK links
+    # it dynamically by default, and `--as-needed` (the default of the linker)
+    # then drops the entry of the dependency — the library was left with 134
+    # undefined symbols of the C++ runtime and without the entry that would
+    # have loaded it. The application crashed on the device with
+    # "dlopen failed: cannot locate symbol _ZNSt6__ndk13cinE", because
+    # `libc++_shared.so` is **not** a library of the platform: an application
+    # that uses it has to ship it. The static runtime avoids that: the symbols
+    # are in the library itself, and the package carries nothing extra.
+    #
+    # The link uses the **C++ driver** (`clang++`): the option
+    # `-static-libstdc++` is only known to it. With the C driver the linker
+    # says "argument unused during compilation" and the symbols stay
+    # undefined.
+    link_dependencies=()
+    if [[ "$library" == "libtesseract" ]]; then
+      # Tesseract needs Leptonica. The entry of the dependency is kept with
+      # `--no-as-needed`, and the shared library of Leptonica is used — it was
+      # linked before.
+      link_dependencies=(-L"$OUTPUT_DIR" -Wl,--no-as-needed -lleptonica)
+    fi
+    "$CXX" -shared -o "$OUTPUT_DIR/${library}.so" \
       -Wl,--whole-archive "$source_file" -Wl,--no-whole-archive \
       -Wl,-z,max-page-size="${ANDROID_MAX_PAGE_SIZE:-16384}" \
+      -static-libstdc++ \
+      "${link_dependencies[@]+"${link_dependencies[@]}"}" \
       -llog -lz
   fi
 done
