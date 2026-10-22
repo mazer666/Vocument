@@ -176,23 +176,73 @@ jobs:
           exit 1
 
       - name: Build the debug and the release package
+        id: packages
+        # The step does not stop the job: the diagnostics below name the
+        # place where the build stopped.
+        continue-on-error: true
         run: |
+          set -o pipefail
           cd apps/android
-          ./gradlew --no-daemon assembleDebug assembleRelease
+          ./gradlew --no-daemon assembleDebug assembleRelease 2>&1 | tee "$RUNNER_TEMP/packages.log"
           ls -la app/build/outputs/apk/debug/ app/build/outputs/apk/release/
 
-      - name: Verify the native libraries as they are packaged
+      - name: The diagnostics of the build of the packages
+        if: steps.packages.outcome == 'failure'
         run: |
+          echo "::error::The build of the packages failed. The lines that name the failure:"
+          grep -nE "FAILURE|What went wrong|Caused by|error:|Execution failed|Could not" \
+            "$RUNNER_TEMP/packages.log" | head -n 8 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          echo "::error::The last 8 lines of the output:"
+          tail -n 8 "$RUNNER_TEMP/packages.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
+
+      - name: Verify the native libraries as they are packaged
+        id: packaged
+        continue-on-error: true
+        run: |
+          set -o pipefail
           # The check reads the libraries out of the package itself: a
           # library that is missing from the package is missing on the
           # device, even when it is in the build directory.
-          ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/debug/app-debug.apk
-          ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          {
+            ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/debug/app-debug.apk
+            ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          } 2>&1 | tee "$RUNNER_TEMP/packaged.log"
+
+      - name: The diagnostics of the check of the packages
+        if: steps.packaged.outcome == 'failure'
+        run: |
+          echo "::error::The check of the native libraries in the packages failed:"
+          tail -n 8 "$RUNNER_TEMP/packaged.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
 
       - name: Run the unit tests of Gradle
+        id: unit-tests
+        continue-on-error: true
         run: |
+          set -o pipefail
           cd apps/android
-          ./gradlew --no-daemon testDebugUnitTest
+          ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/unit-tests.log"
+
+      - name: The diagnostics of the unit tests
+        if: steps.unit-tests.outcome == 'failure'
+        run: |
+          echo "::error::The unit tests of Gradle failed. The lines that name the failure:"
+          grep -nE "FAILED|What went wrong|Caused by|error:|Execution failed" \
+            "$RUNNER_TEMP/unit-tests.log" | head -n 8 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          echo "::error::The last 8 lines of the output:"
+          tail -n 8 "$RUNNER_TEMP/unit-tests.log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          exit 1
 
       - name: The proofs that need a device are NOT RUN here
         run: |
