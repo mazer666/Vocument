@@ -7,6 +7,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **The continuous integration of the project** — three jobs on the hosted
+  runners of GitHub, one per platform: the whole gate of the project on
+  Linux (the host MuPDF 1.28.5 is built from the pinned source, the
+  checksum verified), the Swift build of the macOS application against the
+  real macOS SDK with the tests of the kit and the handshake, and the
+  native libraries, the packages and the unit tests of Android with the
+  Android SDK, the NDK r27c and the JDK 17. The project had **no** CI
+  before: the workflow asked for a self-hosted runner that the repository
+  does not have (47 runs, 38 cancelled, 9 waiting, 0 executed, 0 runners).
+  No job has a secret, none signs anything, none publishes anything.
+- **The internal release candidate** (`scripts/release-candidate.sh`,
+  `scripts/verify-release-candidate.sh`): the set of artefacts of **one
+  revision** — the source archive, the build record, the licences and the
+  notices, the library built from the unpacked archive — with a manifest
+  that names the result of every check as `PASS`, `FAIL`, `NOT RUN` or
+  `BLOCKED`. The source archive is **reproducible** (two builds, byte for
+  byte the same); the applications are **not** claimed to be bit-identical
+  — the manifest says so and gives the reason. The candidate is internal:
+  it is not published, the legal clearance (E5) is open.
+- **The reference renderer belongs to the installation of MuPDF**: the
+  interoperability gate of M0.7 opens the document that the product wrote
+  with a foreign renderer, and the renderer was not part of the
+  installation — on macOS the loader of the tool also needed
+  `DYLD_LIBRARY_PATH` and not only `LD_LIBRARY_PATH`.
 - **The static proof of the Swift sources** (`scripts/check-swift-sources.py`,
   `scripts/check-swift-ast.mjs`): every Swift file is parsed with the real
   grammar of Swift, the names of the application are resolved against the

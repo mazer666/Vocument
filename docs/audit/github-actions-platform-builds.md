@@ -228,17 +228,29 @@ PASS:      a command that ends with 0      -> exit code 0
 
 The script itself is used wrongly (no `--label`, no command) → exit code 2.
 
-### 5.4 The job of Android — the steps of the workflow, executed
+### 5.4 The job of Android — what was executed here, and what was not
 
-`./scripts/build-android-rust.sh` (the cross-build of the engines with the
-NDK, the build of the FFI layer for `aarch64-linux-android`, the check of the
-closure and of the 16 KB pages), `./gradlew assembleDebug assembleRelease`,
-`./scripts/verify-android-native-libs.sh --apk <both packages>` and
-`./gradlew testDebugUnitTest` were executed on this machine with the
-environment of the workflow (`ANDROID_HOME`, `ANDROID_NDK_HOME`,
-`MUPDF_DIR`, `TESSERACT_DIR`, `TESSDATA_PREFIX`, `JAVA_HOME`).
+**Correction of 2026-10-22 (after the first runs).** This section claimed
+that the steps of the job of Android were executed on this machine. **They
+were not.** The environment of the sandbox has **no JDK** (`java` does not
+exist) and **no Android SDK** — the manifest of the release candidate of the
+same day says so as well: *"no JDK (java) in this environment — Gradle
+cannot run"*. The claim was wrong, and it is corrected here.
 
-The result is in §7.
+What **was** executed on this machine:
+
+| The step | The result |
+|---|---|
+| `./scripts/build-android-rust.sh` — the **cross-build** of the engines with the NDK, the build of the FFI layer for `aarch64-linux-android`, the check of the closure and of the 16 KB pages | **PASS** — the cross-build of MuPDF and Tesseract for `aarch64-v8a`, the libraries with 16 KB pages, the closure that the linker of the device can resolve |
+| `./scripts/verify-android-native-libs.sh` — the check of the libraries **in the build directory** | **PASS** |
+| `./gradlew assembleDebug assembleRelease` — the **packages** | **NOT RUN** — no JDK and no SDK in this environment |
+| `./scripts/verify-android-native-libs.sh --apk <both packages>` — the libraries **as they are packaged** | **NOT RUN** — the packages do not exist here |
+| `./gradlew testDebugUnitTest` — the unit tests of Gradle | **NOT RUN** — the same reason |
+
+The steps that need the SDK were therefore carried out for the first time by
+the **job of Android on the runner** — and the first run of that job was
+**red**: the build of the packages failed (the reason is named in the
+annotations of the run, §9).
 
 ### 5.5 The three YAML files
 
@@ -354,11 +366,32 @@ the product is always made from the source, never taken from a cache.
 
 ---
 
-## 9. The points for the team lead
+## 9. The runs of 2026-10-22 and the errors that they found
 
-1. **The Linux job will be red** until `scripts/release-candidate.sh` (1009
-   lines, the hard limit of `CODE-001` is 900) is split. The file belongs to
-   another task; the reason is in the log of the job.
+The three jobs were started for the first time on 2026-10-22. The runs and
+what they found are in
+[`../acceptance/ROUND-6-ACCEPTANCE.md`](../acceptance/ROUND-6-ACCEPTANCE.md)
+§2.3. Three findings came out of the runs — none of them is a defect of the
+product, and all three are fixed:
+
+| # | The finding | The cause | The fix |
+|---|---|---|---|
+| 1 | The **Linux gate** was red: the test `a_rail_of_a_stranger_is_not_read` failed. | The test gave the rail of the test to another user with `chown` — that is only possible for a process with the privilege to do so (**root**). The runner of GitHub runs as a normal user. The test asserted a situation that it could not build, and it failed instead of saying that it was not carried out. | The test says **NOT RUN** (with the reason) when the situation cannot be built — as the neighbouring test of the recovery container has done since the beginning. The proof was repeated on a machine with a normal user: the test now reports NOT RUN and does not fail. As root it still proves the refusal. |
+| 2 | The **Linux gate** was red: the test `a_job_kind_without_a_core_operation_fails_instead_of_succeeding` did not reach a terminal state within 20 seconds. | The tests of the job manager share **one** pool of workers and run at the same time: the job waited behind the real work of a neighbouring test. The time was a property of the machine, not a property of the product. | The time is now generous (180 seconds). What the tests prove is the **state** of the job, not how fast it came. |
+| 3 | The **macOS handshake** stopped at the M0.7 gate: "MuPDF verification failed". | The interoperability gate opens the document that the product wrote with a **foreign renderer** — and the installation of MuPDF held only the library, not the tool `mutool`. On macOS the loader of the tool also needed `DYLD_LIBRARY_PATH` and not only `LD_LIBRARY_PATH`. | The installation carries the reference renderer (`$MUPDF_DIR/bin/mutool`, with the rpath of the installation on macOS), and the child process of the gate gets both variables of the loader. |
+
+**The diagnostics of the runs.** The log of a job cannot be read from the
+outside in every environment (the storage of GitHub is not reachable from
+the sandbox of the team). The three jobs therefore write the lines that
+name a failure as an **annotation** of the run — the annotation is part of
+the API of the repository. A run that says *that* it failed is worth more
+than a red mark without a reason.
+
+## 10. The points for the team lead
+
+1. The file `scripts/release-candidate.sh` was above the hard limit of
+   `CODE-001` (1009 lines) while this work was running; it was split and
+   holds 573 lines now. The Linux job is green with it.
 2. The audit of the licences compares the inventory with `THIRD_PARTY.md`,
    and the section of the Android components depends on whether the **Gradle
    cache** is present on the machine. The Linux job therefore does **not**

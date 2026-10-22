@@ -176,10 +176,35 @@ distribution:
     android_direct_apk:
       status: "prepared-not-signed"
     source_archive:
-      status: "script-ready-not-built"
+      status: "built-reproducible-in-the-release-candidate"
+      note: "The archive of the revision is built twice and compared byte for byte
+        (docs/releasing/RELEASE-CANDIDATE.md). It is not published: the legal
+        clearance (E5) is open (B-1)."
   # The steps that still have to be taken before anything is handed out.
   # The blockers of a public binary, with their owner and their state:
   # docs/releasing/RELEASE-BLOCKERS.md
+  # The continuous integration of the project. Three jobs on the hosted
+  # runners of GitHub, one per platform — the decision of the project owner
+  # of 2026-10-22. Before that the workflow asked for a self-hosted runner
+  # that the repository does not have: 47 runs, 38 cancelled, 9 waiting,
+  # 0 executed, 0 runners.
+  continuous_integration:
+    state: "running-on-the-hosted-runners"
+    workflows:
+      - ".github/workflows/ci.yml — the gate of the project on Linux"
+      - ".github/workflows/ci-macos.yml — the Swift build of the macOS application"
+      - ".github/workflows/ci-android.yml — the native libraries and the packages of Android"
+    secrets: "none"
+    publishes_anything: false
+    report: "docs/acceptance/ROUND-6-ACCEPTANCE.md"
+  # The release candidate of the round: internal, not published.
+  release_candidate:
+    state: "built-internal-not-published"
+    script: "scripts/release-candidate.sh"
+    check: "scripts/verify-release-candidate.sh"
+    report: "docs/releasing/RELEASE-CANDIDATE.md"
+    source_archive_reproducible: true
+    applications_bit_identical: "not-claimed"
   open_before_publication:
     - "B-1 the legal compliance review of the project owner (E5)"
     - "B-2 the sign and the notarisation of the macOS bundle"

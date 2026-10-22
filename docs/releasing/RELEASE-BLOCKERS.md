@@ -32,7 +32,7 @@ in the build record (`target/build-record/`).
 | **B-6** | The reproducibility of the build from the archive | **Team** | **closed 2026-10-21, as far as this environment allows** — the Swift target and the Android package are **NOT RUN** here, with the reason written down |
 | **B-7** | The decision about the Mac App Store | **Project owner** | deferred (2026-10-21) |
 | **B-8** | The repository gate was red (`CODE-001`) | **Team** | **closed 2026-10-21** — found by the build record, fixed by the parallel task (commit `3ff973f`) |
-| **B-9** | **There is no CI runner.** The workflow asks for a self-hosted runner; the repository has **none** | **Project owner** | open — measured 2026-10-22: 47 runs, 38 cancelled, 9 waiting, **0 runners** |
+| **B-9** | **There is no CI runner.** The workflow asks for a self-hosted runner; the repository has **none** | **Project owner** | **closed 2026-10-22** — the decision of the owner ("GitHub Actions with the required native SDKs, where possible") and three workflows on the hosted runners; the runs of the round are in [`../acceptance/ROUND-6-ACCEPTANCE.md`](../acceptance/ROUND-6-ACCEPTANCE.md) §2.3 |
 
 ## The channels
 
@@ -231,7 +231,7 @@ war rot`); the gate is green again. The entry stays in the list, because a
 gate that turns red without anyone noticing is exactly what the build
 record is for.
 
-### B-9 — There is no CI runner — **open, the project owner**
+### B-9 — There is no CI runner — **closed 2026-10-22**
 
 **What was missing:** a machine that runs the gate when the code is pushed.
 
@@ -262,6 +262,17 @@ an identity, and the decision about it is not a technical one:
 * **GitHub-hosted runners** (`runs-on: ubuntu-latest`) — the workflow file
   has to be changed. The team does not change the workflow files; the
   decision and the change belong to the owner.
+
+**What the owner decided (2026-10-22):** *"Use GitHub Actions with the
+required native SDKs where possible."* — the second way. The workflow of
+2026-10-17 was replaced by three workflows on the hosted runners
+([`ci.yml`](../../.github/workflows/ci.yml),
+[`ci-macos.yml`](../../.github/workflows/ci-macos.yml),
+[`ci-android.yml`](../../.github/workflows/ci-android.yml)). The
+continuous integration of the project exists now; the runs of the round and
+what each of them proves are in
+[`../acceptance/ROUND-6-ACCEPTANCE.md`](../acceptance/ROUND-6-ACCEPTANCE.md)
+§2.
 
 **What the team did meanwhile:** the gate is a script that runs anywhere.
 `bash scripts/local-ci.sh` on a second machine — a Mac of the owner, a

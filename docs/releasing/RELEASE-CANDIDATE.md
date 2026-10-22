@@ -1,7 +1,7 @@
 # The release candidate of Vocument
 
 **Date:** 2026-10-22
-**Revision of the measurement:** `3d1448393265b1a7d72ca1a9065150bbc86454b4`
+**Revision of the measurement:** `541abcb8f3c25a157911856f8c3ecce2fc15e07a`
 **What this document is:** the description of the **internal release
 candidate** — what it is, how it is built, how it is checked, and what it
 does *not* claim.
@@ -69,7 +69,7 @@ is caught by the other.
 
 ## 3. The checks of the run of 2026-10-22
 
-The run of the revision `3d1448393265b1a7d72ca1a9065150bbc86454b4` on the
+The run of the revision `541abcb8f3c25a157911856f8c3ecce2fc15e07a` on the
 host `Linux 5.10.134-18.0.12.lifsea8.x86_64 x86_64`. The manifest of the run
 is the evidence; this document names the result.
 
@@ -77,18 +77,18 @@ is the evidence; this document names the result.
 
 | The check | The measurement |
 |---|---|
-| The source archive of the revision is built and reproducible | two builds, SHA-256 `e7115f58ea627e1b90e8f7a2b1f4a55700978ea221a7212ea11c270c9b29c8eb` — bit for bit the same; 5 069 312 bytes |
-| The archive names the revision it carries | `SOURCE-IDENTIFICATION.txt` names `3d1448393265b1a7d72ca1a9065150bbc86454b4` |
-| The archive carries the tree of the revision completely | 389 files, compared file by file with `git ls-tree` and `git hash-object`, plus the identification |
+| The source archive of the revision is built and reproducible | two builds, SHA-256 `d8d745cdcf46422da3d62f8e8a28d881e786e6388d6c0ab48b2d71049bf12707` — bit for bit the same; 5118360 bytes |
+| The archive names the revision it carries | `SOURCE-IDENTIFICATION.txt` names `541abcb8f3c25a157911856f8c3ecce2fc15e07a` |
+| The archive carries the tree of the revision completely | 403 files, compared file by file with `git ls-tree` and `git hash-object`, plus the identification |
 | The build record of the revision was written | `target/release-candidate/build-record/build-record.json` |
 | The gate `scripts/validate-repo.sh` | PASS — read from the build record of the candidate |
 | The gate `scripts/validate-distribution.sh` | PASS — read from the build record of the candidate |
 | The gate `scripts/audit-licenses.sh` | PASS — read from the build record of the candidate |
-| The tests of the workspace | 258 passed, 0 failed, 0 ignored — read from the build record of the candidate |
+| The tests of the workspace | 262 passed, 0 failed, 0 ignored — read from the build record of the candidate |
 | The audit of the licences of every component | PASS — every component carries a known, compatible licence |
 | The notices of the third-party components were assembled | PASS — the texts come from the repository, not from the network |
 | The notices of the candidate are the notices of the repository | both files have the checksum `c26429632867b2004d9fc9c31268f434a27a2036c5c187bf9c5dab2d00749437` |
-| The Rust library is built from the sources of the revision | `libvocument_ffi.so`, SHA-256 `fc488724537a387862e9b36c096bb203dbc76a022b46b980577bc92c1b87e535`, built from the unpacked archive |
+| The Rust library is built from the sources of the revision | `libvocument_ffi.so`, SHA-256 `8c072bc29c4e0b4fdba1abd666ac2dacd49f1b7a3c7892c796b5dcf12ed0041f`, built from the unpacked archive |
 | The candidate is not published | the candidate holds no package of a store and no signed bundle |
 
 ### NOT RUN — could not be carried out in this environment
@@ -124,11 +124,11 @@ byte by byte.
 
 | What | The measurement of 2026-10-22 |
 |---|---|
-| The first build | `e7115f58ea627e1b90e8f7a2b1f4a55700978ea221a7212ea11c270c9b29c8eb` |
-| The second build | `e7115f58ea627e1b90e8f7a2b1f4a55700978ea221a7212ea11c270c9b29c8eb` |
+| The first build | `d8d745cdcf46422da3d62f8e8a28d881e786e6388d6c0ab48b2d71049bf12707` |
+| The second build | `d8d745cdcf46422da3d62f8e8a28d881e786e6388d6c0ab48b2d71049bf12707` |
 | The third build (the check of the candidate) | the same |
-| The size | 5 069 312 bytes |
-| The content | the tree of the revision, 389 files, byte for byte, plus the identification of the revision |
+| The size | 5118360 bytes |
+| The content | the tree of the revision, 403 files, byte for byte, plus the identification of the revision |
 
 Two properties make this a property of the build and not an accident of the
 measurement:

@@ -17,6 +17,22 @@ use vocument_ffi::save_dto::document_core_export_session_bytes;
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::{document_core_get_session_snapshot, document_core_open_brokered_file};
 
+/// The lock of the tests that touch the rail of the profession.
+///
+/// The rail of the user is **one** rail: it lives in the data directory of
+/// the user and in the registry of the sessions, and both are shared by the
+/// whole process. The tests that write a rail would therefore write over
+/// each other when they run at the same time — the result depends on which
+/// of them wins the race, not on what the product does. The tests that
+/// touch the rail hold this lock; the other tests do not need it.
+static RAIL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Takes the lock of the rail. A poisoned lock is no reason to fail a test:
+/// the rail is written again by the test itself.
+fn lock_rail() -> std::sync::MutexGuard<'static, ()> {
+    RAIL.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// Builds a document with one page and a line of text.
 fn document_with_one_page() -> Vec<u8> {
     let content = "BT /F1 18 Tf 20 150 Td (Vertrag) Tj ET\n";
@@ -239,6 +255,7 @@ fn a_note_with_a_key_that_the_rail_does_not_carry_is_refused_and_the_document_st
 
 #[test]
 fn the_rail_of_the_user_may_replace_the_default() {
+    let _rail = lock_rail();
     let session_id = open_session(document_with_one_page(), "comment-rail");
     let before = document_core_jurist_palette();
 
@@ -279,6 +296,7 @@ fn the_rail_of_the_user_may_replace_the_default() {
 /// they stay the same when the rail of the user is replaced.
 #[test]
 fn the_meaning_of_the_rail_travels_with_the_note() {
+    let _rail = lock_rail();
     let session_id = open_session(document_with_one_page(), "comment-meaning");
     document_core_add_comment_annotation(
         session_id.clone(),
@@ -328,6 +346,7 @@ fn the_meaning_of_the_rail_travels_with_the_note() {
 
 #[test]
 fn the_key_of_the_rail_travels_with_the_note() {
+    let _rail = lock_rail();
     let session_id = open_session(document_with_one_page(), "comment-key");
     document_core_add_comment_annotation(
         session_id.clone(),
