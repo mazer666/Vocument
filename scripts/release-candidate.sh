@@ -428,8 +428,15 @@ elif [[ ! -f "$ARCHIVE_FILE" ]]; then
     LIBRARY_REASON="the source archive was not built — there are no sources to build from"
 elif [[ ! -f "$MUPDF_LIBRARY" ]] || [[ ! -f "$TESSERACT_LIBRARY" ]]; then
     MISSING_LIBRARIES=""
-    [[ -f "$MUPDF_LIBRARY" ]] || MISSING_LIBRARIES="MuPDF ($MUPDF_LIBRARY)"
-    [[ -f "$TESSERACT_LIBRARY" ]] || MISSING_LIBRARIES="${MISSING_LIBRARIES:+$MISSING_LIBRARIES, }Tesseract ($TESSERACT_LIBRARY)"
+    # The name of the library is empty, when it was not found at all. The
+    # message names the directory that was searched — a message that names
+    # nothing tells the reader nothing.
+    if [[ ! -f "$MUPDF_LIBRARY" ]]; then
+        MISSING_LIBRARIES="MuPDF (not found in $MUPDF_DIR/lib)"
+    fi
+    if [[ ! -f "$TESSERACT_LIBRARY" ]]; then
+        MISSING_LIBRARIES="${MISSING_LIBRARIES:+$MISSING_LIBRARIES, }Tesseract (not found in $TESSERACT_DIR/lib)"
+    fi
     LIBRARY_REASON="the toolchain of the link is not complete in this environment: $MISSING_LIBRARIES. MuPDF and Tesseract are third-party components that are not part of the source of the product — they are built from their pinned sources"
 else
     BUILD_ROOT="$OUTPUT_DIRECTORY/build/${REVISION:0:12}"
@@ -463,8 +470,21 @@ else
     fi
     set -e
 
-    LIBRARY_FILE="$CARGO_TARGET_DIRECTORY/release/libvocument_ffi.so"
-    if [[ "$LIBRARY_EXIT" -eq 0 && -f "$LIBRARY_FILE" ]]; then
+    # The name of the shared library differs between the platforms: on Linux
+    # the linker builds `libvocument_ffi.so`, on macOS `libvocument_ffi.dylib`.
+    # The candidate names the library that was really built — a candidate that
+    # reports a library as missing that exists under the name of the other
+    # platform says the build failed when it did not.
+    LIBRARY_FILE=""
+    for library_candidate in \
+        "$CARGO_TARGET_DIRECTORY/release/libvocument_ffi.so" \
+        "$CARGO_TARGET_DIRECTORY/release/libvocument_ffi.dylib"; do
+        if [[ -f "$library_candidate" ]]; then
+            LIBRARY_FILE="$library_candidate"
+            break
+        fi
+    done
+    if [[ "$LIBRARY_EXIT" -eq 0 && -n "$LIBRARY_FILE" ]]; then
         LIBRARY_DIGEST="$(sha256_of "$LIBRARY_FILE")"
         LIBRARY_STATE="PASS"
         LIBRARY_EVIDENCE="the library was built from the unpacked archive of $REVISION, SHA-256 $LIBRARY_DIGEST"
@@ -537,6 +557,7 @@ fi
 
 LIBRARY_ARTEFACTS=(
     "libvocument_ffi.so"
+    "libvocument_ffi.dylib"
     "libvocument_ffi.a"
     "libvocument_core.rlib"
     "libvocument_pdf_mupdf.rlib"

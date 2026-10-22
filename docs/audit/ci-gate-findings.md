@@ -174,8 +174,20 @@ The shared library of MuPDF and of Tesseract was looked for as
 and `libtesseract.dylib`, so the candidate reported a complete toolchain
 that was complete, and the build record named a file that did not exist.
 
+The same name was wrong in three more places, and each of them turned a
+result into a wrong one:
+
+* the library that the candidate builds from the sources of the revision
+  (`libvocument_ffi.so`) — the build **succeeded** in 41 seconds, and the
+  candidate reported the library as not built, with the message *"the
+  library could not be built … (exit code 0)"*;
+* the list of the artefacts of the release, which therefore carried no
+  shared library on macOS;
+* the list of the artefacts of the comparison of the source archive.
+
 **Fixed** in the two scripts of the release path: the candidate looks for the
 name of the platform, and the record names the library that is really linked.
+The artefact lists carry both names — the loop takes the one that exists.
 
 ### 2.7 `readelf` was required without a way around it
 

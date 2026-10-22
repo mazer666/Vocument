@@ -275,6 +275,7 @@ fact_string "build.log_archive" "target/build-record/rebuild-archive.log"
 # --- 5. The comparison ----------------------------------------------------
 ARTEFACTS=(
     "libvocument_ffi.so"
+    "libvocument_ffi.dylib"
     "libvocument_ffi.a"
     "libvocument_ffi.rlib"
     "libvocument_core.rlib"
