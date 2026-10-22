@@ -54,15 +54,18 @@ if [[ -z "$NDK_ROOT" || ! -d "$NDK_ROOT" ]]; then
   exit 1
 fi
 
-TOOLCHAIN_HOST="linux-x86_64"
-TOOLCHAIN_DIR="${NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN_HOST}"
-if [[ ! -d "$TOOLCHAIN_DIR" ]]; then
-  TOOLCHAIN_DIR="${NDK_ROOT}/toolchains/llvm/prebuilt/darwin-x86_64"
-fi
-if [[ ! -d "$TOOLCHAIN_DIR" ]]; then
-  echo "ERROR: Unsupported NDK layout in ${NDK_ROOT} (no linux-x86_64 or darwin-x86_64 toolchain)." >&2
+TOOLCHAIN_HOST=""
+for host in linux-x86_64 darwin-x86_64 darwin-arm64 linux-arm64; do
+  if [[ -d "${NDK_ROOT}/toolchains/llvm/prebuilt/${host}" ]]; then
+    TOOLCHAIN_HOST="${NDK_ROOT}/toolchains/llvm/prebuilt/${host}"
+    break
+  fi
+done
+if [[ -z "$TOOLCHAIN_HOST" ]]; then
+  echo "ERROR: No supported LLVM toolchain found under ${NDK_ROOT}/toolchains/llvm/prebuilt" >&2
   exit 1
 fi
+TOOLCHAIN_DIR="${TOOLCHAIN_HOST}"
 
 TOOLCHAIN_BIN="${TOOLCHAIN_DIR}/bin"
 CC_BIN="${TOOLCHAIN_BIN}/aarch64-linux-android${ANDROID_API_LEVEL}-clang"

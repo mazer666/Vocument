@@ -21,8 +21,41 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-NDK_ROOT="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-/opt/android-ndk/android-ndk-r27c}}"
-TOOLCHAIN_HOST="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
+# The NDK may live inside the Android SDK, or be pointed at explicitly through
+# ANDROID_NDK_HOME / ANDROID_NDK_ROOT. The directory of the toolchain differs
+# between the hosts: a Linux machine has `linux-x86_64`, a macOS machine
+# `darwin-arm64`. The name is therefore **probed**, not assumed — a script
+# that assumes the name of the other platform cannot build anything.
+NDK_ROOT="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
+if [[ -z "$NDK_ROOT" ]]; then
+  for candidate in \
+    "${ANDROID_HOME:-}/ndk" \
+    "${ANDROID_SDK_ROOT:-}/ndk" \
+    "$HOME/Android/Sdk/ndk" \
+    "/opt/android-ndk/android-ndk-r27c" \
+    "/usr/local/lib/android/sdk/ndk"; do
+    if [[ -n "$candidate" && -d "$candidate" ]]; then
+      NDK_ROOT="$(find "$candidate" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n1)"
+      break
+    fi
+  done
+fi
+if [[ -z "$NDK_ROOT" || ! -d "$NDK_ROOT" ]]; then
+  echo "ERROR: Android NDK not found. Set ANDROID_NDK_HOME or ANDROID_NDK_ROOT." >&2
+  exit 1
+fi
+
+TOOLCHAIN_HOST=""
+for host in linux-x86_64 darwin-x86_64 darwin-arm64 linux-arm64; do
+  if [[ -d "${NDK_ROOT}/toolchains/llvm/prebuilt/${host}" ]]; then
+    TOOLCHAIN_HOST="${NDK_ROOT}/toolchains/llvm/prebuilt/${host}"
+    break
+  fi
+done
+if [[ -z "$TOOLCHAIN_HOST" ]]; then
+  echo "ERROR: No supported LLVM toolchain found under ${NDK_ROOT}/toolchains/llvm/prebuilt" >&2
+  exit 1
+fi
 NDK_BIN="${TOOLCHAIN_HOST}/bin"
 NDK_SYSROOT="${TOOLCHAIN_HOST}/sysroot"
 TARGET_API=24
