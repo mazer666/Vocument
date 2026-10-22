@@ -208,6 +208,11 @@ if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
     else
       swift build --package-path apps/macos --product VocumentMacApp
     fi
+    # The **tests of the kit** belong to the gate: the hosted runner runs
+    # them (`ci-macos.yml`), and a gate that measures something else than the
+    # runner is not the gate of the project. The tests prove the chain of the
+    # review — the redaction of the interface among them.
+    swift test --package-path apps/macos
     swift run --package-path apps/macos vocument-mac-handshake
   else
     # On a platform without the macOS SDK the **application** cannot be
@@ -225,6 +230,10 @@ if [[ -f "apps/macos/Package.swift" && -n "$SWIFT_BIN" ]]; then
     echo "      CoreGraphics are part of the macOS SDK, and this runner is not a Mac."
     echo "      The build of the application and the surface of the review are NOT RUN"
     echo "      here and must not be reported as passed."
+    echo "NOTE: the **tests of the kit** are NOT run here either — the hosted runner"
+    echo "      of macOS runs them (`ci-macos.yml`), and the tests of the review"
+    echo "      belong to the platform of the application. They must not be reported"
+    echo "      as passed here."
   fi
 else
   echo "NOT RUN: the Swift proof needs a Swift toolchain — the compiler is neither on"

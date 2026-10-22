@@ -45,8 +45,9 @@ project:
     # about the place that could not be examined out of the report, and the
     # redaction was reported as verified while a place of the document had
     # never been looked into. The report grows with the document now, and an
-    # incomplete report is a refused redaction. The macOS interface of the
-    # redaction is not part of M2.1 and stays open, see
+    # incomplete report is a refused redaction. The step of the macOS
+    # interface of the redaction was measured later on a macOS host — the
+    # chain of the user is carried by the kit and proven by four tests, see
     # docs/acceptance/M2.1-ACCEPTANCE.md and
     # docs/acceptance/ROUND-5-ACCEPTANCE.md.
     - "M2.1"

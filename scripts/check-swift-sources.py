@@ -83,8 +83,9 @@ PARSER_PACKAGES = ["tree-sitter", "tree-sitter-swift"]
 
 # The types of the system that the application uses. Every other name in a
 # type position has to come from the package: the generated bindings, the
-# kit or the application. The list holds the types of Foundation, AppKit,
-# SwiftUI, CoreGraphics and XCTest that the sources really use.
+# kit or the application. The list holds the types of the standard library,
+# Foundation, AppKit, SwiftUI, CoreGraphics and XCTest that the sources
+# really use.
 SYSTEM_TYPES = {
     "App",
     "Bool",
@@ -96,6 +97,7 @@ SYSTEM_TYPES = {
     "CustomStringConvertible",
     "Data",
     "DispatchSourceMemoryPressure",
+    "Equatable",
     "Error",
     "Identifiable",
     "Int",
@@ -106,6 +108,7 @@ SYSTEM_TYPES = {
     "Published",
     "Scene",
     "Sendable",
+    "Set",
     "State",
     "String",
     "UInt32",

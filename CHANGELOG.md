@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **The proof of the redaction of the interface** (`RISK-032`): the chain of
+  the user — mark a place on the page, see the text that stands there, remove
+  it for good, see what could not be removed — is carried by `RedactionReview`
+  in the kit of macOS, and four tests walk it the way the interface walks it.
+  The point of the proof is the fifth step: **the text is gone from the page
+  afterwards**, not only from the report. A marked place of another page is
+  refused before the core is asked — a removal would take away a text the user
+  never saw in the preview. The interface and the test use the same code, so
+  the proof is the proof of the interface. The tests belong to the gate of the
+  project and to the hosted runner of macOS.
+- **The gate of the project runs the tests of the kit of macOS.** The hosted
+  runner ran them, the local gate did not — a gate that measures something
+  else than the runner is not the gate of the project.
+
 ## [0.1.0-alpha.1] - 2026-10-22
 
 ### Added

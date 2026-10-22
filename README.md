@@ -11,7 +11,7 @@ Vocument is designed to be local-first, offline-first, interoperable and underst
 ## Current project status
 
 - **Baseline:** Implementation Baseline v0.1
-- **Current milestone:** Milestone M2 (macOS Professional Review) — **IN PROGRESS** (M0 and M1 complete; M2.1–M2.4 complete, M2.5 in progress). The acceptance records name what is proven and what is not: [`docs/acceptance/`](docs/acceptance/).
+- **Current milestone:** Milestone M2 (macOS Professional Review) — **IN PROGRESS** (M0 complete; M1 implemented and verified on the host, the runtime measured on an Android emulator; M2.1–M2.4 complete, M2.5 in progress). The acceptance records name what is proven and what is not: [`docs/acceptance/`](docs/acceptance/).
 - **Phase-1 platforms:** macOS 15+ on Apple Silicon, Android 13+
 - **Shared core:** Rust (`core/vocument-core`)
 - **macOS UI:** SwiftUI + AppKit (`apps/macos`)

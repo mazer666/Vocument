@@ -195,6 +195,14 @@ extension MacDocumentSessionCoordinator {
 
     // MARK: - The redaction
 
+    /// The chain of the redaction, carried by the kit (`REDACT-001`).
+    ///
+    /// The chain is in the kit and not here, so that a test can prove it —
+    /// the window shows the result, the kit carries the chain.
+    private var redactionReview: RedactionReview {
+        RedactionReview(client: coreClient)
+    }
+
     /// Takes the rectangle the user marked on the page and asks the core
     /// which text lies inside it (`REDACT-001`).
     ///
@@ -203,16 +211,16 @@ extension MacDocumentSessionCoordinator {
     func applyRedactionSelection(_ rect: FfiPdfRectMilliPt) {
         guard let session = activeSession else { return }
         do {
-            let selection = try coreClient.selectPageText(
+            let selection = try redactionReview.select(
                 sessionId: session.sessionId,
                 pageIndex: currentPageIndex,
-                selectionRect: rect
+                rect: rect
             )
-            redactionSelection = rect
+            redactionSelection = selection.rect
             // The place belongs to the page it was marked on: the removal
             // has to happen on the page the preview was taken from.
-            redactionSelectionPageIndex = currentPageIndex
-            redactionSelectionText = selection.cleanedText
+            redactionSelectionPageIndex = selection.pageIndex
+            redactionSelectionText = selection.text
         } catch {
             errorMessage = "\(error)"
         }
@@ -236,37 +244,36 @@ extension MacDocumentSessionCoordinator {
     /// gone from the document while it is still in it.
     func redactSelectedRegions() {
         guard let session = activeSession else { return }
-        guard let selection = redactionSelection else {
+        guard let rect = redactionSelection, let markedPage = redactionSelectionPageIndex else {
             errorMessage = "Mark a place on the page before you remove something."
             return
         }
-        // The marked place belongs to the page it was marked on. A removal
-        // on another page would remove a text the user never saw in the
-        // preview — the removal is therefore refused.
-        if let markedPage = redactionSelectionPageIndex, markedPage != currentPageIndex {
-            clearRedactionSelection()
-            errorMessage = "The marked place stands on another page — mark it again."
-            return
-        }
-        let region = FfiRedactionRegion(
-            x0MilliPt: selection.x0MilliPt,
-            y0MilliPt: selection.y0MilliPt,
-            x1MilliPt: selection.x1MilliPt,
-            y1MilliPt: selection.y1MilliPt
+        let selection = RedactionSelection(
+            pageIndex: markedPage,
+            rect: rect,
+            text: redactionSelectionText
         )
         do {
-            let report = try coreClient.redactPageRegions(
+            let outcome = try redactionReview.redact(
                 sessionId: session.sessionId,
-                pageIndex: currentPageIndex,
-                regions: [region]
+                selection: selection,
+                currentPageIndex: currentPageIndex
             )
-            securityWarnings = DocumentCoreClient.redactionWarnings(report)
+            securityWarnings = outcome.warnings
             clearRedactionSelection()
             refreshReviewState()
             // The user has to see the result of the removal: a page that
             // still shows the text that was just removed for good would be a
             // lie.
             refreshRenderedPageAfterChange(sessionId: session.sessionId)
+        } catch let refusal as RedactionRefusal {
+            // The marked place stands on another page: it is forgotten, and
+            // the user has to mark it again.
+            clearRedactionSelection()
+            errorMessage = "\(refusal)"
+            // A refused redaction changes nothing: the document is as it was.
+            // There is no warning, because nothing happened.
+            securityWarnings = []
         } catch {
             errorMessage = "\(error)"
             // A refused redaction changes nothing: the document is as it was.

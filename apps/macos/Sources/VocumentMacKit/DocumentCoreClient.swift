@@ -202,6 +202,17 @@ public struct DocumentCoreClient: Sendable {
         )
     }
 
+    /// The words of a page with their boxes (`REDACT-001`).
+    ///
+    /// The boxes are in the page space of the engine: milli-points, the origin
+    /// at the top left of the page, the y axis pointing down. The interface
+    /// needs them to turn the place the user marked into the rectangle of the
+    /// core — and a test needs them to mark a **word** of the document instead
+    /// of a hard-coded coordinate that would break with the next layout.
+    public func pageWords(sessionId: String, pageIndex: UInt32) throws -> [FfiPageWord] {
+        try documentCorePageWords(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
     /// Progressively indexes up to `maxPages` into the session's SQLite FTS5 index starting around `preferredStartPage` (`SEARCH-009`).
     public func indexSearchBatch(
         sessionId: String,
