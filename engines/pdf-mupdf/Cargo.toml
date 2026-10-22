@@ -10,6 +10,11 @@ build = "build.rs"
 vocument-core = { path = "../../core/vocument-core" }
 thiserror.workspace = true
 
+[dev-dependencies]
+# Only the tests measure the peak memory of the process, and the standard
+# library of Rust does not offer that on every platform.
+libc.workspace = true
+
 [build-dependencies]
 cc.workspace = true
 

@@ -149,15 +149,39 @@ fn a_document_with_many_pages_opens_within_the_budget() {
 
 /// Reads the peak resident set size of this process in kilobytes.
 ///
-/// The value comes from the kernel (`VmHWM`), so it is a real measurement and
-/// not an estimate.
+/// The value comes from the kernel, so it is a real measurement and not an
+/// estimate. Linux reports it as `VmHWM` in `/proc/self/status`; macOS has no
+/// `/proc` and reports it as `ru_maxrss` of `getrusage` — **in bytes**, which
+/// is why the value is converted here. A platform that reports neither cannot
+/// be asked, and the test then says so instead of claiming a bound that was
+/// not measured.
 fn peak_resident_kb() -> Option<u64> {
-    let status = std::fs::read_to_string("/proc/self/status").ok()?;
-    status
-        .lines()
-        .find(|line| line.starts_with("VmHWM:"))
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|value| value.parse().ok())
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        status
+            .lines()
+            .find(|line| line.starts_with("VmHWM:"))
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|value| value.parse().ok())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // SAFETY: the structure is zeroed before, so that a field that the
+        // system does not set keeps a defined value, and `getrusage` writes
+        // nothing beyond the structure that is handed to it.
+        let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
+        // SAFETY: the pointer refers to a `rusage` of the size that the
+        // system expects, and `RUSAGE_SELF` asks for this process.
+        if unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut usage) } != 0 {
+            return None;
+        }
+        // macOS reports the value in bytes, the other systems in kilobytes.
+        #[cfg(target_os = "macos")]
+        return Some(u64::try_from(usage.ru_maxrss).ok()? / 1024);
+        #[cfg(not(target_os = "macos"))]
+        Some(u64::try_from(usage.ru_maxrss).ok()?)
+    }
 }
 
 #[test]
