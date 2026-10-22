@@ -838,6 +838,60 @@ Deliver:
 
 ---
 
+# M7 — Optional local interfaces (MCP)
+
+**Status:** planned — the decision is in
+[ADR-0021](docs/adr/ADR-0021-optional-local-interfaces-mcp.md)
+
+A user may want to work with a document **from an assistant**: the assistant
+reads the pages, searches in the document, marks a place that has to go,
+writes a comment and saves the result. The **Model Context Protocol (MCP)**
+is the interface that is used for that today; a local command line or a
+local socket serves the same purpose.
+
+**This milestone is optional in every sense.** The interface is not started
+by default, it is not required for any function of the product, and the
+product is complete without it. It runs **on the machine of the user** and
+asks for **no network right** — the same rule as the applications.
+
+**The rule that makes it safe: the interface is a shell around the existing
+core, not a second implementation.** Every write goes through the core, and
+the removal of a place is verified by the same four checks, with the same
+refusal. An interface that could remove a text without the verification
+would be a second, weaker path — and it is not built.
+
+Deliver:
+
+- the functions of the product as **tools**: open a document, read the
+  pages, the words and the findings (links, actions, attachments,
+  signatures), search, mark a place, remove a marked place, write a comment,
+  save
+- the **MCP server over stdio** as the first shell — thin, off by default,
+  local, without an account, without telemetry and without a network right
+  (E4)
+- the **proof of the same workflow through the interface**: open → read →
+  search → mark → remove → comment → save → reopen, with the same corpus
+  that the applications use — and the proof that a **refused** redaction is
+  refused through the interface as well, with the same reason
+- the licence duties for the interface as well: it is part of the AGPL
+  product, the notice of the third-party components covers it, and the
+  source archive of a release contains it (E1–E3)
+
+**Not in this milestone:**
+
+- a function that is reached over the **network** — that needs a new
+  architecture and a new licence review (E4, §8 of the licensing decision)
+  and a different threat model
+- the **macOS App Store** (deferred by the decision of the project owner) —
+  the question of the sandbox of macOS is answered together with it
+- **Android** — Android has no local stdio pipe for an assistant; a variant
+  over a content provider or a bound service is a different design
+
+The legal clearance (E5) remains the precondition of every publication, also
+for the interface.
+
+---
+
 # Platform order
 
 The platform order is **binding** (`project/project.yaml` → `platforms.track_order`,
