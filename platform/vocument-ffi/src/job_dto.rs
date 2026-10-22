@@ -312,6 +312,15 @@ mod tests {
         snapshot.session_id
     }
 
+    /// The time the test waits for a job.
+    ///
+    /// The tests of this module share **one** worker pool, and they run at
+    /// the same time: a job that waits in the queue behind the real work of
+    /// another test starts later on a slow machine than on a fast one. The
+    /// time is therefore generous — what the tests prove is the **state** of
+    /// the job, not how fast it came.
+    const JOB_TIMEOUT: Duration = Duration::from_secs(180);
+
     fn wait_for_state(job_id: u64, timeout: Duration) -> String {
         let deadline = Instant::now() + timeout;
         loop {
@@ -335,7 +344,7 @@ mod tests {
             document_core_job_submit(session_id.clone(), 1, "render_thumbnail".to_owned(), false)
                 .expect("job must be submitted");
 
-        let state = wait_for_state(job_id, Duration::from_secs(20));
+        let state = wait_for_state(job_id, JOB_TIMEOUT);
         assert_eq!(state, "Completed", "the thumbnail job must succeed");
 
         // The job must have produced a real thumbnail, not just returned.
@@ -354,7 +363,7 @@ mod tests {
         )
         .expect("job must be submitted");
 
-        let state = wait_for_state(job_id, Duration::from_secs(20));
+        let state = wait_for_state(job_id, JOB_TIMEOUT);
         assert_eq!(
             state, "Failed",
             "a job for an unknown session must report a failure"
@@ -372,7 +381,7 @@ mod tests {
         let job_id = document_core_job_submit(session_id, 1, "run_ocr".to_owned(), false)
             .expect("job must be submitted");
 
-        let state = wait_for_state(job_id, Duration::from_secs(20));
+        let state = wait_for_state(job_id, JOB_TIMEOUT);
         assert_eq!(
             state, "Failed",
             "a job kind without a core operation must not report success"
@@ -405,7 +414,7 @@ mod tests {
             .expect("session cancellation must succeed");
         assert!(cancelled >= 1, "the job of the session must be cancelled");
 
-        let state = wait_for_state(job_id, Duration::from_secs(20));
+        let state = wait_for_state(job_id, JOB_TIMEOUT);
         assert!(
             matches!(state.as_str(), "Cancelled" | "Completed"),
             "the job must end in a terminal state, was {state}"
