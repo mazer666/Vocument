@@ -32,6 +32,7 @@ in the build record (`target/build-record/`).
 | **B-6** | The reproducibility of the build from the archive | **Team** | **closed 2026-10-21, as far as this environment allows** — the Swift target and the Android package are **NOT RUN** here, with the reason written down |
 | **B-7** | The decision about the Mac App Store | **Project owner** | deferred (2026-10-21) |
 | **B-8** | The repository gate was red (`CODE-001`) | **Team** | **closed 2026-10-21** — found by the build record, fixed by the parallel task (commit `3ff973f`) |
+| **B-9** | **There is no CI runner.** The workflow asks for a self-hosted runner; the repository has **none** | **Project owner** | open — measured 2026-10-22: 47 runs, 38 cancelled, 9 waiting, **0 runners** |
 
 ## The channels
 
@@ -229,6 +230,49 @@ record and fixed by the parallel task in the commit `3ff973f`
 war rot`); the gate is green again. The entry stays in the list, because a
 gate that turns red without anyone noticing is exactly what the build
 record is for.
+
+### B-9 — There is no CI runner — **open, the project owner**
+
+**What was missing:** a machine that runs the gate when the code is pushed.
+
+The workflow (`.github/workflows/ci.yml`) asks for `runs-on: self-hosted` —
+it runs `./scripts/local-ci.sh`, the same gate that the team runs locally.
+The measurement of 2026-10-22, read from the API of the repository:
+
+| What | The measurement |
+|---|---|
+| The runs of the workflow since 2026-10-17 | **47** |
+| Of them: **cancelled** | **38** |
+| Of them: **waiting** (`queued`) | **9** |
+| Of them: **run** (green or red) | **0** |
+| The runners registered for the repository | **0** |
+
+**Why it matters:** the project has **no continuous integration**. Every
+gate that was ever run was run by hand, in one environment. The claim "the
+CI is green" cannot be made — the CI has never run once. A release asks for
+a green gate (`RELEASE-PROCESS.md`, V3); the gate exists, but the *second,
+independent* execution of it does not.
+
+**Who has to do it:** the **project owner** — the runner is a machine with
+an identity, and the decision about it is not a technical one:
+
+* **a self-hosted runner** on a machine of the owner that has the
+  toolchain (see [`CI-SETUP.md`](CI-SETUP.md)) — the workflow stays as it
+  is; or
+* **GitHub-hosted runners** (`runs-on: ubuntu-latest`) — the workflow file
+  has to be changed. The team does not change the workflow files; the
+  decision and the change belong to the owner.
+
+**What the team did meanwhile:** the gate is a script that runs anywhere.
+`bash scripts/local-ci.sh` on a second machine — a Mac of the owner, a
+Linux box with the toolchain — is the same proof as a runner, without the
+identity and the account. The list of what the runner needs is in
+[`CI-SETUP.md`](CI-SETUP.md).
+
+**The queue:** the nine waiting runs are the pushes of the last two days.
+If a runner appears, they would all start at once on old revisions. They
+should be cancelled (`gh run cancel <id>` or the page of the workflow)
+before a runner is registered.
 
 ## What is **not** a blocker
 
