@@ -1,0 +1,194 @@
+# The Android build on a GitHub-hosted Linux runner.
+#
+# The Android package needs the native SDKs: the Android SDK (platform 35,
+# build tools 35.0.0), the NDK r27c for the cross-build of the native
+# libraries and the Rust toolchain for the cross-build of the FFI layer. The
+# job installs them, builds the real native libraries (MuPDF and Tesseract,
+# not a stub — `QA-003`, `ADR-0017`), builds the debug and the release
+# package and runs the unit tests of Gradle.
+#
+# What this job proves:
+#   * the native library of the application is built for `arm64-v8a` against
+#     the real MuPDF 1.28.5 and the real Tesseract, with 16 KB pages,
+#   * the debug and the release package are built,
+#   * the native libraries are really **inside** the package, with a closure
+#     that the linker of the device can resolve,
+#   * the unit tests of Gradle pass against the native library.
+#
+# What this job does NOT prove:
+#   * the behaviour of the application on a real device (the proof with the
+#     emulator needs a system image and a long boot — it is NOT RUN here),
+#   * the ARM64 proof under QEMU (it needs the static cross-build of MuPDF),
+#   * the publication of the package: **nothing is uploaded, signed or
+#     published here**. The legal clearance (E5) is open.
+name: CI (Android)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# The workflow reads the repository and nothing else. It needs no secret, and
+# it gets no write permission. No package is ever uploaded: the permission
+# `contents: write` would not be enough for it anyway — a publication needs
+# a key, and the key does not exist yet (E5).
+permissions:
+  contents: read
+
+# A new push makes the run of the old revision pointless.
+concurrency:
+  group: ci-android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android — the native libraries, the packages and the unit tests
+    runs-on: ubuntu-latest
+    # The limit of a job on GitHub is 6 hours. The cross-builds of the
+    # engines and the two packages need far less; the limit here is the
+    # guard against a run that hangs.
+    timeout-minutes: 120
+    env:
+      # The Android SDK. The build scripts read `ANDROID_HOME`.
+      ANDROID_HOME: ${{ github.workspace }}/target/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/target/android-sdk
+      # The NDK r27c, pinned by the build scripts of the project.
+      ANDROID_NDK_HOME: ${{ github.workspace }}/target/android-sdk/ndk/27.2.12479018
+      # The installation of the host MuPDF: the unit tests of Gradle load the
+      # **host** library of the FFI layer, and that library is linked against
+      # the host MuPDF.
+      MUPDF_DIR: ${{ github.workspace }}/target/mupdf-host
+      # The OCR engine of the host build is linked against the system
+      # Tesseract.
+      TESSERACT_DIR: /usr
+      # The language models of the OCR. They are part of the repository.
+      TESSDATA_PREFIX: ${{ github.workspace }}/apps/android/app/src/main/assets/tessdata
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install the JDK 17 and the system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf \
+            automake \
+            build-essential \
+            ca-certificates \
+            curl \
+            libtool \
+            libtesseract-dev \
+            libleptonica-dev \
+            m4 \
+            openjdk-17-jdk-headless \
+            pkg-config \
+            python3 \
+            unzip \
+            zip
+          echo "JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" >> "$GITHUB_ENV"
+          java -version
+
+      - name: Install the Android SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="$ANDROID_HOME"
+          mkdir -p "$SDK_ROOT/cmdline-tools" "$SDK_ROOT/licenses"
+
+          # The licences of the SDK are accepted by their checksums — the
+          # files are public and belong to the SDK, no secret is written
+          # into the repository.
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$SDK_ROOT/licenses/android-sdk-license"
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$SDK_ROOT/licenses/android-sdk-preview-license"
+
+          # The command line tools (12.0) are pinned by their checksum.
+          echo "==> Downloading the command line tools of the Android SDK..."
+          curl -fsSL -o "$RUNNER_TEMP/cmdline-tools.zip" \
+            "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          echo "2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258  $RUNNER_TEMP/cmdline-tools.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$SDK_ROOT/cmdline-tools"
+          # The tools expect to be in the directory `cmdline-tools/latest`.
+          mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+
+          echo "==> Installing the platform, the build tools and the NDK..."
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.2.12479018"
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --list_installed
+
+      - name: Install the Rust toolchain
+        run: |
+          # The native library of the application is built by Rust for the
+          # target `aarch64-linux-android`. The toolchain is installed
+          # explicitly, so that the job does not depend on the state of the
+          # image, and the target of the toolchain file is added here (the
+          # other target of the file, `aarch64-apple-darwin`, does not exist
+          # for a Linux host and is not needed here).
+          rustup toolchain install stable --profile minimal \
+            --component rustfmt --component clippy --no-self-update
+          rustup target add aarch64-linux-android --toolchain stable
+          echo "RUSTUP_TOOLCHAIN=stable" >> "$GITHUB_ENV"
+          rustc --version
+          cargo --version
+
+      - name: Restore the cache of Cargo and of Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('apps/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            android-${{ runner.os }}-
+
+      - name: Build the host MuPDF 1.28.5 (the host library of the FFI layer is linked against it)
+        run: ./scripts/prepare-host-mupdf.sh
+
+      - name: Set the library path of the linker
+        run: |
+          echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the native library of the application (aarch64-v8a, 16 KB pages)
+        run: |
+          # The script cross-builds MuPDF and Tesseract for Android with the
+          # NDK, builds the FFI layer for `aarch64-linux-android` and checks
+          # the closure and the page alignment of the produced libraries.
+          ./scripts/build-android-rust.sh
+
+      - name: Build the debug and the release package
+        run: |
+          cd apps/android
+          ./gradlew --no-daemon assembleDebug assembleRelease
+          ls -la app/build/outputs/apk/debug/ app/build/outputs/apk/release/
+
+      - name: Verify the native libraries as they are packaged
+        run: |
+          # The check reads the libraries out of the package itself: a
+          # library that is missing from the package is missing on the
+          # device, even when it is in the build directory.
+          ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/debug/app-debug.apk
+          ./scripts/verify-android-native-libs.sh --apk apps/android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Run the unit tests of Gradle
+        run: |
+          cd apps/android
+          ./gradlew --no-daemon testDebugUnitTest
+
+      - name: The proofs that need a device are NOT RUN here
+        run: |
+          ./scripts/ci-optional-proof.sh --label "The OCR proof on a device" --not-run \
+            "the job has no device and no emulator; the proof needs a system image and a boot of the emulator"
+          ./scripts/ci-optional-proof.sh --label "The ARM64 proof under QEMU" --not-run \
+            "the static cross-build of MuPDF for Android is not part of this job; the proof runs in the environment of the team"
+
+      - name: Nothing is published
+        if: always()
+        run: |
+          echo "This job builds the packages and checks them. It uploads nothing,"
+          echo "signs nothing and publishes nothing: the legal clearance (E5) is open."

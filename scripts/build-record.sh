@@ -22,12 +22,17 @@
 #
 # Usage: scripts/build-record.sh [--output <directory>] [--skip-tests]
 #                                 [--gate-exit-code <n>] [--test-log <file>]
-#                                 [--test-exit-code <n>]
+#                                 [--test-exit-code <n>] [--revision <sha>]
 #
 # `--test-log` names the output of a test run that has already been made
 # (the gate of `scripts/local-ci.sh` runs the tests and hands its log over,
 # so that the tests are not run twice for one gate run). Without it the
 # script runs the tests itself.
+#
+# `--revision` names the revision the record is about. Without it the record
+# is about the HEAD of the checkout. The source archive of the record is
+# always built for that revision — and the record says whether the tests and
+# the gates were run on the sources of that revision or on the working tree.
 
 set -euo pipefail
 
@@ -46,6 +51,7 @@ SKIP_TESTS=0
 GATE_EXIT_CODE="not-run"
 TEST_LOG_ARGUMENT=""
 TEST_EXIT_CODE_ARGUMENT=""
+REVISION_ARGUMENT=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -56,6 +62,10 @@ while [[ $# -gt 0 ]]; do
         --skip-tests)
             SKIP_TESTS=1
             shift
+            ;;
+        --revision)
+            REVISION_ARGUMENT="$2"
+            shift 2
             ;;
         --gate-exit-code)
             GATE_EXIT_CODE="$2"
@@ -70,11 +80,24 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "usage: $0 [--output <directory>] [--skip-tests] [--gate-exit-code <n>] [--test-log <file>] [--test-exit-code <n>]" >&2
+            echo "usage: $0 [--output <directory>] [--skip-tests] [--gate-exit-code <n>] [--test-log <file>] [--test-exit-code <n>] [--revision <sha>]" >&2
             exit 2
             ;;
     esac
 done
+
+# The revision the record is about. It has to be a commit of this
+# repository: a record that names a revision nobody can check is a record
+# that lies.
+REVISION="${REVISION_ARGUMENT:-$(git rev-parse HEAD 2>/dev/null || echo unknown)}"
+if [[ "$REVISION" != "unknown" ]]; then
+    RESOLVED_REVISION="$(git rev-parse --verify "${REVISION}^{commit}" 2>/dev/null || true)"
+    if [[ -z "$RESOLVED_REVISION" ]]; then
+        echo "ERROR: the revision '$REVISION' is not a commit of this repository." >&2
+        exit 1
+    fi
+    REVISION="$RESOLVED_REVISION"
+fi
 
 mkdir -p "$OUTPUT_DIRECTORY"
 JSON_FILE="$OUTPUT_DIRECTORY/build-record.json"
@@ -124,8 +147,8 @@ version_line() {
 echo "==> Collecting the build record..."
 
 # --- 1. The source -------------------------------------------------------
-REVISION="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+HEAD_REVISION="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 DIRTY_FILES="$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "$DIRTY_FILES" == "0" ]]; then
     TREE_STATE="clean"
@@ -144,6 +167,23 @@ fact_string "source.revision" "$REVISION"
 fact_string "source.revision_short" "${REVISION:0:12}"
 fact_string "source.branch" "$BRANCH"
 fact_string "source.tree_state" "$TREE_STATE"
+
+# The state of the working tree is a property of the machine, not of the
+# revision. The record says whether the tests and the gates were run on the
+# sources of the revision — a record that hides this difference describes a
+# build that nobody made.
+if [[ "$REVISION" != "$HEAD_REVISION" ]]; then
+    REVISION_IS_HEAD="false"
+    SOURCE_NOTE="The revision is not the HEAD of the checkout: the tests and the gates were run on the working tree, which is not the source of the revision. The source archive of the record is built for the revision and describes it."
+elif [[ "$TREE_STATE" == "clean" ]]; then
+    REVISION_IS_HEAD="true"
+    SOURCE_NOTE="The revision is the HEAD of the checkout and the tree is clean: the tests and the gates were run on the sources of this revision."
+else
+    REVISION_IS_HEAD="true"
+    SOURCE_NOTE="The revision is the HEAD of the checkout, but the tree carries uncommitted changes: the tests and the gates were run on the working tree, which is not the source of the revision. The source archive of the record is built for the revision and describes it."
+fi
+fact_string "source.revision_is_head" "$REVISION_IS_HEAD"
+fact_string "source.note" "$SOURCE_NOTE"
 fact_raw "source.dirty_entries" "$DIRTY_FILES"
 fact_string "project.name" "Vocument"
 fact_string "project.version" "$VERSION"
@@ -357,8 +397,8 @@ ARCHIVE_REPRODUCIBLE="not-measured"
 ARCHIVE_SECOND_SHA256="not-available"
 ARCHIVE_IDENTIFICATION="not-available"
 
-if bash scripts/release-source-archive.sh --output "$ARCHIVE_DIRECTORY" > "$OUTPUT_DIRECTORY/source-archive.log" 2>&1 \
-   && bash scripts/release-source-archive.sh --output "$ARCHIVE_SECOND_DIRECTORY" >> "$OUTPUT_DIRECTORY/source-archive.log" 2>&1; then
+if bash scripts/release-source-archive.sh --revision "$REVISION" --output "$ARCHIVE_DIRECTORY" > "$OUTPUT_DIRECTORY/source-archive.log" 2>&1 \
+   && bash scripts/release-source-archive.sh --revision "$REVISION" --output "$ARCHIVE_SECOND_DIRECTORY" >> "$OUTPUT_DIRECTORY/source-archive.log" 2>&1; then
     # The archive of **this** revision — not the one that an earlier run left
     # in the directory. A record that names an old archive describes an old
     # build.
@@ -486,9 +526,12 @@ PYTHON
     echo "| What | Value |"
     echo "|---|---|"
     echo "| The revision | \`$REVISION\` |"
+    echo "| The revision is the HEAD of the checkout | $REVISION_IS_HEAD |"
     echo "| The branch | \`$BRANCH\` |"
     echo "| The state of the tree | $TREE_STATE ($DIRTY_FILES uncommitted entries) |"
     echo "| The licence | AGPL-3.0-or-later |"
+    echo
+    echo "$SOURCE_NOTE"
     echo
     echo "## The tools"
     echo

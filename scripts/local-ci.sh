@@ -4,6 +4,20 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# The tools of Rust live in `~/.cargo/bin`. The path of a non-interactive
+# shell does not always carry it, and a gate that stops with "cargo: command
+# not found" is a gate that was not run.
+if [[ -d "$HOME/.cargo/bin" ]]; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+fi
+
+# The engine of the PDF and the OCR are third-party components that are not
+# part of the source of the product: the build links against them, and the
+# version of the installation that is linked belongs into the record.
+export MUPDF_DIR="${MUPDF_DIR:-$REPO_ROOT/target/mupdf-host}"
+export TESSERACT_DIR="${TESSERACT_DIR:-$REPO_ROOT/target/tesseract-host}"
+export LD_LIBRARY_PATH="$MUPDF_DIR/lib:$TESSERACT_DIR/lib:${LD_LIBRARY_PATH:-}"
+
 # --- The build record ----------------------------------------------------
 # A release always leaves a record of what was built: the revision, the
 # tools, the tests, the gates, the source archive. The record is written
@@ -173,6 +187,24 @@ else
   echo "SKIPPED: the Android runtime proof needs the Android SDK ($ANDROID_SDK_DIRECTORY)."
   echo "         The Android runtime proof is NOT RUN here and must not be reported as passed."
 fi
+
+echo "==> Building the release candidate (internal — it is NOT published) and checking it..."
+# The release candidate is the set of artefacts of one revision that a
+# reviewer can look at *before* anything is handed out. It is built here and
+# checked here, so that the gate proves that the candidate of the revision
+# holds up — and the gate stays the same proof for everybody.
+#
+# The convention is the convention of the gate: **an error that concerns the
+# candidate is an error** — the gate goes red. A step that cannot be run in
+# this environment (the macOS bundle without a macOS SDK, the signed Android
+# package without a key) is **NOT RUN** or **BLOCKED**, it is named with its
+# reason in the log of the candidate, and it is never reported as passed.
+#
+# The candidate is not published: the legal clearance (E5) is open (B-1 of
+# docs/releasing/RELEASE-BLOCKERS.md). Nothing is uploaded, nothing is
+# tagged, nothing is announced.
+./scripts/release-candidate.sh --test-log "$TEST_LOG" --test-exit-code "$TEST_EXIT_CODE"
+./scripts/verify-release-candidate.sh
 
 echo "==> Local CI completed successfully."
 

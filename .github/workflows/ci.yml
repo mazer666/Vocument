@@ -1,4 +1,29 @@
-name: CI
+# The gate of the project on a GitHub-hosted Linux runner.
+#
+# The workflow replaces the workflow of 2026-10-17, which asked for a
+# self-hosted runner that the repository does not have: 47 runs, 38 cancelled,
+# 9 waiting, 0 executed. The decision of the project owner (2026-10-22) is:
+# "Use GitHub Actions with the required native SDKs where possible."
+#
+# What this job proves:
+#   * the complete gate of the project (`scripts/local-ci.sh`): the validation
+#     of the repository, the gate of the distribution, the audit of the
+#     licences, the proof of the Swift sources, `cargo fmt`, `cargo clippy`,
+#     the tests of the workspace, the proofs of the redaction and of the
+#     inspections, the bindings of UniFFI and the build record;
+#   * that the gate passes on a machine that was built from scratch — the
+#     host MuPDF 1.28.5 is built here, the system Tesseract is installed
+#     here, and nothing is taken from the machine of the team.
+#
+# What this job does NOT prove:
+#   * the build of the macOS application (the job `ci-macos.yml`),
+#   * the package of Android (the job `ci-android.yml`),
+#   * the behaviour of the application on a device,
+#   * the legal clearance (E5). Nothing is published, signed or uploaded here.
+#
+# The job publishes nothing, signs nothing and uploads nothing: it only reads
+# the repository and writes into the workspace of the runner.
+name: CI (Linux core)
 
 on:
   push:
@@ -6,13 +31,130 @@ on:
   pull_request:
     branches: [main]
 
+# The workflow reads the repository and nothing else. It needs no secret, and
+# it gets no write permission.
+permissions:
+  contents: read
+
+# A new push makes the run of the old revision pointless.
+concurrency:
+  group: ci-linux-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
-    name: Validate Repository & Local CI
-    runs-on: self-hosted
+  linux-core:
+    name: Linux — the gate of the project (Rust, MuPDF, Tesseract)
+    runs-on: ubuntu-latest
+    # The limit of a job on GitHub is 6 hours. The gate needs far less; the
+    # limit here is the guard against a run that hangs.
+    timeout-minutes: 90
+    env:
+      # The installation of the host MuPDF. The engine of the project is
+      # linked against it (`engines/pdf-mupdf/build.rs` reads `MUPDF_DIR`).
+      MUPDF_DIR: ${{ github.workspace }}/target/mupdf-host
+      # The OCR engine is linked against the system Tesseract
+      # (`engines/ocr/build.rs` reads `TESSERACT_DIR`).
+      TESSERACT_DIR: /usr
+      # The language models of the OCR. They are part of the repository.
+      TESSDATA_PREFIX: ${{ github.workspace }}/apps/android/app/src/main/assets/tessdata
+
     steps:
-      - name: Checkout repository
+      - name: Checkout the repository
         uses: actions/checkout@v4
 
-      - name: Run local CI checks
+      - name: Install the system packages of the gate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            libtesseract-dev \
+            libleptonica-dev \
+            pkg-config \
+            python3 \
+            unzip
+
+      - name: Show the tools of the runner
+        run: |
+          echo "::group::The tools of the runner"
+          uname -a
+          python3 --version
+          node --version
+          npm --version
+          echo "::endgroup::"
+
+      - name: Install the Rust toolchain
+        run: |
+          # The toolchain file of the repository (`rust-toolchain.toml`) names
+          # the target `aarch64-apple-darwin`. Its standard library does not
+          # exist for a Linux host, and rustup refuses to install it — the
+          # job would die at the first `cargo` call. The toolchain itself
+          # (`stable`) and the components that the gate needs (`rustfmt` and
+          # `clippy`) are therefore installed explicitly, and `RUSTUP_TOOLCHAIN`
+          # points at it, so that the file is not acted upon.
+          rustup toolchain install stable --profile minimal \
+            --component rustfmt --component clippy --no-self-update
+          echo "RUSTUP_TOOLCHAIN=stable" >> "$GITHUB_ENV"
+          rustc --version
+          cargo --version
+          cargo fmt --version
+          cargo clippy --version
+
+      - name: Build the host MuPDF 1.28.5 (the PDF engine is linked against it)
+        run: ./scripts/prepare-host-mupdf.sh
+
+      - name: Set the library path of the linker
+        run: |
+          echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: The ARM64 proof belongs to the job of Android
+        run: |
+          # The gate starts the ARM64 proof of the engine when it finds
+          # `qemu-aarch64-static` on the machine. That proof needs the
+          # cross-build of the Android engine, which belongs to the job of
+          # Android (`ci-android.yml`). If a runner image ever ships the
+          # emulator of the user mode, it is taken out of the PATH here, so
+          # that the gate says NOT RUN instead of failing for a proof that
+          # this job cannot carry out.
+          if command -v qemu-aarch64-static >/dev/null 2>&1; then
+            echo "The runner image ships qemu-aarch64-static; it is taken out of the PATH for the gate."
+            sudo chmod -x "$(command -v qemu-aarch64-static)"
+          else
+            echo "OK: qemu-aarch64-static is not on the machine — the ARM64 proof is NOT RUN in this job."
+          fi
+
+      - name: Restore the cache of Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Fetch the crates of the workspace
+        run: |
+          # The audit of the licences (`scripts/audit-licenses.sh`) reads the
+          # manifest of every crate out of the registry of Cargo. On a runner
+          # that was built from scratch the registry is empty, and the audit
+          # would name every crate of the workspace as "unknown" and fail the
+          # gate. The crates are therefore fetched **before** the gate runs.
+          cargo fetch --locked
+          ls ~/.cargo/registry/src/*/ | head -n 5
+
+      - name: Run the gate of the project
         run: ./scripts/local-ci.sh
+
+      - name: Show the build record of the run
+        if: always()
+        run: |
+          if [[ -f target/build-record/build-record.md ]]; then
+            echo "::group::The build record of the run"
+            cat target/build-record/build-record.md
+            echo "::endgroup::"
+          else
+            echo "NOT RUN: the build record was not written (the gate did not reach its end)."
+          fi

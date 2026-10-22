@@ -22,6 +22,12 @@
 #   scripts/verify-android-native-libs.sh [jni_dir]
 #   scripts/verify-android-native-libs.sh --apk <path/to.apk>
 #
+# Without an argument the build directory of the project is checked. That
+# directory is not part of the repository: when it does not exist, the proof
+# is **NOT RUN** (the convention of the project) and the script ends with the
+# exit code 0. A directory that is named explicitly is always checked
+# strictly.
+#
 # The APK mode checks the libraries **as they are really shipped**. The build
 # directory and the package are not the same thing: the packaging step only
 # includes files whose name ends in `.so`, so a versioned library can be present
@@ -51,6 +57,15 @@ done
 
 if [[ -z "$JNI_DIR" && -z "$APK_PATH" ]]; then
   JNI_DIR="$REPO_ROOT/apps/android/app/src/main/jniLibs/arm64-v8a"
+  # The mode without an argument looks at the build directory of the project.
+  # That directory is **not** part of the repository: it is filled by
+  # `scripts/build-android-rust.sh`. On a machine that has not built the
+  # Android libraries there is nothing to verify — the proof is then NOT RUN
+  # and not failed, which is the convention of the project. A directory that
+  # was named explicitly is always verified strictly.
+  AMBIENT_MODE=1
+else
+  AMBIENT_MODE=0
 fi
 
 REQUIRED_PAGE_ALIGNMENT="${REQUIRED_PAGE_ALIGNMENT:-0x4000}"
@@ -208,6 +223,14 @@ if [[ -n "$APK_PATH" ]]; then
   done
 else
   if [[ ! -d "$JNI_DIR" ]]; then
+    if [[ "$AMBIENT_MODE" -eq 1 ]]; then
+      echo "NOT RUN: The native libraries of Android are not built in this environment"
+      echo "         ($JNI_DIR does not exist). They are built by"
+      echo "         'scripts/build-android-rust.sh' and verified in the package by"
+      echo "         'scripts/verify-android-native-libs.sh --apk <apk>'. They were NOT"
+      echo "         verified here and must not be reported as verified."
+      exit 0
+    fi
     echo "ERROR: The native library directory does not exist: $JNI_DIR" >&2
     exit 1
   fi

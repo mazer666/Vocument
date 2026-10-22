@@ -1,0 +1,130 @@
+# The Swift build of the macOS application on a GitHub-hosted macOS runner.
+#
+# The Swift compiler only exists on macOS, and the application uses the SDKs
+# of the system (SwiftUI, AppKit, CoreGraphics). The job is therefore the
+# proof of the Swift half of the product: the generated bindings, the kit, the
+# application, the tests of the kit and the handshake from Swift through
+# UniFFI into the Rust core and MuPDF.
+#
+# What this job proves:
+#   * the application compiles against the real macOS SDK (no stub, no mock),
+#   * the tests of the kit pass,
+#   * the handshake opens a real PDF, renders it, searches in it and names the
+#     engine it used (`mupdf-1.28.5`).
+#
+# What this job does NOT prove:
+#   * the signature and the notarisation of the bundle (the job of the
+#     release, `scripts/release-macos.sh`),
+#   * the behaviour of the application on a device of a user,
+#   * the legal clearance (E5). Nothing is signed, published or uploaded here.
+name: CI (macOS — Swift)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# The workflow reads the repository and nothing else. It needs no secret, and
+# it gets no write permission.
+permissions:
+  contents: read
+
+# A new push makes the run of the old revision pointless.
+concurrency:
+  group: ci-macos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-swift:
+    name: macOS — the Swift build, the tests of the kit and the handshake
+    runs-on: macos-15
+    # The limit of a job on GitHub is 6 hours. The build needs far less; the
+    # limit here is the guard against a run that hangs.
+    timeout-minutes: 90
+    env:
+      # The installation of the host MuPDF. The engine of the project is
+      # linked against it (`engines/pdf-mupdf/build.rs` reads `MUPDF_DIR`).
+      MUPDF_DIR: ${{ github.workspace }}/target/mupdf-host
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install the OCR engine (the library of the FFI layer is linked against it)
+        run: |
+          brew install tesseract
+          if [[ -d /opt/homebrew/opt/tesseract ]]; then
+            echo "TESSERACT_DIR=/opt/homebrew/opt/tesseract" >> "$GITHUB_ENV"
+          else
+            echo "TESSERACT_DIR=/usr/local/opt/tesseract" >> "$GITHUB_ENV"
+          fi
+
+      - name: Choose a Swift toolchain that can read the package
+        run: |
+          # The package of the project needs Swift 6.0
+          # (`// swift-tools-version: 6.0`). The image of the runner ships
+          # several versions of Xcode; the newest one that carries Swift 6.0
+          # is selected, so that the job does not depend on the default of
+          # the image.
+          selected=""
+          for xcode in $(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V -r); do
+            swift_version="$(DEVELOPER_DIR="$xcode" /usr/bin/xcrun swift --version 2>/dev/null | head -n 1 || true)"
+            echo "  ${xcode}: ${swift_version}"
+            if [[ "$swift_version" == *"Swift version 6."* ]] || [[ "$swift_version" == *"Swift version 7."* ]]; then
+              echo "DEVELOPER_DIR=${xcode}" >> "$GITHUB_ENV"
+              selected="$xcode"
+              break
+            fi
+          done
+          if [[ -z "$selected" ]]; then
+            echo "::warning::No Xcode with Swift 6.0 was found; the default of the image is used."
+          fi
+          xcrun swift --version
+
+      - name: Install the Rust toolchain
+        run: |
+          # The library of the FFI layer is built by Rust; the Swift package
+          # links it. The toolchain is installed explicitly, so that the job
+          # does not depend on the state of the image.
+          rustup toolchain install stable --profile minimal --no-self-update
+          echo "RUSTUP_TOOLCHAIN=stable" >> "$GITHUB_ENV"
+          rustc --version
+
+      - name: Build the host MuPDF 1.28.5 (the PDF engine is linked against it)
+        run: ./scripts/prepare-host-mupdf.sh
+
+      - name: Set the library path of the loader
+        run: |
+          # The library of MuPDF carries the install name `@rpath/libmupdf.dylib`
+          # and the Rust library carries the rpath of the installation
+          # directory. The variable is set nevertheless, so that the loader
+          # finds the library even if a consumer of it has no rpath.
+          echo "DYLD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the Rust library of the FFI layer (the Swift package links it)
+        run: |
+          cargo build -p vocument-ffi
+          ls -la target/debug/libvocument_ffi.dylib
+
+      - name: Build the generated bindings, the kit and the application
+        run: |
+          swift build --package-path apps/macos --target VocumentFFI
+          swift build --package-path apps/macos --target VocumentMacKit
+          swift build --package-path apps/macos --product VocumentMacApp
+
+      - name: Run the tests of the kit
+        run: swift test --package-path apps/macos
+
+      - name: Run the handshake (Swift → UniFFI → Rust → MuPDF)
+        run: |
+          # The handshake opens the document `tests/corpus/m0_1_sample_two_pages.pdf`
+          # relative to the working directory, so it runs in the root of the
+          # repository.
+          swift run --package-path apps/macos vocument-mac-handshake
+
+      - name: The proofs that need a device are NOT RUN here
+        run: |
+          ./scripts/ci-optional-proof.sh --label "The application on a device" --not-run \
+            "the job builds the application; it does not start it on a device of a user"

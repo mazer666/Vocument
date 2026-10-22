@@ -2,17 +2,27 @@
 
 **Date:** 2026-10-22 · **Branch:** `main` · **Owner:** the project owner ·
 **Related:** [`RELEASE-BLOCKERS.md`](RELEASE-BLOCKERS.md) (B‑9),
-[`RELEASE-PROCESS.md`](RELEASE-PROCESS.md), [`local-ci.sh`](../../scripts/local-ci.sh)
+[`RELEASE-PROCESS.md`](RELEASE-PROCESS.md), [`local-ci.sh`](../../scripts/local-ci.sh),
+[`github-actions-platform-builds.md`](../audit/github-actions-platform-builds.md)
 
-The workflow of the repository (`.github/workflows/ci.yml`) runs **one** step:
-`./scripts/local-ci.sh` — the gate of the project. There is no second
-workflow, no matrix, no secret.
+The repository runs its continuous integration on the **GitHub-hosted runners**
+of GitHub. Three workflows do it, one per platform:
+
+| The workflow | The job | The runner | The subject |
+|---|---|---|---|
+| [`ci.yml`](../../.github/workflows/ci.yml) | `linux-core` | `ubuntu-latest` | the whole gate of the project (`scripts/local-ci.sh`) |
+| [`ci-macos.yml`](../../.github/workflows/ci-macos.yml) | `macos-swift` | `macos-15` | the Swift build, the tests of the kit, the handshake |
+| [`ci-android.yml`](../../.github/workflows/ci-android.yml) | `android` | `ubuntu-latest` | the native libraries, the packages, the unit tests |
+
+None of them uses a secret, none of them signs anything, and none of them
+uploads or publishes anything: the legal clearance (E5) is open, and only a
+person can give it.
 
 ---
 
 ## 1. The state, measured
 
-The measurement of 2026-10-22, read from the API of the repository:
+### 1.1 Before the change (2026-10-22, read from the API of the repository)
 
 | What | The measurement |
 |---|---|
@@ -22,74 +32,57 @@ The measurement of 2026-10-22, read from the API of the repository:
 | Of them: **run** (green or red) | **0** |
 | The runners registered for the repository | **0** |
 
-**The CI has never run once.** The workflow asks for `runs-on: self-hosted`,
-and the repository has no runner. The runs either wait forever or are
-cancelled by hand.
+The CI had never run once. The workflow asked for `runs-on: self-hosted`, and
+the repository has no runner: the runs either waited forever or were
+cancelled by hand. The gate of the project was only ever run by hand, in the
+environment of the team — a release asked for a green gate, and it got one,
+but never a *second, independent* one.
 
-That is not a defect of the workflow: the workflow does exactly what it
-should. It is a **missing machine**.
+### 1.2 The decision, and what it changed
 
-**The consequence for the release:** the gate of the project has always been
-run by hand, in one environment (the sandbox of the team). A release asks
-for a green gate — and it gets one, but never a *second, independent* one.
-The statement "the CI is green" must not be made; the honest statement is
-"the local gate is green, the CI has not run".
+The decision of the project owner (2026-10-22):
+
+> "Use GitHub Actions with the required native SDKs where possible."
+
+The workflow of 2026-10-17 was replaced. The runner of the project is not
+needed any more: the hosted runners of GitHub carry the SDKs, and the
+workflows install the native parts themselves — the **host MuPDF 1.28.5** is
+built from the pinned source
+([`prepare-host-mupdf.sh`](../../scripts/prepare-host-mupdf.sh)), the
+**Android SDK**, the **NDK r27c** and the **JDK 17** are installed by the
+job of Android, and the **Swift compiler** is part of the macOS image.
+
+The details of the three jobs — what they prove, what stays `NOT RUN`, the
+errors that were found while the commands were executed, and the time they
+need — are in
+[`docs/audit/github-actions-platform-builds.md`](../audit/github-actions-platform-builds.md).
 
 ---
 
-## 2. The two ways out — both are the decision of the owner
+## 2. What a runner needs — and what the workflows do instead
 
-### 2.1 A self-hosted runner (the workflow stays as it is)
+The runner of the project would need the following:
 
-A machine of the owner with the toolchain of the project, registered for the
-repository. The workflow does not change.
-
-| What the runner needs | Why | How it is checked |
+| What the runner needs | Why | What the workflows do instead |
 |---|---|---|
-| **Linux or macOS** | the gate is a shell script | — |
-| **Rust** (cargo, rustc) | the workspace is built and tested | `cargo --version` |
-| **The host MuPDF** | the PDF engine is built against it and the tests link against it | `MUPDF_DIR` must point at an installation with `lib/libmupdf.so`; `LD_LIBRARY_PATH=$MUPDF_DIR/lib` |
-| **Python 3** | the gates, the licence audit, the Swift proof | `python3 --version` |
-| **Node** (with npm) | the Swift proof parses the sources with the grammar of Swift | the check installs `tree-sitter` and `tree-sitter-swift` into `~/.cache/vocument-swift-check` — it needs the network once |
-| **A C toolchain** | the native part of the PDF engine | `cc --version` |
-| **The network** | the packages of npm, the crates of Cargo | — |
-| *Optional:* the **Android SDK** and a **JDK** | the Android proofs | without them the gate says `NOT RUN` and stays green — the same convention as for the QEMU proof |
-
-The registration is the part that needs the owner: the page
-*Settings → Actions → Runners → New self-hosted runner* asks for a token,
-and the machine has to run the runner package with it. The token belongs to
-the owner and must not be written into the repository.
-
-### 2.2 GitHub-hosted runners (the workflow has to change)
-
-`runs-on: ubuntu-latest` needs no machine of the owner. The price: the
-runner has no MuPDF, no Android SDK and no Swift toolchain — the gate would
-run there with those proofs in `NOT RUN` (which the gate says out loud), and
-the **real** proofs would stay in the local environment. The workflow file
-has to be changed for it, and **the team does not change the workflow
-files** — that decision and that change belong to the owner.
-
-### 2.3 The third way — no runner at all
-
-The gate is a script. It runs anywhere the toolchain is:
-
-```bash
-bash scripts/local-ci.sh
-```
-
-A second machine of the owner — a Mac, a Linux box — running the gate by
-hand is the same proof as a runner: the same script, the same steps, the
-same record (`target/build-record/`). The difference is that it is not
-automatic; the difference is also that it needs no identity and no account.
+| **Linux or macOS** | the gate is a shell script | the hosted runners are Linux and macOS |
+| **Rust** (cargo, rustc) | the workspace is built and tested | the toolchain is installed explicitly (`stable`, with `rustfmt` and `clippy`) |
+| **The host MuPDF** | the engine is built against it and the tests link against it | the pinned version 1.28.5 is built from the source by the job itself; `MUPDF_DIR` and `LD_LIBRARY_PATH` (macOS: `DYLD_LIBRARY_PATH`) point at the installation |
+| **Tesseract and Leptonica** | the OCR engine is linked against them | `apt-get install libtesseract-dev libleptonica-dev` (Linux), `brew install tesseract` (macOS); `TESSERACT_DIR` names the installation |
+| **Python 3** | the gates, the licence audit, the proof of the Swift sources | the image of the runner has it |
+| **Node** (with npm) | the proof of the Swift sources parses the sources with the grammar of Swift | the image of the runner has it; the check installs `tree-sitter` and `tree-sitter-swift` into `~/.cache/vocument-swift-check` — it needs the network once |
+| **A C toolchain** | the native part of the PDF engine | `build-essential` |
+| **The Android SDK, the NDK, a JDK 17** | the packages of Android | the job of Android installs them (the command line tools 12.0 with its SHA-256, `platform-tools`, `platforms;android-35`, `build-tools;35.0.0`, `ndk;27.2.12479018`, OpenJDK 17) |
+| *Optional:* **QEMU** | the proof of the engine on a real ARM64 target | the job of Android states `NOT RUN` with the reason; the gate of the Linux job does the same |
+| *Optional:* **a device or an emulator** | the proof of the OCR on a device | the job of Android states `NOT RUN` with the reason |
 
 ---
 
-## 3. The queue
+## 3. The queue of the old runs
 
-Nine runs are waiting for a runner that does not exist. If a runner appears,
-they would all start at once — on the revisions of the last two days, long
-after the code moved on. They should be cancelled **before** a runner is
-registered:
+Nine runs of the old workflow are waiting for a runner that does not exist.
+They should be cancelled — they are runs of revisions that have long moved
+on:
 
 ```bash
 gh run list --workflow ci.yml --status queued
@@ -125,22 +118,30 @@ the gate — the ARM64 proof without QEMU, the Android runtime without the
 SDK, the Swift application without the macOS SDK. The list of what was not
 run is in the build record of every run.
 
-**What the gate does not prove:** the behaviour of the application on a
-device, the compilation of the macOS application, the signing, and the legal
-clearance (E5). Those are the entries of the blocker list, with their owner.
+The job of macOS adds the proof that the gate cannot make: the **application**
+of the project, compiled against the real macOS SDK, with the tests of the
+kit and the handshake from Swift through UniFFI into the Rust core and
+MuPDF.
+
+**What the CI does not prove:** the behaviour of the application on a device,
+the signature and the notarisation, the publication, and the legal clearance
+(E5). Those are the entries of the blocker list, with their owner.
 
 ---
 
-## 5. The check of the runner
+## 5. The check of a machine
 
-Before a runner is registered, the machine can be checked with the gate
-itself — that is the whole point of the script:
+Before a machine is used for a release by hand, it can be checked with the
+gate itself — that is the whole point of the script:
 
 ```bash
 git clone https://github.com/mazer666/Vocument.git
 cd Vocument
-export MUPDF_DIR="$PWD/target/mupdf-host"     # or an installation of MuPDF
-export LD_LIBRARY_PATH="$MUPDF_DIR/lib"
+./scripts/prepare-host-mupdf.sh          # the host MuPDF 1.28.5
+export MUPDF_DIR="$PWD/target/mupdf-host"
+export LD_LIBRARY_PATH="$MUPDF_DIR/lib"  # macOS: DYLD_LIBRARY_PATH
+export TESSERACT_DIR=/usr                # macOS: the prefix of Homebrew
+export TESSDATA_PREFIX="$PWD/apps/android/app/src/main/assets/tessdata"
 bash scripts/local-ci.sh
 ```
 
