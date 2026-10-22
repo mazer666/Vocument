@@ -2,8 +2,9 @@
 
 **Date:** 2026-10-22
 **Tag:** `v0.1.0-alpha.1`
-**Revision:** the commit that carries this document — the tag names it exactly:
-`git rev-list -n 1 v0.1.0-alpha.1`
+**Revision:** `569b2acfb323239ab2a45aa62b94dfd6d8f6f167` — the tag
+`v0.1.0-alpha.1` names exactly that commit, and that commit is the source of
+this alpha. (`git rev-list -n 1 v0.1.0-alpha.1`)
 **What this document is:** the description of the **alpha release** — what it
 is, what was measured before it was published, and what it does *not* claim.
 
@@ -36,7 +37,7 @@ stays internal until B-1 is closed.
 
 | What | The measurement | Where |
 |---|---|---|
-| The gate of the repository | **green** — 264 tests, 0 failures, 34 suites; the repository, the distribution and the licence gates pass | `target/build-record/build-record.json`, the run of the day |
+| The gate of the repository | **green** — 264 tests of Rust, 0 failures, 34 suites, and the 5 tests of the kit of macOS (the chain of the redaction among them); the repository, the distribution and the licence gates pass | `target/build-record/build-record.json`, the run of the day |
 | The source archive of the revision | **reproducible** — two builds, byte for byte the same | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §2 and §3 |
 | The build from the archive | **the library is built from the unpacked archive** and compared with the build of the working tree | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §4 |
 | The licences of the components | **audited** — every component of the product and of the Android package, with its licence | `THIRD_PARTY.md` |
