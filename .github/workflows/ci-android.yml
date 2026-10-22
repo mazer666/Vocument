@@ -221,6 +221,16 @@ jobs:
           done
           exit 1
 
+      - name: Build the host library of the FFI layer (the unit tests of Gradle load it)
+        # The unit tests of Gradle run on the **host** JVM and load the
+        # library of the FFI layer of the host (through JNA). The cross-build
+        # of the application is for `aarch64-v8a` and cannot be loaded by a
+        # JVM of the host — the host library is therefore built here, against
+        # the host MuPDF that the job built in the step above.
+        run: |
+          cargo build -p vocument-ffi
+          ls -la target/debug/libvocument_ffi.so
+
       - name: Run the unit tests of Gradle
         id: unit-tests
         continue-on-error: true
@@ -232,16 +242,15 @@ jobs:
       - name: The diagnostics of the unit tests
         if: steps.unit-tests.outcome == 'failure'
         run: |
-          echo "::error::The unit tests of Gradle failed. The errors of the compiler:"
-          grep -E "^e: |error: " "$RUNNER_TEMP/unit-tests.log" | head -n 8 | while IFS= read -r line; do
+          echo "::error::The unit tests of Gradle failed. The failed tests:"
+          # The report of JUnit is written as XML: it names the test, the
+          # class and the reason of the failure. A summary of Gradle alone
+          # says only that there were failures.
+          ./scripts/report-gradle-test-failures.sh | head -n 6 | while IFS= read -r line; do
             echo "::error::${line}"
           done
           echo "::error::What went wrong:"
-          grep -A 10 "What went wrong" "$RUNNER_TEMP/unit-tests.log" | head -n 10 | while IFS= read -r line; do
-            echo "::error::${line}"
-          done
-          echo "::error::The last 8 lines of the output:"
-          tail -n 8 "$RUNNER_TEMP/unit-tests.log" | while IFS= read -r line; do
+          grep -A 8 "What went wrong" "$RUNNER_TEMP/unit-tests.log" | head -n 8 | while IFS= read -r line; do
             echo "::error::${line}"
           done
           exit 1

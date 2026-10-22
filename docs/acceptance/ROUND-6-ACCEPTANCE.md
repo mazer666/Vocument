@@ -143,9 +143,9 @@ the final revision of the round:
 
 | The job | The run | The result |
 |---|---|---|
-| `linux-core` — the whole gate of the project | [39754714902](https://github.com/mazer666/Vocument/actions/runs/39754714902) | **success** — the gate of the project passes on a machine that was built from scratch: the host MuPDF 1.28.5 out of the pinned source, the system Tesseract, the audit of the licences, the Swift proof, `cargo fmt`, `cargo clippy`, the tests of the workspace, the proofs of M2.1 … M2.4, the UniFFI bindings, the build record and the release candidate |
-| `macos-swift` — the Swift build of the application | [39754714855](https://github.com/mazer666/Vocument/actions/runs/39754714855) | **success** — the bindings, the kit **and the application** compile against the real macOS SDK; the tests of the kit pass; the handshake (open → render → search → redact → save → reopen → crash → recover) passes with the real MuPDF and the foreign renderer |
-| `android` — the native libraries, the packages, the unit tests | [39754714653](https://github.com/mazer666/Vocument/actions/runs/39754714653) | see the table below |
+| `linux-core` — the whole gate of the project | [39762025869](https://github.com/mazer666/Vocument/actions/runs/39762025869) | **success** — the gate of the project passes on a machine that was built from scratch: the host MuPDF 1.28.5 out of the pinned source, the system Tesseract, the audit of the licences, the Swift proof, `cargo fmt`, `cargo clippy`, the tests of the workspace, the proofs of M2.1 … M2.4, the UniFFI bindings, the build record and the release candidate |
+| `macos-swift` — the Swift build of the application | [39762025857](https://github.com/mazer666/Vocument/actions/runs/39762025857) | **success** — the bindings, the kit **and the application** compile against the real macOS SDK; the tests of the kit pass; the handshake (open → render → search → redact → save → reopen → crash → recover) passes with the real MuPDF and the foreign renderer |
+| `android` — the native libraries, the packages, the unit tests | [39762025863](https://github.com/mazer666/Vocument/actions/runs/39762025863) | **success** — the native libraries are cross-built for `aarch64-v8a` with the NDK r27c and 16 KB pages, the debug and the release package are built, the libraries are really **inside** the packages (the closure and the alignment are checked), and the unit tests of Gradle pass |
 
 **The first runs of the jobs were red, and what they found is the most
 valuable result of this goal.** The findings are in
@@ -236,7 +236,8 @@ happened:
 * the roadmap carries the milestone **M7 — Optional local interfaces (MCP)**
   after M6 (the Linux shell),
 * the decision is written down in
-  [`ADR-0021`](../adr/ADR-0021-optional-local-interfaces-mcp.md): MCP over
+  [`CR-0004`](../cr/CR-0004-optional-local-interfaces-mcp.md) (it was filed as
+  `ADR-0021` and was reclassified while it was still `proposed` ✗): MCP over
   stdio as the first shell, optional and off by default, local and
   offline, no network right, no account, no telemetry — and **every
   writing operation goes through the same core with the same verification**
@@ -281,3 +282,6 @@ implemented, and nothing in the product pretends that it is.
 | The **order inside the engine** (the cleaning after the removal, the garbage collection of the writer) | unchanged; the proof of the product does not rest on it any more, the order is nevertheless still as it was |
 | The **decision about the Mac App Store** | deferred by the owner (B-7); the question of the terms of Apple next to the AGPL is legal, not technical |
 | The **reproducibility of the applications** | not claimed; the tools of the build, the stamps in the bundle and the signature stand in the way |
+| The **transitive components of Android** are not in the inventory of the licences | the inventory names the direct dependencies; about 60 transitive components (among them `io.netty`, `com.google.guava`, `org.apache.httpcomponents`) are not named, and many of their POMs do not name their licence. The reader of the POMs is corrected, the check works, and the **question of the licensing** is open — `RISK-059` |
+| A **job of the pool** can stay in the queue | observed on the runner of the continuous integration and on a Mac under load; the mechanism is **not** established. Two measures are taken (a worker waits for a free slot instead of leaving the pool; the failure message names the state of the pool) — `RISK-060` |
+| The **licence of Xcode** on a Mac | the build of the application of macOS needs the command line tools of Xcode ✗; the acceptance of the licence of Xcode is a decision of the owner ✗ (`docs/audit/ci-gate-findings.md` §4.2 ✗). The workflow of macOS picks a full Xcode ✗ and the runner has one ✗ |
