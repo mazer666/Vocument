@@ -65,13 +65,23 @@ row "the macOS bundle is signed and notarised" \
 # --- The Android package --------------------------------------------------
 # The package needs a JDK and the Android SDK for the build, and the release
 # key for the signature.
-ANDROID_SDK_DIRECTORY="${ANDROID_HOME:-$REPO_ROOT/target/android-sdk}"
+#
+# The SDK is **searched**, not assumed: the gate of the project builds the
+# package with the SDK of the system, and a candidate that reports "no SDK"
+# on the machine that has one is a candidate that lies about its limits.
+ANDROID_SDK_DIRECTORY=""
+for sdk_candidate in "${ANDROID_HOME:-}" /opt/homebrew/share/android-commandlinetools "$REPO_ROOT/target/android-sdk"; do
+    if [[ -n "$sdk_candidate" && -d "$sdk_candidate" ]]; then
+        ANDROID_SDK_DIRECTORY="$sdk_candidate"
+        break
+    fi
+done
 if ! command -v java >/dev/null 2>&1; then
     ANDROID_REASON="no JDK (java) in this environment — Gradle cannot run. The build of the package is NOT RUN; the commands are in scripts/release-android.sh"
-elif [[ ! -d "$ANDROID_SDK_DIRECTORY" ]]; then
-    ANDROID_REASON="no Android SDK in this environment ($ANDROID_SDK_DIRECTORY). The build of the package is NOT RUN; the commands are in scripts/release-android.sh"
+elif [[ -z "$ANDROID_SDK_DIRECTORY" ]]; then
+    ANDROID_REASON="no Android SDK in this environment (looked at \$ANDROID_HOME, /opt/homebrew/share/android-commandlinetools and target/android-sdk). The build of the package is NOT RUN; the commands are in scripts/release-android.sh"
 else
-    ANDROID_REASON="the build of the package was not part of this candidate"
+    ANDROID_REASON="the build of the package was not part of this candidate — the SDK is in $ANDROID_SDK_DIRECTORY, and the gate of the project builds the package there"
 fi
 row "the Android package is built" \
     "scripts/release-android.sh --apk" \
