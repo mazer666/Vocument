@@ -272,11 +272,22 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
             let current = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
             let library_path = format!("{prefix}/lib");
             let combined = if current.is_empty() {
-                library_path
+                library_path.clone()
             } else {
                 format!("{library_path}:{current}")
             };
             command.env("LD_LIBRARY_PATH", combined);
+            // The loader of macOS reads `DYLD_LIBRARY_PATH` — the variable
+            // above is the one of Linux. The reference renderer must find the
+            // library of the installation on **both** platforms, or the gate
+            // reports a false negative on a Mac.
+            let current_darwin = std::env::var("DYLD_LIBRARY_PATH").unwrap_or_default();
+            let combined_darwin = if current_darwin.is_empty() {
+                library_path.to_owned()
+            } else {
+                format!("{library_path}:{current_darwin}")
+            };
+            command.env("DYLD_LIBRARY_PATH", combined_darwin);
         }
         let status = command.output();
         if let Ok(output) = status

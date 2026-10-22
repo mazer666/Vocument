@@ -147,7 +147,30 @@ if [[ ! -f "${SHARED_BUILD_DIR}/${LIBRARY_NAME}" ]]; then
 fi
 
 echo "==> Installing the library into ${INSTALL_DIR}..."
-mkdir -p "${INSTALL_DIR}/lib" "${INSTALL_DIR}/include" "${INSTALL_DIR}/share/doc/mupdf"
+mkdir -p "${INSTALL_DIR}/lib" "${INSTALL_DIR}/include" "${INSTALL_DIR}/share/doc/mupdf" "${INSTALL_DIR}/bin"
+
+# The **reference renderer** `mutool` belongs to the installation: the
+# interoperability gate of M0.7 opens the document that the product wrote with
+# a *foreign* renderer and compares the picture. A gate that has no reference
+# renderer says nothing about the interoperability — and the product links
+# against this very library, so the tool and the library belong together.
+#
+# The tool is looked for by the product in `MUPDF_DIR/bin` (the same variable
+# that the build uses to find the library) ✓.
+if [[ -f "${SHARED_BUILD_DIR}/mutool" ]]; then
+  install -m 755 "${SHARED_BUILD_DIR}/mutool" "${INSTALL_DIR}/bin/mutool"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    # The loader of macOS resolves the library of the tool through the rpath of
+    # the tool. The rpath of the build directory is meaningless in the
+    # installation — the rpath of the installation is set here.
+    install_name_tool -add_rpath "@loader_path/../lib" "${INSTALL_DIR}/bin/mutool" 2>/dev/null || true
+  fi
+  echo "    The reference renderer: ${INSTALL_DIR}/bin/mutool"
+else
+  echo "WARNING: The reference renderer (mutool) was not produced by the build." >&2
+  echo "         The interoperability gate of M0.7 cannot open the document with a" >&2
+  echo "         foreign renderer on this machine and says so (NOT RUN)." >&2
+fi
 install -m 644 "${SHARED_BUILD_DIR}/${LIBRARY_NAME}" "${INSTALL_DIR}/lib/${LIBRARY_NAME}"
 if [[ "$SHORT_LIBRARY_NAME" != "$LIBRARY_NAME" ]]; then
   ln -sf "$LIBRARY_NAME" "${INSTALL_DIR}/lib/${SHORT_LIBRARY_NAME}"
