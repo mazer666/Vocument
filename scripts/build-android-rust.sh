@@ -92,7 +92,12 @@ case "$BUILD_PROFILE" in
 esac
 
 echo "==> Compiling native Android libvocument_ffi.so (target: aarch64-linux-android, profile: $BUILD_PROFILE)..."
-cargo build -p vocument-ffi --target aarch64-linux-android "${CARGO_PROFILE_ARGS[@]}"
+# The profile arguments are empty in the debug profile. The expansion of an
+# empty array is an error in the bash of macOS (3.2) when `set -u` is on — the
+# build ended with "CARGO_PROFILE_ARGS[@]: unbound variable". The safe
+# expansion leaves the argument away when the array is empty.
+cargo build -p vocument-ffi --target aarch64-linux-android \
+  ${CARGO_PROFILE_ARGS[@]+"${CARGO_PROFILE_ARGS[@]}"}
 
 # 4. Verify that the produced library really contains the MuPDF engine.
 #
@@ -127,9 +132,11 @@ else
   STRIP_BIN=""
 fi
 if [[ -n "$STRIP_BIN" ]]; then
-  BEFORE="$(stat -c%s "$JNI_ARM64_DIR/libvocument_ffi.so")"
+  # The size of a file is read with `wc -c`: `stat -c%s` is the GNU form and
+# the `stat` of macOS does not know it ("illegal option -- c").
+  BEFORE="$(wc -c < "$JNI_ARM64_DIR/libvocument_ffi.so" | tr -d ' ')"
   "$STRIP_BIN" --strip-debug "$JNI_ARM64_DIR/libvocument_ffi.so"
-  AFTER="$(stat -c%s "$JNI_ARM64_DIR/libvocument_ffi.so")"
+  AFTER="$(wc -c < "$JNI_ARM64_DIR/libvocument_ffi.so" | tr -d ' ')"
   echo "    Debug information removed: $((BEFORE / 1024 / 1024)) MB -> $((AFTER / 1024 / 1024)) MB"
 fi
 
@@ -138,8 +145,26 @@ if [[ ! -s "$JNI_ARM64_DIR/libvocument_ffi.so" ]]; then
   exit 1
 fi
 
-if command -v readelf >/dev/null 2>&1; then
-  NEEDED="$(readelf -d "$JNI_ARM64_DIR/libvocument_ffi.so" | grep NEEDED || true)"
+# The tool that reads the ELF headers of the libraries.
+#
+# `readelf` comes with the binutils of the build machines; macOS has no
+# binutils, but the toolchain of LLVM carries `llvm-readelf`, which takes the
+# same options. The call was **unguarded** in this script: the build of the
+# Android library ended with "readelf: command not found" (exit code 127),
+# after the library had already been built.
+READELF=""
+for readelf_candidate in readelf llvm-readelf \
+    /opt/homebrew/opt/llvm/bin/llvm-readelf \
+    /usr/local/opt/llvm/bin/llvm-readelf \
+    /usr/bin/llvm-readelf; do
+  if command -v "$readelf_candidate" >/dev/null 2>&1; then
+    READELF="$readelf_candidate"
+    break
+  fi
+done
+
+if [[ -n "$READELF" ]]; then
+  NEEDED="$("$READELF" -d "$JNI_ARM64_DIR/libvocument_ffi.so" | grep NEEDED || true)"
   echo "    Native dependencies of libvocument_ffi.so:"
   echo "$NEEDED" | sed 's/^/      /'
   if ! echo "$NEEDED" | grep -q "libmupdf"; then
@@ -171,7 +196,11 @@ fi
 # The linker resolves a `DT_NEEDED` entry by the *exact* name, so a library
 # whose SONAME is `libmupdf.so.28.5` has to be shipped under that name. A file
 # named `libmupdf.so` would NOT be found, and the process would fail to start.
-MUPDF_SONAME="$(readelf -d "${MUPDF_ANDROID_DIR}/lib/libmupdf.so" 2>/dev/null | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
+if [[ -z "$READELF" ]]; then
+  echo "ERROR: Neither readelf nor llvm-readelf is available; the SONAME of the MuPDF library cannot be read." >&2
+  exit 1
+fi
+MUPDF_SONAME="$("$READELF" -d "${MUPDF_ANDROID_DIR}/lib/libmupdf.so" 2>/dev/null | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')"
 if [[ -z "$MUPDF_SONAME" ]]; then
   echo "ERROR: The MuPDF library has no SONAME; the Android linker could not resolve it." >&2
   exit 1
@@ -204,9 +233,9 @@ if [[ "$BUILD_PROFILE" == "release" && -n "$STRIP_BIN" ]]; then
   echo "==> Removing the debug information from the deployed libraries..."
   for library in "$JNI_ARM64_DIR"/*.so; do
     name="$(basename "$library")"
-    before="$(stat -c %s "$library")"
+    before="$(wc -c < "$library" | tr -d ' ')"
     if "$STRIP_BIN" --strip-debug "$library" 2>/dev/null; then
-      after="$(stat -c %s "$library")"
+      after="$(wc -c < "$library" | tr -d ' ')"
       echo "    $name: $((before / 1024)) KB -> $((after / 1024)) KB"
     else
       echo "    WARNING: $name could not be stripped and stays larger than needed." >&2

@@ -141,6 +141,20 @@ verify_directory() {
     return
   fi
 
+  # The symbols that the libraries of this directory define.
+  #
+  # The set is built **once** and is looked up with a here-string: a pipe into
+  # `grep -q` ends the writer with SIGPIPE as soon as the reader has its
+  # answer, and `pipefail` then turns a symbol that **was** found into one that
+  # was not — the check reported symbols as missing that the library next to it
+  # carried.
+  local defined_symbols
+  defined_symbols="$(
+    for provider in "${libraries[@]}"; do
+      "$READELF" -sW "$provider" 2>/dev/null | awk '$7 != "UND" {print $8}'
+    done | sort -u
+  )"
+
   for library in "${libraries[@]}"; do
     name="$(basename "$library")"
     arch="$(file -b "$library")"
@@ -184,6 +198,55 @@ verify_directory() {
       fi
     done
 
+    # The C++ runtime of the NDK is **not** a library of the platform: an
+    # application that uses it has to ship it. A library that carries
+    # undefined symbols of the C++ runtime without an entry for
+    # `libc++_shared.so` cannot be loaded: the device answered
+    # "dlopen failed: cannot locate symbol _ZNSt6__ndk13cinE" and the
+    # application died at the start.
+    #
+    # The check: a library must either carry the symbols itself (the runtime
+    # is linked statically) or need `libc++_shared.so` **and** that file must
+    # be shipped beside it.
+    undefined_cxx="$("$READELF" -sW "$library" 2>/dev/null \
+      | awk '$7 == "UND" && $8 ~ /__ndk1/ {print $8}' | wc -l | tr -d ' ')"
+    if [[ "$undefined_cxx" -gt 0 ]]; then
+      if ! echo "$needed_names" | grep -q "libc++_shared.so"; then
+        echo "    ERROR: $name carries $undefined_cxx undefined symbol(s) of the C++ runtime" >&2
+        echo "           and does not need 'libc++_shared.so' — the device cannot load it." >&2
+        echo "           Link the C++ runtime statically (-static-libstdc++)." >&2
+        errors=$((errors + 1))
+      elif [[ ! -f "$directory/libc++_shared.so" ]]; then
+        echo "    ERROR: $name needs 'libc++_shared.so', but that file is not shipped." >&2
+        echo "           The C++ runtime of the NDK is not a library of the platform." >&2
+        errors=$((errors + 1))
+      fi
+    fi
+
+    # The symbols of the engines must be in the engines that ship with the
+    # application. The linker drops the entry of a dependency when it is not
+    # asked to keep it (`--as-needed` is the default), and the device then
+    # answered "dlopen failed: cannot locate symbol pixGetSpp": the library
+    # carried 170 undefined symbols of Leptonica and nothing that would have
+    # loaded it.
+    undefined_engine="$("$READELF" -sW "$library" 2>/dev/null \
+      | awk '$7 == "UND" && $8 ~ /^(pix|Tess|tess|fz_|pdf_|opj_|hb_|FT_|cms|jpeg_|deflate|inflate)/ {print $8}' \
+      | sort -u | tr '\n' ' ')"
+    if [[ -n "$undefined_engine" ]]; then
+      # Every symbol must be defined by one of the libraries that ship.
+      local missing_engine=()
+      for symbol in $undefined_engine; do
+        if ! grep -qxF "$symbol" <<< "$defined_symbols"; then
+          missing_engine+=("$symbol")
+        fi
+      done
+      if [[ ${#missing_engine[@]} -gt 0 ]]; then
+        echo "    ERROR: $name needs the engine symbol(s) ${missing_engine[*]}," >&2
+        echo "           but no shipped library defines them — the device cannot load it." >&2
+        errors=$((errors + 1))
+      fi
+    fi
+
     echo "      - $name ($(du -h "$library" | cut -f1))"
   done
 }
@@ -226,7 +289,11 @@ if [[ -n "$APK_PATH" ]]; then
   trap 'rm -rf "$TEMP_DIR"' EXIT
   unzip -q -o "$APK_PATH" 'lib/*/*.so' -d "$TEMP_DIR"
 
-  abis="$(find "$TEMP_DIR/lib" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)"
+  # The name of the directory of the ABI. `find -printf` is a GNU option and
+# the `find` of macOS does not know it ("-printf: unknown primary or
+# operator") — the name is therefore taken with `basename` of every
+# directory that was found.
+abis="$(find "$TEMP_DIR/lib" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)"
   if [[ -z "$abis" ]]; then
     echo "ERROR: The APK contains no native library directory." >&2
     exit 1
