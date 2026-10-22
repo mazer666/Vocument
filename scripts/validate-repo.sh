@@ -98,6 +98,7 @@ REQUIRED_FILES=(
   "scripts/prepare-android-tesseract.sh"
   "scripts/prepare-host-mupdf.sh"
   "scripts/ci-optional-proof.sh"
+  "scripts/report-gradle-test-failures.sh"
   "scripts/build-android-rust.sh"
   "apps/android/app/src/main/assets/tessdata/deu.traineddata"
   "apps/android/app/src/main/assets/tessdata/eng.traineddata"

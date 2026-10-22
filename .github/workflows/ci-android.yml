@@ -246,20 +246,8 @@ jobs:
           # The report of JUnit is written as XML: it names the test, the
           # class and the reason of the failure. A summary of Gradle alone
           # says only that there were failures.
-          for report in apps/android/app/build/test-results/testDebugUnitTest/*.xml; do
-            [[ -f "$report" ]] || continue
-            python3 - "$report" <<'PYTHON' | head -n 6 | while IFS= read -r line; do
-                echo "::error::${line}"
-              done
-import sys
-import xml.etree.ElementTree as ET
-
-root = ET.parse(sys.argv[1]).getroot()
-for case in root.iter("testcase"):
-    for failure in list(case.iter("failure")) + list(case.iter("error")):
-        message = (failure.get("message") or "").strip().replace("\n", " ")[:220]
-        print(f"{case.get('classname')}::{case.get('name')} — {message}")
-PYTHON
+          ./scripts/report-gradle-test-failures.sh | head -n 6 | while IFS= read -r line; do
+            echo "::error::${line}"
           done
           echo "::error::What went wrong:"
           grep -A 8 "What went wrong" "$RUNNER_TEMP/unit-tests.log" | head -n 8 | while IFS= read -r line; do
