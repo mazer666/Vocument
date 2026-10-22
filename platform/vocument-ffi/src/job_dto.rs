@@ -329,10 +329,19 @@ mod tests {
             if matches!(state.as_str(), "Completed" | "Failed" | "Cancelled") {
                 return state;
             }
-            assert!(
-                Instant::now() < deadline,
-                "job {job_id} did not reach a terminal state in time"
-            );
+            if Instant::now() >= deadline {
+                // The state of the pool is printed with the failure: a job
+                // that waits in the queue and a job that was never enqueued
+                // look the same from the outside, and the difference decides
+                // where the fault lies.
+                let status = document_core_job_status(job_id);
+                let queued = super::document_core_job_queued_count().unwrap_or(0);
+                let running = super::document_core_job_running_count().unwrap_or(0);
+                panic!(
+                    "job {job_id} did not reach a terminal state in time: the state is {status:?}, \
+                     the queue holds {queued} job(s), {running} job(s) run"
+                );
+            }
             std::thread::sleep(Duration::from_millis(5));
         }
     }
