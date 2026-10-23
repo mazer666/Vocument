@@ -1,10 +1,10 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m0-complete-m1-verified-qemu-emulator-m2-complete-cr0005-m2.5-technical-passed-m3-in-progress-m3-m7-development-plan-active"
+  product_status: "m0-complete-m1-verified-qemu-emulator-m2-complete-cr0005-approved-m3.0-complete-m3.1-in-progress"
   current_milestone: "M3"
   current_milestone_name: "Page Workbench"
-  current_submilestone: "M3.0"
+  current_submilestone: "M3.1"
   completed_milestones:
     - "M0"
     - "M1"
@@ -31,6 +31,18 @@ project:
     - "M2.3"
     - "M2.4"
     - "M2.5"
+    - "M3.0"
+    # M3.0 covers the architecture, structural invariants and page workbench
+    # foundation (ADR-0019, PAGE-001-005, SIG-001). Replaces lossy graft
+    # prototypes with genuine in-place page tree manipulation (reorder, duplicate,
+    # delete, extract) preserving /Info, /Metadata, /Outlines, /PageLabels,
+    # /StructTreeRoot, /Lang, and /AcroForm fields. Signed documents are
+    # protected against in-place overwriting; explicit invalidation creates
+    # clean PDF-compliant unsigned working copies per ISO 32000-1 §12.8 by stripping
+    # /V (avoiding artificial byte-range manipulation). Includes security audit
+    # fixes: MuPDF CVE-2026-112036 patch, dynamic two-pass inspection without silent
+    # truncation, independent per-word redaction verification, degraded recovery
+    # state tracking, and macOS pasteboard/cache cleaning on redaction.
     # M2.1 covers the secure redaction with its verification in the core, the
     # engine and over the FFI boundary. The redaction was hardened after
     # four independent adversarial audits: the word boxes of a turned page,
@@ -193,18 +205,18 @@ distribution:
   # The steps that still have to be taken before anything is handed out.
   # The blockers of a public binary, with their owner and their state:
   # docs/releasing/RELEASE-BLOCKERS.md
-  # The continuous integration of the project. Workflows are configured
-  # with runs-on: self-hosted per user global standard (RULE[user_global]).
+  # The continuous integration of the project. Workflows use GitHub-hosted
+  # runners (ubuntu-latest, macos-15) with [run-ci] gating per owner policy.
   continuous_integration:
-    state: "configured-for-self-hosted-runners"
-    runner_policy: "runs-on: self-hosted (enforced by RULE[user_global] and scripts/validate-repo.sh)"
+    state: "configured-for-github-hosted-runners-with-run-ci-gating"
+    runner_policy: "runs-on: ubuntu-latest (Linux/Android) and macos-15 (macOS Apple Silicon); full CI gated by [run-ci] or workflow_dispatch; fast-check on other commits"
     workflows:
-      - ".github/workflows/ci.yml — the gate of the project on Linux"
-      - ".github/workflows/ci-macos.yml — the Swift build of the macOS application"
-      - ".github/workflows/ci-android.yml — the native libraries and the packages of Android"
+      - ".github/workflows/ci.yml — fast-check on push; full Linux gate when [run-ci]"
+      - ".github/workflows/ci-macos.yml — Swift build and Kit tests on macos-15 when [run-ci]"
+      - ".github/workflows/ci-android.yml — native libraries and packages of Android when [run-ci]"
     secrets: "none"
     publishes_anything: false
-    report: "docs/project/M3-M7-DEVELOPMENT-PLAN.md"
+    report: "docs/acceptance/M3.0-ACCEPTANCE.md"
   # The release candidate of the round: internal, not published.
   release_candidate:
     state: "built-internal-not-published"

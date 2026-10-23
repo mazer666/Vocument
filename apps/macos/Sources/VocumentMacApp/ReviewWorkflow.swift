@@ -261,6 +261,9 @@ extension MacDocumentSessionCoordinator {
             )
             securityWarnings = outcome.warnings
             clearRedactionSelection()
+            // Clean sensitive temporary contents after successful redaction (R3-8, RISK-037):
+            NSPasteboard.general.clearContents()
+            thumbnailImages.removeValue(forKey: markedPage)
             refreshReviewState()
             // The user has to see the result of the removal: a page that
             // still shows the text that was just removed for good would be a

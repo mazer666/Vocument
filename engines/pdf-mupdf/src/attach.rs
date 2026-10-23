@@ -67,6 +67,33 @@ fn read_string(buffer: &[c_char]) -> String {
 
 /// Reads the embedded files of the document.
 pub fn document_attachments(pdf_bytes: &[u8]) -> Result<Vec<PdfAttachmentInfo>, PdfEngineError> {
+    let mut total_count: usize = 0;
+    let mut err_buf = [0 as c_char; 512];
+
+    // First pass: obtain exact attachment count (pass NULL to count dynamically without truncation)
+    let status = unsafe {
+        vocument_mupdf_inspect_attachments(
+            pdf_bytes.as_ptr(),
+            pdf_bytes.len(),
+            std::ptr::null_mut(),
+            0,
+            &raw mut total_count,
+            err_buf.as_mut_ptr(),
+            err_buf.len(),
+        )
+    };
+
+    if status != 0 {
+        let details = crate::c_buf_to_optional_string(&err_buf).unwrap_or_else(|| {
+            format!("MuPDF failed to inspect attachment count (status {status})")
+        });
+        return Err(PdfEngineError::EngineFailure { details });
+    }
+
+    if total_count == 0 {
+        return Ok(Vec::new());
+    }
+
     let mut attachments: Vec<RawAttachment> = vec![
         RawAttachment {
             file_name: [0; 512],
@@ -75,20 +102,18 @@ pub fn document_attachments(pdf_bytes: &[u8]) -> Result<Vec<PdfAttachmentInfo>, 
             is_embedded: 0,
             checksum_is_valid: 0,
         };
-        MAX_ATTACHMENTS
+        total_count
     ];
-    let mut count: usize = 0;
-    let mut err_buf = [0 as c_char; 512];
+    let mut actual_count: usize = 0;
 
-    // SAFETY: `pdf_bytes` is a valid buffer, `attachments` has room for
-    // `MAX_ATTACHMENTS` entries, the output pointers are valid.
+    // Second pass: read all attachments into exactly sized buffer
     let status = unsafe {
         vocument_mupdf_inspect_attachments(
             pdf_bytes.as_ptr(),
             pdf_bytes.len(),
             attachments.as_mut_ptr(),
-            MAX_ATTACHMENTS,
-            &raw mut count,
+            total_count,
+            &raw mut actual_count,
             err_buf.as_mut_ptr(),
             err_buf.len(),
         )
@@ -101,8 +126,8 @@ pub fn document_attachments(pdf_bytes: &[u8]) -> Result<Vec<PdfAttachmentInfo>, 
         return Err(PdfEngineError::EngineFailure { details });
     }
 
-    let mut result = Vec::with_capacity(count.min(MAX_ATTACHMENTS));
-    for raw in attachments.iter().take(count.min(MAX_ATTACHMENTS)) {
+    let mut result = Vec::with_capacity(actual_count);
+    for raw in attachments.iter().take(actual_count) {
         result.push(PdfAttachmentInfo::new(
             read_string(&raw.file_name),
             read_string(&raw.mime_type),
@@ -116,6 +141,33 @@ pub fn document_attachments(pdf_bytes: &[u8]) -> Result<Vec<PdfAttachmentInfo>, 
 
 /// Reads the signature fields of the document.
 pub fn document_signatures(pdf_bytes: &[u8]) -> Result<Vec<PdfSignatureInfo>, PdfEngineError> {
+    let mut total_count: usize = 0;
+    let mut err_buf = [0 as c_char; 512];
+
+    // First pass: obtain exact signature count (pass NULL to count dynamically without truncation)
+    let status = unsafe {
+        vocument_mupdf_inspect_signatures(
+            pdf_bytes.as_ptr(),
+            pdf_bytes.len(),
+            std::ptr::null_mut(),
+            0,
+            &raw mut total_count,
+            err_buf.as_mut_ptr(),
+            err_buf.len(),
+        )
+    };
+
+    if status != 0 {
+        let details = crate::c_buf_to_optional_string(&err_buf).unwrap_or_else(|| {
+            format!("MuPDF failed to inspect signature count (status {status})")
+        });
+        return Err(PdfEngineError::EngineFailure { details });
+    }
+
+    if total_count == 0 {
+        return Ok(Vec::new());
+    }
+
     let mut signatures: Vec<RawSignature> = vec![
         RawSignature {
             field_name: [0; 256],
@@ -126,20 +178,18 @@ pub fn document_signatures(pdf_bytes: &[u8]) -> Result<Vec<PdfSignatureInfo>, Pd
             reason: [0; 256],
             location: [0; 256],
         };
-        MAX_SIGNATURES
+        total_count
     ];
-    let mut count: usize = 0;
-    let mut err_buf = [0 as c_char; 512];
+    let mut actual_count: usize = 0;
 
-    // SAFETY: `pdf_bytes` is a valid buffer, `signatures` has room for
-    // `MAX_SIGNATURES` entries, the output pointers are valid.
+    // Second pass: read all signatures into exactly sized buffer
     let status = unsafe {
         vocument_mupdf_inspect_signatures(
             pdf_bytes.as_ptr(),
             pdf_bytes.len(),
             signatures.as_mut_ptr(),
-            MAX_SIGNATURES,
-            &raw mut count,
+            total_count,
+            &raw mut actual_count,
             err_buf.as_mut_ptr(),
             err_buf.len(),
         )
@@ -151,8 +201,8 @@ pub fn document_signatures(pdf_bytes: &[u8]) -> Result<Vec<PdfSignatureInfo>, Pd
         return Err(PdfEngineError::EngineFailure { details });
     }
 
-    let mut result = Vec::with_capacity(count.min(MAX_SIGNATURES));
-    for raw in signatures.iter().take(count.min(MAX_SIGNATURES)) {
+    let mut result = Vec::with_capacity(actual_count);
+    for raw in signatures.iter().take(actual_count) {
         result.push(PdfSignatureInfo::new(
             read_string(&raw.field_name),
             raw.is_signed != 0,

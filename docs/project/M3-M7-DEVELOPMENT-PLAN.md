@@ -241,25 +241,23 @@ The platform sequence is strictly binding:
 
 ---
 
-## 5. Self-Hosted CI Architecture & Infrastructure Plan
+## 5. GitHub-Hosted CI Architecture & Infrastructure Plan
 
-In strict adherence to `RULE[user_global]`, all workflows in `.github/workflows/` remain configured with `runs-on: self-hosted`.
+Per Project Owner directive (2026-10-23), CI workflows run on official GitHub-hosted runners with explicit execution gating and strict resource management.
 
 ### 5.1 Runner Topologies & Labels
 
-| Runner Pool | Host OS & Hardware | Runner Labels | Toolchains & Native Dependencies | Assigned Workflows |
+| Runner Pool | Host OS & Architecture | Runner Label | Toolchains & Native Dependencies | Assigned Workflows |
 |---|---|---|---|---|
-| **Pool 1: macOS Apple Silicon** | macOS 15+ (Apple Silicon) | `self-hosted`, `macos`, `arm64` | Xcode, `swift`, Homebrew, Rust `aarch64-apple-darwin`, MuPDF 1.28.5 dylib | `ci-macos.yml` (Swift build, Kit tests, Handshake) |
-| **Pool 2: Linux Host** | Ubuntu 24.04 LTS (x86_64) | `self-hosted`, `linux`, `x86_64` | Rust stable, GCC/Clang, Make, Tesseract 5.5.0, MuPDF 1.28.5 (source built), `cargo-deny`, `llvm-readelf` | `ci.yml` (Rust workspace, clippy, fmt, license audit, difficult corpus) |
-| **Pool 3: Android Build & Emulator** | Linux KVM or macOS host | `self-hosted`, `android` | JDK 17, Android SDK (API 34/35), NDK r27c, Android Emulator QEMU KVM | `ci-android.yml` (Native cross-compilation, 16 KB page checks, Gradle APK, on-device OCR gate) |
+| **Pool 1: macOS Apple Silicon** | macOS 15 (Apple Silicon) | `macos-15` | Xcode, `swift`, Homebrew, Rust `aarch64-apple-darwin`, MuPDF 1.28.5 dylib | `ci-macos.yml` (Swift build, Kit tests, Handshake) |
+| **Pool 2: Linux Host** | Ubuntu 24.04 LTS (x86_64) | `ubuntu-latest` | Rust stable, GCC/Clang, Make, Tesseract 5.5.0, MuPDF 1.28.5 (source built), `cargo-deny`, `llvm-readelf` | `ci.yml` (Rust workspace, clippy, fmt, license audit, difficult corpus) |
+| **Pool 3: Android Build & Native** | Ubuntu 24.04 LTS (x86_64) | `ubuntu-latest` | JDK 17, Android SDK (API 34/35), NDK r27c | `ci-android.yml` (Native cross-compilation, 16 KB page checks, Gradle APK build) |
 
-### 5.2 Security Sandboxing & Ephemeral Execution
-- Runners execute in isolated, disposable workspaces (`clean-workspace` step on start and exit).
+### 5.2 Security Sandboxing & Gating Policy
+- **Commit Message Gating:** Full multi-platform CI runs **only** if commit title/message contains **`[run-ci]`** or is triggered via manual `workflow_dispatch`.
+- **Fast Checks on Push:** Commits without `[run-ci]` run a rapid sanity/formatting check (`fast-check`) on `ubuntu-latest` to catch syntax and styling defects without consuming heavy build minutes.
+- **Untrusted Fork Protection:** Pull requests from forks never run automated CI workflows without maintainer verification.
 - Zero ambient repository write tokens or publishing secrets in CI runners (`E5` barrier).
-- Transparent three-state reporting:
-  1. *Workflow Configured:* YAML workflow definition with `runs-on: self-hosted`.
-  2. *Runner Available:* Registered self-hosted runner online and accepting jobs.
-  3. *Run Verified:* Green execution log matched to commit SHA.
 
 ---
 
@@ -267,16 +265,16 @@ In strict adherence to `RULE[user_global]`, all workflows in `.github/workflows/
 
 | Milestone | User Value | Core Requirements | Architecture & ADRs | Entry Criteria | Exit Acceptance Gate |
 |---|---|---|---|---|---|
-| **M3.0** | Document structural stability & invariant gate | `PAGE-001`–`003`, `SIG-001`, `UNDO-001` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M2 complete (`CR-0005` proposal) | Invariant test suite proving catalog preservation, unique field renaming & fail-closed signature handling. |
-| **M3.1** | Visual page reorder, duplicate, delete | `PAGE-001`, `PAGE-002`, `UNDO-001` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0 green | 60 FPS thumbnail grid; 100% reversible Undo/Redo across FFI boundary. |
+| **M3.0** | Document structural stability & invariant gate | `PAGE-001`–`003`, `SIG-001`, `UNDO-001` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M2 complete (`CR-0005` Option A approved) | **PASS / COMPLETE** ([M3.0 Acceptance Record](../acceptance/M3.0-ACCEPTANCE.md)): Invariant test suite proving catalog preservation, unique field renaming, signed working copy semantics & audit hardening. |
+| **M3.1** | Visual page reorder, duplicate, delete | `PAGE-001`, `PAGE-002`, `UNDO-001`, `HELP-001`, `UI-010` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0 green | 60 FPS thumbnail grid; 100% reversible Undo/Redo across FFI boundary; intelligible tooltips on all tools. |
 | **M3.2** | Multi-document merge, insert & split | `PAGE-001`–`003`, `CORE-004` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Zero syntax defects in merged/split files via `mutool info` and `qpdf --check`. |
 | **M3.3** | Precision crop, boxes, deskew | `CROP-001`–`003`, `ROTATE-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Media/CropBox calibrated; text layer coordinates match visual glyphs post-crop. |
 | **M3.4** | Bates stamping, numbers, rubber stamps | `WATER-001`–`003`, `HEADER-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md), [CR-0005](../cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md) | M3.3 green | Bates sequence verification; PDF 1.7 `/Stamp` and `/Watermark` conformance. |
 | **M3.5** | Lossless image extract & compression | `COMP-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.2 green | $\ge 20\%$ file size reduction on uncompressed scans; lossless image extraction. |
-| **M3.6** | Complete M3 workbench release | All M3 requirements | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0–M3.5 green | macOS & Android UI integration; full foreign viewer interop suite green. |
+| **M3.6** | Complete M3 workbench release | All M3 requirements, `HELP-002` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0–M3.5 green | macOS & Android UI integration; full foreign viewer interop suite green; bundled & online help documentation. |
 | **M3.7** | Structured document comparison & diffing | `COMPARE-001`–`COMPARE-004` | [CR-0005](../cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md) | M3.6 green | Dual-session synchronized scroll; visual pixel diff; text diff change summary. |
 | **M4.0–4.2** | Deterministic `.pdoc` authoring | `AUTHOR-001`–`005`, `SOURCE-001`, `SOURCE-002` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M3 complete | Bit-identical pagination across macOS & Android via embedded fonts & fixed-point metrics; `.pdoc` ZIP64 validation. |
-| **M4.3–4.4** | Native editing, tracking & PDF/UA | `TRACK-001`–`006`, `WRITE-001`, `APP-A11Y-001` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.2 green | Sub-16ms paragraph-local typing latency; veraPDF green for exported Tagged PDF/UA in self-hosted CI. |
+| **M4.3–4.4** | Native editing, tracking & PDF/UA | `TRACK-001`–`006`, `WRITE-001`, `APP-A11Y-001` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.2 green | Sub-16ms paragraph-local typing latency; veraPDF green for exported Tagged PDF/UA. |
 | **M4.5** | Reliable DOCX & ODT interop | `OFFICE-001`–`OFFICE-005` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.4 green | 3-tier fidelity metrics: 100% Tier 1 text/style, $\ge 95\%$ Tier 2 structure, raw XML Tier 3 pass-through. |
 | **M5** | Windows native shell | `PLATFORM-002` (`CR-0003`) | `CR-0003` (ADR deferred to M5 entry) | macOS & Android RCs green | Shared acceptance scenario verified on Windows 11. |
 | **M6** | Linux native shell | `PLATFORM-002` (`CR-0003`) | `CR-0003` (ADR deferred to M6 entry) | Windows Alpha reached | Shared acceptance scenario verified on Wayland and X11. |

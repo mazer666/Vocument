@@ -74,18 +74,11 @@ static void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) 
         if (!f) continue;
         pdf_obj *ft = pdf_dict_get_inheritable(ctx, f, PDF_NAME(FT));
         if (pdf_name_eq(ctx, ft, PDF_NAME(Sig))) {
-            pdf_obj *v = pdf_dict_get(ctx, f, PDF_NAME(V));
-            if (pdf_is_dict(ctx, v)) {
-                pdf_dict_put_text_string(ctx, v, PDF_NAME(Reason),
-                    "[INVALIDATED: Document structure modified in Page Workbench]");
-                /* Set a truncated ByteRange so MuPDF detects incremental change */
-                pdf_obj *dummy_range = pdf_new_array(ctx, pdf_doc, 4);
-                pdf_array_push_int(ctx, dummy_range, 0);
-                pdf_array_push_int(ctx, dummy_range, 1);
-                pdf_array_push_int(ctx, dummy_range, 2);
-                pdf_array_push_int(ctx, dummy_range, 3);
-                pdf_dict_put_drop(ctx, v, PDF_NAME(ByteRange), dummy_range);
-            }
+            /* Converting signed document to an editable working copy:
+             * Strip the invalid cryptographic signature dictionary /V cleanly
+             * per ISO 32000-1 §12.8, converting it to an unsigned signature field.
+             * This preserves PDF compliance without artificial /ByteRange tampering. */
+            pdf_dict_del(ctx, f, PDF_NAME(V));
         }
     }
 }

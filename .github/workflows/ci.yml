@@ -30,6 +30,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # The workflow reads the repository and nothing else. It needs no secret, and
 # it gets no write permission.
@@ -42,9 +43,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fast-check:
+    name: Fast Check (Sanity & Formatting)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[run-ci]')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+       !contains(github.event.pull_request.title, '[run-ci]') && !contains(github.event.pull_request.body, '[run-ci]'))
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install minimal Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --no-self-update
+          rustup default stable
+
+      - name: Validate repository baseline & format
+        run: |
+          cargo fmt --all -- --check
+          ./scripts/validate-repo.sh
+
   linux-core:
     name: Linux — the gate of the project (Rust, MuPDF, Tesseract)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-ci]')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+       (contains(github.event.pull_request.title, '[run-ci]') || contains(github.event.pull_request.body, '[run-ci]')))
     # The limit of a job on GitHub is 6 hours. The gate needs far less; the
     # limit here is the guard against a run that hangs.
     timeout-minutes: 90

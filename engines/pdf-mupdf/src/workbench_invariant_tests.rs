@@ -316,12 +316,10 @@ fn test_explicit_signature_invalidation_marks_signature_invalidated() {
     let sigs = doc.document_signatures().expect("signatures");
     assert_eq!(sigs.len(), 1);
 
-    // Cryptographic validity was invalidated; must be reported as changed/risky
-    assert!(sigs[0].changed_since_signing || sigs[0].is_risky);
-
-    // The PDF string reflects invalidation notice
-    let pdf_str = String::from_utf8_lossy(&reordered_bytes);
-    assert!(pdf_str.contains("INVALIDATED"));
+    // In the PDF-compliant working copy, the signature field is preserved as an unsigned field:
+    // /V is cleanly stripped so no reader mistakes it for valid, without ByteRange tampering.
+    assert!(!sigs[0].is_signed);
+    assert_eq!(sigs[0].signer, "");
 
     // Duplication with explicit signature invalidation
     let dup_bytes = duplicate_page_ext(&signed_pdf, 0, true)
@@ -330,7 +328,7 @@ fn test_explicit_signature_invalidation_marks_signature_invalidated() {
         .open_pdf_bytes(&dup_bytes)
         .expect("open duplicated signed pdf");
     assert_eq!(dup_doc.summary().page_count, 2);
-    assert!(dup_doc.document_signatures().expect("sigs")[0].changed_since_signing);
+    assert!(!dup_doc.document_signatures().expect("sigs")[0].is_signed);
 
     // Deleting second page from duplicated signed document
     let del_bytes = delete_pages_ext(&dup_bytes, &[1], true)

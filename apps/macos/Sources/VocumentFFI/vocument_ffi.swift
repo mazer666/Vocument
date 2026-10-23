@@ -1693,17 +1693,19 @@ public struct FfiDocumentSessionSnapshot {
     public var documentId: String
     public var revision: UInt64
     public var isDirty: Bool
+    public var recoveryDegraded: Bool
     public var accessOrigin: FfiFileAccessOrigin
     public var fileIdentity: FfiFileIdentity
     public var pdfSummary: FfiPdfDocumentSummary
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(sessionId: String, documentId: String, revision: UInt64, isDirty: Bool, accessOrigin: FfiFileAccessOrigin, fileIdentity: FfiFileIdentity, pdfSummary: FfiPdfDocumentSummary) {
+    public init(sessionId: String, documentId: String, revision: UInt64, isDirty: Bool, recoveryDegraded: Bool, accessOrigin: FfiFileAccessOrigin, fileIdentity: FfiFileIdentity, pdfSummary: FfiPdfDocumentSummary) {
         self.sessionId = sessionId
         self.documentId = documentId
         self.revision = revision
         self.isDirty = isDirty
+        self.recoveryDegraded = recoveryDegraded
         self.accessOrigin = accessOrigin
         self.fileIdentity = fileIdentity
         self.pdfSummary = pdfSummary
@@ -1729,6 +1731,9 @@ extension FfiDocumentSessionSnapshot: Equatable, Hashable {
         if lhs.isDirty != rhs.isDirty {
             return false
         }
+        if lhs.recoveryDegraded != rhs.recoveryDegraded {
+            return false
+        }
         if lhs.accessOrigin != rhs.accessOrigin {
             return false
         }
@@ -1746,6 +1751,7 @@ extension FfiDocumentSessionSnapshot: Equatable, Hashable {
         hasher.combine(documentId)
         hasher.combine(revision)
         hasher.combine(isDirty)
+        hasher.combine(recoveryDegraded)
         hasher.combine(accessOrigin)
         hasher.combine(fileIdentity)
         hasher.combine(pdfSummary)
@@ -1765,6 +1771,7 @@ public struct FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
                 documentId: FfiConverterString.read(from: &buf), 
                 revision: FfiConverterUInt64.read(from: &buf), 
                 isDirty: FfiConverterBool.read(from: &buf), 
+                recoveryDegraded: FfiConverterBool.read(from: &buf), 
                 accessOrigin: FfiConverterTypeFfiFileAccessOrigin.read(from: &buf), 
                 fileIdentity: FfiConverterTypeFfiFileIdentity.read(from: &buf), 
                 pdfSummary: FfiConverterTypeFfiPdfDocumentSummary.read(from: &buf)
@@ -1776,6 +1783,7 @@ public struct FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
         FfiConverterString.write(value.documentId, into: &buf)
         FfiConverterUInt64.write(value.revision, into: &buf)
         FfiConverterBool.write(value.isDirty, into: &buf)
+        FfiConverterBool.write(value.recoveryDegraded, into: &buf)
         FfiConverterTypeFfiFileAccessOrigin.write(value.accessOrigin, into: &buf)
         FfiConverterTypeFfiFileIdentity.write(value.fileIdentity, into: &buf)
         FfiConverterTypeFfiPdfDocumentSummary.write(value.pdfSummary, into: &buf)

@@ -88,36 +88,50 @@ int vocument_mupdf_inspect_attachments(
             tree = pdf_load_name_tree(ctx, pdf_doc, PDF_NAME(EmbeddedFiles));
             if (tree) {
                 int entry_count = pdf_dict_len(ctx, tree);
+                int truncated = 0;
                 for (int i = 0; i < entry_count; i++) {
-                    if (count >= max_attachments) {
-                        break;
-                    }
                     pdf_obj *key = pdf_dict_get_key(ctx, tree, i);
                     pdf_obj *value = key ? pdf_dict_get(ctx, tree, key) : NULL;
                     if (!pdf_is_dict(ctx, value)) {
                         continue;
                     }
-                    /* The value of the name tree is the file specification.
-                       It may point at a file outside the document; only an
-                       embedded file has its content in the PDF. */
-                    pdf_obj *filespec = value;
+                    if (!out_attachments || count < max_attachments) {
+                        if (out_attachments) {
+                            pdf_obj *filespec = value;
+                            vocument_mupdf_attachment_t *dst = &out_attachments[count];
+                            memset(dst, 0, sizeof(*dst));
 
-                    vocument_mupdf_attachment_t *dst = &out_attachments[count++];
-                    memset(dst, 0, sizeof(*dst));
-
-                    pdf_filespec_params params;
-                    memset(&params, 0, sizeof(params));
-                    pdf_get_filespec_params(ctx, filespec, &params);
-                    copy_c_string(dst->file_name, sizeof(dst->file_name), params.filename);
-                    copy_c_string(dst->mime_type, sizeof(dst->mime_type), params.mimetype);
-                    dst->size_bytes = params.size;
-                    dst->is_embedded = pdf_is_embedded_file(ctx, filespec) ? 1 : 0;
-                    dst->checksum_is_valid =
-                        pdf_verify_embedded_file_checksum(ctx, filespec) ? 1 : 0;
+                            pdf_filespec_params params;
+                            memset(&params, 0, sizeof(params));
+                            pdf_get_filespec_params(ctx, filespec, &params);
+                            copy_c_string(dst->file_name, sizeof(dst->file_name), params.filename);
+                            copy_c_string(dst->mime_type, sizeof(dst->mime_type), params.mimetype);
+                            dst->size_bytes = params.size;
+                            dst->is_embedded = pdf_is_embedded_file(ctx, filespec) ? 1 : 0;
+                            dst->checksum_is_valid =
+                                pdf_verify_embedded_file_checksum(ctx, filespec) ? 1 : 0;
+                        }
+                        count++;
+                    } else {
+                        truncated = 1;
+                        count++;
+                    }
                 }
+                *out_attachment_count = count;
+                if (truncated) {
+                    if (err_buf && err_buf_len > 0) {
+                        snprintf(err_buf, err_buf_len,
+                            "attachment inspection incomplete: count (%zu) exceeds capacity (%zu)",
+                            count, max_attachments);
+                    }
+                    status = 3;
+                } else {
+                    status = 0;
+                }
+            } else {
+                *out_attachment_count = 0;
+                status = 0;
             }
-            *out_attachment_count = count;
-            status = 0;
         }
     }
     fz_always(ctx) {
@@ -144,13 +158,11 @@ static void collect_signature_fields(
     pdf_obj *fields,
     vocument_mupdf_signature_t *out_signatures,
     size_t max_signatures,
-    size_t *count
+    size_t *count,
+    int *truncated
 ) {
     int field_count = pdf_array_len(ctx, fields);
     for (int i = 0; i < field_count; i++) {
-        if (*count >= max_signatures) {
-            return;
-        }
         pdf_obj *field = pdf_array_get(ctx, fields, i);
         if (!pdf_is_dict(ctx, field)) {
             continue;
@@ -158,7 +170,8 @@ static void collect_signature_fields(
 
         pdf_obj *kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
         if (pdf_is_array(ctx, kids) && pdf_array_len(ctx, kids) > 0) {
-            collect_signature_fields(ctx, pdf_doc, kids, out_signatures, max_signatures, count);
+            collect_signature_fields(
+                ctx, pdf_doc, kids, out_signatures, max_signatures, count, truncated);
             continue;
         }
 
@@ -167,42 +180,50 @@ static void collect_signature_fields(
             continue;
         }
 
-        vocument_mupdf_signature_t *dst = &out_signatures[(*count)++];
-        memset(dst, 0, sizeof(*dst));
+        if (!out_signatures || *count < max_signatures) {
+            if (out_signatures) {
+                vocument_mupdf_signature_t *dst = &out_signatures[*count];
+                memset(dst, 0, sizeof(*dst));
 
-        pdf_obj *title = pdf_dict_get_inheritable(ctx, field, PDF_NAME(T));
-        copy_c_string(dst->field_name, sizeof(dst->field_name), pdf_to_text_string(ctx, title));
+                pdf_obj *title = pdf_dict_get_inheritable(ctx, field, PDF_NAME(T));
+                copy_c_string(dst->field_name, sizeof(dst->field_name), pdf_to_text_string(ctx, title));
 
-        dst->is_signed = pdf_signature_is_signed(ctx, pdf_doc, field) ? 1 : 0;
+                dst->is_signed = pdf_signature_is_signed(ctx, pdf_doc, field) ? 1 : 0;
 
-        pdf_obj *signature = pdf_dict_get_inheritable(ctx, field, PDF_NAME(V));
-        if (pdf_is_dict(ctx, signature)) {
-            copy_c_string(
-                dst->signer, sizeof(dst->signer),
-                pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Name))));
-            copy_c_string(
-                dst->reason, sizeof(dst->reason),
-                pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Reason))));
-            copy_c_string(
-                dst->location, sizeof(dst->location),
-                pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Location))));
+                pdf_obj *signature = pdf_dict_get_inheritable(ctx, field, PDF_NAME(V));
+                if (pdf_is_dict(ctx, signature)) {
+                    copy_c_string(
+                        dst->signer, sizeof(dst->signer),
+                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Name))));
+                    copy_c_string(
+                        dst->reason, sizeof(dst->reason),
+                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Reason))));
+                    copy_c_string(
+                        dst->location, sizeof(dst->location),
+                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Location))));
 
-            int64_t signed_at = pdf_to_date(ctx, pdf_dict_get(ctx, signature, PDF_NAME(M)));
-            if (signed_at > 0) {
-                char buffer[64];
-                struct tm tm_value;
-                time_t seconds = (time_t)signed_at;
-                if (gmtime_r(&seconds, &tm_value)) {
-                    strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tm_value);
-                    copy_c_string(dst->signed_at, sizeof(dst->signed_at), buffer);
+                    int64_t signed_at = pdf_to_date(ctx, pdf_dict_get(ctx, signature, PDF_NAME(M)));
+                    if (signed_at > 0) {
+                        char buffer[64];
+                        struct tm tm_value;
+                        time_t seconds = (time_t)signed_at;
+                        if (gmtime_r(&seconds, &tm_value)) {
+                            strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tm_value);
+                            copy_c_string(dst->signed_at, sizeof(dst->signed_at), buffer);
+                        }
+                    }
+
+                    /* The check needs the field, not the signature dictionary: it
+                       reads the byte range from the value of the field and asks the
+                       field whether it is a signature field at all. */
+                    dst->changed_since_signing =
+                        pdf_signature_incremental_change_since_signing(ctx, pdf_doc, field) ? 1 : 0;
                 }
             }
-
-            /* The check needs the field, not the signature dictionary: it
-               reads the byte range from the value of the field and asks the
-               field whether it is a signature field at all. */
-            dst->changed_since_signing =
-                pdf_signature_incremental_change_since_signing(ctx, pdf_doc, field) ? 1 : 0;
+            (*count)++;
+        } else {
+            *truncated = 1;
+            (*count)++;
         }
     }
 }
@@ -252,15 +273,25 @@ int vocument_mupdf_inspect_signatures(
         if (!pdf_doc) {
             status = 5;
         } else {
+            int truncated = 0;
             pdf_obj *catalog = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
             pdf_obj *acroform = pdf_dict_get(ctx, catalog, PDF_NAME(AcroForm));
             pdf_obj *fields = pdf_dict_get(ctx, acroform, PDF_NAME(Fields));
             if (pdf_is_array(ctx, fields)) {
                 collect_signature_fields(
-                    ctx, pdf_doc, fields, out_signatures, max_signatures, &count);
+                    ctx, pdf_doc, fields, out_signatures, max_signatures, &count, &truncated);
             }
             *out_signature_count = count;
-            status = 0;
+            if (truncated) {
+                if (err_buf && err_buf_len > 0) {
+                    snprintf(err_buf, err_buf_len,
+                        "signature inspection incomplete: count (%zu) exceeds capacity (%zu)",
+                        count, max_signatures);
+                }
+                status = 3;
+            } else {
+                status = 0;
+            }
         }
     }
     fz_always(ctx) {

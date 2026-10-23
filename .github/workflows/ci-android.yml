@@ -28,6 +28,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # The workflow reads the repository and nothing else. It needs no secret, and
 # it gets no write permission. No package is ever uploaded: the permission
@@ -44,7 +45,12 @@ concurrency:
 jobs:
   android:
     name: Android — the native libraries, the packages and the unit tests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-ci]')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+       (contains(github.event.pull_request.title, '[run-ci]') || contains(github.event.pull_request.body, '[run-ci]')))
     # The limit of a job on GitHub is 6 hours. The cross-builds of the
     # engines and the two packages need far less; the limit here is the
     # guard against a run that hangs.

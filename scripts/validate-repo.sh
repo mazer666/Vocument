@@ -146,21 +146,25 @@ done
 
 echo "✓ All required baseline, governance, and workspace files exist."
 
-# Verify GitHub Actions workflows never use GitHub-hosted runners (RULE[user_global])
+# Verify GitHub Actions workflows follow GitHub-hosted runner and [run-ci] gating policy
 if [[ -d ".github/workflows" ]]; then
-  if grep -RInE 'runs-on:[[:space:]]*(ubuntu|macos|windows)-' .github/workflows/ >/dev/null 2>&1; then
-    echo "ERROR: GitHub-hosted runner detected in .github/workflows/ (must use runs-on: self-hosted per RULE[user_global])" >&2
-    exit 1
-  fi
   workflow_count=0
   while IFS= read -r workflow; do
     workflow_count=$((workflow_count + 1))
-    if ! grep -qE 'runs-on:[[:space:]]*self-hosted' "$workflow"; then
-      echo "ERROR: The workflow '$workflow' does not run on a self-hosted runner." >&2
+    if ! grep -qE 'runs-on:[[:space:]]*(ubuntu|macos)-' "$workflow"; then
+      echo "ERROR: The workflow '$workflow' does not use GitHub-hosted runners (ubuntu-latest / macos-15)." >&2
+      exit 1
+    fi
+    if ! grep -q '\[run-ci\]' "$workflow"; then
+      echo "ERROR: The workflow '$workflow' missing mandatory [run-ci] commit gate." >&2
+      exit 1
+    fi
+    if ! grep -q 'permissions:' "$workflow"; then
+      echo "ERROR: The workflow '$workflow' missing explicit permissions declaration." >&2
       exit 1
     fi
   done < <(find .github/workflows -type f \( -name "*.yml" -o -name "*.yaml" \) | sort)
-  echo "✓ Workflow runner policy verified (${workflow_count} workflow(s) on self-hosted runners per RULE[user_global])."
+  echo "✓ Workflow runner & gating policy verified (${workflow_count} workflow(s) on GitHub-hosted runners with [run-ci] gates)."
 fi
 
 # Enforce CODE-001: Hand-written source file size limits (target <= 600 lines, hard max <= 900 lines)

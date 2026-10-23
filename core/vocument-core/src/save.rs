@@ -310,6 +310,15 @@ impl SessionRegistry {
             });
         }
 
+        // Signed originals are protected: modifying a digitally signed original document
+        // must not overwrite the original file in-place on disk. An editable working copy
+        // must be saved to a new path (Save As).
+        if session.was_signed_on_open && session.is_dirty {
+            return Err(SessionError::Save(SaveError::InvalidOperation {
+                details: "Signed original file is protected against in-place overwriting. Use save_session_as or export_session_bytes to create an editable working copy.".to_string(),
+            }));
+        }
+
         let doc_id = session.document_id.clone();
         let target_token = session.file_identity.source_token.clone();
         let outcome = SaveCoordinator::execute_safe_save(

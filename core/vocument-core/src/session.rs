@@ -84,6 +84,7 @@ pub struct DocumentSessionSnapshot {
     pub document_id: DocumentId,
     pub revision: u64,
     pub is_dirty: bool,
+    pub recovery_degraded: bool,
     pub access_origin: FileAccessOrigin,
     pub file_identity: FileIdentity,
     pub pdf_summary: PdfDocumentSummary,
@@ -96,6 +97,8 @@ pub struct DocumentSession {
     pub(crate) document_id: DocumentId,
     pub(crate) revision: u64,
     pub(crate) is_dirty: bool,
+    pub(crate) recovery_degraded: bool,
+    pub(crate) was_signed_on_open: bool,
     pub(crate) access_origin: FileAccessOrigin,
     pub(crate) file_identity: FileIdentity,
     pub(crate) pdf_summary: PdfDocumentSummary,
@@ -112,6 +115,7 @@ impl DocumentSession {
             document_id: self.document_id.clone(),
             revision: self.revision,
             is_dirty: self.is_dirty,
+            recovery_degraded: self.recovery_degraded,
             access_origin: self.access_origin,
             file_identity: self.file_identity.clone(),
             pdf_summary: self.pdf_summary.clone(),
@@ -298,6 +302,10 @@ impl SessionRegistry {
         let label_catalog = PageLabelCatalog::new(pdf_summary.page_count, embedded_labels);
         let search_index = SessionSearchIndex::new(pdf_summary.page_count)?;
         let transaction_manager = TransactionManager::new(document_id.clone(), &brokered.bytes);
+        let was_signed_on_open = engine_document
+            .document_signatures()
+            .map(|sigs| sigs.iter().any(|s| s.is_signed))
+            .unwrap_or(false);
         let actor = Arc::new(DocumentActor::new(engine_document));
 
         let counter = self.next_session_number.fetch_add(1, Ordering::Relaxed);
@@ -308,6 +316,8 @@ impl SessionRegistry {
             document_id,
             revision: 1,
             is_dirty: false,
+            recovery_degraded: false,
+            was_signed_on_open,
             access_origin: brokered.access_origin,
             file_identity,
             pdf_summary,

@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M2 — macOS Professional Review. M0 (Foundation / “Trustworthy Viewer”) is **complete**; M1 (Android Scan & OCR) has all its slices implemented and verified on the host, and the run of the round of 2026-10-22 measured the runtime on an **emulator** — the application starts, the OCR quality is proven with the corpus (CER ≤ 5 %, word and character accuracy ≥ 95 %, language German). The behaviour on a **device of a user** remains **NOT RUN** — no device is attached (Round 6 Acceptance Record, §2.4). M2 has delivered **M2.1 — secure redaction with verification**, **M2.2 — link and action inspection**, **M2.3 — attachment and signature inspection** and **M2.4 — the comment of the reviewer with the rail of the profession** (all implemented and verified on the host — see [M2.1 Acceptance Record](docs/acceptance/M2.1-ACCEPTANCE.md), [M2.2 Acceptance Record](docs/acceptance/M2.2-ACCEPTANCE.md), [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md) and [M2.4 Acceptance Record](docs/acceptance/M2.4-ACCEPTANCE.md)). **M2.5 — the licence, the distribution and the release readiness** carries the binding decision of the project owner (E1–E5) and prepares the artefacts; the signing, the notarisation and the legal clearance are still open (see [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md)). The **fifth round** hardened the verification of the redaction once more — the walk names every place it could not examine, the report of the places is no longer cut off — proved the Swift sources statically and with the compiler, and brought the release preparation to the point where the source archive, the reproducibility and the build record exist (see [Round 5 Acceptance Record](docs/acceptance/ROUND-5-ACCEPTANCE.md)). The **alpha release `v0.1.0-alpha.1`** of the 2026-10-22 publishes the source of the revision as a pre-release — no binary, because the legal clearance (E5) and the signing identities are open ([the description of the alpha](docs/releasing/ALPHA-RELEASE.md)).
+**Current milestone:** M3 — Page Workbench (**IN PROGRESS**). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), and M2 (macOS Professional Review) are **complete**. Milestone M2 closure was formally approved by the Project Owner under **CR-0005 Option A** on 2026-10-23, delivering verified secure redaction (M2.1), link/action inspection (M2.2), attachment and cryptographic signature inspection (M2.3), reviewer comment palette (M2.4), document sanitization (`SAN-001`), and macOS review workflow panels (Rubber Stamps relocated to M3.4; Structured Document Comparison scheduled to Track M3.7). **M3.0 (Architecture, Invariants & Structural Preservation)** is **COMPLETE & VERIFIED** (see [M3.0 Acceptance Record](docs/acceptance/M3.0-ACCEPTANCE.md)). M3.1 (Visual Page Workbench) is next. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating and fast-check fallback. All tools across platforms require intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -713,25 +713,27 @@ Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 
-# M3 — Page Workbench *(Status: **IN PROGRESS** — Foundation Started; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
+# M3 — Page Workbench *(Status: **IN PROGRESS** — M3.0 Complete; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
 
 Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
 
 ## Sub-Milestones
 
-- **M3.0 — Architecture, Invariants & Structural Preservation (`ADR-0019`) *(Status: **COMPLETE** — see [M3.0 Acceptance Record](docs/acceptance/M3.0-ACCEPTANCE.md))***:
+- **M3.0 — Architecture, Invariants & Structural Preservation (`ADR-0019`) *(Status: **COMPLETE & VERIFIED** — see [M3.0 Acceptance Record](docs/acceptance/M3.0-ACCEPTANCE.md))***:
   - [x] Enforcement of document invariants during page mutations (in-place `Reorder`, `Duplicate`, `Delete`, `Extract` preserving `/Info`, `/Metadata`, `/Outlines`, `/PageLabels`, `/StructTreeRoot`, `/Lang`).
-  - [x] Digital signature preflight check & explicit user invalidation confirmation (`SIG-001`) with fail-closed rejection by default.
+  - [x] Digital signature preflight check & explicit user invalidation confirmation (`SIG-001`) with fail-closed rejection by default; signed originals protected against in-place overwriting (`save_session`); PDF-compliant unsigned working copies generated per ISO 32000-1 §12.8 by stripping `/V` (no artificial `/ByteRange` mocks per `QA-003`).
   - [x] AcroForm field uniqueness on duplication (`CustomerName_Copy1`) and cleanup of deleted widget references in `/Fields`.
   - [x] Bookmark outline target re-anchoring to preserve visual destinations on page deletion.
   - [x] Non-destructive extraction leaving source document byte-for-byte unmodified.
   - [x] Reversible Undo/Redo transactions across Core, MuPDF, and UniFFI boundaries with crash recovery.
+  - [x] Comprehensive security audit hardening: MuPDF CVE-2026-112036 double-free patch applied; dynamic two-pass inspection reporting without silent truncation; independent per-word redaction verification; degraded recovery state tracking (`recovery_degraded`); sensitive temporary clipboard & cache clearing in macOS app.
 
 - **M3.1 — Visual Page Workbench & Core Operations (Single Document):**
   - Asynchronous thumbnail grid view in macOS AppKit/SwiftUI and Android Compose.
   - Multi-selection: Contiguous (Shift-Click), non-contiguous (Cmd-Click), select all.
   - Operations: Reorder (drag-and-drop & keyboard), Duplicate, Delete (last-page guard), Extract.
   - Transaction Engine: Reversible Undo/Redo (`ReorderPages`, `DuplicatePage`, `DeletePages`, `RestorePages`), dirty state tracking, atomic save, crash recovery.
+  - Tooltips & Ergonomics: Intelligible plain-language tooltips with shortcut hints on all workbench tools (`HELP-001`, `UI-010`).
 
 - **M3.2 — Multi-Document Operations: Merge, Insert & Split:**
   - Native page grafting (`pdf_graft_page`) across disparate `DocumentSession` instances.
@@ -762,6 +764,13 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces.
   - Cross-viewer interoperability matrix (MuPDF, Apple Quartz, PDFium, `mutool`, `qpdf`).
   - Usability benchmarking against reference tools (PDFCraft, Adobe Acrobat).
+  - Offline-first bundled user documentation and synchronized online help mirror (`HELP-002`).
+
+- **M3.7 Track — Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`):**
+  - Formal track established under approved `CR-0005` Option A following M3 visual workbench infrastructure.
+  - Dual-document side-by-side synchronized viewport scroll.
+  - Visual overlay differ with pixel/rendering comparison and text stream differ.
+  - Exportable change report summary.
 
 ### Quality Gates
 

@@ -122,6 +122,15 @@ if [[ ! -f "$SOURCE_DIR/Makefile" ]]; then
   exit 1
 fi
 
+if [[ -d "$REPO_ROOT/patches/mupdf" ]]; then
+  for patch_file in "$REPO_ROOT/patches/mupdf"/*.patch; do
+    if [[ -f "$patch_file" ]]; then
+      echo "==> Applying patch $(basename "$patch_file")..."
+      patch -d "$SOURCE_DIR" -p1 -N -r - < "$patch_file" || true
+    fi
+  done
+fi
+
 # The recipe is the one of `docs/releasing/BUILD-FROM-SOURCE.md`: the shared
 # library, no X11, no GLUT and no CURL. The project does not use them, and
 # their development files are not on every build machine.

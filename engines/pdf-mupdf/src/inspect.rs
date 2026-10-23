@@ -41,6 +41,33 @@ unsafe extern "C" {
 
 /// Reads the links and actions of the document.
 pub fn document_actions(pdf_bytes: &[u8]) -> Result<Vec<PdfActionInfo>, PdfEngineError> {
+    let mut total_count: usize = 0;
+    let mut err_buf = [0 as c_char; 512];
+
+    // First pass: obtain exact action count (pass NULL to count dynamically without truncation)
+    let status = unsafe {
+        vocument_mupdf_inspect_document_actions(
+            pdf_bytes.as_ptr(),
+            pdf_bytes.len(),
+            std::ptr::null_mut(),
+            0,
+            &raw mut total_count,
+            err_buf.as_mut_ptr(),
+            err_buf.len(),
+        )
+    };
+
+    if status != 0 {
+        let details = crate::c_buf_to_optional_string(&err_buf).unwrap_or_else(|| {
+            format!("MuPDF failed to inspect document action count (status {status})")
+        });
+        return Err(PdfEngineError::EngineFailure { details });
+    }
+
+    if total_count == 0 {
+        return Ok(Vec::new());
+    }
+
     let mut actions: Vec<RawAction> = vec![
         RawAction {
             has_page: 0,
@@ -52,20 +79,18 @@ pub fn document_actions(pdf_bytes: &[u8]) -> Result<Vec<PdfActionInfo>, PdfEngin
             kind: [0; 64],
             target: [0; 1024],
         };
-        MAX_ACTIONS
+        total_count
     ];
-    let mut count: usize = 0;
-    let mut err_buf = [0 as c_char; 512];
+    let mut actual_count: usize = 0;
 
-    // SAFETY: `pdf_bytes` is a valid buffer, `actions` has room for
-    // `MAX_ACTIONS` entries, the output pointers are valid.
+    // Second pass: read all actions into exactly sized buffer
     let status = unsafe {
         vocument_mupdf_inspect_document_actions(
             pdf_bytes.as_ptr(),
             pdf_bytes.len(),
             actions.as_mut_ptr(),
-            MAX_ACTIONS,
-            &raw mut count,
+            total_count,
+            &raw mut actual_count,
             err_buf.as_mut_ptr(),
             err_buf.len(),
         )
@@ -77,8 +102,8 @@ pub fn document_actions(pdf_bytes: &[u8]) -> Result<Vec<PdfActionInfo>, PdfEngin
         return Err(PdfEngineError::EngineFailure { details });
     }
 
-    let mut result = Vec::with_capacity(count.min(MAX_ACTIONS));
-    for raw in actions.iter().take(count.min(MAX_ACTIONS)) {
+    let mut result = Vec::with_capacity(actual_count);
+    for raw in actions.iter().take(actual_count) {
         // SAFETY: the C bridge writes NUL-terminated strings into the arrays.
         let kind_name = unsafe { CStr::from_ptr(raw.kind.as_ptr()) }
             .to_string_lossy()

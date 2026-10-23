@@ -76,13 +76,24 @@ impl SessionRegistry {
         // that fails, the state of the document is not protected against a
         // crash any more. The transaction itself has succeeded — the error
         // belongs to the recovery store and must not turn a change that
-        // happened into a failure. It is reported, not swallowed.
+        // happened into a failure. It is reported and recorded as degraded recovery.
         if let Err(error) = self.record_recovery_mutation(session_id) {
+            self.set_session_recovery_degraded(session_id, true);
             eprintln!(
                 "vocument: the state of the document could not be secured for the crash recovery: {error}"
             );
+        } else {
+            self.set_session_recovery_degraded(session_id, false);
         }
         Ok(record)
+    }
+
+    fn set_session_recovery_degraded(&self, session_id: &str, degraded: bool) {
+        if let Ok(mut guard) = self.sessions.lock()
+            && let Some(session) = guard.get_mut(session_id)
+        {
+            session.recovery_degraded = degraded;
+        }
     }
 
     /// Rotates one or more `0`-based pages by `delta_degrees` (`+90`, `-90`, `180`, `-180`, `270`) via `TransactionManager` (`ROTATE-001`).
@@ -211,11 +222,14 @@ impl SessionRegistry {
         // that fails, the state of the document is not protected against a
         // crash any more. The transaction itself has succeeded — the error
         // belongs to the recovery store and must not turn a change that
-        // happened into a failure. It is reported, not swallowed.
+        // happened into a failure. It is reported and recorded as degraded recovery.
         if let Err(error) = self.record_recovery_mutation(session_id) {
+            self.set_session_recovery_degraded(session_id, true);
             eprintln!(
                 "vocument: the state of the document could not be secured for the crash recovery: {error}"
             );
+        } else {
+            self.set_session_recovery_degraded(session_id, false);
         }
         Ok(record)
     }
@@ -239,11 +253,14 @@ impl SessionRegistry {
         // that fails, the state of the document is not protected against a
         // crash any more. The transaction itself has succeeded — the error
         // belongs to the recovery store and must not turn a change that
-        // happened into a failure. It is reported, not swallowed.
+        // happened into a failure. It is reported and recorded as degraded recovery.
         if let Err(error) = self.record_recovery_mutation(session_id) {
+            self.set_session_recovery_degraded(session_id, true);
             eprintln!(
                 "vocument: the state of the document could not be secured for the crash recovery: {error}"
             );
+        } else {
+            self.set_session_recovery_degraded(session_id, false);
         }
         Ok(record)
     }

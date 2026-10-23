@@ -2601,6 +2601,7 @@ data class FfiDocumentSessionSnapshot (
     var `documentId`: kotlin.String, 
     var `revision`: kotlin.ULong, 
     var `isDirty`: kotlin.Boolean, 
+    var `recoveryDegraded`: kotlin.Boolean, 
     var `accessOrigin`: FfiFileAccessOrigin, 
     var `fileIdentity`: FfiFileIdentity, 
     var `pdfSummary`: FfiPdfDocumentSummary
@@ -2619,6 +2620,7 @@ public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
             FfiConverterString.read(buf),
             FfiConverterULong.read(buf),
             FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterTypeFfiFileAccessOrigin.read(buf),
             FfiConverterTypeFfiFileIdentity.read(buf),
             FfiConverterTypeFfiPdfDocumentSummary.read(buf),
@@ -2630,6 +2632,7 @@ public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
             FfiConverterString.allocationSize(value.`documentId`) +
             FfiConverterULong.allocationSize(value.`revision`) +
             FfiConverterBoolean.allocationSize(value.`isDirty`) +
+            FfiConverterBoolean.allocationSize(value.`recoveryDegraded`) +
             FfiConverterTypeFfiFileAccessOrigin.allocationSize(value.`accessOrigin`) +
             FfiConverterTypeFfiFileIdentity.allocationSize(value.`fileIdentity`) +
             FfiConverterTypeFfiPdfDocumentSummary.allocationSize(value.`pdfSummary`)
@@ -2640,6 +2643,7 @@ public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
             FfiConverterString.write(value.`documentId`, buf)
             FfiConverterULong.write(value.`revision`, buf)
             FfiConverterBoolean.write(value.`isDirty`, buf)
+            FfiConverterBoolean.write(value.`recoveryDegraded`, buf)
             FfiConverterTypeFfiFileAccessOrigin.write(value.`accessOrigin`, buf)
             FfiConverterTypeFfiFileIdentity.write(value.`fileIdentity`, buf)
             FfiConverterTypeFfiPdfDocumentSummary.write(value.`pdfSummary`, buf)

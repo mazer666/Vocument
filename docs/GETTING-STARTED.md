@@ -288,8 +288,9 @@ decision can be checked without a device.
     a redaction.
 19. **The clipboard is the copy of the user.** The text of the page is
     copied into the clipboard, and the clipboard history of the system
-    keeps it. The redaction surface has to clear the clipboard — it does
-    not exist yet.
+    keeps it. The redaction workflow now clears the system clipboard
+    (`NSPasteboard.general.clearContents()`) and invalidates rendered thumbnail
+    caches upon applying redactions.
 20. **A directory in the temporary directory can be prepared by somebody
     else.** The recovery store keeps its content private (`0700`/`0600`),
     but the applications have to hand it a directory of their own.

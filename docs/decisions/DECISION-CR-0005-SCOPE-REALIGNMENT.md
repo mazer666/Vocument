@@ -1,7 +1,7 @@
 # Decision Paper: Milestone M2 Scope Realignment and Roadmap Sequence (`CR-0005`)
 
 **Document type:** Formal Proposal and Decision Submission for the Project Owner  
-**Status:** **Pending Project Owner Clearance**  
+**Status:** **APPROVED by Project Owner (Option A)**  
 **Date:** 2026-10-23  
 **Authors:** Multi-Agent Development Team (`AGENTS.md`) — ROLE-01 (Product Steward), ROLE-02 (Chief Architect), ROLE-20 (Project Manager)  
 **References:** `REQUIREMENTS.md`, `ROADMAP.md`, `CR-0005`, `ADR-0018`, `ADR-0019`, `docs/acceptance/M2-ACCEPTANCE.md`
@@ -74,9 +74,9 @@ M2: Security, Inspection & Jurist Review (Complete)
 
 ## 4. Decision Submission
 
-The Multi-Agent Team requests the Project Owner's decision:
+The Multi-Agent Team requested the Project Owner's decision, which was formally cleared on 2026-10-23:
 
-- [ ] **APPROVE OPTION A:** Adopt `CR-0005` scope realignment, confirm M2 closure on delivered security slices, schedule Rubber Stamps to M3.4, and schedule Structured Comparison to M3.7.
+- [x] **APPROVE OPTION A:** Adopt `CR-0005` scope realignment, confirm M2 closure on delivered security slices, schedule Rubber Stamps to M3.4, and schedule Structured Comparison to M3.7.
 - [ ] **APPROVE OPTION B:** Reopen M2; implement comparison and stamps before proceeding to M3.
 - [ ] **OTHER INSTRUCTION:** (Specify custom adjustment).
 

@@ -197,11 +197,6 @@ impl SessionRegistry {
         // would be found in every line of every font and would drown the
         // check in false hits.
         let checked_words: Vec<String> = removed_word_texts.clone();
-        let byte_check_words: Vec<String> = removed_word_texts
-            .iter()
-            .filter(|text| is_content_word(text))
-            .cloned()
-            .collect();
 
         // The bytes of the document before the removal. They are the way back:
         // a redaction that cannot be verified is rolled back, and the user
@@ -481,117 +476,92 @@ impl SessionRegistry {
             // not a pass.
             RedactionCheck::NotChecked
         } else {
-            match self.find_word_occurrences(session_id, &checked_words) {
-                Ok(occurrences) => {
-                    // The content of the other pages is not part of the
-                    // redaction: the user marked a region of this page. Those
-                    // places are reported, they do not stop the redaction.
-                    //
-                    // The content of the marked page is part of it — unless
-                    // the word stands elsewhere on the page. The text layer
-                    // knows where the word stands: a word that the text layer
-                    // still shows outside of the region belongs to the
-                    // document and is reported. A word that the text layer
-                    // does not show any more stands in the content stream in
-                    // a way that nobody can read — that stops the redaction.
-                    //
-                    // The other places — an annotation, a form value, the
-                    // metadata — were cleaned before the check, and a place
-                    // that survives the cleaning stops the redaction.
-                    let explained = |occurrence: &PdfTextOccurrence| {
-                        occurrence.kind == "content"
-                            && checked_words.iter().any(|word| word_still_elsewhere(word))
-                    };
-                    let inside: Vec<&PdfTextOccurrence> = occurrences
-                        .iter()
-                        .filter(|occurrence| match occurrence.kind.as_str() {
-                            // A place that could not be read is a warning, not
-                            // a failure: the redaction does not claim that the
-                            // text is gone from there.
-                            "uninspected" => false,
-                            // The content of another page is a remainder, not a
-                            // failure — it is named in the report.
-                            "content" => {
-                                occurrence.page_index == page_index as i32 && !explained(occurrence)
-                            }
-                            // A hidden place — a place of the document that is
-                            // not the content of a page — was not cleaned: that
-                            // stops the redaction.
-                            "hidden" => true,
-                            // A kind the core does not know is treated like a
-                            // hidden place: the core does not trust a kind it
-                            // does not know.
-                            _ => true,
-                        })
-                        .collect();
-                    let outside: Vec<&PdfTextOccurrence> = occurrences
-                        .iter()
-                        .filter(|occurrence| {
-                            (occurrence.kind == "content"
-                                && occurrence.page_index != page_index as i32)
-                                || explained(occurrence)
-                        })
-                        .collect();
-                    let uninspected: Vec<&PdfTextOccurrence> = occurrences
-                        .iter()
-                        .filter(|occurrence| occurrence.kind == "uninspected")
-                        .collect();
-                    remaining_occurrences = outside
-                        .iter()
-                        .map(|occurrence| (*occurrence).clone())
-                        .collect();
-                    uncleaned_places = inside.iter().map(|place| (*place).clone()).collect();
-                    uninspected_places = uninspected.iter().map(|place| (*place).clone()).collect();
-                    if !uninspected_places.is_empty() {
+            let mut failed = false;
+            let haystack = normalized_for_bytes(&String::from_utf8_lossy(&file_bytes));
+
+            for word in &checked_words {
+                let occurrences_for_word = match self
+                    .find_word_occurrences(session_id, std::slice::from_ref(word))
+                {
+                    Ok(occ) => occ,
+                    Err(error) => {
                         not_checked_reasons.push(format!(
-                            "the document could not be read completely: {} place(s) could not be looked into, among them {}",
-                            uninspected_places.len(),
-                            uninspected_places
-                                .iter()
-                                .map(|place| place.location.as_str())
-                                .collect::<Vec<&str>>()
-                                .join(", ")
+                            "the places of the document that could still carry '{word}' could not be read: {error}"
                         ));
+                        failed = true;
+                        break;
                     }
-                    if !inside.is_empty() {
-                        RedactionCheck::Failed
-                    } else {
-                        let haystack = normalized_for_bytes(&String::from_utf8_lossy(&file_bytes));
-                        let mut failed = false;
-                        for removed in &byte_check_words {
-                            let needle = normalized_for_bytes(removed);
-                            if needle.is_empty() {
-                                continue;
-                            }
-                            // A word that stands in a place the engine
-                            // knows — on another page, elsewhere on this
-                            // page — is reported, not refused: the user
-                            // marked a region, and the word belongs to the
-                            // document. A word that the engine does not know
-                            // any more but that still stands in the bytes is
-                            // a remainder without a place: an old version of
-                            // the file, an unreachable object. That stops
-                            // the redaction.
-                            if haystack.contains(&needle) && remaining_occurrences.is_empty() {
-                                failed = true;
-                                break;
+                };
+
+                let word_has_survivor_on_page = word_still_elsewhere(word);
+                let mut word_remaining_occurrences_count = 0;
+
+                for occ in occurrences_for_word {
+                    match occ.kind.as_str() {
+                        "uninspected" => {
+                            if !uninspected_places
+                                .iter()
+                                .any(|p| p.location == occ.location)
+                            {
+                                uninspected_places.push(occ);
                             }
                         }
-                        if failed {
-                            RedactionCheck::Failed
-                        } else {
-                            RedactionCheck::Passed
+                        "content" => {
+                            if occ.page_index == page_index as i32 {
+                                if word_has_survivor_on_page {
+                                    // Legitimate occurrence outside redacted region on current page
+                                    word_remaining_occurrences_count += 1;
+                                    remaining_occurrences.push(occ);
+                                } else {
+                                    // Word is NOT elsewhere on page, but content stream still carries it!
+                                    uncleaned_places.push(occ);
+                                }
+                            } else {
+                                // Word occurs on another page
+                                word_remaining_occurrences_count += 1;
+                                remaining_occurrences.push(occ);
+                            }
+                        }
+                        "hidden" => {
+                            // Hidden places must NEVER carry the redacted word!
+                            uncleaned_places.push(occ);
+                        }
+                        _ => {
+                            uncleaned_places.push(occ);
                         }
                     }
                 }
-                // The engine cannot report the places. The check could not be
-                // carried out, and that is not a pass. The reason is named.
-                Err(error) => {
-                    not_checked_reasons.push(format!(
-                        "the places of the document that could still carry the text could not be read: {error}"
-                    ));
-                    RedactionCheck::NotChecked
+
+                // Raw byte check for this word:
+                if is_content_word(word) {
+                    let needle = normalized_for_bytes(word);
+                    if !needle.is_empty()
+                        && haystack.contains(&needle)
+                        && word_remaining_occurrences_count == 0
+                    {
+                        // Word is supposed to be completely erased from document (no remaining occurrences anywhere),
+                        // yet raw bytes still carry it!
+                        failed = true;
+                    }
                 }
+            }
+
+            if !uninspected_places.is_empty() {
+                not_checked_reasons.push(format!(
+                    "the document could not be read completely: {} place(s) could not be looked into, among them {}",
+                    uninspected_places.len(),
+                    uninspected_places
+                        .iter()
+                        .map(|place| place.location.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ));
+            }
+
+            if failed || !uncleaned_places.is_empty() {
+                RedactionCheck::Failed
+            } else {
+                RedactionCheck::Passed
             }
         };
 

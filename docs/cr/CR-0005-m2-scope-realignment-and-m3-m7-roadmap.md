@@ -1,6 +1,6 @@
 # CR-0005 — Scope Realignment for M2 Closure, Sanitization Demarcation, and M3–M7 Roadmap Harmonization
 
-- **Status:** proposed (decision paper prepared for Project Owner clearance; see `docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md`)
+- **Status:** approved (Option A formally approved by Project Owner on 2026-10-23; see `docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md`)
 - **Date:** 2026-10-23
 - **Proposer roles:** ROLE-01 (Product & Requirements Steward), ROLE-02 (Chief Architect), ROLE-20 (Project / Release Manager)
 - **Reviewer roles:** ROLE-04 (PDF Engineer), ROLE-09 (Security Engineer), ROLE-13 (QA & Test Engineer), ROLE-15 (Interoperability & Standards Engineer)
@@ -24,7 +24,8 @@ A thorough audit of `REQUIREMENTS.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `project
    - Headless unit/integration tests (`VocumentMacKitTests`) verify the Swift-to-Rust UniFFI bridging, transaction execution, and state propagation. They do not constitute verification of end-user AppKit window-server interaction or physical pointer/keyboard manipulation. This distinction must be formalized in the project status.
 
 4. **CI Runner Architecture Alignment:**
-   - In `project/project.yaml`, stale notes described workflows as "running-on-the-hosted-runners", contradicting the binding governance rule (`RULE[user_global]`) requiring `runs-on: self-hosted`.
+   - Per Project Owner directive (2026-10-23), previous self-hosted runner mandates are revoked in favor of GitHub-hosted runners: `ubuntu-latest` (Linux & Android) and `macos-15` (macOS Apple Silicon).
+   - To conserve GitHub Actions quotas, full CI runs are gated behind `[run-ci]` in commit messages or manual `workflow_dispatch`. Pushes without `[run-ci]` run a fast-check job, and untrusted pull requests from external forks never execute automatically.
 
 ---
 
@@ -55,7 +56,7 @@ A thorough audit of `REQUIREMENTS.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `project
   - **NOT RUN:** Physical Android hardware testing (thermal/battery profiling), interactive AppKit window-server GUI driving, and uninstalled external commercial PDF viewers (Adobe Acrobat, PDF-XChange).
 
 ### 2.4 Governance & CI Consistency
-- Update `project/project.yaml` to confirm that all workflows adhere to `runs-on: self-hosted` per `RULE[user_global]`.
+- Workflows in `.github/workflows/` use GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating and fast-check fallback. Local verification remains accessible anytime via `make check` (`./scripts/local-ci.sh`).
 
 ---
 

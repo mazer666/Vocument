@@ -190,16 +190,25 @@ int vocument_mupdf_inspect_document_actions(
             pdf_obj *open_action_name = pdf_new_name(ctx, "OpenAction");
             pdf_obj *open_action = pdf_dict_get(ctx, catalog, open_action_name);
             pdf_drop_obj(ctx, open_action_name);
-            if (open_action && count < max_actions) {
-                vocument_mupdf_action_t *dst = &out_actions[count++];
-                memset(dst, 0, sizeof(*dst));
-                dst->has_page = 0;
-                if (pdf_is_dict(ctx, open_action)) {
-                    describe_action(ctx, open_action, dst->kind, sizeof(dst->kind),
-                                    dst->target, sizeof(dst->target));
+            int truncated = 0;
+            if (open_action) {
+                if (!out_actions || count < max_actions) {
+                    if (out_actions) {
+                        vocument_mupdf_action_t *dst = &out_actions[count];
+                        memset(dst, 0, sizeof(*dst));
+                        dst->has_page = 0;
+                        if (pdf_is_dict(ctx, open_action)) {
+                            describe_action(ctx, open_action, dst->kind, sizeof(dst->kind),
+                                            dst->target, sizeof(dst->target));
+                        } else {
+                            copy_c_string(dst->kind, sizeof(dst->kind), "internal_destination");
+                            read_text_value(ctx, open_action, dst->target, sizeof(dst->target));
+                        }
+                    }
+                    count++;
                 } else {
-                    copy_c_string(dst->kind, sizeof(dst->kind), "internal_destination");
-                    read_text_value(ctx, open_action, dst->target, sizeof(dst->target));
+                    truncated = 1;
+                    count++;
                 }
             }
 
@@ -223,9 +232,6 @@ int vocument_mupdf_inspect_document_actions(
                 pdf_obj *annots = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
                 int annot_count = pdf_array_len(ctx, annots);
                 for (int i = 0; i < annot_count; i++) {
-                    if (count >= max_actions) {
-                        break;
-                    }
                     pdf_obj *annot = pdf_array_get(ctx, annots, i);
                     if (!pdf_is_dict(ctx, annot)) {
                         continue;
@@ -235,44 +241,61 @@ int vocument_mupdf_inspect_document_actions(
                         continue;
                     }
 
-                    vocument_mupdf_action_t *dst = &out_actions[count++];
-                    memset(dst, 0, sizeof(*dst));
-                    dst->has_page = 1;
-                    dst->page_index = page_index;
+                    if (!out_actions || count < max_actions) {
+                        if (out_actions) {
+                            vocument_mupdf_action_t *dst = &out_actions[count];
+                            memset(dst, 0, sizeof(*dst));
+                            dst->has_page = 1;
+                            dst->page_index = page_index;
 
-                    /* The rectangle of the annotation lies in the user space
-                       of the PDF (origin at the bottom left); the page space
-                       has its origin at the top left. The page matrix moves
-                       one into the other. */
-                    fz_rect user_rect = fz_empty_rect;
-                    pdf_obj *rect = pdf_dict_get(ctx, annot, PDF_NAME(Rect));
-                    if (pdf_is_array(ctx, rect) && pdf_array_len(ctx, rect) == 4) {
-                        float x0 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 0));
-                        float y0 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 1));
-                        float x1 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 2));
-                        float y1 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 3));
-                        user_rect = fz_make_rect(x0, y0, x1, y1);
-                    }
-                    fz_rect page_rect = fz_transform_rect(user_rect, page_ctm);
-                    dst->x0_milli_pt = (int)(page_rect.x0 * 1000.0f);
-                    dst->y0_milli_pt = (int)(page_rect.y0 * 1000.0f);
-                    dst->x1_milli_pt = (int)(page_rect.x1 * 1000.0f);
-                    dst->y1_milli_pt = (int)(page_rect.y1 * 1000.0f);
+                            /* The rectangle of the annotation lies in the user space
+                               of the PDF (origin at the bottom left); the page space
+                               has its origin at the top left. The page matrix moves
+                               one into the other. */
+                            fz_rect user_rect = fz_empty_rect;
+                            pdf_obj *rect = pdf_dict_get(ctx, annot, PDF_NAME(Rect));
+                            if (pdf_is_array(ctx, rect) && pdf_array_len(ctx, rect) == 4) {
+                                float x0 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 0));
+                                float y0 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 1));
+                                float x1 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 2));
+                                float y1 = pdf_to_real(ctx, pdf_array_get(ctx, rect, 3));
+                                user_rect = fz_make_rect(x0, y0, x1, y1);
+                            }
+                            fz_rect page_rect = fz_transform_rect(user_rect, page_ctm);
+                            dst->x0_milli_pt = (int)(page_rect.x0 * 1000.0f);
+                            dst->y0_milli_pt = (int)(page_rect.y0 * 1000.0f);
+                            dst->x1_milli_pt = (int)(page_rect.x1 * 1000.0f);
+                            dst->y1_milli_pt = (int)(page_rect.y1 * 1000.0f);
 
-                    pdf_obj *action = pdf_dict_get(ctx, annot, PDF_NAME(A));
-                    if (action && pdf_is_dict(ctx, action)) {
-                        describe_action(ctx, action, dst->kind, sizeof(dst->kind),
-                                        dst->target, sizeof(dst->target));
+                            pdf_obj *action = pdf_dict_get(ctx, annot, PDF_NAME(A));
+                            if (action && pdf_is_dict(ctx, action)) {
+                                describe_action(ctx, action, dst->kind, sizeof(dst->kind),
+                                                dst->target, sizeof(dst->target));
+                            } else {
+                                pdf_obj *dest = pdf_dict_get(ctx, annot, PDF_NAME(Dest));
+                                copy_c_string(dst->kind, sizeof(dst->kind), "internal_destination");
+                                read_text_value(ctx, dest, dst->target, sizeof(dst->target));
+                            }
+                        }
+                        count++;
                     } else {
-                        pdf_obj *dest = pdf_dict_get(ctx, annot, PDF_NAME(Dest));
-                        copy_c_string(dst->kind, sizeof(dst->kind), "internal_destination");
-                        read_text_value(ctx, dest, dst->target, sizeof(dst->target));
+                        truncated = 1;
+                        count++;
                     }
                 }
                 pdf_drop_page(ctx, page);
             }
             *out_action_count = count;
-            status = 0;
+            if (truncated) {
+                if (err_buf && err_buf_len > 0) {
+                    snprintf(err_buf, err_buf_len,
+                        "document action inspection incomplete: action count (%zu) exceeds capacity (%zu)",
+                        count, max_actions);
+                }
+                status = 3;
+            } else {
+                status = 0;
+            }
         }
     }
     fz_always(ctx) {

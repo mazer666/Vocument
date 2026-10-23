@@ -11,7 +11,13 @@ Vocument is designed to be local-first, offline-first, interoperable and underst
 ## Current project status
 
 - **Baseline:** Implementation Baseline v0.1
-- **Current milestone:** Milestone M2 (macOS Professional Review) — **IN PROGRESS** (M0 complete; M1 implemented and verified on the host, the runtime measured on an Android emulator; M2.1–M2.4 complete, M2.5 in progress). The acceptance records name what is proven and what is not: [`docs/acceptance/`](docs/acceptance/).
+- **Completed milestones:**
+  - **M0 (Foundation / Trustworthy Viewer):** Complete — end-to-end Rust core, UniFFI bridge, macOS and Android shells, background job executor, and crash-resilient session engine.
+  - **M1 (Android Scan & OCR):** Complete & verified on host and Android QEMU emulator — hardware camera capture pipeline, perspective deskew, image enhancement filters, embedded Tesseract OCR, and searchable PDF export.
+  - **M2 (macOS Professional Review):** Complete under formally approved `CR-0005` Option A — verified secure redaction with 4-way post-redaction verification (M2.1), link/action security inspection (M2.2), attachment and signature inspection (M2.3), reviewer comment palette with atomic jurist presets (M2.4), document sanitization (`SAN-001`), and native macOS review panels. (Rubber Stamps relocated to M3.4; Structured Document Comparison scheduled to Track M3.7).
+- **Current milestone:** **Milestone M3 (Page Workbench) — IN PROGRESS**
+  - **M3.0 (Architecture, Invariants & Structural Preservation):** **COMPLETE & VERIFIED** ([`docs/acceptance/M3.0-ACCEPTANCE.md`](docs/acceptance/M3.0-ACCEPTANCE.md)). Genuine in-place page tree operations (`Reorder`, `Duplicate`, `Delete`, `Extract`) preserving `/Info`, `/Metadata`, `/Outlines`, `/PageLabels`, `/StructTreeRoot`, `/Lang`, and `/AcroForm` unique field hierarchies (`ADR-0019`). Signed originals are protected against in-place overwriting (`save_session`); explicit invalidation generates valid ISO 32000-1 §12.8 unsigned working copies without artificial byte-range manipulation (`QA-003`). Comprehensive security audit hardening completed (MuPDF CVE-2026-112036 patch, dynamic two-pass inspection reports, independent per-word redaction verification, degraded recovery state tracking, and macOS pasteboard/cache scrubbing).
+  - **M3.1 (Visual Page Workbench: Single Document):** Next in progress.
 - **Phase-1 platforms:** macOS 15+ on Apple Silicon, Android 13+
 - **Shared core:** Rust (`core/vocument-core`)
 - **macOS UI:** SwiftUI + AppKit (`apps/macos`)
@@ -26,7 +32,9 @@ See [`project/project.yaml`](project/project.yaml) for the machine-readable proj
 
 ---
 
-## Quickstart (Developer Commands)
+## Quickstart & CI Architecture
+
+### Developer Commands
 
 A clean clone can be validated, built, and verified end-to-end across Rust, Swift (macOS), and Kotlin (Android) with a single command:
 
@@ -35,6 +43,15 @@ make check          # Runs ./scripts/local-ci.sh (repo validation, cargo fmt/cli
 make bindings       # Regenerates Swift & Kotlin UniFFI bindings from platform/vocument-ffi
 make hooks          # Installs local Git hooks (DCO sign-off check & pre-push local CI)
 ```
+
+### GitHub Actions CI & Runner Policy
+
+The project uses official GitHub-hosted runners with strict resource conservation and security policies:
+
+- **Runners:** `ubuntu-latest` (Linux workspace, clippy, fmt, license compliance, Android native build) and `macos-15` (macOS Apple Silicon, Swift build, AppKit/SwiftUI test suite).
+- **Execution Gating:** To conserve runner minutes, full multi-platform CI executes **only** when a commit message contains **`[run-ci]`** or when manually triggered via `workflow_dispatch`.
+- **Fast Checks:** Commits pushed without `[run-ci]` automatically execute a lightweight formatting and sanity check (`fast-check`).
+- **Security Barrier:** Pull requests from external repository forks never execute automated CI workflows without explicit maintainer dispatch.
 
 ---
 
@@ -54,6 +71,15 @@ You should not need to understand the entire codebase before changing one thing.
 
 **Do not “just make it work” by bypassing architecture, requirements or tests.**  
 If a requirement is wrong, change the requirement through the documented change process first.
+
+---
+
+## User Assistance & Help System
+
+Vocument is designed for intuitive discoverability without unnecessary friction:
+
+- **Tooltips on All Tools (`HELP-001`, `UI-010`):** Every button, tool, and palette item across desktop and mobile shells provides clear, plain-language tooltips explaining its exact function and active keyboard shortcuts. Tooltip contents are fully integrated into native accessibility APIs (`VoiceOver`, `TalkBack`).
+- **Integrated & Online Help (`HELP-002`):** A searchable, comprehensive user manual is bundled directly with the application for completely private offline use (`F1`, `Cmd-?`, Help menu), mirrored with identical online web documentation for easy deep-linking and onboarding.
 
 ---
 
@@ -122,13 +148,14 @@ Vocument/
 ├─ docs/                      ← Detailed living documentation
 ├─ archive/                   ← Immutable baselines and superseded docs
 ├─ scripts/                   ← Developer/validation helpers
+├─ patches/                   ← Verified third-party upstream patches (e.g. MuPDF)
 │
-├─ apps/                      ← Native apps (created during implementation)
-├─ core/                      ← Shared Rust core
-├─ engines/                   ← MuPDF/OCR/other adapters
+├─ apps/                      ← Native apps (macOS AppKit/SwiftUI & Android Compose)
+├─ core/                      ← Shared Rust core (vocument-core)
+├─ engines/                   ← MuPDF, OCR and imaging engine adapters
 ├─ formats/                   ← pdoc/docx/odt/epub/comic adapters
-├─ platform/                  ← Platform-specific bridges
-└─ tests/                     ← Cross-platform corpus and QA
+├─ platform/                  ← Platform-specific bridges (vocument-ffi)
+└─ tests/                     ← Cross-platform corpus and QA suites
 ```
 
 ---
@@ -175,19 +202,30 @@ See [`PROJECT_MANAGEMENT.md`](PROJECT_MANAGEMENT.md) and [`docs/DOCUMENTATION_PO
 
 ## Current roadmap
 
-1. **M0 — Foundation / Trustworthy Viewer**
-2. **M1 — Android Scan & OCR**
-3. **M2 — macOS Professional Review**
-4. **M3 — Page Workbench**
+1. **M0 — Foundation / Trustworthy Viewer** *(Complete)*
+2. **M1 — Android Scan & OCR** *(Complete — verified on host & QEMU emulator)*
+3. **M2 — macOS Professional Review** *(Complete under CR-0005 Option A)*
+4. **M3 — Page Workbench** *(In Progress — M3.0 Complete, M3.1 In Progress)*
+   - M3.0: Structural Integrity & Page Invariants *(Complete)*
+   - M3.1: Visual Page Workbench (Single Document)
+   - M3.2: Multi-Document Merge, Insert & Split
+   - M3.3: Page Geometry, Crop, Rotation & Deskew
+   - M3.4: Bates Stamping, Headers/Footers & Rubber Stamps
+   - M3.5: Image Extraction, Compression & Fast Web View
+   - M3.6: Workbench Acceptance & Hardening
+   - M3.7 Track: Document Comparison & Diffing
 5. **M4 — Authoring / FlowDocument / .pdoc / DOCX / ODT**
+6. **M5 — Windows Native Shell**
+7. **M6 — Linux Native Shell**
+8. **M7 — Optional Local MCP Interface**
 
-See [`ROADMAP.md`](ROADMAP.md).
+See [`ROADMAP.md`](ROADMAP.md) and [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
 
 ---
 
 ## Licence
 
-Vocument's own application/core code is intended to be licensed under **AGPLv3**.
+Vocument's own application/core code is licensed under **AGPLv3**.
 
 External contributions use the **Developer Certificate of Origin (DCO)** rather than a CLA. Contributors retain their copyright.
 

@@ -93,6 +93,9 @@ No native call may run on the user interface thread. This applies to **every** p
 ### CMD-001 — Command palette
 Search commands, settings and actions, e.g. Cmd+K.
 
+### UI-010 — Comprehensive tooltips on all controls (Cross-ref HELP-001)
+Every interactive tool, action, palette button, and control must provide a clear, understandable tooltip stating what the action does and showing its active keyboard shortcut where configured. Must be accessible via screen-readers (`APP-A11Y-001`).
+
 ---
 
 # 3. Mobile UX
@@ -1486,3 +1489,29 @@ For relevant workflows, acceptance must consider:
 - visual polish
 
 See `QUALITY.md` and `docs/BEST_IN_CLASS.md`.
+
+---
+
+# 47. User assistance, tooltips and help system
+
+### HELP-001 — Understandable tooltips on all tools and controls
+Every interactive tool, toolbar button, review palette action, workbench control, inspection trigger, and navigation element across all platform shells (macOS, Android, Windows, Linux) must provide a concise, intelligible, and contextually informative tooltip:
+1. **Plain Language:** The tooltip must state the tool's purpose and effect in simple, understandable terms without cryptic jargon or abbreviations.
+2. **Keyboard Shortcuts:** Where a keyboard shortcut exists, the tooltip must clearly display the active shortcut (e.g. `⌘K`, `⌘⌥R`, `Ctrl+Shift+D`).
+3. **Accessibility:** Tooltip content must be exposed to native platform accessibility trees (`VoiceOver`, `TalkBack`, Windows UI Automation) to ensure complete usability under screen readers (`APP-A11Y-001`).
+4. **Platform-Natural Ergonomics:** Tooltips must adhere to platform expectations (non-intrusive hover timing on desktop; accessible long-press, accessibility label, or contextual info affordances on touch interfaces).
+
+### HELP-002 — Integrated and online user documentation & help system
+Vocument must provide a comprehensive, discoverable, and user-friendly documentation and help system explaining all functions, tools, and workflows:
+1. **Discoverability & Access:** The help system must be directly accessible from within the application via the native application menu (`Help` menu on macOS/Windows/Linux), keyboard shortcut (`F1`, `Cmd-?`), toolbar help affordance, and the command palette (`CMD-001`).
+2. **Offline-First Guarantee:** In strict adherence to `CORE-002` (Local/offline first) and `LOG-001` (No telemetry), the full documentation corpus must be bundled locally with the application and be 100% readable and searchable offline without requiring an internet connection.
+3. **Online Mirror & Web Documentation:** A synchronized, versioned online version of the user documentation must be published on the project's official web presence to facilitate web search indexing, external sharing, deep-linking, and onboarding.
+4. **Functional Depth & Coverage:** The documentation must provide step-by-step guidance and conceptual clarity for:
+   - Basic viewing, scrolling, zoom, page navigation, and bookmark management.
+   - Professional review, annotations, comments, and the Jurist Tool Palette (`ANNOT-001`).
+   - Security workflows: understanding real redaction vs graphical masking, reading security inspection reports, sanitization boundaries (`ADR-0018`), and digital signature protection vs unsigned working copies (`SIG-001`).
+   - Page Workbench operations: reordering, duplicating, deleting, extracting, rotating, and cropping pages, plus Bates stamping and rubber stamps (`PAGE-001`–`005`, `WATER-001`–`003`).
+   - Document comparison and diffing (`COMPARE-001`–`004`).
+   - Mobile scan, perspective correction, image filters, and OCR workflows.
+   - Document recovery, transaction history, undo/redo, and safe saving semantics.
+

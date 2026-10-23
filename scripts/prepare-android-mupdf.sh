@@ -108,6 +108,15 @@ if [[ ! -d "$SOURCE_DIR" ]]; then
   exit 1
 fi
 
+if [[ -d "$REPO_ROOT/patches/mupdf" ]]; then
+  for patch_file in "$REPO_ROOT/patches/mupdf"/*.patch; do
+    if [[ -f "$patch_file" ]]; then
+      echo "==> Applying patch $(basename "$patch_file")..."
+      patch -d "$SOURCE_DIR" -p1 -N -r - < "$patch_file" || true
+    fi
+  done
+fi
+
 echo "==> Cross-compiling MuPDF ${MUPDF_VERSION} for aarch64-linux-android..."
 # `HAVE_LIBCRYPTO=no` disables the OpenSSL-backed PKCS#7 helper. Vocument does not
 # use digital signatures yet (`REQUIREMENTS.md` §27 is still a later milestone) and
