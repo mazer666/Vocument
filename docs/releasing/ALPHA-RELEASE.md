@@ -35,14 +35,19 @@ stays internal until B-1 is closed.
 
 ## 2. What was measured before it was published
 
-| What | The measurement | Where |
-|---|---|---|
-| The gate of the repository | **green** — 264 tests of Rust, 0 failures, 34 suites, and the 5 tests of the kit of macOS (the chain of the redaction among them); the repository, the distribution and the licence gates pass | `target/build-record/build-record.json`, the run of the day |
-| The source archive of the revision | **reproducible** — two builds, byte for byte the same | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §2 and §3 |
-| The build from the archive | **the library is built from the unpacked archive** and compared with the build of the working tree | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §4 |
-| The licences of the components | **audited** — every component of the product and of the Android package, with its licence | `THIRD_PARTY.md` |
-| The three continuous integrations | **green** — Linux, macOS and Android on the hosted runners of GitHub | [`../acceptance/ROUND-6-ACCEPTANCE.md`](../acceptance/ROUND-6-ACCEPTANCE.md) §2 |
-| The defect of the job manager (RISK-060) | **found, explained and fixed** — the mechanism is measured, not guessed | [`../audit/ci-gate-findings.md`](../audit/ci-gate-findings.md) §4.5 |
+**The revision of a measurement belongs to it.** The table below names for
+every row the revision it was carried out on. A measurement of another
+revision says how the mechanism behaves, not that this revision was built —
+[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §1 draws the same line.
+
+| What | The measurement | The revision of the measurement | Where |
+|---|---|---|---|
+| The gate of the repository | **green** — 264 tests of Rust, 0 failures, 34 suites, and the 5 tests of the kit of macOS (the chain of the redaction among them); the repository, the distribution and the licence gates pass | `569b2ac` (the revision of this alpha) | `target/build-record/build-record.json`, the run of the day |
+| The **mechanism** of the source archive | **reproducible** — two builds, byte for byte the same. The archive of this revision is built by the same script (`scripts/release-source-archive.sh`, `git archive` with `gzip -n`); the measurement of the mechanism was carried out on the revision named in the third column | the measurement: `00ddd08` — the mechanism: unchanged | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §2 and §3 |
+| The build from the archive | **the library is built from the unpacked archive** and compared with the build of the working tree | `00ddd08` — the mechanism: unchanged | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §4 |
+| The licences of the components | **audited** — every component of the product and of the Android package, with its licence. The **transitive** components of the Android package are still an open question of the licensing (`RISK-059`) | the inventory of the repository | `THIRD_PARTY.md` |
+| The three continuous integrations | **green** — Linux, macOS and Android on the hosted runners of GitHub | the revision of this alpha | [`../acceptance/ROUND-6-ACCEPTANCE.md`](../acceptance/ROUND-6-ACCEPTANCE.md) §2 |
+| The defect of the job manager (RISK-060) | **found, explained and fixed** — the mechanism is measured, not guessed | the revision of this alpha | [`../audit/ci-gate-findings.md`](../audit/ci-gate-findings.md) §4.5 |
 
 ## 3. How to build it
 
