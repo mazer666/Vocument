@@ -312,4 +312,25 @@ extension MacDocumentSessionCoordinator {
             y1MilliPt: max(y0, y1)
         )
     }
+
+    // MARK: - Document Sanitization (`SAN-001`)
+
+    /// Sanitizes the active document by stripping metadata, attachments, actions, annotations, or form fields.
+    func sanitizeActiveDocument(options: FfiPdfSanitizeOptions = FfiPdfSanitizeOptions(
+        removeMetadata: true,
+        removeAttachments: true,
+        removeActions: true,
+        removeAnnotations: true,
+        removeFormFields: true
+    )) {
+        guard let session = activeSession else { return }
+        do {
+            _ = try coreClient.sanitizeDocument(sessionId: session.sessionId, options: options)
+            refreshReviewState()
+            refreshRenderedPageAfterChange(sessionId: session.sessionId)
+            saveNotificationMessage = "Document sanitized: metadata, actions, and annotations cleared."
+        } catch {
+            errorMessage = "Sanitizing failed: \(error.localizedDescription)"
+        }
+    }
 }

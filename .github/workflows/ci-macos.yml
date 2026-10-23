@@ -38,7 +38,7 @@ concurrency:
 jobs:
   macos-swift:
     name: macOS — the Swift build, the tests of the kit and the handshake
-    runs-on: macos-15
+    runs-on: self-hosted
     # The limit of a job on GitHub is 6 hours. The build needs far less; the
     # limit here is the guard against a run that hangs.
     timeout-minutes: 90

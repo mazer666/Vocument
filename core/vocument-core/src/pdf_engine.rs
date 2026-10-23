@@ -137,6 +137,39 @@ pub struct PdfScrubReport {
     pub scrubbed_metadata_fields: u32,
 }
 
+/// Options for document sanitization (`SAN-001`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfSanitizeOptions {
+    pub remove_metadata: bool,
+    pub remove_attachments: bool,
+    pub remove_actions: bool,
+    pub remove_annotations: bool,
+    pub remove_form_fields: bool,
+}
+
+impl Default for PdfSanitizeOptions {
+    fn default() -> Self {
+        Self {
+            remove_metadata: true,
+            remove_attachments: true,
+            remove_actions: true,
+            remove_annotations: true,
+            remove_form_fields: true,
+        }
+    }
+}
+
+/// The result of sanitizing a document (`SAN-001`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PdfSanitizeReport {
+    pub metadata_cleared: bool,
+    pub xmp_cleared: bool,
+    pub attachments_removed: u32,
+    pub actions_removed: u32,
+    pub annotations_removed: u32,
+    pub form_fields_removed: u32,
+}
+
 /// The words of the page that lie in the given regions.
 ///
 /// The centre of a word decides, the same way it decides which words a
@@ -469,6 +502,53 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = (page_index, scale_milli);
         Err(PdfEngineError::EngineFailure {
             details: "this engine cannot render pages".to_owned(),
+        })
+    }
+
+    /// Sanitizes the document by stripping requested categories of metadata,
+    /// attachments, actions, annotations, or form fields (`SAN-001`).
+    fn sanitize_document(
+        &mut self,
+        options: &PdfSanitizeOptions,
+    ) -> Result<(PdfSanitizeReport, Vec<u8>), PdfEngineError> {
+        let _ = options;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support document sanitization".to_owned(),
+        })
+    }
+
+    /// Reorders the pages of the document according to `order` (`M3`).
+    /// Must only be invoked through `TransactionManager`.
+    fn reorder_pages(&mut self, order: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = order;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support reordering pages".to_owned(),
+        })
+    }
+
+    /// Duplicates `page_index` (0-indexed), inserting the copy immediately after it (`M3`).
+    /// Must only be invoked through `TransactionManager`.
+    fn duplicate_page(&mut self, page_index: u32) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = page_index;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support duplicating pages".to_owned(),
+        })
+    }
+
+    /// Deletes the specified `page_indices` from the document (`M3`).
+    /// Must only be invoked through `TransactionManager`.
+    fn delete_pages(&mut self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = page_indices;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support deleting pages".to_owned(),
+        })
+    }
+
+    /// Extracts the specified `page_indices` into a new standalone PDF (`M3`).
+    fn extract_pages(&self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = page_indices;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support extracting pages".to_owned(),
         })
     }
 }

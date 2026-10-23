@@ -6,7 +6,9 @@ pub mod attach;
 pub mod comment;
 pub mod inspect;
 pub mod mutate;
+pub mod page_ops;
 pub mod render_page;
+pub mod sanitize;
 pub mod scrub;
 pub mod text_extract;
 
@@ -22,6 +24,8 @@ mod inspection_tests;
 mod redaction_image_tests;
 #[cfg(test)]
 mod redaction_rotation_tests;
+#[cfg(test)]
+mod sanitize_tests;
 #[cfg(test)]
 mod scrub_hardening_tests;
 #[cfg(test)]
@@ -474,13 +478,12 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
     }
 
     fn replace_pdf_bytes(&mut self, bytes: Vec<u8>) -> Result<(), PdfEngineError> {
-        // The document is put back as it was before the attempt. The page
-        // count and the format do not change, so the summary stays valid.
         if bytes.is_empty() {
             return Err(PdfEngineError::EngineFailure {
                 details: "the document must not become empty".to_owned(),
             });
         }
+        self.summary = inspect_summary(&bytes)?;
         self.pdf_bytes = bytes;
         Ok(())
     }
@@ -495,6 +498,104 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
 
     fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, PdfEngineError> {
         attach::document_signatures(&self.pdf_bytes)
+    }
+
+    fn sanitize_document(
+        &mut self,
+        options: &vocument_core::pdf_engine::PdfSanitizeOptions,
+    ) -> Result<(vocument_core::pdf_engine::PdfSanitizeReport, Vec<u8>), PdfEngineError> {
+        let (sanitized_bytes, report) = sanitize::sanitize_document(&self.pdf_bytes, options)?;
+        self.summary = inspect_summary(&sanitized_bytes)?;
+        self.pdf_bytes = sanitized_bytes.clone();
+        Ok((report, sanitized_bytes))
+    }
+
+    fn reorder_pages(&mut self, order: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes = page_ops::reorder_pages(&self.pdf_bytes, order)?;
+        self.summary = inspect_summary(&new_bytes)?;
+        self.pdf_bytes = new_bytes.clone();
+        Ok(new_bytes)
+    }
+
+    fn duplicate_page(&mut self, page_index: u32) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes = page_ops::duplicate_page(&self.pdf_bytes, page_index)?;
+        self.summary = inspect_summary(&new_bytes)?;
+        self.pdf_bytes = new_bytes.clone();
+        Ok(new_bytes)
+    }
+
+    fn delete_pages(&mut self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes = page_ops::delete_pages(&self.pdf_bytes, page_indices)?;
+        self.summary = inspect_summary(&new_bytes)?;
+        self.pdf_bytes = new_bytes.clone();
+        Ok(new_bytes)
+    }
+
+    fn extract_pages(&self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
+        page_ops::extract_pages(&self.pdf_bytes, page_indices)
+    }
+}
+
+fn inspect_summary(bytes: &[u8]) -> Result<PdfDocumentSummary, PdfEngineError> {
+    if !bytes.starts_with(b"%PDF-") {
+        return Err(PdfEngineError::InvalidPdf {
+            details: "missing %PDF- header".to_owned(),
+        });
+    }
+
+    let mut raw = RawMuPdfSummary {
+        status_code: 0,
+        page_count: 0,
+        needs_password: 0,
+        format_version: [0; 64],
+        title: [0; 512],
+        author: [0; 512],
+        subject: [0; 512],
+        keywords: [0; 512],
+        creator: [0; 512],
+        producer: [0; 512],
+        creation_date: [0; 128],
+        modification_date: [0; 128],
+        error_message: [0; 512],
+        engine_version: [0; 64],
+    };
+
+    // SAFETY: `bytes` is a valid slice and `raw` is a valid stack-allocated struct.
+    let status =
+        unsafe { vocument_mupdf_inspect_pdf_bytes(bytes.as_ptr(), bytes.len(), &raw mut raw) };
+
+    let engine_version =
+        c_buf_to_optional_string(&raw.engine_version).unwrap_or_else(|| "unknown".to_owned());
+
+    match status {
+        0 => {
+            let page_count = u32::try_from(raw.page_count).unwrap_or(0);
+            Ok(PdfDocumentSummary {
+                page_count,
+                format_version: c_buf_to_optional_string(&raw.format_version),
+                title: c_buf_to_optional_string(&raw.title),
+                author: c_buf_to_optional_string(&raw.author),
+                subject: c_buf_to_optional_string(&raw.subject),
+                keywords: c_buf_to_optional_string(&raw.keywords),
+                creator: c_buf_to_optional_string(&raw.creator),
+                producer: c_buf_to_optional_string(&raw.producer),
+                creation_date: c_buf_to_optional_string(&raw.creation_date),
+                modification_date: c_buf_to_optional_string(&raw.modification_date),
+                needs_password: raw.needs_password != 0,
+                engine_identifier: engine_identifier_from_version(&engine_version),
+            })
+        }
+        1 => Err(PdfEngineError::PasswordRequired),
+        2 => {
+            let details = c_buf_to_optional_string(&raw.error_message)
+                .unwrap_or_else(|| "failed to parse PDF".to_owned());
+            Err(PdfEngineError::InvalidPdf { details })
+        }
+        _ => {
+            let details = c_buf_to_optional_string(&raw.error_message)
+                .unwrap_or_else(|| "internal MuPDF context error".to_owned());
+            Err(PdfEngineError::EngineFailure { details })
+        }
     }
 }
 
@@ -514,71 +615,11 @@ impl PdfEngine for MuPdfEngineAdapter {
     }
 
     fn open_pdf_bytes(&self, bytes: &[u8]) -> Result<Box<dyn PdfEngineDocument>, PdfEngineError> {
-        if !bytes.starts_with(b"%PDF-") {
-            return Err(PdfEngineError::InvalidPdf {
-                details: "missing %PDF- header".to_owned(),
-            });
-        }
-
-        let mut raw = RawMuPdfSummary {
-            status_code: 0,
-            page_count: 0,
-            needs_password: 0,
-            format_version: [0; 64],
-            title: [0; 512],
-            author: [0; 512],
-            subject: [0; 512],
-            keywords: [0; 512],
-            creator: [0; 512],
-            producer: [0; 512],
-            creation_date: [0; 128],
-            modification_date: [0; 128],
-            error_message: [0; 512],
-            engine_version: [0; 64],
-        };
-
-        // SAFETY: `bytes` is a valid slice and `raw` is a valid stack-allocated struct.
-        let status =
-            unsafe { vocument_mupdf_inspect_pdf_bytes(bytes.as_ptr(), bytes.len(), &raw mut raw) };
-
-        let engine_version =
-            c_buf_to_optional_string(&raw.engine_version).unwrap_or_else(|| "unknown".to_owned());
-
-        match status {
-            0 => {
-                let page_count = u32::try_from(raw.page_count).unwrap_or(0);
-                let summary = PdfDocumentSummary {
-                    page_count,
-                    format_version: c_buf_to_optional_string(&raw.format_version),
-                    title: c_buf_to_optional_string(&raw.title),
-                    author: c_buf_to_optional_string(&raw.author),
-                    subject: c_buf_to_optional_string(&raw.subject),
-                    keywords: c_buf_to_optional_string(&raw.keywords),
-                    creator: c_buf_to_optional_string(&raw.creator),
-                    producer: c_buf_to_optional_string(&raw.producer),
-                    creation_date: c_buf_to_optional_string(&raw.creation_date),
-                    modification_date: c_buf_to_optional_string(&raw.modification_date),
-                    needs_password: raw.needs_password != 0,
-                    engine_identifier: engine_identifier_from_version(&engine_version),
-                };
-
-                Ok(Box::new(MuPdfDocumentHandle {
-                    summary,
-                    pdf_bytes: bytes.to_vec(),
-                }))
-            }
-            1 => Err(PdfEngineError::PasswordRequired),
-            2 => {
-                let details = c_buf_to_optional_string(&raw.error_message)
-                    .unwrap_or_else(|| "failed to parse PDF".to_owned());
-                Err(PdfEngineError::InvalidPdf { details })
-            }
-            _ => {
-                let details = c_buf_to_optional_string(&raw.error_message)
-                    .unwrap_or_else(|| "internal MuPDF context error".to_owned());
-                Err(PdfEngineError::EngineFailure { details })
-            }
-        }
+        let summary = inspect_summary(bytes)?;
+        Ok(Box::new(MuPdfDocumentHandle {
+            summary,
+            pdf_bytes: bytes.to_vec(),
+        }))
     }
 }
 

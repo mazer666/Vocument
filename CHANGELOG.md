@@ -23,6 +23,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   job went on. It is checked now.
 
 ### Added
+- **Full technical acceptance of Milestone M2 (macOS Professional Review)**:
+  Implemented document sanitization (`SAN-001`) stripping metadata, attachments,
+  actions, and form fields via native MuPDF C bridge; integrated macOS review
+  workflow panels (`ReviewWorkflow.swift`, `ReviewPanelView.swift`); verified
+  jurist tool palette (`ANNOT-001`), 4-way redaction verification, and PDF
+  interoperability against MuPDF, `mutool`, and Apple Quartz. Documented in
+  `docs/acceptance/M2-ACCEPTANCE.md`.
+- **Full technical acceptance of Milestone M2.5 (Licensing & Release Readiness)**:
+  Audited and closed `RISK-059` proving via Gradle `releaseRuntimeClasspath` that
+  Gradle cache POMs do not ship in the runtime APK. Validated source archive
+  reproducibility, 16 KB page size alignment, and pinned `cargo-deny` checks.
+  Documented in `docs/acceptance/M2.5-ACCEPTANCE.md`.
+- **Start of Milestone M3 (Page Workbench Foundation)**:
+  Core foundation for non-destructive, transaction-managed page manipulation
+  operations (reorder, duplicate, delete, extract) in `vocument-core`.
 - **The proof of the redaction of the interface** (`RISK-032`): the chain of
   the user — mark a place on the page, see the text that stands there, remove
   it for good, see what could not be removed — is carried by `RedactionReview`

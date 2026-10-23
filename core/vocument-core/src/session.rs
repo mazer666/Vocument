@@ -43,6 +43,8 @@ pub enum SessionError {
     #[error(transparent)]
     Transaction(#[from] TransactionError),
     #[error(transparent)]
+    Workbench(#[from] crate::workbench::WorkbenchError),
+    #[error(transparent)]
     Save(#[from] crate::save::SaveError),
     #[error(transparent)]
     Recovery(#[from] crate::recovery::RecoveryError),
@@ -127,6 +129,12 @@ impl DocumentSession {
     pub(crate) fn sync_from_transaction_manager(&mut self) {
         self.revision = self.transaction_manager.current_revision();
         self.is_dirty = self.transaction_manager.is_dirty();
+        if let Ok(summary) = self.actor.summary() {
+            if summary.page_count != self.pdf_summary.page_count {
+                self.label_catalog = PageLabelCatalog::new(summary.page_count, Vec::new());
+            }
+            self.pdf_summary = summary;
+        }
     }
 
     /// Marks the active session as cleanly saved and updates its baseline `FileIdentity` (`ARCHITECTURE.md` §16, `ROADMAP.md` M0.5).

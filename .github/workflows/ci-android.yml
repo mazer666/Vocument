@@ -44,7 +44,7 @@ concurrency:
 jobs:
   android:
     name: Android — the native libraries, the packages and the unit tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # The limit of a job on GitHub is 6 hours. The cross-builds of the
     # engines and the two packages need far less; the limit here is the
     # guard against a run that hangs.

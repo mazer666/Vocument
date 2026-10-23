@@ -566,4 +566,19 @@ public struct DocumentCoreClient: Sendable {
     public func runInteropGateSuite() throws -> FfiInteropReport {
         try documentCoreRunInteropGateSuite()
     }
+
+    /// Sanitizes the document by stripping requested categories of metadata,
+    /// attachments, actions, annotations, or form fields via `TransactionManager` (`SAN-001`).
+    public func sanitizeDocument(
+        sessionId: String,
+        options: FfiPdfSanitizeOptions = FfiPdfSanitizeOptions(
+            removeMetadata: true,
+            removeAttachments: true,
+            removeActions: true,
+            removeAnnotations: true,
+            removeFormFields: true
+        )
+    ) throws -> FfiTransactionRecord {
+        try documentCoreSanitizeDocument(sessionId: sessionId, options: options)
+    }
 }

@@ -192,6 +192,20 @@ struct ReviewPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            GroupBox("Sanitization") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Purge all metadata, actions, embedded attachments, annotations, and form fields.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Button("Sanitize Document") {
+                        coordinator.sanitizeActiveDocument()
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Spacer()
         }
         .frame(width: 320)

@@ -199,6 +199,15 @@ impl DocumentActor {
         Ok(guard.extract_page_text(page_index)?)
     }
 
+    /// Extracts specified pages into a new standalone PDF buffer (`ROADMAP.md` M3).
+    pub fn extract_pages(&self, page_indices: &[u32]) -> Result<Vec<u8>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.extract_pages(page_indices)?)
+    }
+
     /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:
     /// *"Mutation never bypasses TransactionManager"*).
     pub(crate) fn apply_engine_mutation_for_transaction_manager<F, R>(

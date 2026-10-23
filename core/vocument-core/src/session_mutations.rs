@@ -2,7 +2,7 @@
 //!
 //! Gate (`ROADMAP.md` M0.4): **Mutation never bypasses `TransactionManager`.**
 
-use crate::pdf_engine::{PdfHighlightAnnotation, PdfRectMilliPt};
+use crate::pdf_engine::{PdfHighlightAnnotation, PdfRectMilliPt, PdfSanitizeOptions};
 use crate::session::{SessionError, SessionRegistry};
 use crate::transactions::{
     PersistentTransactionJournal, TransactionCommand, TransactionHistorySnapshot, TransactionRecord,
@@ -305,6 +305,75 @@ impl SessionRegistry {
             .restore_and_replay_journal(&actor, &journal)?;
         session.sync_from_transaction_manager();
         Ok(snapshot)
+    }
+
+    /// Sanitizes the document of `session_id` by stripping metadata, attachments,
+    /// actions, annotations, or form fields through `TransactionManager` (`SAN-001`).
+    pub fn sanitize_document(
+        &self,
+        session_id: &str,
+        options: PdfSanitizeOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        self.execute_transaction(session_id, TransactionCommand::SanitizeDocument { options })
+    }
+
+    /// Reorders the pages of `session_id` according to `order` through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn reorder_pages(
+        &self,
+        session_id: &str,
+        order: Vec<u32>,
+    ) -> Result<TransactionRecord, SessionError> {
+        let snap = self.session_snapshot(session_id)?;
+        crate::workbench::validate_permutation(&order, snap.pdf_summary.page_count)?;
+        self.execute_transaction(session_id, TransactionCommand::ReorderPages { order })
+    }
+
+    /// Duplicates `page_index` of `session_id` through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn duplicate_page(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<TransactionRecord, SessionError> {
+        let snap = self.session_snapshot(session_id)?;
+        if page_index >= snap.pdf_summary.page_count {
+            return Err(crate::pdf_engine::PdfEngineError::PageOutOfBounds {
+                page_index,
+                page_count: snap.pdf_summary.page_count,
+            }
+            .into());
+        }
+        self.execute_transaction(session_id, TransactionCommand::DuplicatePage { page_index })
+    }
+
+    /// Deletes `page_indices` from `session_id` through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn delete_pages(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+    ) -> Result<TransactionRecord, SessionError> {
+        let snap = self.session_snapshot(session_id)?;
+        crate::workbench::validate_delete_selection(&page_indices, snap.pdf_summary.page_count)?;
+        self.execute_transaction(session_id, TransactionCommand::DeletePages { page_indices })
+    }
+
+    /// Extracts `page_indices` from `session_id` into a new standalone PDF buffer (`ROADMAP.md` M3).
+    pub fn extract_pages(
+        &self,
+        session_id: &str,
+        page_indices: &[u32],
+    ) -> Result<Vec<u8>, SessionError> {
+        let sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = sessions
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        let actor = session.actor();
+        let bytes = actor.extract_pages(page_indices)?;
+        Ok(bytes)
     }
 }
 

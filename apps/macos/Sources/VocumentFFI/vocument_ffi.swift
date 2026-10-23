@@ -3829,6 +3829,103 @@ public func FfiConverterTypeFfiPdfRectMilliPt_lower(_ value: FfiPdfRectMilliPt) 
 
 
 /**
+ * Options for document sanitization (`SAN-001`).
+ */
+public struct FfiPdfSanitizeOptions {
+    public var removeMetadata: Bool
+    public var removeAttachments: Bool
+    public var removeActions: Bool
+    public var removeAnnotations: Bool
+    public var removeFormFields: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(removeMetadata: Bool, removeAttachments: Bool, removeActions: Bool, removeAnnotations: Bool, removeFormFields: Bool) {
+        self.removeMetadata = removeMetadata
+        self.removeAttachments = removeAttachments
+        self.removeActions = removeActions
+        self.removeAnnotations = removeAnnotations
+        self.removeFormFields = removeFormFields
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfSanitizeOptions: Sendable {}
+#endif
+
+
+extension FfiPdfSanitizeOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfSanitizeOptions, rhs: FfiPdfSanitizeOptions) -> Bool {
+        if lhs.removeMetadata != rhs.removeMetadata {
+            return false
+        }
+        if lhs.removeAttachments != rhs.removeAttachments {
+            return false
+        }
+        if lhs.removeActions != rhs.removeActions {
+            return false
+        }
+        if lhs.removeAnnotations != rhs.removeAnnotations {
+            return false
+        }
+        if lhs.removeFormFields != rhs.removeFormFields {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(removeMetadata)
+        hasher.combine(removeAttachments)
+        hasher.combine(removeActions)
+        hasher.combine(removeAnnotations)
+        hasher.combine(removeFormFields)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfSanitizeOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfSanitizeOptions {
+        return
+            try FfiPdfSanitizeOptions(
+                removeMetadata: FfiConverterBool.read(from: &buf), 
+                removeAttachments: FfiConverterBool.read(from: &buf), 
+                removeActions: FfiConverterBool.read(from: &buf), 
+                removeAnnotations: FfiConverterBool.read(from: &buf), 
+                removeFormFields: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfSanitizeOptions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.removeMetadata, into: &buf)
+        FfiConverterBool.write(value.removeAttachments, into: &buf)
+        FfiConverterBool.write(value.removeActions, into: &buf)
+        FfiConverterBool.write(value.removeAnnotations, into: &buf)
+        FfiConverterBool.write(value.removeFormFields, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfSanitizeOptions_lift(_ buf: RustBuffer) throws -> FfiPdfSanitizeOptions {
+    return try FfiConverterTypeFfiPdfSanitizeOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfSanitizeOptions_lower(_ value: FfiPdfSanitizeOptions) -> RustBuffer {
+    return FfiConverterTypeFfiPdfSanitizeOptions.lower(value)
+}
+
+
+/**
  * A signature field of a document (`SIGREV-001`).
  */
 public struct FfiPdfSignatureInfo {
@@ -9187,6 +9284,17 @@ public func documentCoreDefaultJuristPalette() -> [FfiJuristPaletteEntry]  {
 })
 }
 /**
+ * Deletes the specified `page_indices` from the document of `session_id` (`M3`).
+ */
+public func documentCoreDeletePages(sessionId: String, pageIndices: [UInt32])throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_delete_pages(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),$0
+    )
+})
+}
+/**
  * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
  */
 public func documentCoreDeskewFrame(frame: FfiScanFrame)throws  -> FfiDeskewResult  {
@@ -9213,6 +9321,17 @@ public func documentCoreDetectTextLanguage(text: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_vocument_ffi_fn_func_document_core_detect_text_language(
         FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * Duplicates the page at `page_index` (0-indexed) in `session_id` (`M3`).
+ */
+public func documentCoreDuplicatePage(sessionId: String, pageIndex: UInt32)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_duplicate_page(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
     )
 })
 }
@@ -9273,6 +9392,17 @@ public func documentCoreExportTransactionJournalJson(sessionId: String)throws  -
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
         FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Extracts selected `page_indices` into a new standalone PDF buffer without modifying the current document (`M3`).
+ */
+public func documentCoreExtractPages(sessionId: String, pageIndices: [UInt32])throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_extract_pages(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),$0
     )
 })
 }
@@ -9747,6 +9877,17 @@ public func documentCoreRenderVisibleTile(sessionId: String, request: FfiTileRen
 })
 }
 /**
+ * Reorders the pages of `session_id` according to `order` (0-indexed permutation) (`M3`).
+ */
+public func documentCoreReorderPages(sessionId: String, order: [UInt32])throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_reorder_pages(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(order),$0
+    )
+})
+}
+/**
  * Reports the energy and thermal state of the device (`POWER-001`).
  *
  * The platform shell calls this when the state changes. The background work is
@@ -9822,6 +9963,17 @@ public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], de
 public func documentCoreRunInteropGateSuite()throws  -> FfiInteropReport  {
     return try  FfiConverterTypeFfiInteropReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite($0
+    )
+})
+}
+/**
+ * Sanitizes the document of `session_id` through `TransactionManager` (`SAN-001`).
+ */
+public func documentCoreSanitizeDocument(sessionId: String, options: FfiPdfSanitizeOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_sanitize_document(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiPdfSanitizeOptions_lower(options),$0
     )
 })
 }
@@ -10057,6 +10209,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_delete_pages() != 20362) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10064,6 +10219,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_detect_text_language() != 868) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_duplicate_page() != 35462) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838) {
@@ -10079,6 +10237,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_extract_pages() != 21313) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302) {
@@ -10201,6 +10362,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 14058) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10220,6 +10384,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_sanitize_document() != 31981) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650) {

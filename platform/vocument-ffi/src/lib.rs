@@ -16,9 +16,11 @@ pub mod recovery_dto;
 pub mod redaction_dto;
 pub mod render_dto;
 pub mod rendered_page_reader;
+pub mod sanitize_dto;
 pub mod save_dto;
 pub mod scan_dto;
 pub mod session_dto;
+pub mod workbench_dto;
 
 use std::sync::OnceLock;
 use thiserror::Error;
@@ -63,6 +65,7 @@ pub use render_dto::{
     FfiMemoryPressureLevel, FfiPdfPageGeometry, FfiRenderedTile, FfiTileCacheStats,
     FfiTileRenderRequest, FfiViewportRenderResult,
 };
+pub use sanitize_dto::{FfiPdfSanitizeOptions, document_core_sanitize_document};
 pub use save_dto::{
     FfiExternalChangeCheckResult, FfiSaveConflict, FfiSaveConflictResolution, FfiSaveOutcome,
     FfiSaveSuccessSnapshot, document_core_check_external_changes,
@@ -291,6 +294,9 @@ impl From<SessionError> for DocumentCoreError {
                 other => Self::RedactionFailure {
                     details: format!("the redaction failed: {other}"),
                 },
+            },
+            SessionError::Workbench(err) => Self::InternalFailure {
+                details: format!("workbench operation failed: {err}"),
             },
             SessionError::RegistryPoisoned => Self::InternalFailure {
                 details: "session registry lock poisoned".to_owned(),

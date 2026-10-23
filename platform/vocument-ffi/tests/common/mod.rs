@@ -85,6 +85,7 @@ pub fn the_rail_of_the_user() -> RailGuard {
 /// reaches the registry before this function has run would write into the
 /// directory of the user — and the call of this function would then fail with
 /// a name that says so, instead of the breach passing unnoticed.
+#[allow(dead_code)]
 pub fn use_a_temporary_data_directory() {
     static CONFIGURED: OnceLock<()> = OnceLock::new();
     CONFIGURED.get_or_init(|| {
@@ -106,6 +107,7 @@ pub fn use_a_temporary_data_directory() {
 ///
 /// The name carries the process id, so that two test binaries that run at the
 /// same time do not share one directory.
+#[allow(dead_code)]
 fn temporary_data_directory() -> PathBuf {
     std::env::temp_dir().join(format!("vocument-ffi-tests-{}", std::process::id()))
 }

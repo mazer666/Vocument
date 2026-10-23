@@ -28,6 +28,7 @@ pub mod text_selection;
 pub mod thumbnail_cache;
 pub mod tile_cache;
 pub mod transactions;
+pub mod workbench;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};
 

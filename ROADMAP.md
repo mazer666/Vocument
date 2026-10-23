@@ -476,7 +476,7 @@ The parts that need a device or a macOS host remain open and are documented as
 
 ---
 
-# M2 — macOS Professional Review *(Started — M2.1, M2.2 and M2.3 done)*
+# M2 — macOS Professional Review *(Status: **COMPLETE** — see [M2 Acceptance Record](docs/acceptance/M2-ACCEPTANCE.md))*
 
 ## Purpose
 
@@ -660,12 +660,11 @@ Delivered:
 
 Evidence: [M2.3 Acceptance Record](docs/acceptance/M2.3-ACCEPTANCE.md).
 
-Open in M2: the remaining functions (among them the full sanitising,
-`SAN-001`), the macOS interface — the comment bar, the surface of the
-redaction, the rail of the profession as a rail the user can edit — and the
-interoperability gate with the tools of other vendors.
+Delivered in M2 completion: the full sanitising (`SAN-001`), the macOS review interface (`ReviewWorkflow.swift`, `ReviewPanelView.swift`, `DocumentCoreClient.swift`), the jurist tool palette with POSIX `0600`/`0700` safety, 4-way redaction verification, and PDF interoperability with MuPDF, `mutool`, and Apple Quartz.
 
-## M2.5 — The licence, the distribution and the release readiness *(Decision taken, the artefacts are prepared but not signed)*
+Evidence: [M2 Acceptance Record](docs/acceptance/M2-ACCEPTANCE.md).
+
+## M2.5 — The licence, the distribution and the release readiness *(Status: **TECHNICAL ACCEPTANCE PASSED** — see [M2.5 Acceptance Record](docs/acceptance/M2.5-ACCEPTANCE.md))*
 
 Not a function of the review, but the question that decides whether the
 product can be handed out at all. The **decision of the project owner** is
@@ -721,7 +720,7 @@ Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 
-# M3 — Page Workbench
+# M3 — Page Workbench *(Status: **IN PROGRESS** — Foundation Started)*
 
 Deliver:
 

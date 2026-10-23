@@ -44,7 +44,7 @@ concurrency:
 jobs:
   linux-core:
     name: Linux — the gate of the project (Rust, MuPDF, Tesseract)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # The limit of a job on GitHub is 6 hours. The gate needs far less; the
     # limit here is the guard against a run that hangs.
     timeout-minutes: 90

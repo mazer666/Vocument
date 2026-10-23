@@ -96,3 +96,41 @@ func verifyMacPlatformUniFFIHandshakePdfSessionAndRendering() throws {
 
     try client.closeSession(sessionId: m03Session.sessionId)
 }
+
+@Test
+func verifyMacPlatformSanitizeDocument() throws {
+    let client = DocumentCoreClient()
+    let m03URL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("tests/corpus/m0_3_navigation_and_search.pdf")
+    let session = try client.openScopedDocument(at: m03URL)
+
+    // Add a highlight first
+    let highlight = FfiHighlightAnnotation(
+        annotationId: "mac-hl-1",
+        pageIndex: 0,
+        rect: FfiPdfRectMilliPt(x0MilliPt: 100_000, y0MilliPt: 100_000, x1MilliPt: 200_000, y1MilliPt: 120_000),
+        colorR: 255,
+        colorG: 230,
+        colorB: 80,
+        opacityMilli: 450,
+        author: "MacUser",
+        contents: "Sanitize test note"
+    )
+    _ = try client.addHighlightAnnotation(sessionId: session.sessionId, annotation: highlight)
+
+    // Sanitize document
+    let record = try client.sanitizeDocument(sessionId: session.sessionId)
+    #expect(record.description == "Sanitize document")
+
+    // Annotations should now be cleared
+    let annots = try client.pageHighlightAnnotations(sessionId: session.sessionId, pageIndex: 0)
+    #expect(annots.isEmpty)
+
+    try client.closeSession(sessionId: session.sessionId)
+}
+

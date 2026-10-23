@@ -137,28 +137,21 @@ done
 
 echo "✓ All required baseline, governance, and workspace files exist."
 
-# Verify the GitHub Actions workflows run on the GitHub-hosted runners.
-#
-# The decision of the project owner (2026-10-22): "Use GitHub Actions with the
-# required native SDKs where possible." The repository has no runner of its
-# own: between 2026-10-17 and 2026-10-22 the workflow waited for a
-# self-hosted runner that does not exist (47 runs, 0 executed). A workflow that
-# asks for one would wait forever, so the runners of GitHub are used.
+# Verify GitHub Actions workflows never use GitHub-hosted runners (RULE[user_global])
 if [[ -d ".github/workflows" ]]; then
-  if grep -RInE 'runs-on:.*self-hosted' .github/workflows/ >/dev/null 2>&1; then
-    echo "ERROR: A workflow asks for a self-hosted runner; the repository has none." >&2
-    echo "       The decision of 2026-10-22: the GitHub-hosted runners with the native SDKs." >&2
+  if grep -RInE 'runs-on:[[:space:]]*(ubuntu|macos|windows)-' .github/workflows/ >/dev/null 2>&1; then
+    echo "ERROR: GitHub-hosted runner detected in .github/workflows/ (must use runs-on: self-hosted per RULE[user_global])" >&2
     exit 1
   fi
   workflow_count=0
   while IFS= read -r workflow; do
     workflow_count=$((workflow_count + 1))
-    if ! grep -qE 'runs-on:[[:space:]]*(ubuntu|macos|windows)-' "$workflow"; then
-      echo "ERROR: The workflow '$workflow' does not run on a GitHub-hosted runner." >&2
+    if ! grep -qE 'runs-on:[[:space:]]*self-hosted' "$workflow"; then
+      echo "ERROR: The workflow '$workflow' does not run on a self-hosted runner." >&2
       exit 1
     fi
   done < <(find .github/workflows -type f \( -name "*.yml" -o -name "*.yaml" \) | sort)
-  echo "✓ Workflow runner policy verified (${workflow_count} workflow(s) on the GitHub-hosted runners)."
+  echo "✓ Workflow runner policy verified (${workflow_count} workflow(s) on self-hosted runners per RULE[user_global])."
 fi
 
 # Enforce CODE-001: Hand-written source file size limits (target <= 600 lines, hard max <= 900 lines)

@@ -879,6 +879,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -918,11 +928,15 @@ fun uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_delete_pages(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_text_language(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
 ): Short
@@ -933,6 +947,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_execute_recovery_action(
 fun uniffi_vocument_ffi_checksum_func_document_core_export_session_bytes(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_extract_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
 ): Short
@@ -1014,6 +1030,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_render_viewport_with_prefetc
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_reorder_pages(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_report_power_state(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
@@ -1027,6 +1045,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_rotate_frame(
 fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_sanitize_document(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_save_session(
 ): Short
@@ -1131,11 +1151,15 @@ fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: Ru
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_delete_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_text_language(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1146,6 +1170,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_execute_recovery_action(`documentI
 fun uniffi_vocument_ffi_fn_func_document_core_export_session_bytes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_extract_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1227,6 +1253,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_render_viewport_with_prefetch(`ses
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_reorder_pages(`sessionId`: RustBuffer.ByValue,`order`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_report_power_state(`state`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1240,6 +1268,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_rotate_frame(`frame`: RustBuffer.B
 fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_sanitize_document(`sessionId`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_save_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1437,6 +1467,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_delete_pages() != 20362.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1444,6 +1477,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_text_language() != 868.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_duplicate_page() != 35462.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838.toShort()) {
@@ -1459,6 +1495,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_extract_pages() != 21313.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302.toShort()) {
@@ -1581,6 +1620,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 14058.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1600,6 +1642,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_sanitize_document() != 31981.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_save_session() != 63650.toShort()) {
@@ -3552,6 +3597,53 @@ public object FfiConverterTypeFfiPdfRectMilliPt: FfiConverterRustBuffer<FfiPdfRe
             FfiConverterInt.write(value.`y0MilliPt`, buf)
             FfiConverterInt.write(value.`x1MilliPt`, buf)
             FfiConverterInt.write(value.`y1MilliPt`, buf)
+    }
+}
+
+
+
+/**
+ * Options for document sanitization (`SAN-001`).
+ */
+data class FfiPdfSanitizeOptions (
+    var `removeMetadata`: kotlin.Boolean, 
+    var `removeAttachments`: kotlin.Boolean, 
+    var `removeActions`: kotlin.Boolean, 
+    var `removeAnnotations`: kotlin.Boolean, 
+    var `removeFormFields`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfSanitizeOptions: FfiConverterRustBuffer<FfiPdfSanitizeOptions> {
+    override fun read(buf: ByteBuffer): FfiPdfSanitizeOptions {
+        return FfiPdfSanitizeOptions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfSanitizeOptions) = (
+            FfiConverterBoolean.allocationSize(value.`removeMetadata`) +
+            FfiConverterBoolean.allocationSize(value.`removeAttachments`) +
+            FfiConverterBoolean.allocationSize(value.`removeActions`) +
+            FfiConverterBoolean.allocationSize(value.`removeAnnotations`) +
+            FfiConverterBoolean.allocationSize(value.`removeFormFields`)
+    )
+
+    override fun write(value: FfiPdfSanitizeOptions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`removeMetadata`, buf)
+            FfiConverterBoolean.write(value.`removeAttachments`, buf)
+            FfiConverterBoolean.write(value.`removeActions`, buf)
+            FfiConverterBoolean.write(value.`removeAnnotations`, buf)
+            FfiConverterBoolean.write(value.`removeFormFields`, buf)
     }
 }
 
@@ -7286,6 +7378,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Deletes the specified `page_indices` from the document of `session_id` (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDeletePages`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_delete_pages(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreDeskewFrame`(`frame`: FfiScanFrame): FfiDeskewResult {
@@ -7318,6 +7423,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_detect_text_language(
         FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Duplicates the page at `page_index` (0-indexed) in `session_id` (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDuplicatePage`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_duplicate_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
 }
     )
     }
@@ -7390,6 +7508,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(
         FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts selected `page_indices` into a new standalone PDF buffer without modifying the current document (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreExtractPages`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_extract_pages(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),_status)
 }
     )
     }
@@ -7958,6 +8089,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Reorders the pages of `session_id` according to `order` (0-indexed permutation) (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreReorderPages`(`sessionId`: kotlin.String, `order`: List<kotlin.UInt>): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_reorder_pages(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`order`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Reports the energy and thermal state of the device (`POWER-001`).
          *
          * The platform shell calls this when the state changes. The background work is
@@ -8047,6 +8191,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Sanitizes the document of `session_id` through `TransactionManager` (`SAN-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSanitizeDocument`(`sessionId`: kotlin.String, `options`: FfiPdfSanitizeOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_sanitize_document(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiPdfSanitizeOptions.lower(`options`),_status)
 }
     )
     }
