@@ -113,6 +113,20 @@ jobs:
       - name: Build the host MuPDF 1.28.5 (the PDF engine is linked against it)
         run: ./scripts/prepare-host-mupdf.sh
 
+      - name: Install the pinned cargo-deny (the licence configuration depends on its version)
+        run: |
+          # The spellings of the GNU licences in `deny.toml` differ between the
+          # versions of cargo-deny: 0.20.2 reads the suffixed spelling
+          # (`AGPL-3.0-or-later`) as the licence of the crates of the
+          # workspace, 0.16.4 refuses to load the configuration at all. The
+          # version of the tool is therefore part of the configuration of the
+          # project, and the gate says NOT RUN with the reason when the
+          # machine carries another one. Without this step the licence
+          # configuration of the project was **never checked** in the
+          # continuous integration — a green job said nothing about it.
+          cargo install cargo-deny --version 0.20.2 --locked
+          cargo deny --version
+
       - name: Set the library path of the linker
         run: |
           echo "LD_LIBRARY_PATH=${MUPDF_DIR}/lib" >> "$GITHUB_ENV"

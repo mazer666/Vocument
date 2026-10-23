@@ -176,8 +176,14 @@ for release_script in scripts/release-macos.sh scripts/release-android.sh; do
   fi
 done
 
-# The configuration of cargo-deny has to be loadable. The spellings of the GNU
-# licences that cargo-deny accepts are the bare ones.
+# The configuration of cargo-deny has to be loadable — and whether it can be
+# loaded at all depends on the **version** of the tool: the spellings of the
+# GNU licences are not the same in every version (see the head of `deny.toml`).
+# The version of the tool is therefore part of the configuration of the
+# project, and a machine that carries another version is told that the check
+# was **NOT RUN** — a check that was not carried out is never reported as a
+# passed one.
+CARGO_DENY_REQUIRED_VERSION="0.20.2"
 CARGO_DENY_BIN=""
 if command -v cargo-deny > /dev/null 2>&1; then
   CARGO_DENY_BIN="$(command -v cargo-deny)"
@@ -187,11 +193,16 @@ fi
 if [[ -n "$CARGO_DENY_BIN" ]]; then
   # cargo-deny calls cargo itself: it has to find it.
   CARGO_HOME_BIN="$(dirname "$CARGO_DENY_BIN")"
-  if ! PATH="$CARGO_HOME_BIN:$PATH" "$CARGO_DENY_BIN" check licenses > /dev/null 2>&1; then
-    echo "ERROR (DIST Gate): cargo-deny does not accept the licence configuration of deny.toml!" >&2
+  CARGO_DENY_VERSION="$("$CARGO_DENY_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+  if [[ "$CARGO_DENY_VERSION" != "$CARGO_DENY_REQUIRED_VERSION" ]]; then
+    echo "NOT RUN (DIST Gate): cargo-deny ${CARGO_DENY_VERSION:-of an unknown version} is installed, the project needs ${CARGO_DENY_REQUIRED_VERSION} — the licence configuration of deny.toml was not checked here." >&2
+    echo "         The spellings of the GNU licences differ between the versions of the tool; see the head of deny.toml." >&2
+  elif ! PATH="$CARGO_HOME_BIN:$PATH" "$CARGO_DENY_BIN" check licenses > /dev/null 2>&1; then
+    echo "ERROR (DIST Gate): cargo-deny ${CARGO_DENY_REQUIRED_VERSION} does not accept the licence configuration of deny.toml!" >&2
     exit 1
+  else
+    echo "✓ (DIST Gate): the licence configuration of deny.toml was checked with cargo-deny ${CARGO_DENY_VERSION}."
   fi
-  echo "✓ (DIST Gate): the licence configuration of deny.toml was checked with cargo-deny."
 else
   echo "NOTE (DIST Gate): cargo-deny is not installed — the licence configuration was not checked here." >&2
 fi

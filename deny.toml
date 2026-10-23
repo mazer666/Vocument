@@ -16,6 +16,18 @@ confidence-threshold = 0.8
 # cargo-deny checks the members of the workspace as well: without the
 # suffixed spelling the check failed with "license is not explicitly
 # allowed" on the crates of the project itself.
+#
+# **The version of cargo-deny is pinned** (`scripts/validate-distribution.sh`,
+# `CARGO_DENY_REQUIRED_VERSION`, and the workflow of the continuous
+# integration). The two spellings are not interchangeable between the
+# versions of the tool: cargo-deny **0.20.2** reads the suffixed spelling as
+# the licence of the crates of the workspace and rejects the bare one, while
+# cargo-deny **0.16.4** refuses to load this configuration at all ("expected a
+# `<bare-gnu-license>`"). A configuration that depends on the version of the
+# tool is a configuration that differs from machine to machine — the same
+# defect the licence inventory had before it was made a fact of the
+# repository. The version is therefore named, and the gate says **NOT RUN**
+# with the reason when the tool on the machine is a different one.
 allow = [
     "AGPL-3.0",
     "AGPL-3.0-or-later",

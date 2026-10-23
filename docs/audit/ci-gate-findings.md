@@ -580,13 +580,60 @@ a **NOT RUN** with the reason — the OCR engine is a third-party component
 (`brew install tesseract`), and a proof that was not carried out is never
 reported as a passed one.
 
+### 4.9 The licence configuration depended on the version of cargo-deny — **fixed**
+
+The gate of the distribution checks the licence configuration of the project
+with cargo-deny. It reported:
+
+```text
+ERROR (DIST Gate): cargo-deny does not accept the licence configuration of deny.toml!
+```
+
+The configuration was not broken. The **version** of the tool decides how it
+is read, and the two spellings of the GNU licences are not interchangeable
+between the versions:
+
+| The version of cargo-deny | `allow = ["AGPL-3.0"]` | `allow = ["AGPL-3.0-or-later"]` |
+|---|---|---|
+| **0.16.4** | `licenses ok` | the configuration is not even loaded: *"expected a `<bare-gnu-license>`"* |
+| **0.20.2** | `licenses FAILED` — the crates of the workspace carry `AGPL-3.0-or-later` and are rejected | `licenses ok` |
+
+Both measurements are from this repository (the crates of the workspace carry
+`AGPL-3.0-or-later`, and cargo-deny checks the members of the workspace as
+well).
+
+**A second defect hid behind the first one.** The continuous integration did
+**not** install cargo-deny at all: the gate printed *"NOTE: cargo-deny is not
+installed — the licence configuration was not checked here"* and the job went
+on. The licence configuration of the project was therefore **never checked in
+the continuous integration** — a green job said nothing about it, and a
+configuration that no machine could load would have stayed unnoticed.
+
+**Fixed.**
+
+* The version of the tool is part of the configuration of the project
+  (`CARGO_DENY_REQUIRED_VERSION` in `scripts/validate-distribution.sh`,
+  **0.20.2**). A machine that carries another version is told **NOT RUN**
+  with the reason — the check of another tool version is another proof, and a
+  proof that was not carried out is never reported as a passed one. The
+  reason of the change is written into the head of `deny.toml`.
+* The workflow of the continuous integration installs the pinned version
+  (`cargo install cargo-deny --version 0.20.2 --locked`). The licence
+  configuration is checked in the CI now, and the job says so.
+
 ## 5. What this document does not claim
 
 * It does **not** claim that the hosted CI would have been green. It was
   never run, and §2 lists four defects that would have made it red or
   flaky.
-* It does **not** claim that the licence audit is correct now. It was not
-  changed, and §4.1 describes why.
+* It does **not** claim that the licence audit is complete. §4.1 describes
+  what was changed in it: the inventory of the components of Android is now a
+  fact of the repository, and the **transitive** components are still a
+  question of the licensing (`RISK-059`).
+* It does **not** claim that every licence of every dependency was read. The
+  audit checks the components that the project names; the crates of the
+  workspace are checked by cargo-deny, and the transitive components of the
+  Android package are named as an open question.
 * It does **not** weaken any acceptance criterion. The `NOT RUN` of §2.1 is
   a statement that the check was not exercised, and it says so in the output
   of the test.

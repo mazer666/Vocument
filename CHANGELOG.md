@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **The licence configuration depended on the version of cargo-deny.** The
+  gate of the distribution reported *"cargo-deny does not accept the licence
+  configuration of deny.toml"* — the configuration was not broken: the
+  **version** of the tool decides how it is read. cargo-deny **0.16.4** refuses
+  to load the configuration with the suffixed spelling of the GNU licences
+  (*"expected a `<bare-gnu-license>`"*), cargo-deny **0.20.2** reads the
+  suffixed spelling as the licence of the crates of the workspace and rejects
+  the bare one. The version of the tool is now part of the configuration of
+  the project (`CARGO_DENY_REQUIRED_VERSION`), a machine with another version
+  is told **NOT RUN** with the reason — the check of another tool version is
+  another proof — and the workflow of the continuous integration installs the
+  pinned version. The licence configuration was **never checked in the CI**
+  before: cargo-deny was not installed there, the gate printed a note and the
+  job went on. It is checked now.
+
 ### Added
 - **The proof of the redaction of the interface** (`RISK-032`): the chain of
   the user — mark a place on the page, see the text that stands there, remove
@@ -35,8 +51,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   compliance review (E5) and the signing identities (B-2, B-3) are open, and
   nothing is published that would need one of them. The description of the
   alpha is in [`docs/releasing/ALPHA-RELEASE.md`](docs/releasing/ALPHA-RELEASE.md).
-
-### Added
 - **The continuous integration of the project** — three jobs on the hosted
   runners of GitHub, one per platform: the whole gate of the project on
   Linux (the host MuPDF 1.28.5 is built from the pinned source, the
