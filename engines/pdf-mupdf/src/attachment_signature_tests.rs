@@ -18,7 +18,7 @@ const CONTENTS_LEN: usize = 40;
 /// document or only the beginning of it. A signature that covers only a part
 /// of the document says nothing about the rest — that is the case a reviewer
 /// has to see.
-fn pdf_with_attachment_and_signature(changed_after_signing: bool) -> Vec<u8> {
+pub(crate) fn pdf_with_attachment_and_signature(changed_after_signing: bool) -> Vec<u8> {
     let contents = "BT /F1 12 Tf 72 740 Td (Vocument Review) Tj ET\n";
     let attachment = "MZ this is not a real program";
     let placeholder = "[0000000000 0000000000 0000000000 0000000000]";

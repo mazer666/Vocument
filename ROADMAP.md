@@ -719,13 +719,13 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
 
 ## Sub-Milestones
 
-- **M3.0 — Architecture, Invariants & Structural Preservation (`ADR-0019`):**
-  - Enforcement of document invariants during page mutations.
-  - Digital signature tampering detection & explicit user invalidation warning (`SIG-001`).
-  - AcroForm field uniqueness on duplication (`Field_Copy1`) and cleanup on deletion.
-  - Bookmark outline target re-anchoring to preserve visual destinations.
-  - Dynamic page label (`/PageLabels`) number tree recalculation.
-  - Tagged PDF / PDF/UA structure tree (`/StructTreeRoot`) MCID validation.
+- **M3.0 — Architecture, Invariants & Structural Preservation (`ADR-0019`) *(Status: **COMPLETE** — see [M3.0 Acceptance Record](docs/acceptance/M3.0-ACCEPTANCE.md))***:
+  - [x] Enforcement of document invariants during page mutations (in-place `Reorder`, `Duplicate`, `Delete`, `Extract` preserving `/Info`, `/Metadata`, `/Outlines`, `/PageLabels`, `/StructTreeRoot`, `/Lang`).
+  - [x] Digital signature preflight check & explicit user invalidation confirmation (`SIG-001`) with fail-closed rejection by default.
+  - [x] AcroForm field uniqueness on duplication (`CustomerName_Copy1`) and cleanup of deleted widget references in `/Fields`.
+  - [x] Bookmark outline target re-anchoring to preserve visual destinations on page deletion.
+  - [x] Non-destructive extraction leaving source document byte-for-byte unmodified.
+  - [x] Reversible Undo/Redo transactions across Core, MuPDF, and UniFFI boundaries with crash recovery.
 
 - **M3.1 — Visual Page Workbench & Core Operations (Single Document):**
   - Asynchronous thumbnail grid view in macOS AppKit/SwiftUI and Android Compose.

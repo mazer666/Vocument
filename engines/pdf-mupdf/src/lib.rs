@@ -32,6 +32,8 @@ mod scrub_hardening_tests;
 mod scrub_tests;
 #[cfg(test)]
 mod text_space_tests;
+#[cfg(test)]
+mod workbench_invariant_tests;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
@@ -511,21 +513,54 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
     }
 
     fn reorder_pages(&mut self, order: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
-        let new_bytes = page_ops::reorder_pages(&self.pdf_bytes, order)?;
+        self.reorder_pages_ext(order, false)
+    }
+
+    fn reorder_pages_ext(
+        &mut self,
+        order: &[u32],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes =
+            page_ops::reorder_pages_ext(&self.pdf_bytes, order, allow_signature_invalidation)?;
         self.summary = inspect_summary(&new_bytes)?;
         self.pdf_bytes = new_bytes.clone();
         Ok(new_bytes)
     }
 
     fn duplicate_page(&mut self, page_index: u32) -> Result<Vec<u8>, PdfEngineError> {
-        let new_bytes = page_ops::duplicate_page(&self.pdf_bytes, page_index)?;
+        self.duplicate_page_ext(page_index, false)
+    }
+
+    fn duplicate_page_ext(
+        &mut self,
+        page_index: u32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes = page_ops::duplicate_page_ext(
+            &self.pdf_bytes,
+            page_index,
+            allow_signature_invalidation,
+        )?;
         self.summary = inspect_summary(&new_bytes)?;
         self.pdf_bytes = new_bytes.clone();
         Ok(new_bytes)
     }
 
     fn delete_pages(&mut self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
-        let new_bytes = page_ops::delete_pages(&self.pdf_bytes, page_indices)?;
+        self.delete_pages_ext(page_indices, false)
+    }
+
+    fn delete_pages_ext(
+        &mut self,
+        page_indices: &[u32],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let new_bytes = page_ops::delete_pages_ext(
+            &self.pdf_bytes,
+            page_indices,
+            allow_signature_invalidation,
+        )?;
         self.summary = inspect_summary(&new_bytes)?;
         self.pdf_bytes = new_bytes.clone();
         Ok(new_bytes)

@@ -317,15 +317,63 @@ impl SessionRegistry {
         self.execute_transaction(session_id, TransactionCommand::SanitizeDocument { options })
     }
 
+    /// Audits structural invariants and digital signatures before workbench page mutations (`ROADMAP.md` M3, `ADR-0019`).
+    pub fn workbench_preflight(
+        &self,
+        session_id: &str,
+    ) -> Result<crate::workbench::PageWorkbenchPreflightReport, SessionError> {
+        let sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| SessionError::RegistryPoisoned)?;
+        let session = sessions
+            .get(session_id)
+            .ok_or_else(|| SessionError::SessionNotFound {
+                session_id: session_id.to_owned(),
+            })?;
+        let actor = session.actor();
+        let report = actor.workbench_preflight()?;
+        Ok(report)
+    }
+
     /// Reorders the pages of `session_id` according to `order` through `TransactionManager` (`ROADMAP.md` M3).
     pub fn reorder_pages(
         &self,
         session_id: &str,
         order: Vec<u32>,
     ) -> Result<TransactionRecord, SessionError> {
+        self.reorder_pages_with_options(
+            session_id,
+            order,
+            crate::workbench::PageWorkbenchOptions::default(),
+        )
+    }
+
+    /// Reorders the pages of `session_id` with explicit options through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn reorder_pages_with_options(
+        &self,
+        session_id: &str,
+        order: Vec<u32>,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
         let snap = self.session_snapshot(session_id)?;
         crate::workbench::validate_permutation(&order, snap.pdf_summary.page_count)?;
-        self.execute_transaction(session_id, TransactionCommand::ReorderPages { order })
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::ReorderPages {
+                order,
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
     }
 
     /// Duplicates `page_index` of `session_id` through `TransactionManager` (`ROADMAP.md` M3).
@@ -333,6 +381,20 @@ impl SessionRegistry {
         &self,
         session_id: &str,
         page_index: u32,
+    ) -> Result<TransactionRecord, SessionError> {
+        self.duplicate_page_with_options(
+            session_id,
+            page_index,
+            crate::workbench::PageWorkbenchOptions::default(),
+        )
+    }
+
+    /// Duplicates `page_index` with explicit options through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn duplicate_page_with_options(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        options: crate::workbench::PageWorkbenchOptions,
     ) -> Result<TransactionRecord, SessionError> {
         let snap = self.session_snapshot(session_id)?;
         if page_index >= snap.pdf_summary.page_count {
@@ -342,7 +404,22 @@ impl SessionRegistry {
             }
             .into());
         }
-        self.execute_transaction(session_id, TransactionCommand::DuplicatePage { page_index })
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::DuplicatePage {
+                page_index,
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
     }
 
     /// Deletes `page_indices` from `session_id` through `TransactionManager` (`ROADMAP.md` M3).
@@ -351,9 +428,38 @@ impl SessionRegistry {
         session_id: &str,
         page_indices: Vec<u32>,
     ) -> Result<TransactionRecord, SessionError> {
+        self.delete_pages_with_options(
+            session_id,
+            page_indices,
+            crate::workbench::PageWorkbenchOptions::default(),
+        )
+    }
+
+    /// Deletes `page_indices` with explicit options through `TransactionManager` (`ROADMAP.md` M3).
+    pub fn delete_pages_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
         let snap = self.session_snapshot(session_id)?;
         crate::workbench::validate_delete_selection(&page_indices, snap.pdf_summary.page_count)?;
-        self.execute_transaction(session_id, TransactionCommand::DeletePages { page_indices })
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::DeletePages {
+                page_indices,
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
     }
 
     /// Extracts `page_indices` from `session_id` into a new standalone PDF buffer (`ROADMAP.md` M3).

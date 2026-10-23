@@ -225,6 +225,10 @@ pub enum DocumentCoreError {
     SaveFailure { details: String },
     #[error("recovery error: {details}")]
     RecoveryFailure { details: String },
+    #[error(
+        "operation blocked: document contains digital signatures; explicit confirmation required: {details}"
+    )]
+    OperationBlockedBySignature { details: String },
     #[error("imaging error: {details}")]
     ImagingFailure { details: String },
     #[error("internal core failure: {details}")]
@@ -240,6 +244,9 @@ impl From<SessionError> for DocumentCoreError {
             SessionError::PdfEngine(PdfEngineError::PasswordRequired) => Self::PasswordRequired,
             SessionError::PdfEngine(PdfEngineError::InvalidPdf { details }) => {
                 Self::InvalidPdf { details }
+            }
+            SessionError::PdfEngine(PdfEngineError::OperationBlockedBySignature { details }) => {
+                Self::OperationBlockedBySignature { details }
             }
             SessionError::PdfEngine(other) => Self::InternalFailure {
                 details: other.to_string(),
@@ -294,6 +301,15 @@ impl From<SessionError> for DocumentCoreError {
                 other => Self::RedactionFailure {
                     details: format!("the redaction failed: {other}"),
                 },
+            },
+            SessionError::Workbench(
+                vocument_core::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count,
+                },
+            ) => Self::OperationBlockedBySignature {
+                details: format!(
+                    "document contains {signature_count} digital signature(s) that would be invalidated; explicit confirmation required"
+                ),
             },
             SessionError::Workbench(err) => Self::InternalFailure {
                 details: format!("workbench operation failed: {err}"),

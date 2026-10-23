@@ -87,11 +87,23 @@ pub enum TransactionCommand {
     /// attachments, actions, annotations, or form fields (`SAN-001`).
     SanitizeDocument { options: PdfSanitizeOptions },
     /// Reorders pages according to the specified complete permutation (`ROADMAP.md` M3).
-    ReorderPages { order: Vec<u32> },
+    ReorderPages {
+        order: Vec<u32>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// Duplicates a single page, placing the new copy directly following it (`ROADMAP.md` M3).
-    DuplicatePage { page_index: u32 },
+    DuplicatePage {
+        page_index: u32,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// Deletes one or more pages from the document (`ROADMAP.md` M3).
-    DeletePages { page_indices: Vec<u32> },
+    DeletePages {
+        page_indices: Vec<u32>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// Restores previously deleted document bytes (`ROADMAP.md` M3).
     RestorePages { previous_bytes: Vec<u8> },
     /// The inverse of a command that cannot be undone (`REDACT-001`, `SAN-001`).
@@ -149,9 +161,13 @@ impl TransactionCommand {
                 )
             }
             Self::SanitizeDocument { .. } => "Sanitize document".to_owned(),
-            Self::ReorderPages { order } => format!("Reorder {} pages", order.len()),
-            Self::DuplicatePage { page_index } => format!("Duplicate page #{}", page_index + 1),
-            Self::DeletePages { page_indices } => format!("Delete {} page(s)", page_indices.len()),
+            Self::ReorderPages { order, .. } => format!("Reorder {} pages", order.len()),
+            Self::DuplicatePage { page_index, .. } => {
+                format!("Duplicate page #{}", page_index + 1)
+            }
+            Self::DeletePages { page_indices, .. } => {
+                format!("Delete {} page(s)", page_indices.len())
+            }
             Self::RestorePages { .. } => "Restore deleted page(s)".to_owned(),
             Self::Irreversible { description } => description.clone(),
         }
@@ -176,9 +192,9 @@ impl TransactionCommand {
             Self::RemoveCommentAnnotation { page_index, .. } => vec![*page_index],
             Self::RedactPageRegions { page_index, .. } => vec![*page_index],
             Self::SanitizeDocument { .. } => Vec::new(),
-            Self::ReorderPages { order } => (0..order.len() as u32).collect(),
-            Self::DuplicatePage { page_index } => vec![*page_index, *page_index + 1],
-            Self::DeletePages { page_indices } => page_indices.clone(),
+            Self::ReorderPages { order, .. } => (0..order.len() as u32).collect(),
+            Self::DuplicatePage { page_index, .. } => vec![*page_index, *page_index + 1],
+            Self::DeletePages { page_indices, .. } => page_indices.clone(),
             Self::RestorePages { .. } => Vec::new(),
             Self::Irreversible { .. } => Vec::new(),
         }
@@ -209,8 +225,10 @@ impl TransactionCommand {
                 vec!["document:sanitize".to_owned()]
             }
             Self::ReorderPages { .. } => vec!["document:reorder_pages".to_owned()],
-            Self::DuplicatePage { page_index } => vec![format!("page:{page_index}:duplicate")],
-            Self::DeletePages { page_indices } => page_indices
+            Self::DuplicatePage { page_index, .. } => {
+                vec![format!("page:{page_index}:duplicate")]
+            }
+            Self::DeletePages { page_indices, .. } => page_indices
                 .iter()
                 .map(|idx| format!("page:{idx}:delete"))
                 .collect(),
@@ -799,33 +817,53 @@ impl TransactionManager {
                 };
                 Ok((forward, inverse, updated_bytes))
             }
-            TransactionCommand::ReorderPages { order } => {
+            TransactionCommand::ReorderPages {
+                order,
+                allow_signature_invalidation,
+            } => {
                 let inverse_order = crate::workbench::compute_inverse_permutation(&order)?;
-                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
-                    |doc: &mut dyn PdfEngineDocument| doc.reorder_pages(&order),
-                )?;
-                let forward = TransactionCommand::ReorderPages { order };
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.reorder_pages_ext(&order, allow_signature_invalidation)
+                })?;
+                let forward = TransactionCommand::ReorderPages {
+                    order: order.clone(),
+                    allow_signature_invalidation,
+                };
                 let inverse = TransactionCommand::ReorderPages {
                     order: inverse_order,
+                    allow_signature_invalidation: true,
                 };
                 Ok((forward, inverse, updated_bytes))
             }
-            TransactionCommand::DuplicatePage { page_index } => {
-                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
-                    |doc: &mut dyn PdfEngineDocument| doc.duplicate_page(page_index),
-                )?;
-                let forward = TransactionCommand::DuplicatePage { page_index };
+            TransactionCommand::DuplicatePage {
+                page_index,
+                allow_signature_invalidation,
+            } => {
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.duplicate_page_ext(page_index, allow_signature_invalidation)
+                })?;
+                let forward = TransactionCommand::DuplicatePage {
+                    page_index,
+                    allow_signature_invalidation,
+                };
                 let inverse = TransactionCommand::DeletePages {
                     page_indices: vec![page_index + 1],
+                    allow_signature_invalidation: true,
                 };
                 Ok((forward, inverse, updated_bytes))
             }
-            TransactionCommand::DeletePages { page_indices } => {
+            TransactionCommand::DeletePages {
+                page_indices,
+                allow_signature_invalidation,
+            } => {
                 let before_bytes = actor.current_pdf_bytes()?;
-                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
-                    |doc: &mut dyn PdfEngineDocument| doc.delete_pages(&page_indices),
-                )?;
-                let forward = TransactionCommand::DeletePages { page_indices };
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.delete_pages_ext(&page_indices, allow_signature_invalidation)
+                })?;
+                let forward = TransactionCommand::DeletePages {
+                    page_indices,
+                    allow_signature_invalidation,
+                };
                 let inverse = TransactionCommand::RestorePages {
                     previous_bytes: before_bytes,
                 };
@@ -833,12 +871,10 @@ impl TransactionManager {
             }
             TransactionCommand::RestorePages { previous_bytes } => {
                 let before_bytes = actor.current_pdf_bytes()?;
-                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
-                    |doc: &mut dyn PdfEngineDocument| {
-                        doc.replace_pdf_bytes(previous_bytes.clone())?;
-                        Ok(previous_bytes.clone())
-                    },
-                )?;
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.replace_pdf_bytes(previous_bytes.clone())?;
+                    Ok(previous_bytes.clone())
+                })?;
                 let forward = TransactionCommand::RestorePages { previous_bytes };
                 let inverse = TransactionCommand::RestorePages {
                     previous_bytes: before_bytes,

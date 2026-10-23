@@ -889,6 +889,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -930,6 +938,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_delete_pages(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_delete_pages_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
@@ -937,6 +947,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_text_language(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
 ): Short
@@ -1032,6 +1044,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_reorder_pages(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_reorder_pages_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_report_power_state(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_resolve_page_navigation(
@@ -1081,6 +1095,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_transaction_history(
 fun uniffi_vocument_ffi_checksum_func_document_core_undo(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_warp_perspective(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_workbench_preflight(
 ): Short
 fun ffi_vocument_ffi_uniffi_contract_version(
 ): Int
@@ -1153,6 +1169,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette(uniffi_out_
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_delete_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_delete_pages_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1160,6 +1178,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: Rus
 fun uniffi_vocument_ffi_fn_func_document_core_detect_text_language(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1255,6 +1275,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_render_visible_tile(`sessionId`: R
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_reorder_pages(`sessionId`: RustBuffer.ByValue,`order`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_reorder_pages_with_options(`sessionId`: RustBuffer.ByValue,`order`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_report_power_state(`state`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_resolve_page_navigation(`sessionId`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1304,6 +1326,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_transaction_history(`sessionId`: R
 fun uniffi_vocument_ffi_fn_func_document_core_undo(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_warp_perspective(`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`targetAspectRatio`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_workbench_preflight(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_vocument_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1470,6 +1494,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_delete_pages() != 20362.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_delete_pages_with_options() != 18219.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1480,6 +1507,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_duplicate_page() != 35462.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838.toShort()) {
@@ -1620,7 +1650,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 14058.toShort()) {
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 59040.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_reorder_pages_with_options() != 9528.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950.toShort()) {
@@ -1696,6 +1729,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_warp_perspective() != 55445.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_workbench_preflight() != 55582.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -3305,6 +3341,112 @@ public object FfiConverterTypeFfiPageWord: FfiConverterRustBuffer<FfiPageWord> {
     override fun write(value: FfiPageWord, buf: ByteBuffer) {
             FfiConverterString.write(value.`text`, buf)
             FfiConverterTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+    }
+}
+
+
+
+/**
+ * Execution options for Page Workbench operations (`M3`, `ADR-0019`).
+ */
+data class FfiPageWorkbenchOptions (
+    /**
+     * When false (default), page mutations are strictly rejected if active digital signatures exist.
+     * When true, the mutation proceeds and existing digital signatures are explicitly marked as invalidated.
+     */
+    var `allowSignatureInvalidation`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageWorkbenchOptions: FfiConverterRustBuffer<FfiPageWorkbenchOptions> {
+    override fun read(buf: ByteBuffer): FfiPageWorkbenchOptions {
+        return FfiPageWorkbenchOptions(
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageWorkbenchOptions) = (
+            FfiConverterBoolean.allocationSize(value.`allowSignatureInvalidation`)
+    )
+
+    override fun write(value: FfiPageWorkbenchOptions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`allowSignatureInvalidation`, buf)
+    }
+}
+
+
+
+/**
+ * Structural preflight report auditing invariants before Page Workbench mutations (`M3.0`, `ADR-0019`).
+ */
+data class FfiPageWorkbenchPreflightReport (
+    var `isSigned`: kotlin.Boolean, 
+    var `signatureCount`: kotlin.UInt, 
+    var `signatureFieldNames`: List<kotlin.String>, 
+    var `hasAcroform`: kotlin.Boolean, 
+    var `formFieldCount`: kotlin.UInt, 
+    var `hasOutlines`: kotlin.Boolean, 
+    var `hasPageLabels`: kotlin.Boolean, 
+    var `hasTaggedPdf`: kotlin.Boolean, 
+    var `isEncrypted`: kotlin.Boolean, 
+    var `allowsAssembly`: kotlin.Boolean, 
+    var `warnings`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageWorkbenchPreflightReport: FfiConverterRustBuffer<FfiPageWorkbenchPreflightReport> {
+    override fun read(buf: ByteBuffer): FfiPageWorkbenchPreflightReport {
+        return FfiPageWorkbenchPreflightReport(
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageWorkbenchPreflightReport) = (
+            FfiConverterBoolean.allocationSize(value.`isSigned`) +
+            FfiConverterUInt.allocationSize(value.`signatureCount`) +
+            FfiConverterSequenceString.allocationSize(value.`signatureFieldNames`) +
+            FfiConverterBoolean.allocationSize(value.`hasAcroform`) +
+            FfiConverterUInt.allocationSize(value.`formFieldCount`) +
+            FfiConverterBoolean.allocationSize(value.`hasOutlines`) +
+            FfiConverterBoolean.allocationSize(value.`hasPageLabels`) +
+            FfiConverterBoolean.allocationSize(value.`hasTaggedPdf`) +
+            FfiConverterBoolean.allocationSize(value.`isEncrypted`) +
+            FfiConverterBoolean.allocationSize(value.`allowsAssembly`) +
+            FfiConverterSequenceString.allocationSize(value.`warnings`)
+    )
+
+    override fun write(value: FfiPageWorkbenchPreflightReport, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`isSigned`, buf)
+            FfiConverterUInt.write(value.`signatureCount`, buf)
+            FfiConverterSequenceString.write(value.`signatureFieldNames`, buf)
+            FfiConverterBoolean.write(value.`hasAcroform`, buf)
+            FfiConverterUInt.write(value.`formFieldCount`, buf)
+            FfiConverterBoolean.write(value.`hasOutlines`, buf)
+            FfiConverterBoolean.write(value.`hasPageLabels`, buf)
+            FfiConverterBoolean.write(value.`hasTaggedPdf`, buf)
+            FfiConverterBoolean.write(value.`isEncrypted`, buf)
+            FfiConverterBoolean.write(value.`allowsAssembly`, buf)
+            FfiConverterSequenceString.write(value.`warnings`, buf)
     }
 }
 
@@ -5343,6 +5485,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    class OperationBlockedBySignature(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class ImagingFailure(
         
         val `details`: kotlin.String
@@ -5416,10 +5566,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             14 -> DocumentCoreException.RecoveryFailure(
                 FfiConverterString.read(buf),
                 )
-            15 -> DocumentCoreException.ImagingFailure(
+            15 -> DocumentCoreException.OperationBlockedBySignature(
                 FfiConverterString.read(buf),
                 )
-            16 -> DocumentCoreException.InternalFailure(
+            16 -> DocumentCoreException.ImagingFailure(
+                FfiConverterString.read(buf),
+                )
+            17 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -5494,6 +5647,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.RecoveryFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.OperationBlockedBySignature -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -5583,13 +5741,18 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.ImagingFailure -> {
+            is DocumentCoreException.OperationBlockedBySignature -> {
                 buf.putInt(15)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.ImagingFailure -> {
                 buf.putInt(16)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(17)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -7391,6 +7554,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Deletes the specified `page_indices` with explicit signature invalidation options (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDeletePagesWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_delete_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreDeskewFrame`(`frame`: FfiScanFrame): FfiDeskewResult {
@@ -7436,6 +7612,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_duplicate_page(
         FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Duplicates the page at `page_index` in `session_id` with explicit signature options (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDuplicatePageWithOptions`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
 }
     )
     }
@@ -8090,12 +8279,26 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
 
         /**
          * Reorders the pages of `session_id` according to `order` (0-indexed permutation) (`M3`).
+         * Refuses if active digital signatures exist unless explicit options permit invalidation.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreReorderPages`(`sessionId`: kotlin.String, `order`: List<kotlin.UInt>): FfiTransactionRecord {
             return FfiConverterTypeFfiTransactionRecord.lift(
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_reorder_pages(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`order`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Reorders the pages of `session_id` with explicit signature invalidation options (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreReorderPagesWithOptions`(`sessionId`: kotlin.String, `order`: List<kotlin.UInt>, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_reorder_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`order`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
 }
     )
     }
@@ -8428,6 +8631,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_warp_perspective(
         FfiConverterTypeFfiScanFrame.lower(`frame`),FfiConverterTypeFfiQuadCorners.lower(`corners`),FfiConverterOptionalFloat.lower(`targetAspectRatio`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Audits structural invariants and digital signatures before Page Workbench operations (`M3.0`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreWorkbenchPreflight`(`sessionId`: kotlin.String): FfiPageWorkbenchPreflightReport {
+            return FfiConverterTypeFfiPageWorkbenchPreflightReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_workbench_preflight(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

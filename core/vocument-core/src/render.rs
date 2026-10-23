@@ -28,6 +28,8 @@ use thiserror::Error;
 pub enum RenderPipelineError {
     #[error(transparent)]
     PdfEngine(#[from] PdfEngineError),
+    #[error(transparent)]
+    Workbench(#[from] crate::workbench::WorkbenchError),
     #[error("document actor lock poisoned")]
     ActorPoisoned,
     #[error("display-list cache lock poisoned")]
@@ -206,6 +208,17 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(guard.extract_pages(page_indices)?)
+    }
+
+    /// Performs structural preflight inspection before Page Workbench operations (`ROADMAP.md` M3, `ADR-0019`).
+    pub fn workbench_preflight(
+        &self,
+    ) -> Result<crate::workbench::PageWorkbenchPreflightReport, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(crate::workbench::audit_workbench_preflight(guard.as_ref())?)
     }
 
     /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:

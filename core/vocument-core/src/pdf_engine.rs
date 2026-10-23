@@ -305,6 +305,10 @@ pub enum PdfEngineError {
         page_index: u32,
         annotation_id: String,
     },
+    #[error(
+        "operation blocked: document contains digital signatures; explicit confirmation required: {details}"
+    )]
+    OperationBlockedBySignature { details: String },
     #[error("PDF engine internal failure: {details}")]
     EngineFailure { details: String },
 }
@@ -520,7 +524,16 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// Reorders the pages of the document according to `order` (`M3`).
     /// Must only be invoked through `TransactionManager`.
     fn reorder_pages(&mut self, order: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
-        let _ = order;
+        self.reorder_pages_ext(order, false)
+    }
+
+    /// Reorders the pages with explicit signature invalidation control (`M3`).
+    fn reorder_pages_ext(
+        &mut self,
+        order: &[u32],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (order, allow_signature_invalidation);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support reordering pages".to_owned(),
         })
@@ -529,7 +542,16 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// Duplicates `page_index` (0-indexed), inserting the copy immediately after it (`M3`).
     /// Must only be invoked through `TransactionManager`.
     fn duplicate_page(&mut self, page_index: u32) -> Result<Vec<u8>, PdfEngineError> {
-        let _ = page_index;
+        self.duplicate_page_ext(page_index, false)
+    }
+
+    /// Duplicates `page_index` with explicit signature invalidation control (`M3`).
+    fn duplicate_page_ext(
+        &mut self,
+        page_index: u32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_index, allow_signature_invalidation);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support duplicating pages".to_owned(),
         })
@@ -538,7 +560,16 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
     /// Deletes the specified `page_indices` from the document (`M3`).
     /// Must only be invoked through `TransactionManager`.
     fn delete_pages(&mut self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
-        let _ = page_indices;
+        self.delete_pages_ext(page_indices, false)
+    }
+
+    /// Deletes the specified `page_indices` with explicit signature invalidation control (`M3`).
+    fn delete_pages_ext(
+        &mut self,
+        page_indices: &[u32],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, allow_signature_invalidation);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support deleting pages".to_owned(),
         })

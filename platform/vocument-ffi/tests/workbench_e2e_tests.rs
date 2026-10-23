@@ -6,8 +6,10 @@
 use vocument_ffi::mutation_dto::{document_core_redo, document_core_undo};
 use vocument_ffi::session_dto::{FfiBrokeredFileDescriptor, FfiFileAccessOrigin};
 use vocument_ffi::workbench_dto::{
-    document_core_delete_pages, document_core_duplicate_page, document_core_extract_pages,
-    document_core_reorder_pages,
+    FfiPageWorkbenchOptions, document_core_delete_pages, document_core_delete_pages_with_options,
+    document_core_duplicate_page, document_core_duplicate_page_with_options,
+    document_core_extract_pages, document_core_reorder_pages,
+    document_core_reorder_pages_with_options, document_core_workbench_preflight,
 };
 use vocument_ffi::{document_core_get_session_snapshot, document_core_open_brokered_file};
 
@@ -144,4 +146,148 @@ fn test_ffi_workbench_extract_pages() {
     assert_eq!(src_snap.pdf_summary.page_count, 2);
     assert_eq!(src_snap.revision, 1);
     assert!(!src_snap.is_dirty);
+}
+
+fn build_signed_test_pdf() -> Vec<u8> {
+    const CONTENTS_LEN: usize = 40;
+    let contents = "BT /F1 12 Tf 72 740 Td (Signed Invoice) Tj ET\n";
+    let build = |byte_range: &str| -> Vec<u8> {
+        let objects: Vec<String> = vec![
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [6 0 R] >> >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>".to_owned(),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+            format!("<< /Length {} >>\nstream\n{contents}endstream", contents.len()),
+            "<< /Type /Annot /Subtype /Widget /FT /Sig /T (SignatureField) /V 7 0 R /Rect [72 100 320 140] /P 3 0 R >>".to_owned(),
+            format!("<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /Name (Dr. Weber) /M (D:20260131120000Z) /Reason (Approval) /ByteRange {byte_range} /Contents <{}> >>", "0".repeat(CONTENTS_LEN)),
+        ];
+        let mut out = Vec::new();
+        out.extend_from_slice(b"%PDF-1.7\n");
+        let mut offsets = Vec::with_capacity(objects.len());
+        for (index, object) in objects.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+        }
+        let xref_offset = out.len();
+        out.extend_from_slice(
+            format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+        );
+        for offset in &offsets {
+            out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(
+            format!(
+                "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+                objects.len() + 1
+            )
+            .as_bytes(),
+        );
+        out
+    };
+
+    let probe = build("[0000000000 0000000000 0000000000 0000000000]");
+    let marker = b"/Contents <";
+    let contents_start = probe
+        .windows(marker.len())
+        .position(|w| w == marker)
+        .expect("marker")
+        + marker.len();
+    let file_size = probe.len();
+    let byte_range = format!(
+        "[{:010} {:010} {:010} {:010}]",
+        0,
+        contents_start,
+        contents_start + CONTENTS_LEN,
+        file_size - (contents_start + CONTENTS_LEN)
+    );
+    build(&byte_range)
+}
+
+#[test]
+fn test_ffi_workbench_preflight_and_fail_closed_digital_signature_protection() {
+    let signed_bytes = build_signed_test_pdf();
+    let descriptor = FfiBrokeredFileDescriptor {
+        source_token: "workbench://signed.pdf".to_owned(),
+        display_name: "signed.pdf".to_owned(),
+        access_origin: FfiFileAccessOrigin::MacOsScopedUrl,
+        os_file_id: Some("wb-e2e-signed-1".to_owned()),
+        modified_unix_ms: Some(1_700_000_000_000),
+        bytes: signed_bytes,
+    };
+    let snap = document_core_open_brokered_file(descriptor).expect("open signed file");
+    let session_id = snap.session_id;
+
+    // 1. Mandatory Preflight Check
+    let preflight =
+        document_core_workbench_preflight(session_id.clone()).expect("preflight report");
+    assert!(preflight.is_signed);
+    assert_eq!(preflight.signature_count, 1);
+    assert_eq!(preflight.signature_field_names, vec!["SignatureField"]);
+    assert!(!preflight.warnings.is_empty());
+    assert!(preflight.warnings[0].contains("digital signature"));
+
+    // 2. Default mutations fail closed
+    let reorder_err = document_core_reorder_pages(session_id.clone(), vec![0]);
+    assert!(reorder_err.is_err());
+
+    let dup_err = document_core_duplicate_page(session_id.clone(), 0);
+    assert!(dup_err.is_err());
+
+    let del_err = document_core_delete_pages(session_id.clone(), vec![0]);
+    assert!(del_err.is_err());
+
+    // Document remains unmutated at revision 1
+    let snap_after = document_core_get_session_snapshot(session_id.clone()).expect("snap");
+    assert_eq!(snap_after.revision, 1);
+    assert!(!snap_after.is_dirty);
+
+    // 3. Mutation with explicit signature invalidation succeeds
+    let options = FfiPageWorkbenchOptions {
+        allow_signature_invalidation: true,
+    };
+    let dup_tx = document_core_duplicate_page_with_options(session_id.clone(), 0, options)
+        .expect("duplicate with signature invalidation succeeds");
+    assert_eq!(dup_tx.description, "Duplicate page #1");
+
+    let snap_dup = document_core_get_session_snapshot(session_id.clone()).expect("snap");
+    assert_eq!(snap_dup.pdf_summary.page_count, 2);
+    assert_eq!(snap_dup.revision, 2);
+    assert!(snap_dup.is_dirty);
+
+    // Reorder with options succeeds
+    let reorder_tx =
+        document_core_reorder_pages_with_options(session_id.clone(), vec![1, 0], options)
+            .expect("reorder with options succeeds");
+    assert_eq!(reorder_tx.description, "Reorder 2 pages");
+
+    // Delete with options succeeds
+    let del_tx = document_core_delete_pages_with_options(session_id.clone(), vec![1], options)
+        .expect("delete with options succeeds");
+    assert_eq!(del_tx.description, "Delete 1 page(s)");
+
+    // 4. Undo / Redo support across all mutations
+    // Undo #1: undo Delete (restores 2 pages)
+    document_core_undo(session_id.clone()).expect("undo delete");
+    let snap_u1 = document_core_get_session_snapshot(session_id.clone()).expect("snap");
+    assert_eq!(snap_u1.pdf_summary.page_count, 2);
+    assert!(snap_u1.is_dirty);
+
+    // Undo #2: undo Reorder (page count remains 2)
+    document_core_undo(session_id.clone()).expect("undo reorder");
+    let snap_u2 = document_core_get_session_snapshot(session_id.clone()).expect("snap");
+    assert_eq!(snap_u2.pdf_summary.page_count, 2);
+    assert!(snap_u2.is_dirty);
+
+    // Undo #3: undo Duplicate (restores initial 1 page, rev 1, not dirty)
+    document_core_undo(session_id.clone()).expect("undo duplicate");
+    let snap_u3 = document_core_get_session_snapshot(session_id.clone()).expect("snap");
+    assert_eq!(snap_u3.pdf_summary.page_count, 1);
+    assert_eq!(snap_u3.revision, 1);
+    assert!(!snap_u3.is_dirty);
+
+    // Redo #1: re-applies duplicate (2 pages)
+    document_core_redo(session_id.clone()).expect("redo duplicate");
+    let snap_r1 = document_core_get_session_snapshot(session_id).expect("snap");
+    assert_eq!(snap_r1.pdf_summary.page_count, 2);
+    assert!(snap_r1.is_dirty);
 }

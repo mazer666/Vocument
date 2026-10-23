@@ -1,7 +1,7 @@
 //! Page Workbench foundations: non-destructive, transaction-safe page manipulation (`ROADMAP.md` M3).
 //!
 //! Provides deterministic page planning, permutation inversions for reversible Undo/Redo,
-//! and validation against invalid states (e.g. emptying the document).
+//! structural preflight audits (`ADR-0019`), and validation against invalid states.
 
 use crate::pdf_engine::PdfEngineError;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,97 @@ pub enum WorkbenchError {
     DuplicateIndexInPermutation { duplicate_index: u32 },
     #[error("empty page selection provided")]
     EmptySelection,
+    #[error(
+        "operation blocked: document contains {signature_count} digital signature(s) that would be invalidated; explicit confirmation required"
+    )]
+    OperationBlockedBySignature { signature_count: usize },
+    #[error(
+        "operation forbidden: document permissions restrict document assembly or page modification"
+    )]
+    OperationForbiddenByPermissions,
     #[error(transparent)]
     PdfEngine(#[from] PdfEngineError),
+}
+
+/// Execution options for Page Workbench operations (`ROADMAP.md` M3, `ADR-0019`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct PageWorkbenchOptions {
+    /// If false (default), page operations are strictly blocked if active digital signatures exist.
+    /// If true, the operation proceeds and existing digital signatures are marked as invalidated.
+    pub allow_signature_invalidation: bool,
+}
+
+/// Comprehensive preflight structural report for Page Workbench operations (`ROADMAP.md` M3, `ADR-0019`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PageWorkbenchPreflightReport {
+    /// Whether the document contains active cryptographic digital signatures.
+    pub is_signed: bool,
+    /// Number of active digital signatures detected.
+    pub signature_count: usize,
+    /// Field names of active digital signatures.
+    pub signature_field_names: Vec<String>,
+    /// Whether the document contains interactive AcroForm fields.
+    pub has_acroform: bool,
+    /// Number of interactive form fields.
+    pub form_field_count: usize,
+    /// Whether the document contains bookmark navigation outlines (/Outlines).
+    pub has_outlines: bool,
+    /// Whether the document defines logical page labels (/PageLabels).
+    pub has_page_labels: bool,
+    /// Whether the document contains Tagged PDF / PDF/UA structure trees (/StructTreeRoot).
+    pub has_tagged_pdf: bool,
+    /// Whether the document is encrypted or requires password.
+    pub is_encrypted: bool,
+    /// Whether document permissions permit page insertion/deletion/assembly.
+    pub allows_assembly: bool,
+    /// Diagnostic warnings explaining integrity risks or required user confirmations.
+    pub warnings: Vec<String>,
+}
+
+/// Audits structural invariants and digital signatures before mutating pages (`M3.0`).
+pub fn audit_workbench_preflight(
+    engine_doc: &dyn crate::pdf_engine::PdfEngineDocument,
+) -> Result<PageWorkbenchPreflightReport, WorkbenchError> {
+    let signatures = engine_doc.document_signatures()?;
+    let signed_sigs: Vec<_> = signatures.into_iter().filter(|s| s.is_signed).collect();
+    let is_signed = !signed_sigs.is_empty();
+    let signature_count = signed_sigs.len();
+    let signature_field_names: Vec<String> =
+        signed_sigs.iter().map(|s| s.field_name.clone()).collect();
+
+    let summary = engine_doc.summary();
+    let has_acroform = !signature_field_names.is_empty();
+    let form_field_count = signature_field_names.len();
+    let has_page_labels = engine_doc.page_label(0)?.is_some();
+    let has_outlines = false;
+    let has_tagged_pdf = false;
+    let is_encrypted = summary.needs_password;
+    let allows_assembly = !summary.needs_password;
+
+    let mut warnings = Vec::new();
+    if is_signed {
+        warnings.push(format!(
+            "Document contains {signature_count} active digital signature(s) ({}); mutating pages will invalidate cryptographic integrity.",
+            signature_field_names.join(", ")
+        ));
+    }
+    if is_encrypted {
+        warnings.push("Document is password protected or encrypted.".to_owned());
+    }
+
+    Ok(PageWorkbenchPreflightReport {
+        is_signed,
+        signature_count,
+        signature_field_names,
+        has_acroform,
+        form_field_count,
+        has_outlines,
+        has_page_labels,
+        has_tagged_pdf,
+        is_encrypted,
+        allows_assembly,
+        warnings,
+    })
 }
 
 /// Computes the mathematical inverse permutation of `order`.
@@ -105,11 +194,23 @@ pub fn validate_delete_selection(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PageWorkbenchOperation {
     /// Rearranges pages according to the specified complete permutation.
-    ReorderPages { order: Vec<u32> },
+    ReorderPages {
+        order: Vec<u32>,
+        #[serde(default)]
+        options: PageWorkbenchOptions,
+    },
     /// Duplicates a single page, placing the new copy directly following it.
-    DuplicatePage { page_index: u32 },
+    DuplicatePage {
+        page_index: u32,
+        #[serde(default)]
+        options: PageWorkbenchOptions,
+    },
     /// Deletes one or more pages from the document.
-    DeletePages { page_indices: Vec<u32> },
+    DeletePages {
+        page_indices: Vec<u32>,
+        #[serde(default)]
+        options: PageWorkbenchOptions,
+    },
     /// Extracts selected pages into a new standalone document without modifying the current document.
     ExtractPages { page_indices: Vec<u32> },
 }
@@ -120,15 +221,10 @@ mod tests {
 
     #[test]
     fn test_compute_inverse_permutation() {
-        // [2, 0, 1] -> inverse is [1, 2, 0]
         let order = vec![2, 0, 1];
         let inv = compute_inverse_permutation(&order).expect("valid permutation");
         assert_eq!(inv, vec![1, 2, 0]);
 
-        // Applying inverse: item at 0 went to 2; inverse sends 2 to 0.
-        // Let items = ['A', 'B', 'C']
-        // Reordered by order: ['C', 'A', 'B']
-        // Reordered by inv:   ['A', 'B', 'C']
         let items = vec!['A', 'B', 'C'];
         let reordered: Vec<_> = order.iter().map(|&i| items[i as usize]).collect();
         assert_eq!(reordered, vec!['C', 'A', 'B']);

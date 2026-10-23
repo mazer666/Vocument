@@ -3230,6 +3230,224 @@ public func FfiConverterTypeFfiPageWord_lower(_ value: FfiPageWord) -> RustBuffe
 
 
 /**
+ * Execution options for Page Workbench operations (`M3`, `ADR-0019`).
+ */
+public struct FfiPageWorkbenchOptions {
+    /**
+     * When false (default), page mutations are strictly rejected if active digital signatures exist.
+     * When true, the mutation proceeds and existing digital signatures are explicitly marked as invalidated.
+     */
+    public var allowSignatureInvalidation: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * When false (default), page mutations are strictly rejected if active digital signatures exist.
+         * When true, the mutation proceeds and existing digital signatures are explicitly marked as invalidated.
+         */allowSignatureInvalidation: Bool) {
+        self.allowSignatureInvalidation = allowSignatureInvalidation
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageWorkbenchOptions: Sendable {}
+#endif
+
+
+extension FfiPageWorkbenchOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiPageWorkbenchOptions, rhs: FfiPageWorkbenchOptions) -> Bool {
+        if lhs.allowSignatureInvalidation != rhs.allowSignatureInvalidation {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(allowSignatureInvalidation)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageWorkbenchOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageWorkbenchOptions {
+        return
+            try FfiPageWorkbenchOptions(
+                allowSignatureInvalidation: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageWorkbenchOptions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.allowSignatureInvalidation, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWorkbenchOptions_lift(_ buf: RustBuffer) throws -> FfiPageWorkbenchOptions {
+    return try FfiConverterTypeFfiPageWorkbenchOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWorkbenchOptions_lower(_ value: FfiPageWorkbenchOptions) -> RustBuffer {
+    return FfiConverterTypeFfiPageWorkbenchOptions.lower(value)
+}
+
+
+/**
+ * Structural preflight report auditing invariants before Page Workbench mutations (`M3.0`, `ADR-0019`).
+ */
+public struct FfiPageWorkbenchPreflightReport {
+    public var isSigned: Bool
+    public var signatureCount: UInt32
+    public var signatureFieldNames: [String]
+    public var hasAcroform: Bool
+    public var formFieldCount: UInt32
+    public var hasOutlines: Bool
+    public var hasPageLabels: Bool
+    public var hasTaggedPdf: Bool
+    public var isEncrypted: Bool
+    public var allowsAssembly: Bool
+    public var warnings: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(isSigned: Bool, signatureCount: UInt32, signatureFieldNames: [String], hasAcroform: Bool, formFieldCount: UInt32, hasOutlines: Bool, hasPageLabels: Bool, hasTaggedPdf: Bool, isEncrypted: Bool, allowsAssembly: Bool, warnings: [String]) {
+        self.isSigned = isSigned
+        self.signatureCount = signatureCount
+        self.signatureFieldNames = signatureFieldNames
+        self.hasAcroform = hasAcroform
+        self.formFieldCount = formFieldCount
+        self.hasOutlines = hasOutlines
+        self.hasPageLabels = hasPageLabels
+        self.hasTaggedPdf = hasTaggedPdf
+        self.isEncrypted = isEncrypted
+        self.allowsAssembly = allowsAssembly
+        self.warnings = warnings
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageWorkbenchPreflightReport: Sendable {}
+#endif
+
+
+extension FfiPageWorkbenchPreflightReport: Equatable, Hashable {
+    public static func ==(lhs: FfiPageWorkbenchPreflightReport, rhs: FfiPageWorkbenchPreflightReport) -> Bool {
+        if lhs.isSigned != rhs.isSigned {
+            return false
+        }
+        if lhs.signatureCount != rhs.signatureCount {
+            return false
+        }
+        if lhs.signatureFieldNames != rhs.signatureFieldNames {
+            return false
+        }
+        if lhs.hasAcroform != rhs.hasAcroform {
+            return false
+        }
+        if lhs.formFieldCount != rhs.formFieldCount {
+            return false
+        }
+        if lhs.hasOutlines != rhs.hasOutlines {
+            return false
+        }
+        if lhs.hasPageLabels != rhs.hasPageLabels {
+            return false
+        }
+        if lhs.hasTaggedPdf != rhs.hasTaggedPdf {
+            return false
+        }
+        if lhs.isEncrypted != rhs.isEncrypted {
+            return false
+        }
+        if lhs.allowsAssembly != rhs.allowsAssembly {
+            return false
+        }
+        if lhs.warnings != rhs.warnings {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(isSigned)
+        hasher.combine(signatureCount)
+        hasher.combine(signatureFieldNames)
+        hasher.combine(hasAcroform)
+        hasher.combine(formFieldCount)
+        hasher.combine(hasOutlines)
+        hasher.combine(hasPageLabels)
+        hasher.combine(hasTaggedPdf)
+        hasher.combine(isEncrypted)
+        hasher.combine(allowsAssembly)
+        hasher.combine(warnings)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageWorkbenchPreflightReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageWorkbenchPreflightReport {
+        return
+            try FfiPageWorkbenchPreflightReport(
+                isSigned: FfiConverterBool.read(from: &buf), 
+                signatureCount: FfiConverterUInt32.read(from: &buf), 
+                signatureFieldNames: FfiConverterSequenceString.read(from: &buf), 
+                hasAcroform: FfiConverterBool.read(from: &buf), 
+                formFieldCount: FfiConverterUInt32.read(from: &buf), 
+                hasOutlines: FfiConverterBool.read(from: &buf), 
+                hasPageLabels: FfiConverterBool.read(from: &buf), 
+                hasTaggedPdf: FfiConverterBool.read(from: &buf), 
+                isEncrypted: FfiConverterBool.read(from: &buf), 
+                allowsAssembly: FfiConverterBool.read(from: &buf), 
+                warnings: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageWorkbenchPreflightReport, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.isSigned, into: &buf)
+        FfiConverterUInt32.write(value.signatureCount, into: &buf)
+        FfiConverterSequenceString.write(value.signatureFieldNames, into: &buf)
+        FfiConverterBool.write(value.hasAcroform, into: &buf)
+        FfiConverterUInt32.write(value.formFieldCount, into: &buf)
+        FfiConverterBool.write(value.hasOutlines, into: &buf)
+        FfiConverterBool.write(value.hasPageLabels, into: &buf)
+        FfiConverterBool.write(value.hasTaggedPdf, into: &buf)
+        FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterBool.write(value.allowsAssembly, into: &buf)
+        FfiConverterSequenceString.write(value.warnings, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWorkbenchPreflightReport_lift(_ buf: RustBuffer) throws -> FfiPageWorkbenchPreflightReport {
+    return try FfiConverterTypeFfiPageWorkbenchPreflightReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageWorkbenchPreflightReport_lower(_ value: FfiPageWorkbenchPreflightReport) -> RustBuffer {
+    return FfiConverterTypeFfiPageWorkbenchPreflightReport.lower(value)
+}
+
+
+/**
  * One link or action of a document (`LINKSEC-001`).
  */
 public struct FfiPdfActionInfo {
@@ -7147,6 +7365,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case RecoveryFailure(details: String
     )
+    case OperationBlockedBySignature(details: String
+    )
     case ImagingFailure(details: String
     )
     case InternalFailure(details: String
@@ -7208,10 +7428,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 14: return .RecoveryFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 15: return .ImagingFailure(
+        case 15: return .OperationBlockedBySignature(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 16: return .InternalFailure(
+        case 16: return .ImagingFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 17: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -7296,13 +7519,18 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .ImagingFailure(details):
+        case let .OperationBlockedBySignature(details):
             writeInt(&buf, Int32(15))
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .ImagingFailure(details):
             writeInt(&buf, Int32(16))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(17))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -9295,6 +9523,18 @@ public func documentCoreDeletePages(sessionId: String, pageIndices: [UInt32])thr
 })
 }
 /**
+ * Deletes the specified `page_indices` with explicit signature invalidation options (`M3`).
+ */
+public func documentCoreDeletePagesWithOptions(sessionId: String, pageIndices: [UInt32], options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_delete_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
  * Estimates skew angle and straightens document content baselines (`SCAN-004`, `SCAN-005`).
  */
 public func documentCoreDeskewFrame(frame: FfiScanFrame)throws  -> FfiDeskewResult  {
@@ -9332,6 +9572,18 @@ public func documentCoreDuplicatePage(sessionId: String, pageIndex: UInt32)throw
     uniffi_vocument_ffi_fn_func_document_core_duplicate_page(
         FfiConverterString.lower(sessionId),
         FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Duplicates the page at `page_index` in `session_id` with explicit signature options (`M3`).
+ */
+public func documentCoreDuplicatePageWithOptions(sessionId: String, pageIndex: UInt32, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
     )
 })
 }
@@ -9878,12 +10130,25 @@ public func documentCoreRenderVisibleTile(sessionId: String, request: FfiTileRen
 }
 /**
  * Reorders the pages of `session_id` according to `order` (0-indexed permutation) (`M3`).
+ * Refuses if active digital signatures exist unless explicit options permit invalidation.
  */
 public func documentCoreReorderPages(sessionId: String, order: [UInt32])throws  -> FfiTransactionRecord  {
     return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_reorder_pages(
         FfiConverterString.lower(sessionId),
         FfiConverterSequenceUInt32.lower(order),$0
+    )
+})
+}
+/**
+ * Reorders the pages of `session_id` with explicit signature invalidation options (`M3`).
+ */
+public func documentCoreReorderPagesWithOptions(sessionId: String, order: [UInt32], options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_reorder_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(order),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
     )
 })
 }
@@ -10157,6 +10422,16 @@ public func documentCoreWarpPerspective(frame: FfiScanFrame, corners: FfiQuadCor
     )
 })
 }
+/**
+ * Audits structural invariants and digital signatures before Page Workbench operations (`M3.0`).
+ */
+public func documentCoreWorkbenchPreflight(sessionId: String)throws  -> FfiPageWorkbenchPreflightReport  {
+    return try  FfiConverterTypeFfiPageWorkbenchPreflightReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_workbench_preflight(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -10212,6 +10487,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_delete_pages() != 20362) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_delete_pages_with_options() != 18219) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10222,6 +10500,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_duplicate_page() != 35462) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838) {
@@ -10362,7 +10643,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_render_visible_tile() != 45494) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 14058) {
+    if (uniffi_vocument_ffi_checksum_func_document_core_reorder_pages() != 59040) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_reorder_pages_with_options() != 9528) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_report_power_state() != 45950) {
@@ -10438,6 +10722,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_warp_perspective() != 55445) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_workbench_preflight() != 55582) {
         return InitializationResult.apiChecksumMismatch
     }
 
