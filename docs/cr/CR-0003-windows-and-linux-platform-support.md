@@ -80,10 +80,10 @@ The two existing applications are not shared code, and this CR does not merge th
 Each new platform gets its own shell in the idiomatic toolkit of that platform:
 
 - `apps/windows` — C# / .NET 8 with WinUI 3 or WPF, depending on the decision
-  recorded in ADR-0017.
+  recorded in a future ADR upon Track 3 entry (CR-0003).
 - `apps/linux` — either a GTK4 / libadwaita application in Rust, or a
-  Tauri/React shell around the Rust core. The decision is deferred to ADR-0018
-  because it depends on the outcome of track 3.
+  Tauri/React shell around the Rust core. The decision is deferred to a future
+  ADR upon Track 4 entry because it depends on the outcome of track 3.
 
 The shell talks to the same `DocumentCore` UniFFI surface. The FFI surface must not
 grow platform-specific functions; a platform difference is expressed by choosing a
@@ -188,10 +188,10 @@ deliberately **not** decided in this CR:
 
 1. **Windows UI toolkit: WinUI 3 or WPF.** WinUI 3 is the modern stack and aligns
    with the Fluent design language, but it has a heavier deployment story. WPF is
-   mature and has the broadest reach. Decision deferred to ADR-0017.
+   mature and has the broadest reach. Decision deferred to a dedicated ADR upon Track 3 entry.
 2. **Linux UI toolkit: native GTK4/Rust, or a web shell (Tauri).** A native toolkit
    fits the "no cloud dependency, native feel" principle better, but the web shell
-   is significantly cheaper to build. Decision deferred to ADR-0018.
+   is significantly cheaper to build. Decision deferred to a dedicated ADR upon Track 4 entry.
 3. **Distribution channel for Windows.** The Microsoft Store, an MSI/NSIS installer,
    or a portable zip. This depends on the signing and update story, which is not yet
    designed. Decision deferred.

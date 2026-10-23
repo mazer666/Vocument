@@ -7,6 +7,7 @@ project:
   current_submilestone: "M3.0"
   completed_milestones:
     - "M0"
+    - "M1"
     - "M2"
   completed_submilestones:
     - "M0.0"
@@ -121,8 +122,8 @@ architecture:
   shared_core: "Rust"
   macos_ui: "SwiftUI + AppKit"
   android_ui: "Kotlin + Jetpack Compose"
-  windows_ui: "TBD via ADR-0017 (CR-0003)"
-  linux_ui: "TBD via ADR-0018 (CR-0003)"
+  windows_ui: "TBD via future ADR upon Track 3 entry (CR-0003)"
+  linux_ui: "TBD via future ADR upon Track 4 entry (CR-0003)"
   native_bridge: "UniFFI"
   pdf_engine: "MuPDF 1.28.5 via PdfEngine adapter"
   ocr_engine: "Tesseract via OcrProvider"
@@ -137,6 +138,7 @@ milestones:
   M4: "Authoring / FlowDocument / .pdoc / DOCX / ODT"
   M5: "Windows Shell"
   M6: "Linux Shell"
+  M7: "Optional local interfaces (MCP)"
 
 documentation:
   requirements_version: "0.1"

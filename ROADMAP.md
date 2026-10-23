@@ -844,7 +844,7 @@ These are intentionally not scheduled before core maturity:
 Deliver:
 
 - `apps/windows` application shell on the idiomatic Windows toolkit
-  (decision pending in ADR-0017)
+  (decision pending in future ADR upon Track 3 entry, `CR-0003`)
 - `PlatformFileBroker` implementation on top of the Common Item Dialog
 - `PlatformSettingsStore` implementation on top of the Windows user settings store
 - `PlatformAppLifecycle` implementation for suspend/resume and shutdown
@@ -861,7 +861,7 @@ Deliver:
 
 Deliver:
 
-- `apps/linux` application shell (decision pending in ADR-0018)
+- `apps/linux` application shell (decision pending in future ADR upon Track 4 entry, `CR-0003`)
 - `PlatformFileBroker` implementation on top of the XDG file chooser portal
 - `PlatformSettingsStore` implementation on top of the XDG configuration directory
 - `PlatformFontProvider` implementation, which the `.pdoc` authoring milestone (M4)

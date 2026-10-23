@@ -30,30 +30,36 @@ This ADR establishes the exact technical scope, guarantees, and explicit non-gua
 
 ## Architectural Decisions
 
-### 1. What `SAN-001` Guarantees (Guaranteed Removals)
+### 1. What `SAN-001` Guarantees (Implemented Native Capabilities)
 
-When invoked with full options (`PdfSanitizeOptions::default()`), Vocument's sanitization engine (`vocument_mupdf_sanitize_pdf`) guarantees the physical deletion of the following PDF objects and dictionaries:
+When invoked with full options (`PdfSanitizeOptions::default()`), Vocument's sanitization engine (`vocument_mupdf_sanitize_document` in `mupdf_sanitize_bridge.c`) executes the following operations:
 
 1. **Document-Level Metadata:**
-   - Deletes `/Info` dictionary entries (`/Title`, `/Author`, `/Subject`, `/Keywords`, `/Creator`, `/Producer`, `/CreationDate`, `/ModDate`, and any custom metadata keys).
-   - Deletes the XML metadata stream (`/Metadata` in document catalog).
+   - Deletes `/Info` dictionary in the PDF trailer (`/Title`, `/Author`, `/Subject`, `/Keywords`, `/Creator`, `/Producer`, `/CreationDate`, `/ModDate`, and any custom keys).
+   - Deletes the XMP XML metadata stream (`/Metadata` in document catalog and on pages).
    - Deletes private application metadata dictionaries (`/PieceInfo` in catalog and page dictionaries).
 2. **Interactive Form Fields & Data:**
-   - Deletes `/AcroForm` from the document catalog, removing interactive form field values, default appearances, and calculation scripts.
+   - Deletes `/AcroForm` from the document catalog, eliminating form field structures, default appearances, and calculation scripts.
 3. **Document & Page Actions (Executable Scripts):**
    - Deletes `/OpenAction` and Additional Actions (`/AA`) from the document catalog.
-   - Deletes page-level `/AA` dictionaries.
+   - Deletes page-level `/AA` dictionaries across all pages.
    - Deletes `/JavaScript` name tree entries from `/Names`.
 4. **Embedded Files & Attachments:**
-   - Deletes the `/EmbeddedFiles` name tree from `/Names`.
-   - Traverses and drops embedded file streams referenced in file specification dictionaries.
+   - Deletes `/EmbeddedFiles` name tree from `/Names` and `/EmbeddedFiles` from the catalog dictionary.
 5. **Annotations & Review Notes:**
-   - When `remove_annotations` is active, drops all `/Annots` arrays from all page objects.
-   - Deletes all standard markup, highlights, sticky notes, rubber stamps, and popups.
-6. **Object Compaction & Garbage Collection:**
-   - Re-serializes the document using MuPDF's full garbage collection pass (`do_garbage = 2` and xref defragmentation). This ensures that unreferenced historical object revisions (often left by incremental saves) are permanently erased from disk.
+   - When `remove_annotations` is active, drops all `/Annots` arrays from all page objects. This removes all visual markups, highlights, notes, popups, and link annotations.
+   - *Technical Limitation:* If `remove_annotations` is false and `remove_actions` is true, action dictionaries (`/A`) inside individual page annotations (e.g. URI links) are NOT stripped by the current bridge. Fine-grained annotation action scrubbing while preserving non-action markup is planned for M5.
+6. **Unreferenced Object Garbage Collection:**
+   - Serializes the document using MuPDF's unreferenced object collection pass (`opts.do_garbage = 1` in `mupdf_serialize.h`). This ensures that unreferenced objects orphaned by the dictionary deletions are physically excluded from the written PDF byte stream.
 
-### 2. What `SAN-001` Does NOT Guarantee (Explicit Boundaries & Limitations)
+### 2. Planned Hardening Enhancements (Scheduled for M5)
+
+The following refinements are recognized as valuable security improvements and are formally scheduled for M5:
+- **Full Xref Compaction (`opts.do_garbage = 2`):** Defragmenting and renumbering the entire cross-reference table.
+- **Deep Annotation Action Scrubbing:** Parsing individual annotation dictionaries to strip `/A` actions (URI, Launch, GoToR) while preserving non-action annotations.
+- **Stream Content Token Scanning:** Detecting and scrubbing unreferenced or hidden inline image resources.
+
+### 3. What `SAN-001` Does NOT Guarantee (Explicit Boundaries & Limitations)
 
 The following attack vectors and hidden data forms are explicitly outside the scope of `SAN-001`:
 
@@ -68,14 +74,14 @@ The following attack vectors and hidden data forms are explicitly outside the sc
 4. **Content Stream Obfuscation:**
    - Does NOT normalize complex Type 3 font glyph programs or decipher proprietary encrypted streams.
 
-### 3. User Interface Demarcation & Transparency
+### 4. User Interface Demarcation & Transparency
 
 The UI must present `SAN-001` as **"Document Sanitization: Metadata, Attachments, Scripts & Annotations Scrubbing"**, rather than "Complete Hidden Data Elimination".
 The pre-save dialog must provide granular check-boxes for:
 - [x] Clear document metadata and author history
-- [x] Remove embedded attachments and external links
-- [x] Strip interactive form data and scripts
-- [x] Flatten or remove review comments and annotations
+- [x] Remove embedded attachments and external scripts
+- [x] Strip interactive form data and document actions
+- [x] Remove review comments and annotations
 
 ---
 
@@ -85,6 +91,7 @@ The pre-save dialog must provide granular check-boxes for:
 - Transparent, audit-proof security claims backed by unit and interop tests (`sanitize_tests.rs`, `m2_interop_tests.rs`).
 - Guaranteed removal of common accidental data leaks (author name, file paths, hidden draft comments).
 - High execution speed through in-memory MuPDF catalog traversal.
+- Zero overclaimed capabilities, fully complying with `AGENTS.md` and `CR-0002`.
 
 ### Negative / Trade-offs
 - Users expecting optical/visual hidden-text elimination must use explicit visual redaction (`M2.1`) rather than relying solely on `SAN-001`.

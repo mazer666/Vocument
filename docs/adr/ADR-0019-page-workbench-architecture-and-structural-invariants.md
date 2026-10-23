@@ -4,7 +4,7 @@
 - **Date:** 2026-10-23
 - **Author:** Chief Architect, PDF/MuPDF Engineer, QA Lead
 - **Deciders:** ROLE-01 (Product Steward), ROLE-02 (Chief Architect), ROLE-04 (PDF Engineer), ROLE-09 (Security Engineer), ROLE-13 (QA Lead), ROLE-15 (Standards Lead)
-- **Requirement IDs:** `PAGE-001`–`PAGE-005`, `SIG-001`, `ANNOT-001`, `UNDO-001`, `UNDO-002`, `RECOVER-001`, `CODE-001`
+- **Requirement IDs:** `PAGE-001`, `PAGE-002`, `PAGE-003`, `CROP-001`–`CROP-003`, `ROTATE-001`–`ROTATE-003`, `SIG-001`, `ANNOT-001`, `UNDO-001`, `UNDO-002`, `RECOVER-001`, `CODE-001`
 
 ---
 
@@ -77,12 +77,28 @@ All Page Workbench mutations implement `TransactionCommand` with fully determini
 
 ---
 
-### 3. Native Engine Execution via MuPDF Page Grafting
+### 3. Native Engine Execution & Mandatory M3.0 Integrity Gate
 
-In `engines/pdf-mupdf/csrc/mupdf_page_bridge.c`:
-- Utilizes MuPDF's `pdf_graft_page(ctx, dst_doc, dst_page_index, src_doc, src_page_index)` to clone pages across document contexts.
-- Clones all page dictionary resources, font descriptors, and content streams with deduplication.
-- Serializes the modified document directly to memory via `pdf_save_document` with `do_garbage = 2` to eliminate orphaned objects.
+A critical technical audit of the prototype C bridge (`engines/pdf-mupdf/csrc/mupdf_page_bridge.c`) revealed a major structural defect:
+- The initial prototype created an empty target document (`pdf_create_document`) and called `pdf_graft_page` solely for page content.
+- **Critical Data Loss Identified:** This naive approach stripped all document-level catalog structures:
+  1. Document Metadata (`/Info`, `/Metadata`, `/PieceInfo`) was dropped.
+  2. Logical Outlines & Bookmarks (`/Outlines`) were dropped.
+  3. Logical Page Labels (`/PageLabels`) were dropped.
+  4. Tagged PDF / PDF/UA structure trees (`/StructTreeRoot`, `/MarkInfo`) were dropped.
+  5. Form registries (`/AcroForm`) were severed, and page duplication generated illegal duplicate field names.
+  6. Cryptographic Signatures were corrupted silently with zero pre-flight warning.
+
+**Mandatory Architecture for M3.0:**
+1. **Catalog Preservation & In-Place Grafting:**
+   - The native bridge must perform page mutations in-place on the source `pdf_document` or deep-clone the document catalog (including `/Metadata`, `/Outlines`, `/PageLabels`, `/StructTreeRoot`, and `/AcroForm`) before applying page order permutations.
+2. **Pre-Flight Structural Inspection & Fail-Closed Behavior:**
+   - Before executing any page mutation, `DocumentActor` performs an invariant audit.
+   - **Fail-Closed on Signatures (`SIG-001`):** If a document contains digital signatures, the mutation is blocked by default. It can only proceed if the user explicitly confirms that cryptographic signatures will be invalidated.
+3. **Serialization:**
+   - Modified documents are serialized via `vocument_serialize_pdf_doc_to_malloc` using `opts.do_garbage = 1` to clean up unreferenced objects resulting from page removals.
+4. **M3.0 Exit Gate:**
+   - M3.0 must deliver automated test suites proving that reordering, deleting, and duplicating pages preserve Metadata, Outlines, PageLabels, and Tagged PDF trees before any UI workbench (M3.1+) is activated.
 
 ---
 

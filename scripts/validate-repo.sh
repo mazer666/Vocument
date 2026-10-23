@@ -76,6 +76,7 @@ REQUIRED_FILES=(
   "docs/cr/CR-0003-windows-and-linux-platform-support.md"
   "docs/cr/CR-0004-optional-local-interfaces-mcp.md"
   "docs/cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md"
+  "docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md"
   "docs/cr/CR_TEMPLATE.md"
   "docs/cr/CR-0001-source-file-size-limits.md"
   "docs/cr/CR-0002-prohibition-of-stubs-in-acceptance.md"

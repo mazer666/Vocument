@@ -1,7 +1,7 @@
 # Vocument Development & Quality Assurance Plan: Milestones M3 through M7
 
-- **Document Version:** 1.0
-- **Status:** Approved Baseline Plan (`CR-0005`, `ADR-0018`, `ADR-0019`, `ADR-0020`)
+- **Document Version:** 1.1
+- **Status:** Planning Baseline (`CR-0005` proposed with Decision Paper, `ADR-0018`, `ADR-0019`, `ADR-0020`)
 - **Authoring Team:** Multi-Agent Engineering & Governance Team per `AGENTS.md`
 - **Owner Roles:** ROLE-01 (Product Steward), ROLE-02 (Chief Architect), ROLE-13 (QA Lead), ROLE-09 (Security), ROLE-04 (PDF), ROLE-20 (Project Manager)
 - **Governance:** AGPL-3.0-or-later, strictly offline-first, no telemetry, no stubs (`QA-003`), `runs-on: self-hosted` CI.
@@ -17,14 +17,15 @@
   - `M2.3`: Attachment and digital signature inspection (`ATTACH-001`, `SIG-001`).
   - `M2.4`: Reviewer comments, `/Text` popups, and the atomic Jurist Tool Palette (`ANNOT-001`, `0600`/`0700` POSIX modes).
   - `SAN-001`: Selective document sanitization bridge and macOS review panels (`ReviewWorkflow.swift`, `ReviewPanelView.swift`).
-- **Scope Realignment via `CR-0005`:**
-  - *Document Comparison (`COMPARE-001`, `COMPARE-002`):* Formally rescheduled into a dedicated comparison track after M3/M4 visual & layout engines mature.
+- **Scope Realignment via `CR-0005` & Owner Decision Paper:**
+  - Under `AGENTS.md`, agents do not have authority to unilaterally alter product scope; `CR-0005` is submitted with a formal Decision Paper (`docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md`) for Project Owner clearance.
+  - *Document Comparison (`COMPARE-001`–`COMPARE-004`):* Formally scheduled as **Track M3.7 (Document Comparison & Diffing)**, immediately following visual page workbench canvas maturity and prior to M4 authoring.
   - *Rubber Stamps (`WATER-003`):* Formally relocated to **M3.4** alongside page numbering, headers/footers, and watermarks.
   - *Kit Tests Demarcation:* `VocumentMacKitTests` prove client-core boundary contracts; interactive AppKit window-server GUI testing remains an explicitly demarcated on-display gate.
 
 ### 1.2 Boundaries of `SAN-001` Document Sanitization (`ADR-0018`)
-- **Guaranteed Removals:** Document metadata (`/Info`, `/Metadata`, `/PieceInfo`), form fields (`/AcroForm`), executable actions (`/OpenAction`, `/AA`, `/JavaScript`), embedded files (`/EmbeddedFiles`), and annotations (`/Annots`), compacted via MuPDF garbage collection (`do_garbage = 2`).
-- **Explicit Limitations:** Does NOT eliminate off-canvas graphics outside page boxes, text rendered in font color matching background, hidden OCG layers, or steganography in raster images.
+- **Guaranteed Native Removals (Implemented):** Document metadata (`/Info`, `/Metadata`, `/PieceInfo`), form fields (`/AcroForm`), executable actions (`/OpenAction`, `/AA`, `/JavaScript`), embedded files (`/EmbeddedFiles`), and page annotations (`/Annots`), compacted via MuPDF unreferenced object garbage collection (`opts.do_garbage = 1`).
+- **Explicit Limitations:** Does NOT eliminate off-canvas graphics outside page boxes, text rendered in font color matching background, hidden OCG layers, or steganography in raster images. Action dictionaries (`/A`) inside individual page annotations remain untouched unless annotations as a whole are removed; deep action scrubbing and full xref defragmentation (`do_garbage = 2`) are planned for M5.
 
 ### 1.3 M2.5 Release Readiness & Governance
 - **Technical Readiness Passed:** Verified byte-for-byte reproducible source archive, 16 KB ELF page alignment, clean runtime dependency closure (`RISK-059` closed).
@@ -34,7 +35,7 @@
 
 ## 2. Milestone M3: Page Workbench — Detailed Execution Plan
 
-Milestone M3 delivers professional visual and structural page manipulation. All page operations must enforce document invariants per [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md).
+Milestone M3 delivers professional visual and structural page manipulation. All page operations must enforce document invariants per [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md).
 
 ### Sub-Milestone Breakdown
 
@@ -54,16 +55,22 @@ M3.2 (Merge, Insert & Split)                                         M3.3 (Geome
                                              │
                                              ▼
                                   M3.6 (Platform Integration & Acceptance)
+                                             │
+                                             ▼
+                                  M3.7 (Track: Document Comparison & Diffing)
 ```
 
-#### M3.0 — Architecture, Invariants & Structural Integrity
-- **Objective:** Establish enforceable document-level invariant rules before page mutations execute.
-- **Scope:**
-  - Invariant rules for Digital Signatures (`SIG-001`), AcroForm fields, Bookmarks/Outlines, Named Destinations, Page Labels, Links, and Tagged PDF/UA structure trees ([ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md)).
-  - Digital signature tampering detection: Pre-flight check warning user that page modifications invalidate cryptographic signatures.
+#### M3.0 — Mandatory Structural Stability & Invariant Gate
+- **Objective:** Establish enforceable document-level invariant rules before any further page mutations execute.
+- **Architectural Prerequisite:**
+  - Audit revealed that initial prototype grafting (`engines/pdf-mupdf/csrc/mupdf_page_bridge.c`) created an empty target document, inadvertently stripping `/Metadata`, `/Outlines`, `/PageLabels`, `/StructTreeRoot`, and `/AcroForm`.
+  - M3.0 re-architects the bridge to perform in-place mutation or deep catalog cloning, preserving all document-level structures.
+- **Scope (`PAGE-001`–`PAGE-003`, `SIG-001`, `UNDO-001`):**
+  - Invariant rules for Digital Signatures (`SIG-001`), AcroForm fields, Bookmarks/Outlines, Named Destinations, Page Labels, Links, and Tagged PDF/UA structure trees ([ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md)).
+  - **Fail-Closed on Cryptographic Signatures:** Page mutations are refused on signed documents unless the user explicitly confirms that cryptographic signatures will be broken.
   - Unique AcroForm field name preservation on duplication (`Field_Copy1`).
   - Outline re-anchoring to preserve visual bookmark targets during reordering.
-- **Criteria:** Unit tests in `vocument-core` proving zero orphaned object references or broken catalogs.
+- **Criteria:** Automated unit tests in `vocument-core` and `pdf-mupdf` proving zero dropped catalog dictionaries, preserved outlines/labels, and strict fail-closed signature handling. M3.0 must pass before any interactive UI workbench (M3.1+) is activated.
 
 #### M3.1 — Visual Page Workbench & Core Manipulation (Single Document)
 - **Objective:** Deliver smooth, thumbnail-driven visual page management within an active document session.
@@ -84,7 +91,7 @@ M3.2 (Merge, Insert & Split)                                         M3.3 (Geome
   - Conflict Resolution: Deduplicating shared font resources and resolving `/Names` dictionary collisions.
 - **Criteria:** Merged and split PDFs pass `mutool info`, `qpdf --check`, and Quartz rendering without syntax errors.
 
-#### M3.3 — Page Geometry, Crop, Page Boxes, Rotation & Deskew
+#### M3.3 — Page Geometry, Crop, Page Boxes, Rotation & Deskew (`CROP-001`–`CROP-003`, `ROTATE-001`–`ROTATE-003`)
 - **Objective:** Provide millimeter-accurate page boundary calibration and orientation correction.
 - **Scope:**
   - Page Box Management: Explicit inspection and modification of `MediaBox`, `CropBox`, `BleedBox`, `TrimBox`, and `ArtBox`.
@@ -94,7 +101,7 @@ M3.2 (Merge, Insert & Split)                                         M3.3 (Geome
   - Auto-Crop: Automated margin trimming detecting scanning borders and whitespace.
 - **Criteria:** Extracted text layer bounding boxes remain perfectly aligned with visual glyphs post-rotation/deskew.
 
-#### M3.4 — Bates Stamping, Numbering, Headers/Footers, Bookmarks & Rubber Stamps
+#### M3.4 — Bates Stamping, Numbering, Headers/Footers, Bookmarks & Rubber Stamps (`WATER-001`–`WATER-003`, `HEADER-001`–`HEADER-003`)
 - **Objective:** Comprehensive legal document processing and metadata overlay.
 - **Scope:**
   - Bates Numbering: Legal prefix, sequential numbering, zero-padding, suffix, and starting index.
@@ -103,7 +110,7 @@ M3.2 (Merge, Insert & Split)                                         M3.3 (Geome
   - Stamps & Watermarks (`WATER-001`–`WATER-003`): Preset legal rubber stamps ("DRAFT", "CONFIDENTIAL", "APPROVED"), custom text/image stamps, opacity control, and foreground/background placement.
 - **Criteria:** Overlays conform to PDF 1.7 `/Watermark` and `/Stamp` annotation specifications.
 
-#### M3.5 — Image Extraction, Compression, Optimization & Export
+#### M3.5 — Image Extraction, Compression, Optimization & Export (`COMP-001`–`COMP-003`)
 - **Objective:** Professional optimization and asset extraction.
 - **Scope:**
   - Lossless extraction of embedded raster images (JPEG, PNG, JBIG2 streams).
@@ -118,13 +125,21 @@ M3.2 (Merge, Insert & Split)                                         M3.3 (Geome
   - Native macOS AppKit/SwiftUI Workbench and Android Compose touch/stylus workbench.
   - Cross-tool interoperability matrix: MuPDF, Apple Quartz, PDFium, `mutool`, `qpdf`.
   - Usability benchmarking against reference tools (PDFCraft, Adobe Acrobat).
-- **Criteria:** All M3 acceptance criteria met; zero stubs; acceptance record [M3-ACCEPTANCE.md](file:///Users/volker/Documents/Repos/Vocument/docs/acceptance/M3-ACCEPTANCE.md) signed off.
+- **Criteria:** All M3 acceptance criteria met; zero stubs; acceptance record [M3-ACCEPTANCE.md](../acceptance/M3-ACCEPTANCE.md) signed off.
+
+#### M3.7 — Track: Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`)
+- **Objective:** Side-by-side visual and structural document diffing for legal review.
+- **Scope:**
+  - Synchronized scrolling and side-by-side viewport (`COMPARE-002`).
+  - Visual page diff with highlighting of pixel/layout variances (`COMPARE-003`).
+  - Structural text comparison and change summary generation (`COMPARE-001`).
+- **Criteria:** Comparison operates seamlessly across dual document sessions without blocking UI; diff computed under 100ms per page pair.
 
 ---
 
 ## 3. Milestone M4: Authoring / FlowDocument / Office — Detailed Execution Plan
 
-Milestone M4 establishes Vocument's native authoring system per [ADR-0020](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md).
+Milestone M4 establishes Vocument's native authoring system per [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md).
 
 ```text
 M4.0 (FlowDocument Model) ──► M4.1 (Rust Layout Engine) ──► M4.2 (.pdoc Container)
@@ -135,21 +150,21 @@ M4.5 (Office Interop Bake-off) ◄── M4.4 (Reviews & PDF/UA) ◄── M4.3 
 
 ### Sub-Milestone Breakdown
 
-#### M4.0 — FlowDocument Data Model & Schema (`core/vocument-flow`)
+#### M4.0 — FlowDocument Data Model & Schema (`core/vocument-flow`, `AUTHOR-001`–`AUTHOR-005`)
 - **Objective:** Pure Rust semantic document representation independent of fixed-layout PDF.
 - **Scope:** Sections, paragraphs, spans, heading hierarchies (H1–H6), nested lists, tables (rowspan/colspan), embedded images, footnotes, and Dublin Core metadata.
 - **Criteria:** Full serialization/deserialization to JSON; zero memory leaks; 100% test coverage of schema validation.
 
-#### M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`)
-- **Objective:** 100% cross-platform layout determinism across macOS, Android, Windows, and Linux.
+#### M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`, `AUTHOR-004`)
+- **Objective:** Cross-platform layout determinism across macOS, Android, Windows, and Linux.
 - **Scope:**
-  - Glyph shaping via `rustybuzz` (memory-safe HarfBuzz in Rust).
+  - Glyph shaping via `rustybuzz` using integer font units and 26.6 fixed-point metrics.
   - Unicode segmentation (graphemes, words, lines) and bi-directional text (UAX #9) via `icu_segmenter` and `unicode-bidi`.
-  - Dual line-breaking: Fast greedy mode (typing) and Knuth-Plass optimal break mode (export/reading).
+  - Dual line-breaking: Fast greedy mode (typing) and Knuth-Plass optimal break mode (export/quiescent).
   - Deterministic multi-page pagination with footnote placement, orphan/widow controls, and table header repeating.
-- **Criteria:** Given identical `.pdoc` and font files, pagination and coordinates match bit-for-bit across macOS and Android.
+- **Criteria:** When using embedded OpenType fonts and fixed-point metrics, pagination output, line breaks, and word bounding boxes match 100% across macOS and Android.
 
-#### M4.2 — The `.pdoc` Format Specification & Container
+#### M4.2 — The `.pdoc` Format Specification & Container (`SOURCE-001`, `SOURCE-002`)
 - **Objective:** Robust, open, versioned package format.
 - **Scope:**
   - Standard ZIP64 archive container (`manifest.json`, `document.json`, `styles.json`, `metadata.json`, `assets/`).
@@ -157,30 +172,34 @@ M4.5 (Office Interop Bake-off) ◄── M4.4 (Reviews & PDF/UA) ◄── M4.3 
   - Safe extraction guarding against zip-slip and decompression bombs.
 - **Criteria:** Roundtrip test suite verifying byte-for-byte asset preservation and seamless schema migration.
 
-#### M4.3 — Native Platform Editing Canvas & Input
+#### M4.3 — Native Platform Editing Canvas & Input (`AUTHOR-002`, `UI-009`)
 - **Objective:** Seamless, native typing and touch experience.
 - **Scope:**
   - macOS: AppKit custom view conforming to `NSTextInputClient` for CJK IME, accent popups, dictation, and VoiceOver.
   - Android: Compose Foundation editor supporting touch selection, stylus handwriting, and Gboard IME.
   - Core Bridge: Bidirectional coordinate mapping between screen taps and `FlowDocument` text offsets.
-- **Criteria:** Sub-16ms typing latency (60 FPS); flawless IME composition across languages.
+- **Criteria:** Paragraph-local incremental layout and cursor update $< 16\,\text{ms}$ (60 FPS) for paragraphs up to 5,000 words. Multi-page pagination runs asynchronously on background thread pool (`UI-009`).
 
-#### M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation
+#### M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation (`TRACK-001`–`006`, `WRITE-001`, `APP-A11Y-001`)
 - **Objective:** Enterprise legal reviewing and universally accessible document production.
 - **Scope:**
   - Tracked Changes: Inline insertions, deletions, and format changes attributed to author UUID and timestamp.
   - Margin Comments: Character-range anchored threads with replies and resolution status.
   - PDF/A & PDF/UA Export: Generating Tagged PDF output with structure trees (`/StructTreeRoot`), semantic tags (`/P`, `/H1`-`/H6`, `/Table`), and alt-text.
-- **Criteria:** Output validated green by PAC (PDF Accessibility Checker) and veraPDF.
+- **Criteria:** Output validated green by `veraPDF` in self-hosted CI; PAC designated as Windows release validation gate.
 
-#### M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters
+#### M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters (`OFFICE-001`–`OFFICE-005`)
 - **Objective:** Reliable Office document import and export without deceptive claims.
 - **Scope:**
   - Corpus Bake-Off: Curated test suite of 200 real-world DOCX and ODT legal documents.
-  - Evaluation of Rust converters against strict fidelity criteria.
+  - Evaluation of Rust parsers against strict multi-tiered fidelity criteria.
   - Import Pipeline: Mapping Word/Writer styles, tables, and lists into `FlowDocument`.
   - Export Pipeline: Serializing `FlowDocument` into valid DOCX/ODT.
-- **Criteria:** Pass rate $\ge 95\%$ on structural corpus; explicit failure reporting on unsupported constructs.
+- **Criteria:**
+  - Tier 1: 100% preservation of plain text, headings, character styles, and inline footnotes.
+  - Tier 2: $\ge 95\%$ structural preservation of table cells, nested lists, and image dimensions.
+  - Tier 3: Unsupported proprietary XML structures preserved intact via unmapped pass-through stores.
+  - Explicit failure reporting on unsupported constructs; zero silent content corruption.
 
 ---
 
@@ -248,18 +267,19 @@ In strict adherence to `RULE[user_global]`, all workflows in `.github/workflows/
 
 | Milestone | User Value | Core Requirements | Architecture & ADRs | Entry Criteria | Exit Acceptance Gate |
 |---|---|---|---|---|---|
-| **M3.0** | Document structural stability | `PAGE-001`–`005`, `SIG-001` | [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M2 complete (`CR-0005`) | Unit tests proving signature invalidation warnings & AcroForm unique naming. |
-| **M3.1** | Visual page reorder, duplicate, delete | `PAGE-001`, `UNDO-001` | [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0 green | 60 FPS thumbnail grid; 100% reversible Undo/Redo across FFI boundary. |
-| **M3.2** | Multi-document merge, insert & split | `PAGE-002`, `PAGE-003` | [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Zero syntax defects in merged/split files via `mutool info` and `qpdf --check`. |
-| **M3.3** | Precision crop, boxes, deskew | `PAGE-004`, `ROTATE-001` | [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Media/CropBox calibrated; text layer coordinates match visual glyphs post-crop. |
-| **M3.4** | Bates stamping, numbers, rubber stamps | `WATER-001`–`003`, `HEADER-001` | `WATER-003` ([CR-0005](file:///Users/volker/Documents/Repos/Vocument/docs/cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md)) | M3.3 green | Bates sequence verification; PDF 1.7 `/Stamp` and `/Watermark` conformance. |
-| **M3.5** | Lossless image extract & compression | `PERF-001`, `PDF-001` | [ADR-0019](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.2 green | $\ge 20\%$ file size reduction; lossless image extraction roundtrip. |
-| **M3.6** | Complete M3 workbench release | All M3 requirements | M3 ADRs | M3.0–M3.5 green | macOS & Android UI integration; full foreign viewer interop suite green. |
-| **M4.0–4.2** | Deterministic `.pdoc` authoring | `FLOW-001`, `PDOC-001` | [ADR-0020](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M3 complete | Bit-identical pagination across macOS & Android; `.pdoc` ZIP64 validation. |
-| **M4.3–4.4** | Native editing, tracking & PDF/UA | `LAYOUT-001`, `A11Y-001` | [ADR-0020](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.2 green | Sub-16ms typing latency; PAC & veraPDF green for exported Tagged PDF/UA. |
-| **M4.5** | Reliable DOCX & ODT interop | `OFFICE-001`, `OFFICE-002` | [ADR-0020](file:///Users/volker/Documents/Repos/Vocument/docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.4 green | $\ge 95\%$ pass rate on 200-document legal test corpus. |
-| **M5** | Windows native shell | `PLATFORM-002` (`CR-0003`) | ADR-0017 | macOS & Android RCs green | Shared acceptance scenario verified on Windows 11. |
-| **M6** | Linux native shell | `PLATFORM-002` (`CR-0003`) | ADR-0018 | Windows Alpha reached | Shared acceptance scenario verified on Wayland and X11. |
+| **M3.0** | Document structural stability & invariant gate | `PAGE-001`–`003`, `SIG-001`, `UNDO-001` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M2 complete (`CR-0005` proposal) | Invariant test suite proving catalog preservation, unique field renaming & fail-closed signature handling. |
+| **M3.1** | Visual page reorder, duplicate, delete | `PAGE-001`, `PAGE-002`, `UNDO-001` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0 green | 60 FPS thumbnail grid; 100% reversible Undo/Redo across FFI boundary. |
+| **M3.2** | Multi-document merge, insert & split | `PAGE-001`–`003`, `CORE-004` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Zero syntax defects in merged/split files via `mutool info` and `qpdf --check`. |
+| **M3.3** | Precision crop, boxes, deskew | `CROP-001`–`003`, `ROTATE-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.1 green | Media/CropBox calibrated; text layer coordinates match visual glyphs post-crop. |
+| **M3.4** | Bates stamping, numbers, rubber stamps | `WATER-001`–`003`, `HEADER-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md), [CR-0005](../cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md) | M3.3 green | Bates sequence verification; PDF 1.7 `/Stamp` and `/Watermark` conformance. |
+| **M3.5** | Lossless image extract & compression | `COMP-001`–`003` | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.2 green | $\ge 20\%$ file size reduction on uncompressed scans; lossless image extraction. |
+| **M3.6** | Complete M3 workbench release | All M3 requirements | [ADR-0019](../adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) | M3.0–M3.5 green | macOS & Android UI integration; full foreign viewer interop suite green. |
+| **M3.7** | Structured document comparison & diffing | `COMPARE-001`–`COMPARE-004` | [CR-0005](../cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md) | M3.6 green | Dual-session synchronized scroll; visual pixel diff; text diff change summary. |
+| **M4.0–4.2** | Deterministic `.pdoc` authoring | `AUTHOR-001`–`005`, `SOURCE-001`, `SOURCE-002` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M3 complete | Bit-identical pagination across macOS & Android via embedded fonts & fixed-point metrics; `.pdoc` ZIP64 validation. |
+| **M4.3–4.4** | Native editing, tracking & PDF/UA | `TRACK-001`–`006`, `WRITE-001`, `APP-A11Y-001` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.2 green | Sub-16ms paragraph-local typing latency; veraPDF green for exported Tagged PDF/UA in self-hosted CI. |
+| **M4.5** | Reliable DOCX & ODT interop | `OFFICE-001`–`OFFICE-005` | [ADR-0020](../adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) | M4.4 green | 3-tier fidelity metrics: 100% Tier 1 text/style, $\ge 95\%$ Tier 2 structure, raw XML Tier 3 pass-through. |
+| **M5** | Windows native shell | `PLATFORM-002` (`CR-0003`) | `CR-0003` (ADR deferred to M5 entry) | macOS & Android RCs green | Shared acceptance scenario verified on Windows 11. |
+| **M6** | Linux native shell | `PLATFORM-002` (`CR-0003`) | `CR-0003` (ADR deferred to M6 entry) | Windows Alpha reached | Shared acceptance scenario verified on Wayland and X11. |
 | **M7** | Optional local MCP interface | `LOCAL-001` (`CR-0004`) | `CR-0004` | Core review stable | Stdio MCP workflow passing identical compliance tests with 0 network calls. |
 
 ---

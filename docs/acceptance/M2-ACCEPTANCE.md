@@ -4,8 +4,8 @@
 - **Status:** **COMPLETE** — All core functional, safety, and interoperability requirements verified; UI Kit tests verified; interactive window-server UI driving and uninstalled external PDF viewers explicitly demarcated.
 - **Date:** 2026-10-23
 - **Branch:** `main`
-- **Sub-slices:** [M2.1](file:///Users/volker/Documents/Repos/Vocument/docs/acceptance/M2.1-ACCEPTANCE.md) (Redaction) · [M2.2](file:///Users/volker/Documents/Repos/Vocument/docs/acceptance/M2.2-ACCEPTANCE.md) (Links & Actions) · [M2.3](file:///Users/volker/Documents/Repos/Vocument/docs/acceptance/M2.3-ACCEPTANCE.md) (Attachments & Signatures) · [M2.4](file:///Users/volker/Documents/Repos/Vocument/docs/acceptance/M2.4-ACCEPTANCE.md) (Comments & Jurist Palette) · `SAN-001` (Document Sanitization)
-- **Final Security Audits:** [Redaction Hardening](file:///Users/volker/Documents/Repos/Vocument/docs/audit/redteam-round-five-document-level.md), [Palette Store Review](file:///Users/volker/Documents/Repos/Vocument/docs/audit/redteam-palette-independent.md)
+- **Sub-slices:** [M2.1](M2.1-ACCEPTANCE.md) (Redaction) · [M2.2](M2.2-ACCEPTANCE.md) (Links & Actions) · [M2.3](M2.3-ACCEPTANCE.md) (Attachments & Signatures) · [M2.4](M2.4-ACCEPTANCE.md) (Comments & Jurist Palette) · `SAN-001` (Document Sanitization)
+- **Final Security Audits:** [Redaction Hardening](../audit/redteam-round-five-document-level.md), [Palette Store Review](../audit/redteam-palette-independent.md)
 
 ---
 
@@ -56,7 +56,7 @@ In strict adherence to the project charter and `AGENTS.md`:
 
 ### 3.1 Scope Realignment & Sanitization Boundaries (`CR-0005`, `ADR-0018`)
 
-- **Scope Realignment via `CR-0005`:** Structured Document Comparison (`COMPARE-001`, `COMPARE-002`) was formally rescheduled into a dedicated comparison track after M3 visual workbench and M4 layout maturity. Rubber Stamps (`WATER-003`) was formally relocated to **M3.4**.
+- **Scope Realignment via `CR-0005`:** Structured Document Comparison (`COMPARE-001`–`COMPARE-004`) was formally scheduled as Track M3.7 (Document Comparison & Diffing) following visual page workbench maturity, and Rubber Stamps (`WATER-003`) was relocated to M3.4. A decision paper for formal Project Owner clearance was submitted in `docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md`.
 - **Sanitization Boundaries via `ADR-0018`:** `SAN-001` guarantees dictionary-level deletion of `/Info`, `/Metadata`, `/PieceInfo`, `/Annots`, `/AcroForm`, `/OpenAction`, `/AA`, `/JavaScript`, and `/EmbeddedFiles` with garbage-collection re-serialization. It does NOT guarantee elimination of off-canvas vector art, steganographic image payloads, hidden OCG layers, or text rendered in font color matching background. Claims are strictly scoped to verified removals.
 
 ---

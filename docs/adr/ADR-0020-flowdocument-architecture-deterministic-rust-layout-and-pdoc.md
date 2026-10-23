@@ -4,7 +4,7 @@
 - **Date:** 2026-10-23
 - **Author:** Chief Architect, Document/Office Engineer, Rust Core Engineer
 - **Deciders:** ROLE-01 (Product Steward), ROLE-02 (Chief Architect), ROLE-08 (Document/Office Engineer), ROLE-11 (Accessibility Engineer), ROLE-13 (QA Lead), ROLE-15 (Standards Lead)
-- **Requirement IDs:** `FLOW-001`, `FLOW-002`, `PDOC-001`, `LAYOUT-001`, `OFFICE-001`, `OFFICE-002`, `A11Y-001`, `CODE-001`
+- **Requirement IDs:** `AUTHOR-001`–`AUTHOR-005`, `SOURCE-001`, `SOURCE-002`, `OFFICE-001`–`OFFICE-005`, `WRITE-001`, `TRACK-001`–`TRACK-006`, `APP-A11Y-001`, `A11Y-001`–`A11Y-003`, `CODE-001`
 
 ---
 
@@ -23,12 +23,14 @@ This ADR defines the technical architecture for Vocument's native authoring syst
 
 ## Decision Drivers
 
-1. **Deterministic Pagination across All Platforms (`FLOW-001`):** A `.pdoc` document must produce 100% bit-identical line breaks, word coordinates, table cell splits, and page counts regardless of whether it is rendered on macOS Apple Silicon, Android arm64, Windows x86_64, or Linux.
-2. **Open, Versioned Container (`PDOC-001`):** A modern, transparent, package-based format using standard ZIP64, UTF-8 JSON, schema versioning, and unknown-field preservation.
-3. **Native Platform Input & Accessibility:** Native macOS TextKit 2 and Android Jetpack Compose text entry for keyboard, IME, dictation, and screen-readers, while delegating layout geometry to the shared Rust core.
-4. **Professional Typography & Legal Authoring:** Advanced typography (Knuth-Plass line breaking, optical margin alignment, hyphenation dictionaries), legal numbering hierarchies, footnotes, margin comments, and tracked changes.
-5. **PDF/A & PDF/UA Authored Output:** Direct export of high-fidelity, fully tagged PDFs with semantic structure trees and alt-text out of the box.
-6. **No Fake Compatibility:** Strict bake-off corpus evaluation before any DOCX/ODT claim is accepted.
+1. **Deterministic Pagination across All Platforms (`AUTHOR-004`, `SOURCE-001`):** A `.pdoc` document must produce identical line breaks, word coordinates, table cell splits, and page counts across macOS, Android, Windows, and Linux. This determinism requires:
+   - Embedded or bundled OpenType fonts with explicit font metric tables (`ttf-parser`).
+   - Pure Rust text shaping via `rustybuzz` using integer font units or 26.6 fixed-point arithmetic to prevent floating-point rounding differences across CPU architectures.
+2. **Open, Versioned Container (`SOURCE-001`, `SOURCE-002`):** A modern, transparent, package-based format using standard ZIP64, UTF-8 JSON/XML, schema versioning, and unknown-field preservation.
+3. **Native Platform Input & Accessibility (`APP-A11Y-001`):** Native macOS AppKit and Android Jetpack Compose text entry for keyboard, IME, dictation, and screen-readers, while delegating layout geometry to the shared Rust core.
+4. **Professional Typography & Legal Authoring (`WRITE-001`, `TRACK-001`–`006`):** Advanced typography (Knuth-Plass line breaking, optical margin alignment, hyphenation dictionaries), legal numbering hierarchies, footnotes, margin comments, and tracked changes.
+5. **PDF/A & PDF/UA Authored Output:** Direct export of high-fidelity, fully tagged PDFs with semantic structure trees and alt-text out of the box, verified by veraPDF in automated CI.
+6. **No Fake Compatibility:** Multi-tiered bake-off corpus evaluation before any DOCX/ODT claim is accepted.
 
 ---
 
@@ -70,11 +72,11 @@ All layout calculations execute exclusively in the shared Rust core, never in pl
      - *Knuth-Plass Optimal Paragraph Breaking:* For quiescent layout and export, minimizing raggedness and hyphenation frequency across paragraphs.
 3. **Deterministic Pagination Pipeline:**
    - Multi-column, multi-page layout engine calculating exact floating box placement, footnote splitting, table page-breaks with repeated header rows, and orphan/widow suppression.
-   - **Cross-Platform Determinism Guarantee:** Given the identical `.pdoc` and font files, the pagination output (page index, line breaks, word bounding boxes) is 100% bit-identical across macOS, Android, Windows, and Linux.
+   - **Cross-Platform Determinism Guarantee:** When using embedded OpenType font binaries and integer/26.6 fixed-point metrics (`rustybuzz`), pagination output (page counts, line breaks, word bounding boxes) is 100% identical across macOS, Android, Windows, and Linux.
 
 ### 3. The `.pdoc` Document Format Specification
 
-`.pdoc` is a standardized, open ZIP container:
+`.pdoc` is a standardized, open ZIP container (`SOURCE-001`, `SOURCE-002`):
 
 ```text
 MyDocument.pdoc (ZIP64 archive)
@@ -82,33 +84,41 @@ MyDocument.pdoc (ZIP64 archive)
 ├─ document.json     # Complete FlowDocument block tree in UTF-8
 ├─ styles.json       # Palette, font families, paragraph/table styles
 ├─ metadata.json     # Dublin Core, custom legal metadata
-├─ assets/           # Embedded PNG, JPEG, SVG, or subsetted fonts
+├─ assets/           # Embedded PNG, JPEG, SVG, or subsetted OpenType fonts
 └─ review.json       # Optional: Tracked changes and comment threads
 ```
 
 - **Schema Evolution:** Every JSON document includes `schema_version`. Unknown fields in newer format versions are preserved intact during save (forward compatibility).
 - **Security:** Standard zip-slip and bomb-decompression guards (maximum uncompressed size limits, directory traversal checks).
 
-### 4. Native Platform Integration
+### 4. Native Platform Integration & Performance
 
 - **macOS (`apps/macos`):**
   - Custom AppKit/SwiftUI canvas view.
-  - Native NSTextInputClient protocol handling complex IME (CJK input), accent popups, and macOS dictation.
+  - Native `NSTextInputClient` protocol handling complex IME (CJK input), accent popups, and macOS dictation.
   - Rust core delivers visual display tiles and cursor coordinate mapping.
 - **Android (`apps/android`):**
   - Jetpack Compose custom Layout with touch/stylus cursor positioning and software keyboard (IME) synchronization.
+- **Performance Budget (`UI-009`):**
+  - **Typing Latency:** Paragraph-local incremental line-breaking and cursor updates execute in $< 16\,\text{ms}$ (60 FPS) for paragraphs up to 5,000 words.
+  - **Asynchronous Document Pagination:** Multi-page reflow and pagination calculations execute in the background thread pool (`UI-009`); UI thread never blocks on global document layout.
+- **Accessibility & Tagged PDF Export:**
+  - Exports Tagged PDF / PDF/UA output with structure trees (`/StructTreeRoot`), semantic tags, and alt-text.
+  - Validated via `veraPDF` CLI in self-hosted CI; PAC (PDF Accessibility Checker) designated as a Windows release validation gate.
 
 ### 5. Office Interoperability Strategy (DOCX / ODT)
 
-Vocument rejects hasty, bug-ridden format converters. Office format integration follows a strict three-phase gate:
+Vocument rejects hasty, bug-ridden format converters. Office format integration follows a strict three-phase gate with tiered fidelity criteria:
 
 1. **Phase 1 — High-Fidelity Corpus Bake-off (M4.4):**
    - Assemble a curated test corpus of 200 real-world legal and technical DOCX and ODT documents (styles, nested tables, footnotes, multilevel lists, tracked changes).
-   - Evaluate candidate Rust engines (e.g. `docx-rs`, custom parser) against structural fidelity metrics.
+   - Evaluate candidate Rust parsers against structural fidelity metrics.
 2. **Phase 2 — Reliable Import (M4.5):**
-   - Translate DOCX/ODT structures into `FlowDocument` without data loss. Elements that cannot be mapped natively are preserved in an unmapped extension store.
-3. **Phase 3 — Authored Export:**
-   - Export `FlowDocument` to clean, valid DOCX and ODT with zero schema corruption.
+   - Translate DOCX/ODT structures into `FlowDocument`. Elements that cannot be mapped natively are preserved in an unmapped extension store.
+3. **Phase 3 — Authored Export & Tiered Fidelity Metrics:**
+   - **Tier 1 (Core Semantics):** 100% preservation of plain text, heading hierarchy, character styles (bold, italic, underline), and footnotes without textual loss.
+   - **Tier 2 (Structural Layout):** $\ge 95\%$ fidelity on table layouts, cell spans, bullet/numbered list nesting, and image dimensions.
+   - **Tier 3 (Vendor Pass-Through):** Unsupported proprietary structures (e.g. Word macros, proprietary drawing markup) roundtripped intact through unmapped raw XML stores.
    - **Strict Rule:** Never claim roundtrip fidelity without verifiable corpus pass evidence.
 
 ---
