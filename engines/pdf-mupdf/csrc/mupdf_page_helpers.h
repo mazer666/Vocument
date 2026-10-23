@@ -12,7 +12,7 @@
  * from parent /Pages nodes directly into the page dictionary so that the page
  * is fully self-contained regardless of page tree restructuring.
  */
-static void make_page_self_contained(fz_context *ctx, pdf_obj *page_ref) {
+static inline void make_page_self_contained(fz_context *ctx, pdf_obj *page_ref) {
     static pdf_obj * const inheritable_keys[] = {
         PDF_NAME(MediaBox),
         PDF_NAME(CropBox),
@@ -30,7 +30,7 @@ static void make_page_self_contained(fz_context *ctx, pdf_obj *page_ref) {
     }
 }
 
-static int is_same_object(fz_context *ctx, pdf_obj *a, pdf_obj *b) {
+static inline int is_same_object(fz_context *ctx, pdf_obj *a, pdf_obj *b) {
     if (a == b) return 1;
     if (!a || !b) return 0;
     int num_a = pdf_to_num(ctx, a);
@@ -44,7 +44,7 @@ typedef struct FieldCycleNode {
     struct FieldCycleNode *parent;
 } FieldCycleNode;
 
-static int field_cycle_detect(fz_context *ctx, pdf_obj *obj, const FieldCycleNode *ancestors) {
+static inline int field_cycle_detect(fz_context *ctx, pdf_obj *obj, const FieldCycleNode *ancestors) {
     if (!obj) return 0;
     int target_num = pdf_to_num(ctx, obj);
     const FieldCycleNode *curr = ancestors;
@@ -56,7 +56,7 @@ static int field_cycle_detect(fz_context *ctx, pdf_obj *obj, const FieldCycleNod
     return 0;
 }
 
-static int count_active_signatures_in_field(
+static inline int count_active_signatures_in_field(
     fz_context *ctx,
     pdf_document *pdf_doc,
     pdf_obj *field,
@@ -93,7 +93,7 @@ static int count_active_signatures_in_field(
  * Recursively inspects nested form field hierarchies (/Kids) and page annotations.
  * Returns -1 if the field structure is cyclic, overly deep (>32), or unexaminable (fail-closed).
  */
-static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
+static inline int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
     if (!root) return 0;
     int active_sigs = 0;
@@ -140,7 +140,7 @@ static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
     return active_sigs;
 }
 
-static void mark_signatures_invalidated_in_field(
+static inline void mark_signatures_invalidated_in_field(
     fz_context *ctx,
     pdf_document *pdf_doc,
     pdf_obj *field,
@@ -168,7 +168,7 @@ static void mark_signatures_invalidated_in_field(
  * as invalidated by stripping /V per ISO 32000-1 §12.8, creating a clean unsigned working copy.
  * Recursively cleans nested signature field hierarchies and page widget annotations.
  */
-static void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) {
+static inline void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) {
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
     if (!root) return;
     pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
@@ -208,7 +208,7 @@ static void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) 
  * Traverses outline bookmarks and re-anchors any bookmark targeting a deleted page
  * to the nearest surviving page target.
  */
-static void reanchor_outline_item(
+static inline void reanchor_outline_item(
     fz_context *ctx,
     pdf_obj *item,
     pdf_obj **del_pages,
@@ -252,7 +252,7 @@ static void reanchor_outline_item(
 /*
  * Cleans up /AcroForm /Fields references to widget annotations located on deleted pages.
  */
-static void cleanup_acroform_fields_for_deleted_pages(
+static inline void cleanup_acroform_fields_for_deleted_pages(
     fz_context *ctx,
     pdf_document *pdf_doc,
     pdf_obj **del_pages,
@@ -282,7 +282,7 @@ static void cleanup_acroform_fields_for_deleted_pages(
     }
 }
 
-static int field_name_exists_in_fields(fz_context *ctx, pdf_obj *fields, const char *name, int depth) {
+static inline int field_name_exists_in_fields(fz_context *ctx, pdf_obj *fields, const char *name, int depth) {
     if (!fields || !name || depth > 32) return 0;
     if (pdf_is_array(ctx, fields)) {
         int len = pdf_array_len(ctx, fields);
@@ -306,7 +306,7 @@ static int field_name_exists_in_fields(fz_context *ctx, pdf_obj *fields, const c
     return 0;
 }
 
-static void generate_unique_field_name(fz_context *ctx, pdf_obj *fields, const char *orig_name, char *out_buf, size_t out_buf_len) {
+static inline void generate_unique_field_name(fz_context *ctx, pdf_obj *fields, const char *orig_name, char *out_buf, size_t out_buf_len) {
     const char *base = (orig_name && strlen(orig_name) > 0) ? orig_name : "Field";
     char base_clean[256];
     strncpy(base_clean, base, sizeof(base_clean) - 1);
@@ -334,7 +334,7 @@ static void generate_unique_field_name(fz_context *ctx, pdf_obj *fields, const c
     snprintf(out_buf, out_buf_len, "%s_Copy_fallback", base_clean);
 }
 
-static void reanchor_internal_links_for_deleted_pages(
+static inline void reanchor_internal_links_for_deleted_pages(
     fz_context *ctx,
     pdf_document *pdf_doc,
     pdf_obj **del_pages,
@@ -394,7 +394,7 @@ static void reanchor_internal_links_for_deleted_pages(
     }
 }
 
-static void restructure_pagelabels_for_reorder(fz_context *ctx, pdf_document *pdf_doc, const int *order, int count) {
+static inline void restructure_pagelabels_for_reorder(fz_context *ctx, pdf_document *pdf_doc, const int *order, int count) {
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
     if (!root) return;
     pdf_obj *pagelabels = pdf_dict_get(ctx, root, PDF_NAME(PageLabels));
@@ -435,7 +435,7 @@ static void restructure_pagelabels_for_reorder(fz_context *ctx, pdf_document *pd
     }
 }
 
-static void cleanup_parent_tree_for_deleted_pages(
+static inline void cleanup_parent_tree_for_deleted_pages(
     fz_context *ctx,
     pdf_document *pdf_doc,
     pdf_obj **del_pages,
@@ -474,7 +474,7 @@ static void cleanup_parent_tree_for_deleted_pages(
  * Returns 0 if Tagged PDF markers exist but /StructTreeRoot, /ParentTree,
  * or page /StructParents mappings are broken, incomplete, or dangling.
  */
-static int validate_tagged_pdf_consistency(fz_context *ctx, pdf_document *pdf_doc) {
+static inline int validate_tagged_pdf_consistency(fz_context *ctx, pdf_document *pdf_doc) {
     if (!pdf_doc) return 0;
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
     if (!root) return 0;

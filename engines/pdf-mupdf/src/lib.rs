@@ -5,6 +5,7 @@
 pub mod attach;
 pub mod comment;
 pub mod inspect;
+pub mod multidoc_ops;
 pub mod mutate;
 pub mod page_ops;
 pub mod render_page;
@@ -20,6 +21,8 @@ mod comment_tests;
 mod difficult_tests;
 #[cfg(test)]
 mod inspection_tests;
+#[cfg(test)]
+mod multidoc_tests;
 #[cfg(test)]
 mod redaction_image_tests;
 #[cfg(test)]
@@ -406,12 +409,23 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         page_indices: &[u32],
         delta_degrees: i32,
     ) -> Result<Vec<u8>, PdfEngineError> {
-        let updated = mutate::rotate_pages_in_pdf(
+        self.rotate_pages_ext(page_indices, delta_degrees, false)
+    }
+
+    fn rotate_pages_ext(
+        &mut self,
+        page_indices: &[u32],
+        delta_degrees: i32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = mutate::rotate_pages_in_pdf_ext(
             &self.pdf_bytes,
             self.summary.page_count,
             page_indices,
             delta_degrees,
+            allow_signature_invalidation,
         )?;
+        self.summary = inspect_summary(&updated)?;
         self.pdf_bytes = updated.clone();
         Ok(updated)
     }
@@ -568,6 +582,45 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
 
     fn extract_pages(&self, page_indices: &[u32]) -> Result<Vec<u8>, PdfEngineError> {
         page_ops::extract_pages(&self.pdf_bytes, page_indices)
+    }
+
+    fn merge_documents_ext(
+        &mut self,
+        source_documents: &[&[u8]],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let mut all_docs = Vec::with_capacity(1 + source_documents.len());
+        all_docs.push(self.pdf_bytes.as_slice());
+        all_docs.extend_from_slice(source_documents);
+
+        let merged_bytes =
+            multidoc_ops::merge_documents_ext(&all_docs, allow_signature_invalidation)?;
+        self.summary = inspect_summary(&merged_bytes)?;
+        self.pdf_bytes = merged_bytes.clone();
+        Ok(merged_bytes)
+    }
+
+    fn insert_pages_ext(
+        &mut self,
+        source_pdf: &[u8],
+        source_page_indices: &[u32],
+        insert_at: u32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated_bytes = multidoc_ops::insert_pages_ext(
+            &self.pdf_bytes,
+            source_pdf,
+            source_page_indices,
+            insert_at,
+            allow_signature_invalidation,
+        )?;
+        self.summary = inspect_summary(&updated_bytes)?;
+        self.pdf_bytes = updated_bytes.clone();
+        Ok(updated_bytes)
+    }
+
+    fn split_document(&self, split_ranges: &[Vec<u32>]) -> Result<Vec<Vec<u8>>, PdfEngineError> {
+        multidoc_ops::split_document(&self.pdf_bytes, split_ranges)
     }
 }
 

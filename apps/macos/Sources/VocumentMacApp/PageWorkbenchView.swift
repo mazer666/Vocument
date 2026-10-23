@@ -24,6 +24,26 @@ struct PageWorkbenchView: View {
                 preflightNoticeBanner(preflight)
             }
 
+            if let error = coordinator.errorMessage {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Button {
+                        coordinator.errorMessage = nil
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color.red.opacity(0.12))
+            }
+
             if let notification = coordinator.workbenchNotificationMessage {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
@@ -114,6 +134,7 @@ struct PageWorkbenchView: View {
                 Image(systemName: "arrow.left")
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .keyboardShortcut("[", modifiers: .command)
             .help("Move selected page(s) left (Cmd+[)")
 
             Button {
@@ -122,6 +143,7 @@ struct PageWorkbenchView: View {
                 Image(systemName: "arrow.right")
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .keyboardShortcut("]", modifiers: .command)
             .help("Move selected page(s) right (Cmd+])")
 
             Divider().frame(height: 18)
@@ -133,7 +155,8 @@ struct PageWorkbenchView: View {
                 Label("Duplicate", systemImage: "plus.square.on.square")
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
-            .help("Duplicate selected page, cloning contents and generating unique field names (Option+D)")
+            .keyboardShortcut("d", modifiers: .command)
+            .help("Duplicate selected page(s), cloning contents and generating unique field names (Cmd+D)")
 
             Button {
                 coordinator.showDeleteConfirmation = true
@@ -144,6 +167,7 @@ struct PageWorkbenchView: View {
                 coordinator.selectedWorkbenchPages.isEmpty
                 || coordinator.selectedWorkbenchPages.count >= (coordinator.activeSession?.pdfSummary.pageCount ?? 1)
             )
+            .keyboardShortcut(.delete, modifiers: [])
             .help("Delete selected page(s) and re-anchor internal bookmarks and links (Delete)")
 
             Divider().frame(height: 18)
@@ -155,7 +179,8 @@ struct PageWorkbenchView: View {
                 Image(systemName: "rotate.left")
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
-            .help("Rotate selected page(s) 90° counter-clockwise")
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .help("Rotate selected page(s) 90° counter-clockwise (Cmd+Shift+R)")
 
             Button {
                 coordinator.workbenchRotateSelectedPages(deltaDegrees: 90)
@@ -163,11 +188,12 @@ struct PageWorkbenchView: View {
                 Image(systemName: "rotate.right")
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
-            .help("Rotate selected page(s) 90° clockwise")
+            .keyboardShortcut("r", modifiers: .command)
+            .help("Rotate selected page(s) 90° clockwise (Cmd+R)")
 
             Divider().frame(height: 18)
 
-            // Extraction
+            // Extraction & Multi-Document Operations (M3.1, M3.2)
             Button {
                 coordinator.workbenchExtractSelectedPages()
             } label: {
@@ -175,6 +201,30 @@ struct PageWorkbenchView: View {
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
             .help("Extract selected page(s) into a new standalone PDF document without modifying source")
+
+            Button {
+                coordinator.workbenchInsertPages()
+            } label: {
+                Label("Insert…", systemImage: "arrow.down.doc")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Insert pages from an external PDF document at current position (M3.2)")
+
+            Button {
+                coordinator.workbenchMergeDocuments()
+            } label: {
+                Label("Merge…", systemImage: "doc.on.doc")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Merge one or more external PDF documents into current document (M3.2)")
+
+            Button {
+                coordinator.workbenchSplitDocument()
+            } label: {
+                Label("Split…", systemImage: "scissors")
+            }
+            .disabled((coordinator.activeSession?.pdfSummary.pageCount ?? 0) < 2)
+            .help("Split document into standalone PDF parts by selection or into single pages (M3.2)")
 
             Spacer()
 
@@ -187,6 +237,7 @@ struct PageWorkbenchView: View {
                 coordinator.workbenchSelectAllPages()
             }
             .font(.caption)
+            .keyboardShortcut("a", modifiers: .command)
             .help("Select all pages in the document (Cmd+A)")
         }
     }
@@ -207,7 +258,7 @@ struct PageWorkbenchView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text.fill")
                         .foregroundStyle(.blue)
-                    Text("Tagged PDF: Structural ParentTree & MCIDs are maintained.")
+                    Text("Tagged PDF: Structural elements & ParentTree maintained (PDF/UA re-validation recommended after page edits).")
                         .font(.caption)
                 }
             }

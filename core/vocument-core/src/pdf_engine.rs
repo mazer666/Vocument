@@ -388,6 +388,17 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         delta_degrees: i32,
     ) -> Result<Vec<u8>, PdfEngineError>;
 
+    /// Rotates `page_indices` with explicit signature invalidation control (`M3`).
+    fn rotate_pages_ext(
+        &mut self,
+        page_indices: &[u32],
+        delta_degrees: i32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = allow_signature_invalidation;
+        self.rotate_pages(page_indices, delta_degrees)
+    }
+
     /// Adds a standard PDF `/Highlight` annotation to `annotation.page_index` (`ANNOT-001`, `INTEROP-002`).
     /// Must only be invoked through `TransactionManager` (`ROADMAP.md` M0.4 Gate).
     fn add_highlight_annotation(
@@ -580,6 +591,48 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = page_indices;
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support extracting pages".to_owned(),
+        })
+    }
+
+    /// Merges multiple PDF document byte buffers into this document (`M3.2`).
+    /// Must only be invoked through `TransactionManager`.
+    fn merge_documents_ext(
+        &mut self,
+        source_documents: &[&[u8]],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (source_documents, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support merging documents".to_owned(),
+        })
+    }
+
+    /// Inserts pages from an external PDF document into this document at `insert_at` (0-based) (`M3.2`).
+    /// Must only be invoked through `TransactionManager`.
+    fn insert_pages_ext(
+        &mut self,
+        source_pdf: &[u8],
+        source_page_indices: &[u32],
+        insert_at: u32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (
+            source_pdf,
+            source_page_indices,
+            insert_at,
+            allow_signature_invalidation,
+        );
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support inserting pages from external documents"
+                .to_owned(),
+        })
+    }
+
+    /// Splits the document into multiple standalone PDFs according to the specified page partitions (`M3.2`).
+    fn split_document(&self, split_ranges: &[Vec<u32>]) -> Result<Vec<Vec<u8>>, PdfEngineError> {
+        let _ = split_ranges;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support splitting documents".to_owned(),
         })
     }
 }

@@ -71,4 +71,73 @@ extension DocumentCoreClient {
         let rawBytes = try documentCoreExtractPages(sessionId: sessionId, pageIndices: pageIndices)
         return Data(rawBytes)
     }
+
+    /// Rotates the specified `pageIndices` in `sessionId` by `deltaDegrees` (`M3.1`).
+    /// Refuses if active digital signatures exist unless `allowSignatureInvalidation` is true.
+    public func rotatePagesWithOptions(
+        sessionId: String,
+        pageIndices: [UInt32],
+        deltaDegrees: Int32,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreRotatePagesWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            deltaDegrees: deltaDegrees,
+            options: options
+        )
+    }
+
+    /// Inserts pages from `sourcePdfData` at `insertAt` into `sessionId` (`M3.2`).
+    /// Refuses if active digital signatures exist unless `allowSignatureInvalidation` is true.
+    public func insertPages(
+        sessionId: String,
+        sourcePdfData: Data,
+        sourcePageIndices: [UInt32],
+        insertAt: UInt32,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreInsertPagesWithOptions(
+            sessionId: sessionId,
+            sourcePdf: sourcePdfData,
+            sourcePageIndices: sourcePageIndices,
+            insertAt: insertAt,
+            options: options
+        )
+    }
+
+    /// Merges one or more external PDF documents into `sessionId` (`M3.2`).
+    /// Refuses if active digital signatures exist unless `allowSignatureInvalidation` is true.
+    public func mergeDocuments(
+        sessionId: String,
+        sourcePdfsData: [Data],
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreMergeDocumentsWithOptions(
+            sessionId: sessionId,
+            sourcePdfs: sourcePdfsData,
+            options: options
+        )
+    }
+
+    /// Splits `sessionId` into standalone PDF byte buffers corresponding to `splitRanges` (`M3.2`).
+    public func splitDocument(
+        sessionId: String,
+        splitRanges: [[UInt32]]
+    ) throws -> [Data] {
+        let resultBuffers = try documentCoreSplitDocument(
+            sessionId: sessionId,
+            splitRanges: splitRanges
+        )
+        return resultBuffers.map { Data($0) }
+    }
 }

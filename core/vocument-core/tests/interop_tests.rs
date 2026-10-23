@@ -354,6 +354,7 @@ fn test_m0_full_dod_workflow_and_recovery_cycle() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .expect("rotate");
@@ -393,6 +394,7 @@ fn test_m0_full_dod_workflow_and_recovery_cycle() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .expect("second rotate");

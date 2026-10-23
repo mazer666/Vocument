@@ -144,3 +144,64 @@ pub fn document_core_extract_pages(
     let bytes = registry.extract_pages(&session_id, &page_indices)?;
     Ok(bytes)
 }
+
+/// Rotates the specified `page_indices` with explicit signature invalidation options (`M3`).
+#[uniffi::export]
+pub fn document_core_rotate_pages_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    delta_degrees: i32,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.rotate_pages_with_options(
+        &session_id,
+        page_indices,
+        delta_degrees,
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Inserts pages from another PDF document at index `insert_at` (`M3.2`).
+#[uniffi::export]
+pub fn document_core_insert_pages_with_options(
+    session_id: String,
+    source_pdf: Vec<u8>,
+    source_page_indices: Vec<u32>,
+    insert_at: u32,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.insert_pages_from_document_with_options(
+        &session_id,
+        source_pdf,
+        source_page_indices,
+        insert_at,
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Merges external PDF documents into the current document (`M3.2`).
+#[uniffi::export]
+pub fn document_core_merge_documents_with_options(
+    session_id: String,
+    source_pdfs: Vec<Vec<u8>>,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.merge_documents_with_options(&session_id, source_pdfs, options.into())?;
+    Ok(record.into())
+}
+
+/// Splits the current document into standalone PDF byte vectors for each page range (`M3.2`).
+#[uniffi::export]
+pub fn document_core_split_document(
+    session_id: String,
+    split_ranges: Vec<Vec<u32>>,
+) -> Result<Vec<Vec<u8>>, DocumentCoreError> {
+    let registry = session_registry();
+    let split_docs = registry.split_document(&session_id, split_ranges)?;
+    Ok(split_docs)
+}

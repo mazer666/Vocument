@@ -9,6 +9,7 @@
 //! 6. Digital signatures fail-closed rejection and explicit invalidation handling (`SIG-001`)
 //! 7. Independent deserialization and verification with zero syntax defects
 
+use crate::mutate::{rotate_pages_in_pdf, rotate_pages_in_pdf_ext};
 use crate::page_ops::{
     delete_pages, delete_pages_ext, duplicate_page, duplicate_page_ext, extract_pages,
     reorder_pages, reorder_pages_ext,
@@ -291,6 +292,13 @@ fn test_preflight_blocks_signed_document_fail_closed_by_default() {
         Err(PdfEngineError::OperationBlockedBySignature { .. })
     ));
 
+    // 4. Rotating must fail-closed (M3.1 rotation hardening)
+    let rot_err = rotate_pages_in_pdf(&signed_pdf, 1, &[0], 90);
+    assert!(matches!(
+        rot_err,
+        Err(PdfEngineError::OperationBlockedBySignature { .. })
+    ));
+
     // Source PDF bytes were never modified
     let doc_check = engine
         .open_pdf_bytes(&signed_pdf)
@@ -337,6 +345,14 @@ fn test_explicit_signature_invalidation_marks_signature_invalidated() {
         .open_pdf_bytes(&del_bytes)
         .expect("open deleted signed pdf");
     assert_eq!(del_doc.summary().page_count, 1);
+
+    // Rotating with explicit signature invalidation produces valid working copy
+    let rot_bytes = rotate_pages_in_pdf_ext(&signed_pdf, 1, &[0], 90, true)
+        .expect("rotate with signature invalidation succeeds");
+    let rot_doc = engine
+        .open_pdf_bytes(&rot_bytes)
+        .expect("open rotated signed pdf");
+    assert!(!rot_doc.document_signatures().expect("sigs")[0].is_signed);
 }
 
 fn pdf_with_nested_signature() -> Vec<u8> {

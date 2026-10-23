@@ -247,6 +247,7 @@ fn test_safe_save_updates_identity_and_clears_dirty_flag() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -294,6 +295,7 @@ fn test_safe_save_as_writes_new_file_and_rebinds_session() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -335,6 +337,7 @@ fn test_gate_never_silently_overwrites_externally_changed_content() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -395,6 +398,7 @@ fn test_conflict_resolution_safe_copy_creates_collision_free_file_and_preserves_
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -440,6 +444,7 @@ fn test_conflict_resolution_explicit_overwrite_updates_external_file() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -490,6 +495,7 @@ fn test_conflict_resolution_reload_external_version() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -589,6 +595,7 @@ fn test_signed_original_cannot_be_overwritten_via_save_or_save_as() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -630,6 +637,7 @@ fn test_signed_original_cannot_be_overwritten_via_save_or_save_as() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();

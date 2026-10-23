@@ -586,7 +586,69 @@ struct VocumentMacHandshakeCLI {
         guard m31Snap.pdfSummary.pageCount == 3 else {
             fatalError("Expected 3 pages restored after undo, got \(m31Snap.pdfSummary.pageCount)")
         }
+
+        // M3.1 HARDENING: Rotation signature preflight & transaction description
+        let m31Rot = try client.rotatePagesWithOptions(sessionId: m31Session.sessionId, pageIndices: [0], deltaDegrees: 90, allowSignatureInvalidation: false)
+        guard m31Rot.description == "Rotate page #1 by +90°" else {
+            fatalError("Expected 'Rotate page #1 by +90°', got \(m31Rot.description)")
+        }
+
+        // M3.2 MULTI-DOCUMENT OPERATIONS (ROADMAP.md M3.2, Merge, Insert, Split)
+        // 1. Insert pages from extracted PDF buffer at index 1
+        let m32Insert = try client.insertPages(
+            sessionId: m31Session.sessionId,
+            sourcePdfData: m31Extracted,
+            sourcePageIndices: [0, 1],
+            insertAt: 1
+        )
+        guard m32Insert.description == "Insert 2 page(s) at position #2" else {
+            fatalError("Expected 'Insert 2 page(s) at position #2', got \(m32Insert.description)")
+        }
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 5 else {
+            fatalError("Expected 5 pages after insert, got \(m31Snap.pdfSummary.pageCount)")
+        }
+
+        // 2. Merge additional document into session
+        let m32Merge = try client.mergeDocuments(
+            sessionId: m31Session.sessionId,
+            sourcePdfsData: [m31Extracted]
+        )
+        guard m32Merge.description == "Merge 1 document(s)" else {
+            fatalError("Expected 'Merge 1 document(s)', got \(m32Merge.description)")
+        }
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 7 else {
+            fatalError("Expected 7 pages after merge, got \(m31Snap.pdfSummary.pageCount)")
+        }
+
+        // 3. Split document into 3 standalone PDF buffers
+        let splitParts = try client.splitDocument(
+            sessionId: m31Session.sessionId,
+            splitRanges: [[0, 1], [2, 3, 4], [5, 6]]
+        )
+        guard splitParts.count == 3 else {
+            fatalError("Expected 3 split parts, got \(splitParts.count)")
+        }
+        for (i, part) in splitParts.enumerated() {
+            guard part.count > 100 && String(data: part.prefix(5), encoding: .ascii) == "%PDF-" else {
+                fatalError("Expected valid PDF bytes for split part \(i)")
+            }
+        }
+
+        // 4. Traceable Undo/Redo on Multi-Document operations
+        _ = try client.undo(sessionId: m31Session.sessionId)
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 5 else {
+            fatalError("Expected 5 pages after undoing merge, got \(m31Snap.pdfSummary.pageCount)")
+        }
+        _ = try client.undo(sessionId: m31Session.sessionId)
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 3 else {
+            fatalError("Expected 3 pages after undoing insert, got \(m31Snap.pdfSummary.pageCount)")
+        }
+
         try client.closeSession(sessionId: m31Session.sessionId)
-        print("✓ Swift (macOS M3.1) → WorkbenchPreflight → DuplicatePage(3 pgs) → ReorderPages([2,0,1]) → ExtractPages(\(m31Extracted.count) B) → DeletePages(1 pg) → LastPageGuard(enforced) → Undo(restored 3 pgs) verified")
+        print("✓ Swift (macOS M3.1/M3.2) → WorkbenchPreflight → DuplicatePage → ReorderPages → RotatePages(+90°) → ExtractPages → DeletePages → LastPageGuard → InsertPages(2 pgs @ #2 → 5 pgs) → MergeDocuments(+1 doc → 7 pgs) → SplitDocument(3 parts) → UndoMerge(5 pgs) → UndoInsert(3 pgs) verified")
     }
 }

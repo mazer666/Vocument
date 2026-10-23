@@ -8885,6 +8885,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceData: FfiConverterRustBuffer {
+    typealias SwiftType = [Data]
+
+    public static func write(_ value: [Data], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterData.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Data] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Data]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterData.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer {
     typealias SwiftType = [FfiCapturedScanPage]
 
@@ -9381,6 +9406,31 @@ fileprivate struct FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRus
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceSequenceUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = [[UInt32]]
+
+    public static func write(_ value: [[UInt32]], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterSequenceUInt32.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [[UInt32]] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [[UInt32]]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterSequenceUInt32.read(from: &buf))
+        }
+        return seq
+    }
+}
 /**
  * Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
  *
@@ -9765,6 +9815,20 @@ public func documentCoreIngestScanAsDocumentSession(scanSessionId: String, clean
 })
 }
 /**
+ * Inserts pages from another PDF document at index `insert_at` (`M3.2`).
+ */
+public func documentCoreInsertPagesWithOptions(sessionId: String, sourcePdf: Data, sourcePageIndices: [UInt32], insertAt: UInt32, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_insert_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterData.lower(sourcePdf),
+        FfiConverterSequenceUInt32.lower(sourcePageIndices),
+        FfiConverterUInt32.lower(insertAt),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
  * Inspects the links and actions of the document of `session_id`
  * (`LINKSEC-001`).
  *
@@ -9900,6 +9964,18 @@ public func documentCoreMarkRecoveryCleanShutdown(documentId: String)throws   {t
         FfiConverterString.lower(documentId),$0
     )
 }
+}
+/**
+ * Merges external PDF documents into the current document (`M3.2`).
+ */
+public func documentCoreMergeDocumentsWithOptions(sessionId: String, sourcePdfs: [Data], options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_merge_documents_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceData.lower(sourcePdfs),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
 }
 /**
  * Executes optical character recognition on a scan frame pre-processed through the
@@ -10231,6 +10307,19 @@ public func documentCoreRotatePages(sessionId: String, pageIndices: [UInt32], de
 })
 }
 /**
+ * Rotates the specified `page_indices` with explicit signature invalidation options (`M3`).
+ */
+public func documentCoreRotatePagesWithOptions(sessionId: String, pageIndices: [UInt32], deltaDegrees: Int32, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_rotate_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterInt32.lower(deltaDegrees),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
  * Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers.
  */
 public func documentCoreRunInteropGateSuite()throws  -> FfiInteropReport  {
@@ -10345,6 +10434,17 @@ public func documentCoreSetPageLabelRanges(sessionId: String, ranges: [FfiPageLa
     uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(
         FfiConverterString.lower(sessionId),
         FfiConverterSequenceTypeFfiPageLabelRange.lower(ranges),$0
+    )
+})
+}
+/**
+ * Splits the current document into standalone PDF byte vectors for each page range (`M3.2`).
+ */
+public func documentCoreSplitDocument(sessionId: String, splitRanges: [[UInt32]])throws  -> [Data]  {
+    return try  FfiConverterSequenceData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_split_document(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceSequenceUInt32.lower(splitRanges),$0
     )
 })
 }
@@ -10558,6 +10658,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_insert_pages_with_options() != 953) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 10976) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10589,6 +10692,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_merge_documents_with_options() != 55759) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame() != 9529) {
@@ -10675,6 +10781,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_rotate_pages_with_options() != 15442) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10706,6 +10815,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_split_document() != 5830) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457) {

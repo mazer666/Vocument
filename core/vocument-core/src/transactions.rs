@@ -47,6 +47,8 @@ pub enum TransactionCommand {
     RotatePages {
         page_indices: Vec<u32>,
         delta_degrees: i32,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
     },
     /// Adds a standard PDF `/Highlight` annotation (`ANNOT-001`, `INTEROP-002`).
     AddHighlightAnnotation { annotation: PdfHighlightAnnotation },
@@ -106,6 +108,20 @@ pub enum TransactionCommand {
     },
     /// Restores previously deleted document bytes (`ROADMAP.md` M3).
     RestorePages { previous_bytes: Vec<u8> },
+    /// Inserts pages from another PDF document at the given target index (`ROADMAP.md` M3.2).
+    InsertPagesFromDocument {
+        source_pdf: Vec<u8>,
+        source_page_indices: Vec<u32>,
+        insert_at: u32,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Merges multiple PDF documents into the current document (`ROADMAP.md` M3.2).
+    MergeDocuments {
+        source_pdfs: Vec<Vec<u8>>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// The inverse of a command that cannot be undone (`REDACT-001`, `SAN-001`).
     Irreversible { description: String },
 }
@@ -117,6 +133,7 @@ impl TransactionCommand {
             Self::RotatePages {
                 page_indices,
                 delta_degrees,
+                ..
             } => {
                 let sign = if *delta_degrees >= 0 { "+" } else { "" };
                 if page_indices.len() == 1 {
@@ -169,6 +186,20 @@ impl TransactionCommand {
                 format!("Delete {} page(s)", page_indices.len())
             }
             Self::RestorePages { .. } => "Restore deleted page(s)".to_owned(),
+            Self::InsertPagesFromDocument {
+                source_page_indices,
+                insert_at,
+                ..
+            } => {
+                format!(
+                    "Insert {} page(s) at position #{}",
+                    source_page_indices.len(),
+                    insert_at + 1
+                )
+            }
+            Self::MergeDocuments { source_pdfs, .. } => {
+                format!("Merge {} document(s)", source_pdfs.len())
+            }
             Self::Irreversible { description } => description.clone(),
         }
     }
@@ -196,6 +227,12 @@ impl TransactionCommand {
             Self::DuplicatePage { page_index, .. } => vec![*page_index, *page_index + 1],
             Self::DeletePages { page_indices, .. } => page_indices.clone(),
             Self::RestorePages { .. } => Vec::new(),
+            Self::InsertPagesFromDocument {
+                source_page_indices,
+                insert_at,
+                ..
+            } => (*insert_at..(*insert_at + source_page_indices.len() as u32)).collect(),
+            Self::MergeDocuments { .. } => Vec::new(),
             Self::Irreversible { .. } => Vec::new(),
         }
     }
@@ -233,6 +270,10 @@ impl TransactionCommand {
                 .map(|idx| format!("page:{idx}:delete"))
                 .collect(),
             Self::RestorePages { .. } => vec!["document:restore_pages".to_owned()],
+            Self::InsertPagesFromDocument { insert_at, .. } => {
+                vec![format!("document:insert_pages_at:{insert_at}")]
+            }
+            Self::MergeDocuments { .. } => vec!["document:merge".to_owned()],
             Self::Irreversible { .. } => Vec::new(),
         }
     }
@@ -277,102 +318,7 @@ impl TransactionRecord {
     }
 }
 
-/// Persistent transaction journal representation (`ARCHITECTURE.md` §§11–12, `UNDO-001`, `ROADMAP.md` M0.4).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PersistentTransactionJournal {
-    pub schema_version: u32,
-    pub document_id: String,
-    pub base_pdf_sha256: String,
-    pub current_revision: u64,
-    pub saved_revision: u64,
-    pub committed_records: Vec<TransactionRecord>,
-    pub redo_records: Vec<TransactionRecord>,
-    pub journal_checksum_sha256: String,
-}
-
-impl PersistentTransactionJournal {
-    pub fn compute_journal_checksum(
-        schema_version: u32,
-        document_id: &str,
-        base_pdf_sha256: &str,
-        current_revision: u64,
-        saved_revision: u64,
-        committed_records: &[TransactionRecord],
-        redo_records: &[TransactionRecord],
-    ) -> String {
-        let mut material = format!(
-            "v={schema_version}|doc={document_id}|base={base_pdf_sha256}|cur={current_revision}|saved={saved_revision}|committed="
-        );
-        for rec in committed_records {
-            material.push_str(&rec.record_checksum_sha256);
-            material.push(',');
-        }
-        material.push_str("|redo=");
-        for rec in redo_records {
-            material.push_str(&rec.record_checksum_sha256);
-            material.push(',');
-        }
-        sha256_hex(material.as_bytes())
-    }
-
-    /// Verifies schema version, every individual record checksum, and the overall journal checksum (`ARCHITECTURE.md` §12).
-    pub fn verify_integrity(&self) -> Result<(), TransactionError> {
-        if self.schema_version != TRANSACTION_JOURNAL_SCHEMA_VERSION {
-            return Err(TransactionError::IntegrityMismatch {
-                details: format!(
-                    "unsupported journal schema_version {} (expected {})",
-                    self.schema_version, TRANSACTION_JOURNAL_SCHEMA_VERSION
-                ),
-            });
-        }
-        for rec in self
-            .committed_records
-            .iter()
-            .chain(self.redo_records.iter())
-        {
-            if !rec.verify_checksum() {
-                return Err(TransactionError::IntegrityMismatch {
-                    details: format!(
-                        "record checksum mismatch on transaction '{}'",
-                        rec.transaction_id
-                    ),
-                });
-            }
-        }
-        let expected = Self::compute_journal_checksum(
-            self.schema_version,
-            &self.document_id,
-            &self.base_pdf_sha256,
-            self.current_revision,
-            self.saved_revision,
-            &self.committed_records,
-            &self.redo_records,
-        );
-        if expected != self.journal_checksum_sha256 {
-            return Err(TransactionError::IntegrityMismatch {
-                details: "overall journal_checksum_sha256 mismatch".to_owned(),
-            });
-        }
-        Ok(())
-    }
-
-    /// Serializes this persistent transaction journal to pretty-printed JSON (`ARCHITECTURE.md` §12).
-    pub fn to_json_pretty(&self) -> Result<String, TransactionError> {
-        serde_json::to_string_pretty(self).map_err(|err| TransactionError::SerializationFailure {
-            details: err.to_string(),
-        })
-    }
-
-    /// Parses and integrity-verifies a `PersistentTransactionJournal` from JSON.
-    pub fn from_json_verified(json: &str) -> Result<Self, TransactionError> {
-        let parsed: Self =
-            serde_json::from_str(json).map_err(|err| TransactionError::SerializationFailure {
-                details: err.to_string(),
-            })?;
-        parsed.verify_integrity()?;
-        Ok(parsed)
-    }
-}
+pub use crate::journal::PersistentTransactionJournal;
 
 /// Live Undo/Redo state snapshot exposed to native UI across UniFFI (`ROADMAP.md` M0.4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -691,22 +637,29 @@ impl TransactionManager {
             TransactionCommand::RotatePages {
                 page_indices,
                 delta_degrees,
+                allow_signature_invalidation,
             } => {
                 if page_indices.is_empty() {
                     return Err(TransactionError::EmptyPageSelection);
                 }
                 let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(
                     |doc: &mut dyn PdfEngineDocument| {
-                        doc.rotate_pages(&page_indices, delta_degrees)
+                        doc.rotate_pages_ext(
+                            &page_indices,
+                            delta_degrees,
+                            allow_signature_invalidation,
+                        )
                     },
                 )?;
                 let forward = TransactionCommand::RotatePages {
                     page_indices: page_indices.clone(),
                     delta_degrees,
+                    allow_signature_invalidation,
                 };
                 let inverse = TransactionCommand::RotatePages {
                     page_indices,
                     delta_degrees: -delta_degrees,
+                    allow_signature_invalidation: true,
                 };
                 Ok((forward, inverse, updated_bytes))
             }
@@ -876,6 +829,50 @@ impl TransactionManager {
                     Ok(previous_bytes.clone())
                 })?;
                 let forward = TransactionCommand::RestorePages { previous_bytes };
+                let inverse = TransactionCommand::RestorePages {
+                    previous_bytes: before_bytes,
+                };
+                Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::InsertPagesFromDocument {
+                source_pdf,
+                source_page_indices,
+                insert_at,
+                allow_signature_invalidation,
+            } => {
+                let before_bytes = actor.current_pdf_bytes()?;
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.insert_pages_ext(
+                        &source_pdf,
+                        &source_page_indices,
+                        insert_at,
+                        allow_signature_invalidation,
+                    )
+                })?;
+                let forward = TransactionCommand::InsertPagesFromDocument {
+                    source_pdf,
+                    source_page_indices,
+                    insert_at,
+                    allow_signature_invalidation,
+                };
+                let inverse = TransactionCommand::RestorePages {
+                    previous_bytes: before_bytes,
+                };
+                Ok((forward, inverse, updated_bytes))
+            }
+            TransactionCommand::MergeDocuments {
+                source_pdfs,
+                allow_signature_invalidation,
+            } => {
+                let before_bytes = actor.current_pdf_bytes()?;
+                let doc_slices: Vec<&[u8]> = source_pdfs.iter().map(|b| b.as_slice()).collect();
+                let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                    doc.merge_documents_ext(&doc_slices, allow_signature_invalidation)
+                })?;
+                let forward = TransactionCommand::MergeDocuments {
+                    source_pdfs,
+                    allow_signature_invalidation,
+                };
                 let inverse = TransactionCommand::RestorePages {
                     previous_bytes: before_bytes,
                 };

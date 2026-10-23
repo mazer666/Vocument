@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "mupdf_serialize.h"
+#include "mupdf_page_helpers.h"
 
 typedef struct {
     int page_index;
@@ -136,18 +137,19 @@ int vocument_mupdf_query_page_rotation(
     return status;
 }
 
-int vocument_mupdf_rotate_pages(
+int vocument_mupdf_rotate_pages_ext(
     const unsigned char *bytes,
     size_t len,
     const int *page_indices,
     size_t page_indices_len,
     int delta_degrees,
+    int allow_signature_invalidation,
     unsigned char **out_pdf_bytes,
     size_t *out_pdf_len,
     char *err_buf,
     size_t err_buf_len
 ) {
-    if (!out_pdf_bytes || !out_pdf_len) {
+    if (!bytes || len == 0 || !page_indices || page_indices_len == 0 || !out_pdf_bytes || !out_pdf_len) {
         return 3;
     }
     *out_pdf_bytes = NULL;
@@ -182,17 +184,34 @@ int vocument_mupdf_rotate_pages(
             for (size_t i = 0; i < page_indices_len; i++) {
                 int idx = page_indices[i];
                 if (idx < 0 || idx >= count) {
-                    status = 4;
+                    status = 1;
                     break;
                 }
-                pdf_obj *page_obj = pdf_lookup_page_obj(ctx, pdf_doc, idx);
-                pdf_obj *rot_obj = pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(Rotate));
-                int cur_deg = rot_obj ? pdf_to_int(ctx, rot_obj) : 0;
-                int new_deg = ((cur_deg + delta_degrees) % 360 + 360) % 360;
-                pdf_dict_put_int(ctx, page_obj, PDF_NAME(Rotate), (int64_t)new_deg);
             }
+
             if (status == 0) {
-                vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                int sigs = count_active_signatures(ctx, pdf_doc);
+                if (sigs != 0 && !allow_signature_invalidation) {
+                    status = 4; /* Blocked by digital signatures fail-closed */
+                } else if (sigs < 0) {
+                    status = 1; /* Cannot safely inspect cyclic/broken structure */
+                } else if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                    status = 1; /* Corrupted Tagged PDF structure fail-closed */
+                } else {
+                    for (size_t i = 0; i < page_indices_len; i++) {
+                        int idx = page_indices[i];
+                        pdf_obj *page_obj = pdf_lookup_page_obj(ctx, pdf_doc, idx);
+                        make_page_self_contained(ctx, page_obj);
+                        pdf_obj *rot_obj = pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(Rotate));
+                        int cur_deg = rot_obj ? pdf_to_int(ctx, rot_obj) : 0;
+                        int new_deg = ((cur_deg + delta_degrees) % 360 + 360) % 360;
+                        pdf_dict_put_int(ctx, page_obj, PDF_NAME(Rotate), (int64_t)new_deg);
+                    }
+                    if (sigs > 0 && allow_signature_invalidation) {
+                        mark_signatures_invalidated(ctx, pdf_doc);
+                    }
+                    vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                }
             }
         }
     }
@@ -210,6 +229,31 @@ int vocument_mupdf_rotate_pages(
 
     fz_drop_context(ctx);
     return status;
+}
+
+int vocument_mupdf_rotate_pages(
+    const unsigned char *bytes,
+    size_t len,
+    const int *page_indices,
+    size_t page_indices_len,
+    int delta_degrees,
+    unsigned char **out_pdf_bytes,
+    size_t *out_pdf_len,
+    char *err_buf,
+    size_t err_buf_len
+) {
+    return vocument_mupdf_rotate_pages_ext(
+        bytes,
+        len,
+        page_indices,
+        page_indices_len,
+        delta_degrees,
+        0,
+        out_pdf_bytes,
+        out_pdf_len,
+        err_buf,
+        err_buf_len
+    );
 }
 
 int vocument_mupdf_query_page_highlights(

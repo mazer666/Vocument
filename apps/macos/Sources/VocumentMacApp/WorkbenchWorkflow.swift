@@ -7,11 +7,14 @@ import VocumentFFI
 /// Workflow logic and state orchestration for Visual Page Workbench (`ROADMAP.md` M3.1, `ADR-0019`).
 /// Connects the native SwiftUI UI to `DocumentCoreClient` and `TransactionManager`,
 /// ensuring safe transactions, multi-selection handling, preflight signature guards, and Undo/Redo.
-/// Pending mutating action that requires user confirmation if signatures exist (`M3.0`, `M3.1`).
+/// Pending mutating action that requires user confirmation if signatures exist (`M3.0`, `M3.1`, `M3.2`).
 enum WorkbenchAction {
     case reorder([UInt32])
-    case duplicate(UInt32)
+    case duplicate([UInt32])
     case delete([UInt32])
+    case rotate([UInt32], Int32)
+    case insert(Data, [UInt32], UInt32)
+    case merge([Data])
 }
 
 @MainActor
@@ -38,13 +41,15 @@ extension MacDocumentSessionCoordinator {
                 allowSignatureInvalidation: allowInvalidation
             )
             workbenchNotificationMessage = "Pages reordered"
-        case .duplicate(let pageIndex):
-            _ = try coreClient.duplicatePage(
-                sessionId: session.sessionId,
-                pageIndex: pageIndex,
-                allowSignatureInvalidation: allowInvalidation
-            )
-            workbenchNotificationMessage = "Page \(pageIndex + 1) duplicated"
+        case .duplicate(let pageIndices):
+            for pageIndex in pageIndices.sorted().reversed() {
+                _ = try coreClient.duplicatePage(
+                    sessionId: session.sessionId,
+                    pageIndex: pageIndex,
+                    allowSignatureInvalidation: allowInvalidation
+                )
+            }
+            workbenchNotificationMessage = "Duplicated \(pageIndices.count) page(s)"
         case .delete(let indices):
             _ = try coreClient.deletePages(
                 sessionId: session.sessionId,
@@ -52,6 +57,30 @@ extension MacDocumentSessionCoordinator {
                 allowSignatureInvalidation: allowInvalidation
             )
             workbenchNotificationMessage = "Deleted \(indices.count) page(s)"
+        case .rotate(let indices, let delta):
+            _ = try coreClient.rotatePagesWithOptions(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                deltaDegrees: delta,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            workbenchNotificationMessage = "Rotated \(indices.count) page(s) by \(delta)°"
+        case .insert(let sourceData, let sourceIndices, let insertAt):
+            _ = try coreClient.insertPages(
+                sessionId: session.sessionId,
+                sourcePdfData: sourceData,
+                sourcePageIndices: sourceIndices,
+                insertAt: insertAt,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            workbenchNotificationMessage = "Inserted \(sourceIndices.count) page(s) at position #\(insertAt + 1)"
+        case .merge(let sourcePdfsData):
+            _ = try coreClient.mergeDocuments(
+                sessionId: session.sessionId,
+                sourcePdfsData: sourcePdfsData,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            workbenchNotificationMessage = "Merged \(sourcePdfsData.count) external document(s)"
         }
     }
 
@@ -166,8 +195,8 @@ extension MacDocumentSessionCoordinator {
     /// Duplicates the currently selected page(s) (`M3.1`).
     func workbenchDuplicateSelectedPages() {
         guard !selectedWorkbenchPages.isEmpty else { return }
-        let target = selectedWorkbenchPages.min() ?? currentPageIndex
-        requestWorkbenchAction(.duplicate(target))
+        let targets = Array(selectedWorkbenchPages).sorted()
+        requestWorkbenchAction(.duplicate(targets))
     }
 
     /// Deletes the selected page(s), enforcing the last-page guard (`M3.1`).
@@ -182,21 +211,11 @@ extension MacDocumentSessionCoordinator {
         requestWorkbenchAction(.delete(pagesToDelete))
     }
 
-    /// Rotates selected pages by `deltaDegrees` (e.g. 90, 180, 270) (`M3.1`, `M3.3`).
+    /// Rotates selected pages by `deltaDegrees` (e.g. 90, 180, 270) with signature preflight guards (`M3.1`, `M3.3`).
     func workbenchRotateSelectedPages(deltaDegrees: Int32) {
-        guard let session = activeSession, !selectedWorkbenchPages.isEmpty else { return }
+        guard activeSession != nil, !selectedWorkbenchPages.isEmpty else { return }
         let pagesToRotate = Array(selectedWorkbenchPages).sorted()
-        do {
-            transactionHistory = try coreClient.rotatePages(
-                sessionId: session.sessionId,
-                pageIndices: pagesToRotate,
-                deltaDegrees: deltaDegrees
-            )
-            refreshSessionStateAfterMutation()
-            workbenchNotificationMessage = "Rotated \(pagesToRotate.count) page(s) by \(deltaDegrees)°"
-        } catch {
-            errorMessage = "Rotation failed: \(error.localizedDescription)"
-        }
+        requestWorkbenchAction(.rotate(pagesToRotate, deltaDegrees))
     }
 
     /// Extracts the selected pages into a new standalone PDF document via `NSSavePanel` (`M3.1`).
@@ -219,6 +238,103 @@ extension MacDocumentSessionCoordinator {
                 workbenchNotificationMessage = "Extracted \(pagesToExtract.count) page(s) to \(targetUrl.lastPathComponent)"
             } catch {
                 errorMessage = "Extraction failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Prompts the user to pick a PDF document and inserts all its pages after the current selection (`M3.2`).
+    func workbenchInsertPages() {
+        guard let session = activeSession else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Choose a PDF document to insert"
+        panel.prompt = "Insert"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let data = try Data(contentsOf: url)
+                // Determine insert position: after last selected page, or at end if no selection
+                let maxSelected = selectedWorkbenchPages.max()
+                let insertAt: UInt32 = maxSelected != nil ? (maxSelected! + 1) : session.pdfSummary.pageCount
+                // Open temporarily to query page count
+                let tempSession = try coreClient.openScopedDocument(at: url)
+                let pageCount = tempSession.pdfSummary.pageCount
+                _ = try? coreClient.closeSession(sessionId: tempSession.sessionId)
+
+                let sourceIndices = Array(0..<pageCount)
+                requestWorkbenchAction(.insert(data, sourceIndices, insertAt))
+            } catch {
+                errorMessage = "Failed to load PDF for insertion: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Prompts the user to pick one or more PDF documents to merge into the active document (`M3.2`).
+    func workbenchMergeDocuments() {
+        guard activeSession != nil else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.message = "Choose PDF document(s) to merge into the current document"
+        panel.prompt = "Merge"
+
+        if panel.runModal() == .OK && !panel.urls.isEmpty {
+            do {
+                var pdfsData: [Data] = []
+                for url in panel.urls {
+                    let data = try Data(contentsOf: url)
+                    pdfsData.append(data)
+                }
+                requestWorkbenchAction(.merge(pdfsData))
+            } catch {
+                errorMessage = "Failed to load PDF(s) for merge: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Prompts the user to choose an export folder and splits the document into standalone PDF parts (`M3.2`).
+    func workbenchSplitDocument() {
+        guard let session = activeSession, session.pdfSummary.pageCount > 1 else {
+            errorMessage = "A document must have at least 2 pages to be split."
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose Folder"
+        panel.message = "Choose destination directory for split PDF parts"
+
+        if panel.runModal() == .OK, let folderUrl = panel.url {
+            do {
+                // If specific pages are selected and not all pages: split into [selected] and [surviving]
+                let splitRanges: [[UInt32]]
+                if !selectedWorkbenchPages.isEmpty && selectedWorkbenchPages.count < Int(session.pdfSummary.pageCount) {
+                    let selected = Array(selectedWorkbenchPages).sorted()
+                    let surviving = (0..<session.pdfSummary.pageCount).filter { !selectedWorkbenchPages.contains($0) }
+                    splitRanges = [selected, surviving]
+                } else {
+                    // Otherwise split into single-page documents
+                    splitRanges = (0..<session.pdfSummary.pageCount).map { [$0] }
+                }
+
+                let splitPdfs = try coreClient.splitDocument(
+                    sessionId: session.sessionId,
+                    splitRanges: splitRanges
+                )
+
+                let baseName = session.fileIdentity.displayName.replacingOccurrences(of: ".pdf", with: "")
+                for (idx, pdfData) in splitPdfs.enumerated() {
+                    let fileUrl = folderUrl.appendingPathComponent("\(baseName)_part\(idx + 1).pdf")
+                    try pdfData.write(to: fileUrl, options: .atomic)
+                }
+                workbenchNotificationMessage = "Document split into \(splitPdfs.count) parts in \(folderUrl.lastPathComponent)"
+            } catch {
+                errorMessage = "Split failed: \(error.localizedDescription)"
             }
         }
     }

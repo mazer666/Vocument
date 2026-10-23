@@ -261,6 +261,7 @@ fn test_recovery_container_lifecycle_dirty_session_and_clean_close() {
             TransactionCommand::RotatePages {
                 page_indices: vec![0],
                 delta_degrees: 90,
+                allow_signature_invalidation: false,
             },
         )
         .unwrap();
@@ -308,6 +309,7 @@ fn test_crash_recovery_detection_and_restore_action_gate_verified() {
                 TransactionCommand::RotatePages {
                     page_indices: vec![0],
                     delta_degrees: 90,
+                    allow_signature_invalidation: false,
                 },
             )
             .unwrap();
@@ -431,6 +433,7 @@ fn test_crash_recovery_preview_action() {
                 TransactionCommand::RotatePages {
                     page_indices: vec![0],
                     delta_degrees: 90,
+                    allow_signature_invalidation: false,
                 },
             )
             .unwrap();
@@ -485,6 +488,7 @@ fn test_crash_recovery_discard_action() {
                 TransactionCommand::RotatePages {
                     page_indices: vec![0],
                     delta_degrees: 90,
+                    allow_signature_invalidation: false,
                 },
             )
             .unwrap();
@@ -534,6 +538,7 @@ fn test_crash_recovery_open_as_new_action() {
                 TransactionCommand::RotatePages {
                     page_indices: vec![0],
                     delta_degrees: 90,
+                    allow_signature_invalidation: false,
                 },
             )
             .unwrap();
@@ -599,6 +604,7 @@ fn test_hard_kill_recovery_with_subprocess_sigkill() {
                 TransactionCommand::RotatePages {
                     page_indices: vec![0],
                     delta_degrees: 90,
+                    allow_signature_invalidation: false,
                 },
             )
             .unwrap();

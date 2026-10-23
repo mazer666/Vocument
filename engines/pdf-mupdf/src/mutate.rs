@@ -61,12 +61,13 @@ unsafe extern "C" {
         out_rotation_deg: *mut c_int,
     ) -> c_int;
 
-    fn vocument_mupdf_rotate_pages(
+    fn vocument_mupdf_rotate_pages_ext(
         bytes: *const u8,
         len: usize,
         page_indices: *const c_int,
         page_indices_len: usize,
         delta_degrees: c_int,
+        allow_signature_invalidation: c_int,
         out_pdf_bytes: *mut *mut u8,
         out_pdf_len: *mut usize,
         err_buf: *mut c_char,
@@ -217,6 +218,19 @@ pub fn rotate_pages_in_pdf(
     page_indices: &[u32],
     delta_degrees: i32,
 ) -> Result<Vec<u8>, PdfEngineError> {
+    rotate_pages_in_pdf_ext(pdf_bytes, page_count, page_indices, delta_degrees, false)
+}
+
+pub fn rotate_pages_in_pdf_ext(
+    pdf_bytes: &[u8],
+    page_count: u32,
+    page_indices: &[u32],
+    delta_degrees: i32,
+    allow_signature_invalidation: bool,
+) -> Result<Vec<u8>, PdfEngineError> {
+    if page_indices.is_empty() {
+        return Ok(pdf_bytes.to_vec());
+    }
     if delta_degrees % 90 != 0 {
         return Err(PdfEngineError::InvalidRotationAngle {
             degrees: delta_degrees,
@@ -243,12 +257,13 @@ pub fn rotate_pages_in_pdf(
 
     // SAFETY: All slices and output pointers are valid.
     let status = unsafe {
-        vocument_mupdf_rotate_pages(
+        vocument_mupdf_rotate_pages_ext(
             pdf_bytes.as_ptr(),
             pdf_bytes.len(),
             c_indices.as_ptr(),
             c_indices.len(),
             delta_degrees,
+            if allow_signature_invalidation { 1 } else { 0 },
             &raw mut out_ptr,
             &raw mut out_len,
             err_buf.as_mut_ptr(),
@@ -258,6 +273,14 @@ pub fn rotate_pages_in_pdf(
 
     // SAFETY: `out_ptr` was allocated by `mupdf_mutate_bridge.c` if non-null.
     let updated_bytes = unsafe { take_malloc_vec(out_ptr, out_len) };
+
+    if status == 4 {
+        return Err(PdfEngineError::OperationBlockedBySignature {
+            details:
+                "rotation blocked by preflight check: document contains active digital signatures"
+                    .to_owned(),
+        });
+    }
 
     if status != 0 || updated_bytes.is_empty() {
         let details = c_buf_to_optional_string(&err_buf)

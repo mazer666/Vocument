@@ -11,6 +11,7 @@ pub mod document_inspection;
 pub mod file_broker;
 pub mod identity;
 pub mod jobs;
+pub mod journal;
 pub mod navigation;
 pub mod pdf_engine;
 pub mod recovery;

@@ -210,6 +210,18 @@ impl DocumentActor {
         Ok(guard.extract_pages(page_indices)?)
     }
 
+    /// Splits specified page ranges into separate standalone PDF buffers (`ROADMAP.md` M3.2).
+    pub fn split_document(
+        &self,
+        split_ranges: &[Vec<u32>],
+    ) -> Result<Vec<Vec<u8>>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.split_document(split_ranges)?)
+    }
+
     /// Performs structural preflight inspection before Page Workbench operations (`ROADMAP.md` M3, `ADR-0019`).
     pub fn workbench_preflight(
         &self,

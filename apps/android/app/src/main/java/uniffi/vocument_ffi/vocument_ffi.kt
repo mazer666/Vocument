@@ -897,6 +897,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -980,6 +988,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_index_search_batch(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_insert_pages_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_inspect_document(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_job_cancel(
@@ -1001,6 +1011,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_job_submit(
 fun uniffi_vocument_ffi_checksum_func_document_core_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_merge_documents_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame(
 ): Short
@@ -1058,6 +1070,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_rotate_frame(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_rotate_pages_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_sanitize_document(
@@ -1079,6 +1093,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
 fun uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_split_document(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_start_scan_session(
 ): Short
@@ -1211,6 +1227,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_index_search_batch(`sessionId`: Ru
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_ingest_scan_as_document_session(`scanSessionId`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`displayName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_insert_pages_with_options(`sessionId`: RustBuffer.ByValue,`sourcePdf`: RustBuffer.ByValue,`sourcePageIndices`: RustBuffer.ByValue,`insertAt`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_inspect_document(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_job_cancel(`jobId`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1233,6 +1251,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_jurist_palette(uniffi_out_err: Uni
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_mark_recovery_clean_shutdown(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_merge_documents_with_options(`sessionId`: RustBuffer.ByValue,`sourcePdfs`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_clean_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_ocr_frame(`frame`: RustBuffer.ByValue,`languages`: RustBuffer.ByValue,`detectLanguage`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1289,6 +1309,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_rotate_frame(`frame`: RustBuffer.B
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_rotate_pages_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`deltaDegrees`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_run_interop_gate_suite(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_sanitize_document(`sessionId`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1310,6 +1332,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: Rust
 fun uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(`entries`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_split_document(`sessionId`: RustBuffer.ByValue,`splitRanges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_start_scan_session(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1557,6 +1581,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_ingest_scan_as_document_session() != 28340.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_insert_pages_with_options() != 953.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_inspect_document() != 10976.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1588,6 +1615,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_mark_recovery_clean_shutdown() != 52923.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_merge_documents_with_options() != 55759.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_ocr_clean_scan_frame() != 9529.toShort()) {
@@ -1674,6 +1704,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages() != 32384.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_rotate_pages_with_options() != 15442.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_run_interop_gate_suite() != 59438.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1705,6 +1738,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_split_document() != 5830.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_start_scan_session() != 27457.toShort()) {
@@ -6824,6 +6860,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.ByteArray>> {
+    override fun read(buf: ByteBuffer): List<kotlin.ByteArray> {
+        val len = buf.getInt()
+        return List<kotlin.ByteArray>(len) {
+            FfiConverterByteArray.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.ByteArray>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterByteArray.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.ByteArray>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterByteArray.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer<List<FfiCapturedScanPage>> {
     override fun read(buf: ByteBuffer): List<FfiCapturedScanPage> {
         val len = buf.getInt()
@@ -7377,6 +7441,34 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List<kotlin.UInt>>> {
+    override fun read(buf: ByteBuffer): List<List<kotlin.UInt>> {
+        val len = buf.getInt()
+        return List<List<kotlin.UInt>>(len) {
+            FfiConverterSequenceUInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<List<kotlin.UInt>>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterSequenceUInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<List<kotlin.UInt>>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterSequenceUInt.write(it, buf)
+        }
+    }
+}
         /**
          * Writes a comment of the reviewer via `TransactionManager` (`ANNOT-001`).
          *
@@ -7837,6 +7929,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Inserts pages from another PDF document at index `insert_at` (`M3.2`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreInsertPagesWithOptions`(`sessionId`: kotlin.String, `sourcePdf`: kotlin.ByteArray, `sourcePageIndices`: List<kotlin.UInt>, `insertAt`: kotlin.UInt, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_insert_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterByteArray.lower(`sourcePdf`),FfiConverterSequenceUInt.lower(`sourcePageIndices`),FfiConverterUInt.lower(`insertAt`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Inspects the links and actions of the document of `session_id`
          * (`LINKSEC-001`).
          *
@@ -8005,6 +8110,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
         FfiConverterString.lower(`documentId`),_status)
 }
     
+    
+
+        /**
+         * Merges external PDF documents into the current document (`M3.2`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreMergeDocumentsWithOptions`(`sessionId`: kotlin.String, `sourcePdfs`: List<kotlin.ByteArray>, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_merge_documents_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceByteArray.lower(`sourcePdfs`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
     
 
         /**
@@ -8391,6 +8509,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     
 
         /**
+         * Rotates the specified `page_indices` with explicit signature invalidation options (`M3`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreRotatePagesWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `deltaDegrees`: kotlin.Int, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_rotate_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`deltaDegrees`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Executes the full M0 DoD workflow and verifies generated PDF files across reference and foreign viewers.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreRunInteropGateSuite`(): FfiInteropReport {
@@ -8532,6 +8663,19 @@ public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuff
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceTypeFfiPageLabelRange.lower(`ranges`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Splits the current document into standalone PDF byte vectors for each page range (`M3.2`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSplitDocument`(`sessionId`: kotlin.String, `splitRanges`: List<List<kotlin.UInt>>): List<kotlin.ByteArray> {
+            return FfiConverterSequenceByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_split_document(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceSequenceUInt.lower(`splitRanges`),_status)
 }
     )
     }
