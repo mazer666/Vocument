@@ -19,7 +19,6 @@ import VocumentFFI
 /// therefore shows the warnings in red, above everything else.
 struct ReviewPanelView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
-    @State private var showingSanitizeConfirmation: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -207,14 +206,14 @@ struct ReviewPanelView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Button("Sanitize Document…") {
-                        showingSanitizeConfirmation = true
+                        coordinator.showingSanitizeConfirmation = true
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
                     .help("Irreversibly cleanses document metadata, actions, attachments, annotations, and form fields after confirmation.")
                     .confirmationDialog(
                         "Sanitize Document?",
-                        isPresented: $showingSanitizeConfirmation,
+                        isPresented: $coordinator.showingSanitizeConfirmation,
                         titleVisibility: .visible
                     ) {
                         Button("Sanitize Document", role: .destructive) {

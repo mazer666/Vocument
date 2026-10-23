@@ -6,6 +6,15 @@ import UniformTypeIdentifiers
 import VocumentMacKit
 import VocumentFFI
 
+/// Visual workflow presets for the macOS desktop application (`ROADMAP.md` M0.2, M2, M3.1).
+enum MacAppViewMode: String, CaseIterable, Identifiable {
+    case reader = "Reader"
+    case review = "Review"
+    case workbench = "Page Workbench"
+
+    var id: String { rawValue }
+}
+
 /// Observable document session, rendering, navigation, and search view-model for macOS (`ARCHITECTURE.md` §§3–10, 17, `ROADMAP.md` M0.1–M0.3).
 /// Uses `ObservableObject` so it compiles cleanly under both Xcode and standalone Command Line Tools.
 @MainActor
@@ -95,6 +104,17 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     /// then not protected against a crash. A user who does not know that
     /// would believe that a crash cannot cost them anything.
     @Published var recoveryWarning: String?
+    @Published var showingSanitizeConfirmation: Bool = false
+    @Published var canvasDragStart: CGPoint?
+    @Published var canvasDragRect: CGRect = .zero
+    @Published var activeViewMode: MacAppViewMode = .workbench
+    @Published var selectedWorkbenchPages: Set<UInt32> = []
+    @Published var lastSelectedWorkbenchPageIndex: UInt32?
+    @Published var workbenchPreflightReport: FfiPageWorkbenchPreflightReport?
+    @Published var showSignatureConfirmation: Bool = false
+    @Published var showDeleteConfirmation: Bool = false
+    @Published var workbenchNotificationMessage: String?
+    var pendingWorkbenchAction: WorkbenchAction?
 
     init() {
         buildInfo = coreClient.buildInfo()

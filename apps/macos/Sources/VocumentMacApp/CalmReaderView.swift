@@ -36,6 +36,16 @@ struct CalmReaderSessionView: View {
                 )
                 .foregroundStyle(.secondary)
                 Spacer()
+                if coordinator.activeSession != nil {
+                    Picker("Mode", selection: $coordinator.activeViewMode) {
+                        ForEach(MacAppViewMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 320)
+                    .help("Switch between Comfort Reader, Professional Review, and Page Workbench modes (ROADMAP M3.1)")
+                }
                 Button("Open PDF…") {
                     coordinator.openDocumentViaPanel()
                 }
@@ -52,10 +62,20 @@ struct CalmReaderSessionView: View {
             }
 
             if coordinator.activeSession != nil {
-                HStack(alignment: .top, spacing: 16) {
-                    NavigationAndSearchSidebarView(coordinator: coordinator)
-                    DocumentCanvasView(coordinator: coordinator)
-                    ReviewPanelView(coordinator: coordinator)
+                switch coordinator.activeViewMode {
+                case .reader:
+                    HStack(alignment: .top, spacing: 16) {
+                        NavigationAndSearchSidebarView(coordinator: coordinator)
+                        DocumentCanvasView(coordinator: coordinator)
+                    }
+                case .review:
+                    HStack(alignment: .top, spacing: 16) {
+                        NavigationAndSearchSidebarView(coordinator: coordinator)
+                        DocumentCanvasView(coordinator: coordinator)
+                        ReviewPanelView(coordinator: coordinator)
+                    }
+                case .workbench:
+                    PageWorkbenchView(coordinator: coordinator)
                 }
             } else {
                 Text("No document open. Choose 'Open PDF…' or open a file from Finder.")

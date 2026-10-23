@@ -305,7 +305,7 @@ impl SessionRegistry {
         let was_signed_on_open = engine_document
             .document_signatures()
             .map(|sigs| sigs.iter().any(|s| s.is_signed))
-            .unwrap_or(false);
+            .unwrap_or(true);
         let actor = Arc::new(DocumentActor::new(engine_document));
 
         let counter = self.next_session_number.fetch_add(1, Ordering::Relaxed);

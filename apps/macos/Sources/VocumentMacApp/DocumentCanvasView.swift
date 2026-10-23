@@ -160,21 +160,16 @@ struct PageImageView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
     let image: CGImage
 
-    /// The corner where the drag began.
-    @State private var dragStart: CGPoint?
-    /// The rectangle of the drag, in the coordinate space of the view.
-    @State private var dragRect: CGRect = .zero
-
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 Image(decorative: image, scale: 1.0, orientation: .up)
                     .background(Color.white)
-                if dragRect.width > 1, dragRect.height > 1 {
+                if coordinator.canvasDragRect.width > 1, coordinator.canvasDragRect.height > 1 {
                     Rectangle()
                         .fill(Color.red.opacity(0.25))
-                        .frame(width: dragRect.width, height: dragRect.height)
-                        .offset(x: dragRect.minX, y: dragRect.minY)
+                        .frame(width: coordinator.canvasDragRect.width, height: coordinator.canvasDragRect.height)
+                        .offset(x: coordinator.canvasDragRect.minX, y: coordinator.canvasDragRect.minY)
                         .allowsHitTesting(false)
                 }
             }
@@ -183,15 +178,15 @@ struct PageImageView: View {
             .gesture(
                 DragGesture(minimumDistance: 4)
                     .onChanged { value in
-                        if dragStart == nil {
-                            dragStart = value.startLocation
+                        if coordinator.canvasDragStart == nil {
+                            coordinator.canvasDragStart = value.startLocation
                         }
-                        dragRect = Self.rect(from: dragStart ?? value.startLocation, to: value.location)
+                        coordinator.canvasDragRect = Self.rect(from: coordinator.canvasDragStart ?? value.startLocation, to: value.location)
                     }
                     .onEnded { value in
-                        let rect = Self.rect(from: dragStart ?? value.startLocation, to: value.location)
-                        dragStart = nil
-                        dragRect = .zero
+                        let rect = Self.rect(from: coordinator.canvasDragStart ?? value.startLocation, to: value.location)
+                        coordinator.canvasDragStart = nil
+                        coordinator.canvasDragRect = .zero
                         guard let pageRect = coordinator.pageRect(fromViewRect: rect) else {
                             return
                         }

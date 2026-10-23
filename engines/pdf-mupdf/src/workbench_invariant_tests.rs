@@ -439,3 +439,135 @@ fn test_delete_page_reanchors_internal_links_to_surviving_pages() {
     assert!(del_str.contains("/Subtype/Link") || del_str.contains("/Subtype /Link"));
     assert!(del_str.contains("Dest[3 0 R") || del_str.contains("Dest [3 0 R"));
 }
+
+fn assemble_test_pdf(objects: Vec<String>) -> Vec<u8> {
+    let mut out = Vec::new();
+    out.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::with_capacity(objects.len());
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+    }
+    let xref_offset = out.len();
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in &offsets {
+        out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    out
+}
+
+#[test]
+fn test_cyclic_and_overdepth_signature_structures_fail_closed() {
+    let p1_text = "BT /F1 12 Tf 72 700 Td (Cyclic Signatures) Tj ET\n";
+    let cyclic_objects: Vec<String> = vec![
+        // 1: Catalog
+        "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [3 0 R] >> >>".to_owned(),
+        // 2: Pages root
+        "<< /Type /Pages /Kids [5 0 R] /Count 1 >>".to_owned(),
+        // 3: Cyclic Field A
+        "<< /FT /Sig /T (SigA) /Kids [4 0 R] >>".to_owned(),
+        // 4: Cyclic Field B pointing back to Field A
+        "<< /FT /Sig /T (SigB) /Kids [3 0 R] >>".to_owned(),
+        // 5: Page 1
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>".to_owned(),
+        // 6: Font
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+        // 7: Content
+        format!("<< /Length {} >>\nstream\n{p1_text}endstream", p1_text.len()),
+    ];
+    let cyclic_pdf = assemble_test_pdf(cyclic_objects);
+    let engine = MuPdfEngineAdapter::new();
+
+    // Opening cyclic document and inspecting signatures MUST fail-closed
+    let doc = engine.open_pdf_bytes(&cyclic_pdf).expect("open cyclic pdf");
+    let sig_err = doc.document_signatures();
+    assert!(
+        sig_err.is_err(),
+        "document_signatures must return Err on cyclic structure"
+    );
+
+    // All page mutations MUST be rejected fail-closed
+    assert!(reorder_pages_ext(&cyclic_pdf, &[0], false).is_err());
+    assert!(duplicate_page_ext(&cyclic_pdf, 0, false).is_err());
+    assert!(delete_pages_ext(&cyclic_pdf, &[0], false).is_err());
+}
+
+#[test]
+fn test_broken_tagged_pdf_structure_safely_refuses_operations() {
+    let p1_text = "BT /F1 12 Tf 72 700 Td (Broken Tagged PDF) Tj ET\n";
+    let broken_objects: Vec<String> = vec![
+        // 1: Catalog with Tagged markers but empty StructTreeRoot without ParentTree
+        "<< /Type /Catalog /Pages 2 0 R /MarkInfo << /Marked true >> /StructTreeRoot 3 0 R >>".to_owned(),
+        // 2: Pages root
+        "<< /Type /Pages /Kids [4 0 R] /Count 1 >>".to_owned(),
+        // 3: StructTreeRoot without ParentTree
+        "<< /Type /StructTreeRoot >>".to_owned(),
+        // 4: Page 1 with dangling StructParents 42
+        "<< /Type /Page /Parent 2 0 R /StructParents 42 /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>".to_owned(),
+        // 5: Font
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+        // 6: Content
+        format!("<< /Length {} >>\nstream\n{p1_text}endstream", p1_text.len()),
+    ];
+    let broken_pdf = assemble_test_pdf(broken_objects);
+
+    // Page operations MUST safely refuse the broken Tagged structure
+    assert!(
+        duplicate_page(&broken_pdf, 0).is_err(),
+        "duplicate must refuse broken Tagged PDF"
+    );
+    assert!(
+        reorder_pages(&broken_pdf, &[0]).is_err(),
+        "reorder must refuse broken Tagged PDF"
+    );
+}
+
+#[test]
+fn test_valid_tagged_pdf_maintains_parent_tree_consistency_on_duplicate_and_delete() {
+    let p1_text = "BT /F1 12 Tf 72 700 Td (Valid Tagged PDF) Tj ET\n";
+    let valid_objects: Vec<String> = vec![
+        // 1: Catalog
+        "<< /Type /Catalog /Pages 2 0 R /MarkInfo << /Marked true >> /StructTreeRoot 3 0 R >>".to_owned(),
+        // 2: Pages root
+        "<< /Type /Pages /Kids [4 0 R] /Count 1 >>".to_owned(),
+        // 3: StructTreeRoot with ParentTree
+        "<< /Type /StructTreeRoot /ParentTree 7 0 R >>".to_owned(),
+        // 4: Page 1 with valid StructParents 0
+        "<< /Type /Page /Parent 2 0 R /StructParents 0 /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>".to_owned(),
+        // 5: Font
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+        // 6: Content
+        format!("<< /Length {} >>\nstream\n{p1_text}endstream", p1_text.len()),
+        // 7: ParentTree number tree with entry 0
+        "<< /Nums [0 [8 0 R]] >>".to_owned(),
+        // 8: StructElem for MCID 0
+        "<< /Type /StructElem /S /P /Pg 4 0 R >>".to_owned(),
+    ];
+    let valid_pdf = assemble_test_pdf(valid_objects);
+
+    // 1. Duplicate page 0
+    let dup_bytes = duplicate_page(&valid_pdf, 0).expect("duplicate valid tagged page");
+    let dup_str = String::from_utf8_lossy(&dup_bytes);
+    assert!(dup_str.contains("/StructTreeRoot"));
+    assert!(dup_str.contains("/ParentTree"));
+
+    let engine = MuPdfEngineAdapter::new();
+    let dup_doc = engine.open_pdf_bytes(&dup_bytes).expect("open dup pdf");
+    assert_eq!(dup_doc.summary().page_count, 2);
+
+    // 2. Delete the original page 0 from duplicated document
+    let del_bytes = delete_pages(&dup_bytes, &[0]).expect("delete first page");
+    let del_doc = engine.open_pdf_bytes(&del_bytes).expect("open del pdf");
+    assert_eq!(del_doc.summary().page_count, 1);
+    let del_str = String::from_utf8_lossy(&del_bytes);
+    assert!(del_str.contains("/StructTreeRoot"));
+}

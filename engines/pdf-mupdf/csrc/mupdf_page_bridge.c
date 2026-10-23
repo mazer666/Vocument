@@ -77,8 +77,12 @@ int vocument_mupdf_reorder_pages_ext(
 
                 if (status == 0) {
                     int sigs = count_active_signatures(ctx, pdf_doc);
-                    if (sigs > 0 && !allow_signature_invalidation) {
-                        status = 4; /* Blocked by digital signatures */
+                    if (sigs != 0 && !allow_signature_invalidation) {
+                        status = 4; /* Blocked by digital signatures or unexaminable structure */
+                    } else if (sigs < 0) {
+                        status = 1; /* Cannot safely invalidate cyclic/unexaminable structure */
+                    } else if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                        status = 1; /* Broken Tagged PDF structure fail-closed */
                     } else {
                         /* Collect page references and make them self-contained */
                         pdf_obj **page_objs = (pdf_obj **)fz_calloc(ctx, (size_t)count, sizeof(pdf_obj *));
@@ -109,8 +113,12 @@ int vocument_mupdf_reorder_pages_ext(
                             mark_signatures_invalidated(ctx, pdf_doc);
                         }
 
-                        pdf_sync_open_pages(ctx, pdf_doc);
-                        vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                        if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                            status = 1;
+                        } else {
+                            pdf_sync_open_pages(ctx, pdf_doc);
+                            vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                        }
                     }
                 }
             }
@@ -189,8 +197,12 @@ int vocument_mupdf_duplicate_page_ext(
                 status = 1;
             } else {
                 int sigs = count_active_signatures(ctx, pdf_doc);
-                if (sigs > 0 && !allow_signature_invalidation) {
+                if (sigs != 0 && !allow_signature_invalidation) {
                     status = 4;
+                } else if (sigs < 0) {
+                    status = 1;
+                } else if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                    status = 1; /* Inconsistent Tagged PDF structure fail-closed */
                 } else {
                     pdf_obj *src_page_ref = pdf_lookup_page_obj(ctx, pdf_doc, page_index);
                     make_page_self_contained(ctx, src_page_ref);
@@ -199,87 +211,92 @@ int vocument_mupdf_duplicate_page_ext(
                     pdf_dict_del(ctx, new_page_dict, PDF_NAME(Parent));
                     pdf_dict_del(ctx, new_page_dict, PDF_NAME(Annots));
 
-                    int src_sp = pdf_dict_get_int(ctx, src_page_ref, PDF_NAME(StructParents));
-                    if (src_sp >= 0) {
+                    pdf_obj *sp_obj = pdf_dict_gets(ctx, src_page_ref, "StructParents");
+                    if (sp_obj && pdf_is_int(ctx, sp_obj)) {
+                        int src_sp = pdf_to_int(ctx, sp_obj);
                         pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
-                        pdf_obj *struct_tree_root = root ? pdf_dict_get(ctx, root, PDF_NAME(StructTreeRoot)) : NULL;
-                        if (struct_tree_root) {
-                            pdf_obj *parent_tree = pdf_dict_get(ctx, struct_tree_root, PDF_NAME(ParentTree));
-                            if (parent_tree) {
-                                pdf_obj *nums = pdf_dict_get(ctx, parent_tree, PDF_NAME(Nums));
-                                if (pdf_is_array(ctx, nums)) {
-                                    int nums_len = pdf_array_len(ctx, nums);
-                                    int max_sp = 0;
-                                    pdf_obj *found_arr = NULL;
-                                    for (int n = 0; n < nums_len; n += 2) {
-                                        int k = pdf_to_int(ctx, pdf_array_get(ctx, nums, n));
-                                        if (k > max_sp) max_sp = k;
-                                        if (k == src_sp) {
-                                            found_arr = pdf_array_get(ctx, nums, n + 1);
-                                        }
-                                    }
-                                    int new_sp = max_sp + 1;
-                                    pdf_dict_put_int(ctx, new_page_dict, PDF_NAME(StructParents), new_sp);
-                                    if (found_arr) {
-                                        pdf_obj *cloned_arr = pdf_deep_copy_obj(ctx, found_arr);
-                                        pdf_array_push_int(ctx, nums, new_sp);
-                                        pdf_array_push_drop(ctx, nums, cloned_arr);
-                                    }
-                                } else {
-                                    pdf_dict_put_int(ctx, new_page_dict, PDF_NAME(StructParents), src_sp + 1000);
+                        pdf_obj *struct_tree_root = root ? pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, root, "StructTreeRoot")) : NULL;
+                        pdf_obj *parent_tree = struct_tree_root ? pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, struct_tree_root, "ParentTree")) : NULL;
+                        pdf_obj *nums = parent_tree ? pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, parent_tree, "Nums")) : NULL;
+                        if (!nums || !pdf_is_array(ctx, nums)) {
+                            status = 1; /* Missing ParentTree Nums for page with StructParents */
+                        } else {
+                            int nums_len = pdf_array_len(ctx, nums);
+                            int max_sp = 0;
+                            pdf_obj *found_arr = NULL;
+                            for (int n = 0; n < nums_len; n += 2) {
+                                int k = pdf_to_int(ctx, pdf_array_get(ctx, nums, n));
+                                if (k > max_sp) max_sp = k;
+                                if (k == src_sp) {
+                                    found_arr = pdf_array_get(ctx, nums, n + 1);
                                 }
+                            }
+                            if (!found_arr) {
+                                status = 1; /* StructParents key not in ParentTree */
+                            } else {
+                                int new_sp = max_sp + 1;
+                                pdf_dict_put_int(ctx, new_page_dict, PDF_NAME(StructParents), new_sp);
+                                pdf_obj *cloned_arr = pdf_deep_copy_obj(ctx, found_arr);
+                                pdf_array_push_int(ctx, nums, new_sp);
+                                pdf_array_push_drop(ctx, nums, cloned_arr);
                             }
                         }
                     }
 
-                    pdf_obj *new_page_ref = pdf_add_object_drop(ctx, pdf_doc, new_page_dict);
+                    if (status == 0) {
+                        pdf_obj *new_page_ref = pdf_add_object_drop(ctx, pdf_doc, new_page_dict);
 
-                    /* Clone annotations and form fields if present */
-                    pdf_obj *src_annots = pdf_dict_get(ctx, src_page_ref, PDF_NAME(Annots));
-                    if (pdf_is_array(ctx, src_annots) && pdf_array_len(ctx, src_annots) > 0) {
-                        int n_annots = pdf_array_len(ctx, src_annots);
-                        pdf_obj *new_annots = pdf_new_array(ctx, pdf_doc, n_annots);
+                        /* Clone annotations and form fields if present */
+                        pdf_obj *src_annots = pdf_dict_get(ctx, src_page_ref, PDF_NAME(Annots));
+                        if (pdf_is_array(ctx, src_annots) && pdf_array_len(ctx, src_annots) > 0) {
+                            int n_annots = pdf_array_len(ctx, src_annots);
+                            pdf_obj *new_annots = pdf_new_array(ctx, pdf_doc, n_annots);
 
-                        pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
-                        pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
-                        pdf_obj *fields = acroform ? pdf_dict_get(ctx, acroform, PDF_NAME(Fields)) : NULL;
+                            pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
+                            pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
+                            pdf_obj *fields = acroform ? pdf_dict_get(ctx, acroform, PDF_NAME(Fields)) : NULL;
 
-                        for (int a = 0; a < n_annots; a++) {
-                            pdf_obj *src_a = pdf_array_get(ctx, src_annots, a);
-                            pdf_obj *annot_copy = pdf_deep_copy_obj(ctx, pdf_resolve_indirect(ctx, src_a));
-                            pdf_dict_put(ctx, annot_copy, PDF_NAME(P), new_page_ref);
+                            for (int a = 0; a < n_annots; a++) {
+                                pdf_obj *src_a = pdf_array_get(ctx, src_annots, a);
+                                pdf_obj *annot_copy = pdf_deep_copy_obj(ctx, pdf_resolve_indirect(ctx, src_a));
+                                pdf_dict_put(ctx, annot_copy, PDF_NAME(P), new_page_ref);
 
-                            /* Check for form widget */
-                            pdf_obj *ft = pdf_dict_get_inheritable(ctx, annot_copy, PDF_NAME(FT));
-                            pdf_obj *t = pdf_dict_get(ctx, annot_copy, PDF_NAME(T));
-                            if (ft || t) {
-                                if (t) {
-                                    const char *orig_name = pdf_to_text_string(ctx, t);
-                                    char renamed[256];
-                                    generate_unique_field_name(ctx, fields, orig_name, renamed, sizeof(renamed));
-                                    pdf_dict_put_text_string(ctx, annot_copy, PDF_NAME(T), renamed);
+                                /* Check for form widget */
+                                pdf_obj *ft = pdf_dict_get_inheritable(ctx, annot_copy, PDF_NAME(FT));
+                                pdf_obj *t = pdf_dict_get(ctx, annot_copy, PDF_NAME(T));
+                                if (ft || t) {
+                                    if (t) {
+                                        const char *orig_name = pdf_to_text_string(ctx, t);
+                                        char renamed[256];
+                                        generate_unique_field_name(ctx, fields, orig_name, renamed, sizeof(renamed));
+                                        pdf_dict_put_text_string(ctx, annot_copy, PDF_NAME(T), renamed);
+                                    }
                                 }
-                            }
 
-                            pdf_obj *new_a_ref = pdf_add_object_drop(ctx, pdf_doc, annot_copy);
-                            if ((ft || t) && fields && pdf_is_array(ctx, fields)) {
-                                pdf_array_push(ctx, fields, new_a_ref);
+                                pdf_obj *new_a_ref = pdf_add_object_drop(ctx, pdf_doc, annot_copy);
+                                if ((ft || t) && fields && pdf_is_array(ctx, fields)) {
+                                    pdf_array_push(ctx, fields, new_a_ref);
+                                }
+                                pdf_array_push(ctx, new_annots, new_a_ref);
+                                pdf_drop_obj(ctx, new_a_ref);
                             }
-                            pdf_array_push(ctx, new_annots, new_a_ref);
-                            pdf_drop_obj(ctx, new_a_ref);
+                            pdf_dict_put_drop(ctx, new_page_ref, PDF_NAME(Annots), new_annots);
                         }
-                        pdf_dict_put_drop(ctx, new_page_ref, PDF_NAME(Annots), new_annots);
+
+                        pdf_insert_page(ctx, pdf_doc, page_index + 1, new_page_ref);
+                        pdf_drop_obj(ctx, new_page_ref);
+
+                        if (sigs > 0 && allow_signature_invalidation) {
+                            mark_signatures_invalidated(ctx, pdf_doc);
+                        }
+
+                        if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                            status = 1;
+                        } else {
+                            pdf_sync_open_pages(ctx, pdf_doc);
+                            vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                        }
                     }
-
-                    pdf_insert_page(ctx, pdf_doc, page_index + 1, new_page_ref);
-                    pdf_drop_obj(ctx, new_page_ref);
-
-                    if (sigs > 0 && allow_signature_invalidation) {
-                        mark_signatures_invalidated(ctx, pdf_doc);
-                    }
-
-                    pdf_sync_open_pages(ctx, pdf_doc);
-                    vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
                 }
             }
         }
@@ -375,10 +392,14 @@ int vocument_mupdf_delete_pages_ext(
 
             if (status == 0) {
                 int sigs = count_active_signatures(ctx, pdf_doc);
-                if (sigs > 0 && !allow_signature_invalidation) {
+                if (sigs != 0 && !allow_signature_invalidation) {
                     status = 4;
+                } else if (sigs < 0) {
+                    status = 1;
                 } else if (deleted_count >= (size_t)count) {
                     status = 1; /* Cannot delete all pages */
+                } else if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                    status = 1; /* Inconsistent Tagged PDF structure fail-closed */
                 } else {
                         /* Collect deleted page objects and determine a surviving target */
                         pdf_obj **del_page_objs = (pdf_obj **)fz_calloc(ctx, deleted_count, sizeof(pdf_obj *));
@@ -427,8 +448,12 @@ int vocument_mupdf_delete_pages_ext(
                             mark_signatures_invalidated(ctx, pdf_doc);
                         }
 
-                        pdf_sync_open_pages(ctx, pdf_doc);
-                        vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                        if (!validate_tagged_pdf_consistency(ctx, pdf_doc)) {
+                            status = 1;
+                        } else {
+                            pdf_sync_open_pages(ctx, pdf_doc);
+                            vocument_serialize_pdf_doc_to_malloc(ctx, pdf_doc, out_pdf_bytes, out_pdf_len);
+                        }
                 }
             }
             free(delete_mask);
@@ -547,6 +572,10 @@ int vocument_mupdf_extract_pages(
 
                         pdf_obj *src_page_ref = pdf_lookup_page_obj(ctx, src_doc, src_p);
                         pdf_obj *dst_page_ref = pdf_lookup_page_obj(ctx, dst_doc, dst_p);
+                        if (dst_page_ref) {
+                            pdf_dict_del(ctx, dst_page_ref, PDF_NAME(StructParents));
+                            pdf_dict_dels(ctx, dst_page_ref, "Tabs");
+                        }
 
                         /* Graft annotations and form fields */
                         pdf_obj *src_annots = pdf_dict_get(ctx, src_page_ref, PDF_NAME(Annots));
@@ -558,6 +587,7 @@ int vocument_mupdf_extract_pages(
                                 pdf_obj *src_a = pdf_array_get(ctx, src_annots, a);
                                 pdf_obj *dst_a = pdf_graft_mapped_object(ctx, map, src_a);
                                 pdf_dict_put(ctx, dst_a, PDF_NAME(P), dst_page_ref);
+                                pdf_dict_dels(ctx, dst_a, "StructParent");
                                 pdf_array_push(ctx, dst_annots, dst_a);
                             }
                             pdf_dict_put_drop(ctx, dst_page_ref, PDF_NAME(Annots), dst_annots);

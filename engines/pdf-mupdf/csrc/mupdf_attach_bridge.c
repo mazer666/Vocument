@@ -151,81 +151,113 @@ int vocument_mupdf_inspect_attachments(
     return status;
 }
 
-/* Collects the signature fields of the form, following the field tree. */
-static void collect_signature_fields(
+typedef struct SigFieldCycleNode {
+    pdf_obj *obj;
+    struct SigFieldCycleNode *parent;
+} SigFieldCycleNode;
+
+static int sig_cycle_detect(fz_context *ctx, pdf_obj *obj, const SigFieldCycleNode *ancestors) {
+    if (!obj) return 0;
+    int target_num = pdf_to_num(ctx, obj);
+    const SigFieldCycleNode *curr = ancestors;
+    while (curr) {
+        if (curr->obj == obj) return 1;
+        if (target_num != 0 && pdf_to_num(ctx, curr->obj) == target_num) return 1;
+        curr = curr->parent;
+    }
+    return 0;
+}
+
+static void extract_signature_field_data(
     fz_context *ctx,
     pdf_document *pdf_doc,
-    pdf_obj *fields,
+    pdf_obj *field,
     vocument_mupdf_signature_t *out_signatures,
     size_t max_signatures,
     size_t *count,
     int *truncated
 ) {
-    int field_count = pdf_array_len(ctx, fields);
-    for (int i = 0; i < field_count; i++) {
-        pdf_obj *field = pdf_array_get(ctx, fields, i);
-        if (!pdf_is_dict(ctx, field)) {
-            continue;
-        }
+    if (!out_signatures || *count < max_signatures) {
+        if (out_signatures) {
+            vocument_mupdf_signature_t *dst = &out_signatures[*count];
+            memset(dst, 0, sizeof(*dst));
 
-        pdf_obj *kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
-        if (pdf_is_array(ctx, kids) && pdf_array_len(ctx, kids) > 0) {
-            collect_signature_fields(
-                ctx, pdf_doc, kids, out_signatures, max_signatures, count, truncated);
-            continue;
-        }
+            pdf_obj *title = pdf_dict_get_inheritable(ctx, field, PDF_NAME(T));
+            copy_c_string(dst->field_name, sizeof(dst->field_name), pdf_to_text_string(ctx, title));
 
-        pdf_obj *field_type = pdf_dict_get_inheritable(ctx, field, PDF_NAME(FT));
-        if (!pdf_name_eq(ctx, field_type, PDF_NAME(Sig))) {
-            continue;
-        }
+            dst->is_signed = pdf_signature_is_signed(ctx, pdf_doc, field) ? 1 : 0;
 
-        if (!out_signatures || *count < max_signatures) {
-            if (out_signatures) {
-                vocument_mupdf_signature_t *dst = &out_signatures[*count];
-                memset(dst, 0, sizeof(*dst));
+            pdf_obj *signature = pdf_dict_get_inheritable(ctx, field, PDF_NAME(V));
+            if (pdf_is_dict(ctx, signature)) {
+                copy_c_string(
+                    dst->signer, sizeof(dst->signer),
+                    pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Name))));
+                copy_c_string(
+                    dst->reason, sizeof(dst->reason),
+                    pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Reason))));
+                copy_c_string(
+                    dst->location, sizeof(dst->location),
+                    pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Location))));
 
-                pdf_obj *title = pdf_dict_get_inheritable(ctx, field, PDF_NAME(T));
-                copy_c_string(dst->field_name, sizeof(dst->field_name), pdf_to_text_string(ctx, title));
-
-                dst->is_signed = pdf_signature_is_signed(ctx, pdf_doc, field) ? 1 : 0;
-
-                pdf_obj *signature = pdf_dict_get_inheritable(ctx, field, PDF_NAME(V));
-                if (pdf_is_dict(ctx, signature)) {
-                    copy_c_string(
-                        dst->signer, sizeof(dst->signer),
-                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Name))));
-                    copy_c_string(
-                        dst->reason, sizeof(dst->reason),
-                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Reason))));
-                    copy_c_string(
-                        dst->location, sizeof(dst->location),
-                        pdf_to_text_string(ctx, pdf_dict_get(ctx, signature, PDF_NAME(Location))));
-
-                    int64_t signed_at = pdf_to_date(ctx, pdf_dict_get(ctx, signature, PDF_NAME(M)));
-                    if (signed_at > 0) {
-                        char buffer[64];
-                        struct tm tm_value;
-                        time_t seconds = (time_t)signed_at;
-                        if (gmtime_r(&seconds, &tm_value)) {
-                            strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tm_value);
-                            copy_c_string(dst->signed_at, sizeof(dst->signed_at), buffer);
-                        }
+                int64_t signed_at = pdf_to_date(ctx, pdf_dict_get(ctx, signature, PDF_NAME(M)));
+                if (signed_at > 0) {
+                    char buffer[64];
+                    struct tm tm_value;
+                    time_t seconds = (time_t)signed_at;
+                    if (gmtime_r(&seconds, &tm_value)) {
+                        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tm_value);
+                        copy_c_string(dst->signed_at, sizeof(dst->signed_at), buffer);
                     }
-
-                    /* The check needs the field, not the signature dictionary: it
-                       reads the byte range from the value of the field and asks the
-                       field whether it is a signature field at all. */
-                    dst->changed_since_signing =
-                        pdf_signature_incremental_change_since_signing(ctx, pdf_doc, field) ? 1 : 0;
                 }
+
+                dst->changed_since_signing =
+                    pdf_signature_incremental_change_since_signing(ctx, pdf_doc, field) ? 1 : 0;
             }
-            (*count)++;
-        } else {
-            *truncated = 1;
-            (*count)++;
         }
+        (*count)++;
+    } else {
+        *truncated = 1;
+        (*count)++;
     }
+}
+
+/* Collects the signature fields of the form, recursively checking for cycles and max depth. */
+static int collect_signature_fields_rec(
+    fz_context *ctx,
+    pdf_document *pdf_doc,
+    pdf_obj *field,
+    const SigFieldCycleNode *ancestors,
+    int depth,
+    vocument_mupdf_signature_t *out_signatures,
+    size_t max_signatures,
+    size_t *count,
+    int *truncated
+) {
+    if (!field || !pdf_is_dict(ctx, field)) return 0;
+    if (depth > 32 || sig_cycle_detect(ctx, field, ancestors)) {
+        return -1; /* Fail-closed on cyclic or excessively deep hierarchy */
+    }
+
+    pdf_obj *kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
+    if (pdf_is_array(ctx, kids) && pdf_array_len(ctx, kids) > 0) {
+        SigFieldCycleNode current_node = { field, (SigFieldCycleNode *)ancestors };
+        int n_kids = pdf_array_len(ctx, kids);
+        for (int k = 0; k < n_kids; k++) {
+            pdf_obj *kid = pdf_array_get(ctx, kids, k);
+            int res = collect_signature_fields_rec(
+                ctx, pdf_doc, kid, &current_node, depth + 1,
+                out_signatures, max_signatures, count, truncated);
+            if (res < 0) return -1;
+        }
+        return 0;
+    }
+
+    pdf_obj *field_type = pdf_dict_get_inheritable(ctx, field, PDF_NAME(FT));
+    if (pdf_name_eq(ctx, field_type, PDF_NAME(Sig))) {
+        extract_signature_field_data(
+            ctx, pdf_doc, field, out_signatures, max_signatures, count, truncated);
+    }
+    return 0;
 }
 
 /* Reports the signatures of the document.
@@ -277,20 +309,36 @@ int vocument_mupdf_inspect_signatures(
             pdf_obj *catalog = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
             pdf_obj *acroform = pdf_dict_get(ctx, catalog, PDF_NAME(AcroForm));
             pdf_obj *fields = pdf_dict_get(ctx, acroform, PDF_NAME(Fields));
+            int res = 0;
             if (pdf_is_array(ctx, fields)) {
-                collect_signature_fields(
-                    ctx, pdf_doc, fields, out_signatures, max_signatures, &count, &truncated);
+                int n_fields = pdf_array_len(ctx, fields);
+                for (int i = 0; i < n_fields; i++) {
+                    pdf_obj *f = pdf_array_get(ctx, fields, i);
+                    res = collect_signature_fields_rec(
+                        ctx, pdf_doc, f, NULL, 0, out_signatures, max_signatures, &count, &truncated);
+                    if (res < 0) break;
+                }
             }
-            *out_signature_count = count;
-            if (truncated) {
+
+            if (res < 0) {
                 if (err_buf && err_buf_len > 0) {
                     snprintf(err_buf, err_buf_len,
-                        "signature inspection incomplete: count (%zu) exceeds capacity (%zu)",
-                        count, max_signatures);
+                        "cyclic or excessively deep form field structure detected; signature inspection fail-closed");
                 }
-                status = 3;
+                *out_signature_count = 0;
+                status = 2;
             } else {
-                status = 0;
+                *out_signature_count = count;
+                if (truncated) {
+                    if (err_buf && err_buf_len > 0) {
+                        snprintf(err_buf, err_buf_len,
+                            "signature inspection incomplete: count (%zu) exceeds capacity (%zu)",
+                            count, max_signatures);
+                    }
+                    status = 3;
+                } else {
+                    status = 0;
+                }
             }
         }
     }

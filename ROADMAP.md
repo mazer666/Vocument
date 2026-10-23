@@ -713,7 +713,7 @@ Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 
-# M3 — Page Workbench *(Status: **IN PROGRESS** — M3.0 Complete; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
+# M3 — Page Workbench *(Status: **IN PROGRESS** — M3.0 & M3.1 Complete; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
 
 Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
 
@@ -728,12 +728,13 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Reversible Undo/Redo transactions across Core, MuPDF, and UniFFI boundaries with crash recovery.
   - [x] Comprehensive security audit hardening: MuPDF CVE-2026-112036 double-free patch applied; dynamic two-pass inspection reporting without silent truncation; independent per-word redaction verification; degraded recovery state tracking (`recovery_degraded`); sensitive temporary clipboard & cache clearing in macOS app.
 
-- **M3.1 — Visual Page Workbench & Core Operations (Single Document):**
-  - Asynchronous thumbnail grid view in macOS AppKit/SwiftUI and Android Compose.
-  - Multi-selection: Contiguous (Shift-Click), non-contiguous (Cmd-Click), select all.
-  - Operations: Reorder (drag-and-drop & keyboard), Duplicate, Delete (last-page guard), Extract.
-  - Transaction Engine: Reversible Undo/Redo (`ReorderPages`, `DuplicatePage`, `DeletePages`, `RestorePages`), dirty state tracking, atomic save, crash recovery.
-  - Tooltips & Ergonomics: Intelligible plain-language tooltips with shortcut hints on all workbench tools (`HELP-001`, `UI-010`).
+- **M3.1 — Visual Page Workbench & Core Operations (Single Document) *(Status: **COMPLETE** — see [M3.1 Acceptance Record](docs/acceptance/M3.1-ACCEPTANCE.md))***:
+  - [x] Asynchronous thumbnail grid view in macOS AppKit/SwiftUI with dedicated layout, page badges, selection highlights, and responsive loading.
+  - [x] Multi-selection: Contiguous (Shift-Click), non-contiguous (Cmd-Click), select all (Cmd-A).
+  - [x] Operations: Reorder (Move Left / Move Right), Duplicate, Delete (last-page guard), Rotate (90° CCW / CW), Extract.
+  - [x] Transaction Engine: Reversible Undo/Redo (`ReorderPages`, `DuplicatePage`, `DeletePages`, `RestorePages`), dirty state tracking, atomic save, crash recovery.
+  - [x] Preflight & Security: Clear preflight notice banners, fail-closed signature protection with confirmation dialogs per ISO 32000-1 §12.8, and Tagged PDF integrity notifications.
+  - [x] Tooltips & Ergonomics: Intelligible plain-language tooltips with shortcut hints on all workbench controls (`HELP-001`, `UI-010`).
 
 - **M3.2 — Multi-Document Operations: Merge, Insert & Split:**
   - Native page grafting (`pdf_graft_page`) across disparate `DocumentSession` instances.

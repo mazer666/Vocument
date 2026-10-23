@@ -39,8 +39,34 @@ static int is_same_object(fz_context *ctx, pdf_obj *a, pdf_obj *b) {
     return pdf_objcmp_resolve(ctx, a, b) == 0;
 }
 
-static int count_active_signatures_in_field(fz_context *ctx, pdf_document *pdf_doc, pdf_obj *field, int depth) {
-    if (!field || depth > 32) return 0;
+typedef struct FieldCycleNode {
+    pdf_obj *obj;
+    struct FieldCycleNode *parent;
+} FieldCycleNode;
+
+static int field_cycle_detect(fz_context *ctx, pdf_obj *obj, const FieldCycleNode *ancestors) {
+    if (!obj) return 0;
+    int target_num = pdf_to_num(ctx, obj);
+    const FieldCycleNode *curr = ancestors;
+    while (curr) {
+        if (curr->obj == obj) return 1;
+        if (target_num != 0 && pdf_to_num(ctx, curr->obj) == target_num) return 1;
+        curr = curr->parent;
+    }
+    return 0;
+}
+
+static int count_active_signatures_in_field(
+    fz_context *ctx,
+    pdf_document *pdf_doc,
+    pdf_obj *field,
+    int depth,
+    const FieldCycleNode *ancestors
+) {
+    if (!field) return 0;
+    if (depth > 32 || field_cycle_detect(ctx, field, ancestors)) {
+        return -1; /* Fail-closed on excessive depth or cyclic structure */
+    }
     int active_sigs = 0;
     pdf_obj *ft = pdf_dict_get_inheritable(ctx, field, PDF_NAME(FT));
     if (pdf_name_eq(ctx, ft, PDF_NAME(Sig))) {
@@ -51,9 +77,12 @@ static int count_active_signatures_in_field(fz_context *ctx, pdf_document *pdf_d
     pdf_obj *kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
     if (pdf_is_array(ctx, kids)) {
         int n_kids = pdf_array_len(ctx, kids);
+        FieldCycleNode current_node = { field, (FieldCycleNode *)ancestors };
         for (int k = 0; k < n_kids; k++) {
             pdf_obj *kid = pdf_array_get(ctx, kids, k);
-            active_sigs += count_active_signatures_in_field(ctx, pdf_doc, kid, depth + 1);
+            int sub = count_active_signatures_in_field(ctx, pdf_doc, kid, depth + 1, &current_node);
+            if (sub < 0) return -1;
+            active_sigs += sub;
         }
     }
     return active_sigs;
@@ -62,6 +91,7 @@ static int count_active_signatures_in_field(fz_context *ctx, pdf_document *pdf_d
 /*
  * Returns the number of active, signed digital signatures in the document.
  * Recursively inspects nested form field hierarchies (/Kids) and page annotations.
+ * Returns -1 if the field structure is cyclic, overly deep (>32), or unexaminable (fail-closed).
  */
 static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
@@ -75,7 +105,9 @@ static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
             int n_fields = pdf_array_len(ctx, fields);
             for (int i = 0; i < n_fields; i++) {
                 pdf_obj *f = pdf_array_get(ctx, fields, i);
-                active_sigs += count_active_signatures_in_field(ctx, pdf_doc, f, 0);
+                int sub = count_active_signatures_in_field(ctx, pdf_doc, f, 0, NULL);
+                if (sub < 0) return -1; /* Fail-closed on unexaminable structure */
+                active_sigs += sub;
             }
         }
     }
@@ -108,8 +140,14 @@ static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
     return active_sigs;
 }
 
-static void mark_signatures_invalidated_in_field(fz_context *ctx, pdf_document *pdf_doc, pdf_obj *field, int depth) {
-    if (!field || depth > 32) return;
+static void mark_signatures_invalidated_in_field(
+    fz_context *ctx,
+    pdf_document *pdf_doc,
+    pdf_obj *field,
+    int depth,
+    const FieldCycleNode *ancestors
+) {
+    if (!field || depth > 32 || field_cycle_detect(ctx, field, ancestors)) return;
     pdf_obj *ft = pdf_dict_get_inheritable(ctx, field, PDF_NAME(FT));
     if (pdf_name_eq(ctx, ft, PDF_NAME(Sig))) {
         pdf_dict_del(ctx, field, PDF_NAME(V));
@@ -117,9 +155,10 @@ static void mark_signatures_invalidated_in_field(fz_context *ctx, pdf_document *
     pdf_obj *kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
     if (pdf_is_array(ctx, kids)) {
         int n_kids = pdf_array_len(ctx, kids);
+        FieldCycleNode current_node = { field, (FieldCycleNode *)ancestors };
         for (int k = 0; k < n_kids; k++) {
             pdf_obj *kid = pdf_array_get(ctx, kids, k);
-            mark_signatures_invalidated_in_field(ctx, pdf_doc, kid, depth + 1);
+            mark_signatures_invalidated_in_field(ctx, pdf_doc, kid, depth + 1, &current_node);
         }
     }
 }
@@ -139,7 +178,7 @@ static void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) 
             int n_fields = pdf_array_len(ctx, fields);
             for (int i = 0; i < n_fields; i++) {
                 pdf_obj *f = pdf_array_get(ctx, fields, i);
-                mark_signatures_invalidated_in_field(ctx, pdf_doc, f, 0);
+                mark_signatures_invalidated_in_field(ctx, pdf_doc, f, 0, NULL);
             }
         }
     }
@@ -405,16 +444,17 @@ static void cleanup_parent_tree_for_deleted_pages(
     if (!del_pages || del_count == 0) return;
     pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
     if (!root) return;
-    pdf_obj *struct_tree_root = pdf_dict_get(ctx, root, PDF_NAME(StructTreeRoot));
+    pdf_obj *struct_tree_root = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, root, "StructTreeRoot"));
     if (!struct_tree_root) return;
-    pdf_obj *parent_tree = pdf_dict_get(ctx, struct_tree_root, PDF_NAME(ParentTree));
+    pdf_obj *parent_tree = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, struct_tree_root, "ParentTree"));
     if (!parent_tree) return;
-    pdf_obj *nums = pdf_dict_get(ctx, parent_tree, PDF_NAME(Nums));
+    pdf_obj *nums = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, parent_tree, "Nums"));
     if (!pdf_is_array(ctx, nums)) return;
 
     for (int d = 0; d < del_count; d++) {
-        int sp = pdf_dict_get_int(ctx, del_pages[d], PDF_NAME(StructParents));
-        if (sp >= 0) {
+        pdf_obj *sp_obj = pdf_dict_gets(ctx, del_pages[d], "StructParents");
+        if (sp_obj) {
+            int sp = pdf_to_int(ctx, sp_obj);
             int nums_len = pdf_array_len(ctx, nums);
             for (int n = 0; n < nums_len; n += 2) {
                 int k = pdf_to_int(ctx, pdf_array_get(ctx, nums, n));
@@ -426,6 +466,79 @@ static void cleanup_parent_tree_for_deleted_pages(
             }
         }
     }
+}
+
+/*
+ * Validates Tagged PDF / PDF/UA structural consistency per ISO 32000-1 §14.7 & §14.8.
+ * Returns 1 if valid or document is untagged.
+ * Returns 0 if Tagged PDF markers exist but /StructTreeRoot, /ParentTree,
+ * or page /StructParents mappings are broken, incomplete, or dangling.
+ */
+static int validate_tagged_pdf_consistency(fz_context *ctx, pdf_document *pdf_doc) {
+    if (!pdf_doc) return 0;
+    pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
+    if (!root) return 0;
+
+    pdf_obj *mark_info = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, root, "MarkInfo"));
+    pdf_obj *struct_tree_root = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, root, "StructTreeRoot"));
+
+    int page_count = pdf_count_pages(ctx, pdf_doc);
+    int any_page_has_sp = 0;
+    for (int p = 0; p < page_count; p++) {
+        pdf_obj *page_ref = pdf_lookup_page_obj(ctx, pdf_doc, p);
+        if (page_ref && pdf_dict_gets(ctx, page_ref, "StructParents") != NULL) {
+            any_page_has_sp = 1;
+            break;
+        }
+    }
+
+    if (!mark_info && !struct_tree_root && !any_page_has_sp) {
+        return 1; /* Untagged document */
+    }
+
+    /* If marked or has struct tree or pages reference StructParents, StructTreeRoot MUST exist */
+    if (!struct_tree_root || !pdf_is_dict(ctx, struct_tree_root)) {
+        return 0;
+    }
+
+    /* Check ParentTree if any pages have StructParents */
+    if (any_page_has_sp) {
+        pdf_obj *parent_tree = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, struct_tree_root, "ParentTree"));
+        if (!parent_tree || !pdf_is_dict(ctx, parent_tree)) {
+            return 0;
+        }
+        pdf_obj *nums = pdf_resolve_indirect(ctx, pdf_dict_gets(ctx, parent_tree, "Nums"));
+        if (!nums || !pdf_is_array(ctx, nums)) {
+            return 0;
+        }
+        int nums_len = pdf_array_len(ctx, nums);
+        if (nums_len % 2 != 0) {
+            return 0;
+        }
+
+        /* Verify every page with /StructParents has a corresponding entry in Nums */
+        for (int p = 0; p < page_count; p++) {
+            pdf_obj *page_ref = pdf_lookup_page_obj(ctx, pdf_doc, p);
+            if (!page_ref) continue;
+            pdf_obj *sp_obj = pdf_dict_gets(ctx, page_ref, "StructParents");
+            if (sp_obj) {
+                if (!pdf_is_int(ctx, sp_obj)) return 0;
+                int sp_val = pdf_to_int(ctx, sp_obj);
+                int found = 0;
+                for (int n = 0; n < nums_len; n += 2) {
+                    int k = pdf_to_int(ctx, pdf_array_get(ctx, nums, n));
+                    if (k == sp_val) {
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return 0; /* Dangling /StructParents reference */
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 #endif /* VOCUMENT_MUPDF_PAGE_HELPERS_H */

@@ -538,5 +538,55 @@ struct VocumentMacHandshakeCLI {
         print("NOTE: the foreign viewers of the gate (`sips`, PDFium of Chrome) are NOT RUN on this platform — they belong to macOS.")
         #endif
         print("✓ Swift (macOS M0.7) → InteropGate → FullWorkflow → MuPDF(\(interopReport.mupdfReopenVerified)) → mutool(\(interopReport.mutoolVerified)) → Quartz(\(interopReport.coregraphicsSipsVerified)) → PDFium(\(interopReport.chromePdfiumVerified)) → AllGatesPassed")
+
+        // M3.1 VISUAL PAGE WORKBENCH VERIFICATION (ROADMAP.md M3.1, ADR-0019)
+        let m31Session = try client.openScopedDocument(at: samplePdfURL)
+        let m31Preflight = try client.workbenchPreflight(sessionId: m31Session.sessionId)
+        guard !m31Preflight.isSigned && m31Preflight.allowsAssembly else {
+            fatalError("Expected clean preflight for sample document in M3.1 handshake")
+        }
+        let m31Dup = try client.duplicatePage(sessionId: m31Session.sessionId, pageIndex: 0)
+        guard m31Dup.description == "Duplicate page #1" else {
+            fatalError("Expected 'Duplicate page #1' description, got \(m31Dup.description)")
+        }
+        var m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 3 else {
+            fatalError("Expected 3 pages after duplicate, got \(m31Snap.pdfSummary.pageCount)")
+        }
+        let m31Reorder = try client.reorderPages(sessionId: m31Session.sessionId, order: [2, 0, 1])
+        guard m31Reorder.description == "Reorder 3 pages" else {
+            fatalError("Expected 'Reorder 3 pages' description, got \(m31Reorder.description)")
+        }
+        let m31Extracted = try client.extractPages(sessionId: m31Session.sessionId, pageIndices: [0, 2])
+        guard m31Extracted.count > 100 && String(data: m31Extracted.prefix(5), encoding: .ascii) == "%PDF-" else {
+            fatalError("Expected valid extracted PDF bytes")
+        }
+        let m31Del = try client.deletePages(sessionId: m31Session.sessionId, pageIndices: [1, 2])
+        guard m31Del.description == "Delete 2 page(s)" else {
+            fatalError("Expected 'Delete 2 page(s)' description, got \(m31Del.description)")
+        }
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 1 else {
+            fatalError("Expected 1 page after deletion, got \(m31Snap.pdfSummary.pageCount)")
+        }
+        var lastPageGuardTriggered = false
+        do {
+            _ = try client.deletePages(sessionId: m31Session.sessionId, pageIndices: [0])
+        } catch {
+            lastPageGuardTriggered = true
+        }
+        guard lastPageGuardTriggered else {
+            fatalError("FATAL: Last-page guard failed! Allowed deleting the only remaining page.")
+        }
+        let m31Undo = try client.undo(sessionId: m31Session.sessionId)
+        guard m31Undo.canRedo else {
+            fatalError("Expected canRedo after undoing page deletion")
+        }
+        m31Snap = try client.sessionSnapshot(sessionId: m31Session.sessionId)
+        guard m31Snap.pdfSummary.pageCount == 3 else {
+            fatalError("Expected 3 pages restored after undo, got \(m31Snap.pdfSummary.pageCount)")
+        }
+        try client.closeSession(sessionId: m31Session.sessionId)
+        print("✓ Swift (macOS M3.1) → WorkbenchPreflight → DuplicatePage(3 pgs) → ReorderPages([2,0,1]) → ExtractPages(\(m31Extracted.count) B) → DeletePages(1 pg) → LastPageGuard(enforced) → Undo(restored 3 pgs) verified")
     }
 }
