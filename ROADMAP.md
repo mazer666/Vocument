@@ -476,32 +476,25 @@ The parts that need a device or a macOS host remain open and are documented as
 
 ---
 
-# M2 — macOS Professional Review *(Status: **COMPLETE** — see [M2 Acceptance Record](docs/acceptance/M2-ACCEPTANCE.md))*
+# M2 — macOS Professional Review *(Status: **COMPLETE** — see [M2 Acceptance Record](docs/acceptance/M2-ACCEPTANCE.md) & [CR-0005](docs/cr/CR-0005-m2-scope-realignment-and-m3-m7-roadmap.md))*
 
 ## Purpose
 
-Deliver the first professionally useful desktop workflow.
+Deliver the foundational desktop review, inspection, and security workflow for legal professionals and privacy-conscious users.
 
-Deliver:
-
-- comments/review sidebar
-- highlights/annotations
-- editable jurist tool palette
-- stamps
-- secure redaction + verification
-- structured document comparison
-- signature status and details
-- links/actions inspection
-- attachments safety inspection
-- Save/Recovery/Undo integration for all review actions
+Scope Realignment (`CR-0005`):
+- Delivered in M2: Secure Redaction with 4-way verification (`M2.1`), Link & Action Inspection (`M2.2`), Attachment & Signature Safety (`M2.3`), Reviewer Comments & Jurist Palette (`M2.4`), Selective Document Sanitization (`SAN-001`, `ADR-0018`), and macOS Review UI panels.
+- Rescheduled: Structured Document Comparison (`COMPARE-001`, `COMPARE-002`) rescheduled to dedicated comparison track; Rubber Stamps (`WATER-003`) relocated to M3.4.
+- Demarcation: Kit tests verify client-core contracts; interactive AppKit window-server GUI driving is explicitly demarcated.
 
 ### Quality gates
 
-- redaction extraction/search verification
-- compare correctness corpus
-- signature revision safety tests
-- interoperability with major PDF tools
-- keyboard workflow review
+- redaction extraction/search/render/byte verification (`M2.1`)
+- link destination & executable action risk policy (`M2.2`)
+- signature validity & post-signing modification detection (`M2.3`)
+- jurist tool palette persistence & POSIX safety (`M2.4`)
+- selective sanitization verification (`SAN-001`, `ADR-0018`)
+- cross-tool interoperability with MuPDF, `mutool`, and Apple Quartz (`sips`)
 
 ## M2.1 — Secure redaction with verification *(Implemented, host-verified)*
 
@@ -720,65 +713,107 @@ Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 
-# M3 — Page Workbench *(Status: **IN PROGRESS** — Foundation Started)*
+# M3 — Page Workbench *(Status: **IN PROGRESS** — Foundation Started; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
 
-Deliver:
+Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
 
-- merge
-- split
-- extract
-- insert
-- reorder
-- duplicate
-- crop
-- page boxes
-- auto crop
-- rotate/orientation/deskew
-- numbering
-- header/footer
-- bookmarks
-- watermarks/stamps profiles
-- image/vector/table extraction
-- compression/optimisation
-- professional print/export improvements
+## Sub-Milestones
 
-### Best-in-class gate
+- **M3.0 — Architecture, Invariants & Structural Preservation (`ADR-0019`):**
+  - Enforcement of document invariants during page mutations.
+  - Digital signature tampering detection & explicit user invalidation warning (`SIG-001`).
+  - AcroForm field uniqueness on duplication (`Field_Copy1`) and cleanup on deletion.
+  - Bookmark outline target re-anchoring to preserve visual destinations.
+  - Dynamic page label (`/PageLabels`) number tree recalculation.
+  - Tagged PDF / PDF/UA structure tree (`/StructTreeRoot`) MCID validation.
 
-For each tool compare Vocument with PDFCraft and relevant commercial tools. The acceptance question is not “does Vocument have Merge?”, but:
+- **M3.1 — Visual Page Workbench & Core Operations (Single Document):**
+  - Asynchronous thumbnail grid view in macOS AppKit/SwiftUI and Android Compose.
+  - Multi-selection: Contiguous (Shift-Click), non-contiguous (Cmd-Click), select all.
+  - Operations: Reorder (drag-and-drop & keyboard), Duplicate, Delete (last-page guard), Extract.
+  - Transaction Engine: Reversible Undo/Redo (`ReorderPages`, `DuplicatePage`, `DeletePages`, `RestorePages`), dirty state tracking, atomic save, crash recovery.
 
-> Is the workflow faster/clearer, undoable, recoverable, previewable and interoperable?
+- **M3.2 — Multi-Document Operations: Merge, Insert & Split:**
+  - Native page grafting (`pdf_graft_page`) across disparate `DocumentSession` instances.
+  - Merge multiple PDFs, unifying page label catalogs, outlines, and named destinations.
+  - Insert external pages at arbitrary 0-based indices.
+  - Split by page ranges, fixed intervals, bookmarks, or blank divider pages.
+  - Resource deduplication and `/Names` dictionary collision resolution.
+
+- **M3.3 — Page Geometry, Crop, Page Boxes, Rotation & Deskew:**
+  - Precise calibration of `MediaBox`, `CropBox`, `BleedBox`, `TrimBox`, and `ArtBox`.
+  - Non-destructive display crop vs destructive hard crop (clipping path removal).
+  - 90°/180°/270° orientation rotation with real-time OCR text layer alignment.
+  - Automated deskew angle detection via Hough transform and fine rotation.
+  - Auto-crop margin trimming for scanned documents.
+
+- **M3.4 — Bates Stamping, Numbering, Headers/Footers & Rubber Stamps (`WATER-001`–`003`):**
+  - Bates numbering with custom prefix, digit padding, suffix, and starting index.
+  - Multi-zone headers and footers with dynamic macros (`{page}`, `{total}`, `{date}`, `{filename}`).
+  - Interactive bookmark hierarchy editor (add, edit title, indent/outdent, viewport anchor).
+  - Rubber stamps and watermarks: Legal presets ("DRAFT", "CONFIDENTIAL", "APPROVED"), custom text/image stamps, opacity control, and foreground/background placement.
+
+- **M3.5 — Image Extraction, Compression, Optimization & Print/Export:**
+  - Lossless extraction of embedded raster streams (JPEG, PNG, JBIG2).
+  - Stream recompression, duplicate object removal, and Fast Web View linearization.
+  - Professional print preparation and PDF/X verification.
+
+- **M3.6 — Platform Integration, Usability & Overall M3 Acceptance:**
+  - Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces.
+  - Cross-viewer interoperability matrix (MuPDF, Apple Quartz, PDFium, `mutool`, `qpdf`).
+  - Usability benchmarking against reference tools (PDFCraft, Adobe Acrobat).
+
+### Quality Gates
+
+- Every page operation is an atomic, fully reversible `TransactionCommand`.
+- Zero orphaned objects or dangling cross-references post-mutation (`mutool info`, `qpdf --check`).
+- 60 FPS scrolling and responsive thumbnail generation on large documents ($\ge 500$ pages).
+- All gates verified by genuine native execution; zero stubs (`QA-003`).
 
 ---
 
-# M4 — Authoring / FlowDocument / Office
+# M4 — Authoring / FlowDocument / Office *(Status: **PLANNED**; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md))*
 
-Deliver:
+Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
 
-- FlowDocument core
-- deterministic Rust layout
-- native editing input
-- `.pdoc` v1
-- shared FontService
-- PdfExportEngine
-- PDF/A/PDF/UA-oriented authored export
-- OfficeEngine bake-off
-- selected DOCX/ODT adapter
-- styles
-- lists
-- tables
-- images
-- sections
-- header/footer
-- footnotes/endnotes
-- comments
-- track changes
-- clean/markup/original views
+## Sub-Milestones
 
-### Gate
+- **M4.0 — FlowDocument Core Model & Schema (`core/vocument-flow`):**
+  - Pure Rust semantic document tree: Sections, paragraphs, spans, heading hierarchies, nested lists, tables, images, callouts, footnotes, and Dublin Core metadata.
+  - Complete schema validation and JSON serialization.
 
-A `.pdoc` edited on macOS and Android must retain deterministic pagination under the same available-font conditions.
+- **M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`):**
+  - OpenType glyph shaping via `rustybuzz` (memory-safe HarfBuzz in Rust).
+  - Unicode segmentation and bi-directional text (UAX #9) via `icu_segmenter` and `unicode-bidi`.
+  - Dual line breaking: Fast greedy mode (typing) and Knuth-Plass optimal break mode (export/reading).
+  - Cross-platform deterministic pagination guarantee: Given identical `.pdoc` and fonts, page layout is 100% bit-identical across macOS, Android, Windows, and Linux.
 
-DOCX/ODT support must pass the roundtrip corpus before being labelled “supported for editing”.
+- **M4.2 — The `.pdoc` Format Specification & Container:**
+  - Standard ZIP64 container (`manifest.json`, `document.json`, `styles.json`, `metadata.json`, `assets/`).
+  - Schema versioning with unknown-field preservation for forward compatibility.
+  - Safe extraction with zip-slip and decompression bomb protection.
+
+- **M4.3 — Native Platform Editing Canvas & Input:**
+  - macOS AppKit/SwiftUI view conforming to `NSTextInputClient` (CJK IME, accents, dictation, VoiceOver).
+  - Android Jetpack Compose custom editor supporting touch, stylus, and Gboard IME.
+  - Sub-16ms typing latency (60 FPS).
+
+- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation:**
+  - Tracked Changes: Inline insertions, deletions, format changes with author attribution.
+  - Margin Comments: Character-range anchored threads with replies and resolution.
+  - PDF/A & PDF/UA Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`), semantic tags, and alt-text.
+  - PAC (PDF Accessibility Checker) and veraPDF verification.
+
+- **M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters:**
+  - High-fidelity bake-off against 200 real-world legal and technical DOCX/ODT documents.
+  - Lossless import into `FlowDocument` and valid export.
+  - Strict rule: No generic "roundtrip editing" claims without corpus evidence.
+
+### Quality Gates
+
+- Deterministic pagination: `.pdoc` layout on macOS and Android matches bit-for-bit under identical font conditions.
+- Output validated green by PAC and veraPDF.
+- DOCX/ODT pass rate $\ge 95\%$ on structural test corpus.
 
 ---
 

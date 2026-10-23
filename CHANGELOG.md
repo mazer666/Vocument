@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   job went on. It is checked now.
 
 ### Added
+- **Consolidated M3–M7 Master Development Plan & Architectural Baseline**:
+  Formalized `CR-0005` realigning M2 scope (rescheduling document comparison to a dedicated track and relocating rubber stamps to M3.4). Defined `ADR-0018` for `SAN-001` sanitization boundaries and explicit limitations, `ADR-0019` for M3 Page Workbench invariants (digital signature invalidation warnings, unique AcroForm field renaming, bookmark outline re-anchoring), and `ADR-0020` for M4 FlowDocument deterministic cross-platform Rust layout and `.pdoc` specification. Established detailed sub-milestones M3.0–M3.6 and M4.0–M4.5 with verifiable entry/exit gates in `docs/project/M3-M7-DEVELOPMENT-PLAN.md`.
 - **Full technical acceptance of Milestone M2 (macOS Professional Review)**:
   Implemented document sanitization (`SAN-001`) stripping metadata, attachments,
   actions, and form fields via native MuPDF C bridge; integrated macOS review

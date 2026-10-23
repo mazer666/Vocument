@@ -152,7 +152,7 @@ class DocumentCoreBridgeTest {
         val handshake = bridge.performHandshake()
 
         assertEquals("0.1", handshake.baselineVersion)
-        assertEquals("M2", handshake.milestone)
+        assertEquals("M3", handshake.milestone)
         assertTrue("NET-001 strict offline default must be true", handshake.strictOfflineDefault)
         assertFalse("LOG-001 telemetry must be false", handshake.telemetryEnabled)
         assertEquals(60u, handshake.targetFps)

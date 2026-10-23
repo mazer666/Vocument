@@ -571,7 +571,7 @@ mod tests {
         let handshake = document_core_handshake().expect("handshake must succeed");
         assert_eq!(handshake.baseline_version, "0.1");
         // The milestone is derived from `project/project.yaml`.
-        assert_eq!(handshake.milestone, "M2");
+        assert_eq!(handshake.milestone, "M3");
         assert!(handshake.strict_offline_default);
         assert!(!handshake.telemetry_enabled);
         assert_eq!(handshake.target_fps, 60);

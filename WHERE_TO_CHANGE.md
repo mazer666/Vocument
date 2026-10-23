@@ -58,6 +58,35 @@ Do not call MuPDF directly from Swift/Kotlin UI.
 
 ---
 
+## I want to work on M3 Page Workbench operations (reorder, duplicate, delete, extract, crop, stamp)
+
+Read [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md) and [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
+
+- Invariants & bounds validation: `core/vocument-core/src/workbench.rs`
+- Semantic transactions & Undo/Redo: `core/vocument-core/src/transactions.rs`
+- Session registry mutations: `core/vocument-core/src/session_mutations.rs`
+- Native C page bridge: `engines/pdf-mupdf/csrc/mupdf_page_bridge.c`
+- Safe MuPDF engine wrapper: `engines/pdf-mupdf/src/page_ops.rs`
+- UniFFI DTOs & exports: `platform/vocument-ffi/src/workbench_dto.rs`
+- macOS visual grid: `apps/macos/Sources/VocumentMacApp/`
+- Android visual grid: `apps/android/app/src/main/java/org/vocument/app/`
+
+Every page mutation must pass through `TransactionManager` and must preserve document invariants (signature invalidation alert, AcroForm field uniqueness, outline destination tracking).
+
+---
+
+## I want to work on M4 FlowDocument authoring, layout, or `.pdoc` format
+
+Read [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) and [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
+
+- Document tree & schema: `core/vocument-flow/`
+- Deterministic cross-platform layout engine: `core/vocument-layout/` (text shaping, Knuth-Plass line breaking, pagination)
+- `.pdoc` format container & migrations: `formats/pdoc/`
+- Office adapters & corpus bake-off: `engines/office/`
+- Native text input: macOS `NSTextInputClient` in `apps/macos/`, Android Compose text in `apps/android/`
+
+---
+
 ## I want to add OCR behaviour
 
 - provider contract & Tesseract adapter: `engines/ocr/`

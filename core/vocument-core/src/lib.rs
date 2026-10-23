@@ -102,8 +102,8 @@ mod tests {
         let snapshot = bootstrap_core_snapshot().expect("embedded config must parse");
         assert_eq!(snapshot.baseline_version, "0.1");
         // The milestone is derived from `project/project.yaml`, the single source
-        // of truth. M1 is implemented, M2 has started with the redaction.
-        assert_eq!(snapshot.milestone, "M2");
+        // of truth. M2 is completed, M3 has started with the Page Workbench.
+        assert_eq!(snapshot.milestone, "M3");
         assert!(snapshot.strict_offline_default);
         assert!(!snapshot.telemetry_enabled);
         assert_eq!(snapshot.target_fps, 60);

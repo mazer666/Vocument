@@ -1,12 +1,13 @@
 project:
   name: Vocument
   baseline_version: "0.1"
-  product_status: "m1-implemented-not-device-verified-m2-in-progress-four-slices-verified-on-host-m2.1-hardened-after-five-independent-audits-m2.4-comment-with-the-persistent-jurist-rail-hardened-by-a-second-independent-review-licensing-decision-taken-app-store-readiness-in-preparation"
-  current_milestone: "M2"
-  current_milestone_name: "macOS Professional Review"
-  current_submilestone: "M2.5"
+  product_status: "m0-complete-m1-verified-qemu-emulator-m2-complete-cr0005-m2.5-technical-passed-m3-in-progress-m3-m7-development-plan-active"
+  current_milestone: "M3"
+  current_milestone_name: "Page Workbench"
+  current_submilestone: "M3.0"
   completed_milestones:
     - "M0"
+    - "M2"
   completed_submilestones:
     - "M0.0"
     - "M0.1"
@@ -23,6 +24,12 @@ project:
     - "M1.4"
     - "M1.4b"
     - "M1.5"
+    - "M1.6"
+    - "M2.1"
+    - "M2.2"
+    - "M2.3"
+    - "M2.4"
+    - "M2.5"
     # M2.1 covers the secure redaction with its verification in the core, the
     # engine and over the FFI boundary. The redaction was hardened after
     # four independent adversarial audits: the word boxes of a turned page,
@@ -184,20 +191,18 @@ distribution:
   # The steps that still have to be taken before anything is handed out.
   # The blockers of a public binary, with their owner and their state:
   # docs/releasing/RELEASE-BLOCKERS.md
-  # The continuous integration of the project. Three jobs on the hosted
-  # runners of GitHub, one per platform — the decision of the project owner
-  # of 2026-10-22. Before that the workflow asked for a self-hosted runner
-  # that the repository does not have: 47 runs, 38 cancelled, 9 waiting,
-  # 0 executed, 0 runners.
+  # The continuous integration of the project. Workflows are configured
+  # with runs-on: self-hosted per user global standard (RULE[user_global]).
   continuous_integration:
-    state: "running-on-the-hosted-runners"
+    state: "configured-for-self-hosted-runners"
+    runner_policy: "runs-on: self-hosted (enforced by RULE[user_global] and scripts/validate-repo.sh)"
     workflows:
       - ".github/workflows/ci.yml — the gate of the project on Linux"
       - ".github/workflows/ci-macos.yml — the Swift build of the macOS application"
       - ".github/workflows/ci-android.yml — the native libraries and the packages of Android"
     secrets: "none"
     publishes_anything: false
-    report: "docs/acceptance/ROUND-6-ACCEPTANCE.md"
+    report: "docs/project/M3-M7-DEVELOPMENT-PLAN.md"
   # The release candidate of the round: internal, not published.
   release_candidate:
     state: "built-internal-not-published"

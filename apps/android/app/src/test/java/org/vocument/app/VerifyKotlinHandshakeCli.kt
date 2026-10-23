@@ -18,8 +18,8 @@ fun main() {
     check(handshake.baselineVersion == "0.1") {
         "Expected baselineVersion '0.1', got '${handshake.baselineVersion}'"
     }
-    check(handshake.milestone == "M2") {
-        "Expected milestone 'M2', got '${handshake.milestone}'"
+    check(handshake.milestone == "M3") {
+        "Expected milestone 'M3', got '${handshake.milestone}'"
     }
     check(handshake.strictOfflineDefault) {
         "Expected strictOfflineDefault == true (NET-001)"

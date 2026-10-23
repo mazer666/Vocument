@@ -14,8 +14,8 @@ struct VocumentMacHandshakeCLI {
         guard handshake.baselineVersion == "0.1" else {
             fatalError("Expected baselineVersion '0.1', got '\(handshake.baselineVersion)'")
         }
-        guard handshake.milestone == "M2" else {
-            fatalError("Expected milestone 'M2', got '\(handshake.milestone)'")
+        guard handshake.milestone == "M3" else {
+            fatalError("Expected milestone 'M3', got '\(handshake.milestone)'")
         }
         guard handshake.strictOfflineDefault == true else {
             fatalError("Expected strictOfflineDefault == true (NET-001)")

@@ -54,6 +54,11 @@ In strict adherence to the project charter and `AGENTS.md`:
 - **What `VocumentMacKitTests` proves:** The Kit tests verify that the Swift client (`DocumentCoreClient`) accurately interfaces with the UniFFI layer (`vocument-ffi`), correctly translates DTOs, executes mutations through `TransactionManager`, and dispatches review operations (such as document sanitization and jurist comments) without memory leaks or bridging errors.
 - **What `VocumentMacKitTests` does NOT prove:** Kit tests are headless unit tests and do **NOT** prove physical user interaction, pointer clicks, keyboard events, or window-server rendering on an active desktop display. Full interactive UI validation requires an active AppKit event loop session with display server access. Kit tests are never misrepresented as proof of end-user GUI manipulation.
 
+### 3.1 Scope Realignment & Sanitization Boundaries (`CR-0005`, `ADR-0018`)
+
+- **Scope Realignment via `CR-0005`:** Structured Document Comparison (`COMPARE-001`, `COMPARE-002`) was formally rescheduled into a dedicated comparison track after M3 visual workbench and M4 layout maturity. Rubber Stamps (`WATER-003`) was formally relocated to **M3.4**.
+- **Sanitization Boundaries via `ADR-0018`:** `SAN-001` guarantees dictionary-level deletion of `/Info`, `/Metadata`, `/PieceInfo`, `/Annots`, `/AcroForm`, `/OpenAction`, `/AA`, `/JavaScript`, and `/EmbeddedFiles` with garbage-collection re-serialization. It does NOT guarantee elimination of off-canvas vector art, steganographic image payloads, hidden OCG layers, or text rendered in font color matching background. Claims are strictly scoped to verified removals.
+
 ---
 
 ## 4. PDF Interoperability Matrix
