@@ -338,6 +338,15 @@ pinned version, so the licence configuration is checked in the CI now.
 with *"==> Repository validation passed."* (exit 0), 264 tests of Rust in 34
 suites without a failure, `cargo fmt` and `cargo clippy` without a warning.
 
+**The state of the continuous integration: PASS** — the three jobs are green
+on the final revision of the review
+([39999824587](https://github.com/mazer666/Vocument/actions/runs/39999824587) —
+Linux, [39999824908](https://github.com/mazer666/Vocument/actions/runs/39999824908) —
+macOS, [39999824814](https://github.com/mazer666/Vocument/actions/runs/39999824814) —
+Android). The job of Linux installs the **pinned** cargo-deny now, so the
+licence configuration of the project is checked in the CI — for the first
+time.
+
 ### 7.3 The boundary of the publication — the decision of the owner
 
 **A tag and a release page exist on GitHub: `v0.1.0-alpha.1`** (a
