@@ -111,10 +111,29 @@ fi
 if [[ -d "$REPO_ROOT/patches/mupdf" ]]; then
   for patch_file in "$REPO_ROOT/patches/mupdf"/*.patch; do
     if [[ -f "$patch_file" ]]; then
-      echo "==> Applying patch $(basename "$patch_file")..."
-      patch -d "$SOURCE_DIR" -p1 -N -r - < "$patch_file" || true
+      patch_name="$(basename "$patch_file")"
+      echo "==> Verifying/applying MuPDF patch ${patch_name}..."
+      if patch -d "$SOURCE_DIR" -p1 -R --dry-run -s -f < "$patch_file" >/dev/null 2>&1; then
+        echo "    Patch ${patch_name} is already applied."
+      else
+        echo "    Applying ${patch_name}..."
+        if ! patch -d "$SOURCE_DIR" -p1 -N -r - < "$patch_file"; then
+          echo "ERROR: Failed to apply security patch ${patch_name} to MuPDF source: ${SOURCE_DIR}" >&2
+          exit 1
+        fi
+      fi
     fi
   done
+fi
+
+# Mandatory verification of CVE-2026-112036 fix in MuPDF source
+XREF_C="${SOURCE_DIR}/source/pdf/pdf-xref.c"
+if [[ -f "$XREF_C" ]]; then
+  if ! grep -Fq "c->list = NULL;" "$XREF_C"; then
+    echo "ERROR: Security audit verification failed: CVE-2026-112036 fix 'c->list = NULL;' not found in ${XREF_C}!" >&2
+    exit 1
+  fi
+  echo "    Verified security patch CVE-2026-112036 active in ${XREF_C}"
 fi
 
 echo "==> Cross-compiling MuPDF ${MUPDF_VERSION} for aarch64-linux-android..."

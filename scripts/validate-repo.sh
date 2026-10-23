@@ -146,6 +146,21 @@ done
 
 echo "✓ All required baseline, governance, and workspace files exist."
 
+# Verify MuPDF CVE patches exist and are applied if source directory is present
+if [[ ! -f "patches/mupdf/CVE-2026-112036-pdf-xref-double-free.patch" ]]; then
+  echo "ERROR: Mandatory security patch 'patches/mupdf/CVE-2026-112036-pdf-xref-double-free.patch' missing!" >&2
+  exit 1
+fi
+for mupdf_src in target/mupdf-android-build/mupdf-1.28.5-source target/mupdf-host/source; do
+  if [[ -f "${mupdf_src}/source/pdf/pdf-xref.c" ]]; then
+    if ! grep -Fq "c->list = NULL;" "${mupdf_src}/source/pdf/pdf-xref.c"; then
+      echo "ERROR: MuPDF source in '${mupdf_src}' lacks verified CVE-2026-112036 patch!" >&2
+      exit 1
+    fi
+  fi
+done
+echo "✓ MuPDF CVE security patch presence and integrity verified."
+
 # Verify GitHub Actions workflows follow GitHub-hosted runner and [run-ci] gating policy
 if [[ -d ".github/workflows" ]]; then
   workflow_count=0

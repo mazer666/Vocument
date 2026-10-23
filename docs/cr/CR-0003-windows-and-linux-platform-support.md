@@ -1,6 +1,6 @@
 # CR-0003 — Windows and Linux Platform Support (Phase 2, after macOS and Android)
 
-**Status:** proposed
+**Status:** approved (user approved 2026-10-23)
 **Date:** 2026-10-20
 **Proposer role:** ROLE-01 (Product & Requirements Steward), ROLE-02 (Chief Architect)
 **Reviewer roles:** ROLE-13 (QA & Test Engineer), ROLE-15 (Interoperability & Standards Engineer), ROLE-16 (Release & Supply-Chain Engineer), ROLE-18 (Licensing & Open-Source Reviewer)

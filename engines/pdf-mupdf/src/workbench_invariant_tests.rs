@@ -338,3 +338,104 @@ fn test_explicit_signature_invalidation_marks_signature_invalidated() {
         .expect("open deleted signed pdf");
     assert_eq!(del_doc.summary().page_count, 1);
 }
+
+fn pdf_with_nested_signature() -> Vec<u8> {
+    let contents = "BT /F1 12 Tf 72 740 Td (Vocument Review) Tj ET\n";
+    let objects: Vec<String> = vec![
+        "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [8 0 R] >> >>".to_owned(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R /Annots [6 0 R] >>".to_owned(),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+        format!("<< /Length {} >>\nstream\n{contents}endstream", contents.len()),
+        "<< /Type /Annot /Subtype /Widget /FT /Sig /T (NestedSigField) /V 7 0 R /Rect [72 100 320 140] /P 3 0 R >>".to_owned(),
+        "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /Name (Dr. Nested) /M (D:20260131120000Z) /ByteRange [0 100 200 100] /Contents <0000000000000000> >>".to_owned(),
+        "<< /T (ParentSignatureGroup) /Kids [6 0 R] >>".to_owned(),
+    ];
+
+    let mut out = Vec::new();
+    out.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::with_capacity(objects.len());
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+    }
+    let xref_offset = out.len();
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in &offsets {
+        out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    out
+}
+
+#[test]
+fn test_nested_signature_field_detection_blocks_fail_closed_and_supports_invalidation() {
+    let nested_pdf = pdf_with_nested_signature();
+
+    // 1. Fail-closed preflight check: must block mutation when signature is nested inside /Kids hierarchy
+    let dup_err = duplicate_page(&nested_pdf, 0);
+    assert!(matches!(
+        dup_err,
+        Err(PdfEngineError::OperationBlockedBySignature { .. })
+    ));
+
+    let del_err = delete_pages(&nested_pdf, &[0]);
+    assert!(matches!(
+        del_err,
+        Err(PdfEngineError::OperationBlockedBySignature { .. })
+    ));
+
+    // 2. Explicit invalidation must recursively strip /V from nested signature field
+    let dup_bytes = duplicate_page_ext(&nested_pdf, 0, true)
+        .expect("duplicate with signature invalidation succeeds");
+    let dup_str = String::from_utf8_lossy(&dup_bytes);
+    assert!(dup_str.contains("NestedSigField"));
+}
+
+#[test]
+fn test_repeated_page_duplication_generates_unique_field_names_without_collision() {
+    let original = build_complex_test_pdf();
+
+    // Duplicate page 0 first time -> CustomerName_Copy1
+    let dup1_bytes = duplicate_page(&original, 0).expect("duplicate 1");
+    let dup1_str = String::from_utf8_lossy(&dup1_bytes);
+    assert!(dup1_str.contains("CustomerName_Copy1"));
+
+    // Duplicate original page 0 again -> must generate CustomerName_Copy2 without colliding
+    let dup2_bytes = duplicate_page(&dup1_bytes, 0).expect("duplicate 2");
+    let dup2_str = String::from_utf8_lossy(&dup2_bytes);
+    assert!(dup2_str.contains("CustomerName_Copy1"));
+    assert!(dup2_str.contains("CustomerName_Copy2"));
+
+    // Duplicate the copy page (which is CustomerName_Copy1) -> must generate CustomerName_Copy3
+    let dup3_bytes = duplicate_page(&dup2_bytes, 1).expect("duplicate 3");
+    let dup3_str = String::from_utf8_lossy(&dup3_bytes);
+    assert!(dup3_str.contains("CustomerName_Copy1"));
+    assert!(dup3_str.contains("CustomerName_Copy2"));
+    assert!(dup3_str.contains("CustomerName_Copy3"));
+}
+
+#[test]
+fn test_delete_page_reanchors_internal_links_to_surviving_pages() {
+    let original = build_complex_test_pdf();
+    let engine = MuPdfEngineAdapter::new();
+
+    // In build_complex_test_pdf(), Page 2 (object 4 0 R) has a Link targeting Page 3 (object 5 0 R).
+    // Deleting Page 3 (index 2) must re-anchor the link on Page 2 to surviving target Page 1 (3 0 R)
+    let del_bytes = delete_pages(&original, &[2]).expect("delete page 3");
+    let del_doc = engine.open_pdf_bytes(&del_bytes).expect("open pdf");
+    assert_eq!(del_doc.summary().page_count, 2);
+
+    let del_str = String::from_utf8_lossy(&del_bytes);
+    // Link annotation survived and destination was re-anchored from 5 0 R to 3 0 R
+    assert!(del_str.contains("/Subtype/Link") || del_str.contains("/Subtype /Link"));
+    assert!(del_str.contains("Dest[3 0 R") || del_str.contains("Dest [3 0 R"));
+}

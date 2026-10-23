@@ -19,6 +19,7 @@ import VocumentFFI
 /// therefore shows the warnings in red, above everything else.
 struct ReviewPanelView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
+    @State private var showingSanitizeConfirmation: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -111,10 +112,12 @@ struct ReviewPanelView: View {
                         }
                         .font(.caption)
                         .buttonStyle(.borderedProminent)
+                        .help("Permanently burns out the marked content from the PDF raster and text layer. Irreversible.")
                         Button("Mark another place") {
                             coordinator.clearRedactionSelection()
                         }
                         .font(.caption2)
+                        .help("Discards the current selection box and allows marking a new region.")
                     } else {
                         Text(
                             "Drag on the page to mark a place. The marked text is shown "
@@ -176,6 +179,7 @@ struct ReviewPanelView: View {
                         }
                         .labelsHidden()
                         .frame(minWidth: 140)
+                        .help("Select professional review category rail and color token.")
                     }
 
                     HStack(spacing: 6) {
@@ -184,9 +188,11 @@ struct ReviewPanelView: View {
                             .onSubmit {
                                 coordinator.addCommentToCurrentPage()
                             }
+                            .help("Enter reviewer comment text.")
                         Button("Add") {
                             coordinator.addCommentToCurrentPage()
                         }
+                        .help("Add comment to the current page.")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,11 +203,27 @@ struct ReviewPanelView: View {
                     Text("Purge all metadata, actions, embedded attachments, annotations, and form fields.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Button("Sanitize Document") {
-                        coordinator.sanitizeActiveDocument()
+                    Text("Boundary disclosure (ADR-0018): Sanitization does not eliminate Optional Content Groups (OCG/layers) or embedded steganography.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Button("Sanitize Document…") {
+                        showingSanitizeConfirmation = true
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
+                    .help("Irreversibly cleanses document metadata, actions, attachments, annotations, and form fields after confirmation.")
+                    .confirmationDialog(
+                        "Sanitize Document?",
+                        isPresented: $showingSanitizeConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Sanitize Document", role: .destructive) {
+                            coordinator.sanitizeActiveDocument()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This irreversible operation will strip metadata (/Info and XMP), actions, attachments, annotations, and form fields.\n\nBoundary Disclosure (ADR-0018): This does NOT remove Optional Content Groups (OCG/layers) or steganographic payloads.")
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

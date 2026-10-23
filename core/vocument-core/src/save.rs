@@ -128,6 +128,33 @@ pub fn generate_collision_free_path(base_path: &Path, suffix_label: &str) -> Pat
     }
 }
 
+/// Checks whether two file tokens point to the same physical file on disk.
+pub fn is_same_target_file(source_token: &str, target_token: &str) -> bool {
+    let norm_src = source_token.strip_prefix("file://").unwrap_or(source_token);
+    let norm_dst = target_token.strip_prefix("file://").unwrap_or(target_token);
+    if norm_src == norm_dst {
+        return true;
+    }
+    let src = Path::new(norm_src);
+    let dst = Path::new(norm_dst);
+    if let (Ok(c_src), Ok(c_dst)) = (src.canonicalize(), dst.canonicalize())
+        && c_src == c_dst
+    {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if let (Ok(m_src), Ok(m_dst)) = (src.metadata(), dst.metadata())
+            && m_src.dev() == m_dst.dev()
+            && m_src.ino() == m_dst.ino()
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// Save coordinator orchestrating transactional save, staging, post-save validation,
 /// and external conflict detection (`ARCHITECTURE.md` §16).
 #[derive(Debug)]
@@ -222,6 +249,16 @@ impl SaveCoordinator {
         target_token: &str,
         allow_overwrite_external: bool,
     ) -> Result<SaveResult, SessionError> {
+        // Signed originals are protected against overwriting in all save paths.
+        if session.was_signed_on_open
+            && session.is_dirty
+            && is_same_target_file(&session.file_identity.source_token, target_token)
+        {
+            return Err(SessionError::Save(SaveError::InvalidOperation {
+                details: "Signed original file is protected against in-place overwriting. Use save_session_as with a distinct destination path.".to_string(),
+            }));
+        }
+
         let bytes = session.actor.current_pdf_bytes()?;
         let expected_page_count = session.pdf_summary.page_count;
 
@@ -270,6 +307,11 @@ impl SaveCoordinator {
         let bytes_written = new_file_identity.size_bytes;
 
         // Step 6: Synchronize session state:
+        let is_distinct_target =
+            !is_same_target_file(&session.file_identity.source_token, target_token);
+        if is_distinct_target {
+            session.was_signed_on_open = false;
+        }
         session.mark_as_saved(new_file_identity.clone());
 
         Ok(SaveResult::Success(SaveSuccessSnapshot {
@@ -383,6 +425,16 @@ impl SessionRegistry {
             return Err(SessionError::NotLocallyWritable {
                 session_id: session_id.to_owned(),
             });
+        }
+
+        // Signed originals are protected: Save As must not overwrite the original file on disk.
+        if session.was_signed_on_open
+            && session.is_dirty
+            && is_same_target_file(&session.file_identity.source_token, target_token)
+        {
+            return Err(SessionError::Save(SaveError::InvalidOperation {
+                details: "Signed original file is protected against overwriting. Choose a distinct destination path.".to_string(),
+            }));
         }
 
         let doc_id = session.document_id.clone();

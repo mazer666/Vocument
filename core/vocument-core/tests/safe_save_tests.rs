@@ -12,6 +12,7 @@
 
 use std::path::Path;
 use std::sync::Mutex;
+use vocument_core::document_inspection::PdfSignatureInfo;
 use vocument_core::file_broker::ScopedLocalFileBroker;
 use vocument_core::identity::FileIdentityComparison;
 use vocument_core::pdf_engine::{
@@ -175,6 +176,22 @@ impl PdfEngineDocument for MockPdfDocument {
         };
         self.bytes.extend_from_slice(b"\n%removed\n");
         Ok((annot, self.bytes.clone()))
+    }
+    fn document_signatures(&self) -> Result<Vec<PdfSignatureInfo>, PdfEngineError> {
+        let needle = b"/Type /Sig";
+        if self.bytes.windows(needle.len()).any(|w| w == needle) {
+            Ok(vec![PdfSignatureInfo::new(
+                "SignatureField1".to_owned(),
+                true,
+                "Signer".to_owned(),
+                "2026-01-01T00:00:00Z".to_owned(),
+                "Approval".to_owned(),
+                "Local".to_owned(),
+                false,
+            )])
+        } else {
+            Ok(vec![])
+        }
     }
 }
 
@@ -549,4 +566,73 @@ fn test_collision_free_path_generator() {
         c3.file_name().unwrap().to_str().unwrap(),
         "report (Safe Copy 2).pdf"
     );
+}
+
+#[test]
+fn test_signed_original_cannot_be_overwritten_via_save_or_save_as() {
+    let temp = TestDir::new("signed_protect");
+    let signed_path = temp.path.join("signed_contract.pdf");
+    let mut signed_bytes = sample_pdf();
+    signed_bytes.extend_from_slice(b"\n/Type /Sig\n");
+    std::fs::write(&signed_path, &signed_bytes).unwrap();
+
+    let registry = SessionRegistry::new(Box::new(MockEngine::default()));
+    let broker = ScopedLocalFileBroker::new();
+    let token = signed_path.to_string_lossy().into_owned();
+    let session = registry.open_via_broker(&broker, &token).unwrap();
+    let s_id = session.session_id.as_str();
+
+    // Mutate to make dirty
+    registry
+        .execute_transaction(
+            s_id,
+            TransactionCommand::RotatePages {
+                page_indices: vec![0],
+                delta_degrees: 90,
+            },
+        )
+        .unwrap();
+
+    assert!(registry.session_snapshot(s_id).unwrap().is_dirty);
+
+    // 1. Regular save must fail with InvalidOperation
+    let save_res = registry.save_session(s_id);
+    assert!(matches!(
+        save_res,
+        Err(vocument_core::session::SessionError::Save(
+            SaveError::InvalidOperation { .. }
+        ))
+    ));
+
+    // 2. Save As targeting same file must fail with InvalidOperation
+    let save_as_same = registry.save_session_as(s_id, &token);
+    assert!(matches!(
+        save_as_same,
+        Err(vocument_core::session::SessionError::Save(
+            SaveError::InvalidOperation { .. }
+        ))
+    ));
+
+    // 3. Save As targeting distinct path succeeds
+    let new_path = temp.path.join("unsigned_copy.pdf");
+    let new_token = new_path.to_string_lossy().into_owned();
+    let save_as_new = registry.save_session_as(s_id, &new_token).unwrap();
+    assert!(matches!(save_as_new, SaveResult::Success(_)));
+
+    // Verify original signed file remains completely intact
+    assert_eq!(std::fs::read(&signed_path).unwrap(), signed_bytes);
+    assert!(new_path.exists());
+
+    // Subsequent edits on the new working copy can be saved in-place
+    registry
+        .execute_transaction(
+            s_id,
+            TransactionCommand::RotatePages {
+                page_indices: vec![0],
+                delta_degrees: 90,
+            },
+        )
+        .unwrap();
+    let second_save = registry.save_session(s_id).unwrap();
+    assert!(matches!(second_save, SaveResult::Success(_)));
 }

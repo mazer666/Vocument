@@ -1,6 +1,6 @@
 # CR-0004 — Optional local interfaces (MCP) as a later milestone
 
-**Status:** proposed
+**Status:** approved (user approved 2026-10-23)
 **Date:** 2026-10-22
 **Proposer role:** ROLE-01 (Product & Requirements Steward)
 **Reviewer roles:** ROLE-02 (Chief Architect), ROLE-09 (Security Engineer), ROLE-10 (Privacy Engineer), ROLE-13 (QA & Test Engineer), ROLE-18 (Licensing & Open-Source Reviewer)

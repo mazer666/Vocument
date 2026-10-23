@@ -7,168 +7,7 @@
 
 void vocument_mupdf_free_bytes(unsigned char *ptr);
 
-/*
- * Pushes down inheritable attributes (MediaBox, CropBox, Resources, Rotate)
- * from parent /Pages nodes directly into the page dictionary so that the page
- * is fully self-contained regardless of page tree restructuring.
- */
-static void make_page_self_contained(fz_context *ctx, pdf_obj *page_ref) {
-    static pdf_obj * const inheritable_keys[] = {
-        PDF_NAME(MediaBox),
-        PDF_NAME(CropBox),
-        PDF_NAME(Resources),
-        PDF_NAME(Rotate)
-    };
-    for (size_t k = 0; k < sizeof(inheritable_keys) / sizeof(inheritable_keys[0]); k++) {
-        pdf_obj *key = inheritable_keys[k];
-        if (!pdf_dict_get(ctx, page_ref, key)) {
-            pdf_obj *inherited = pdf_dict_get_inheritable(ctx, page_ref, key);
-            if (inherited) {
-                pdf_dict_put(ctx, page_ref, key, inherited);
-            }
-        }
-    }
-}
-
-/*
- * Returns the number of active, signed digital signatures in the document.
- */
-static int count_active_signatures(fz_context *ctx, pdf_document *pdf_doc) {
-    pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
-    if (!root) return 0;
-    pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
-    if (!acroform) return 0;
-    pdf_obj *fields = pdf_dict_get(ctx, acroform, PDF_NAME(Fields));
-    if (!pdf_is_array(ctx, fields)) return 0;
-
-    int n_fields = pdf_array_len(ctx, fields);
-    int active_sigs = 0;
-    for (int i = 0; i < n_fields; i++) {
-        pdf_obj *f = pdf_array_get(ctx, fields, i);
-        if (!f) continue;
-        pdf_obj *ft = pdf_dict_get_inheritable(ctx, f, PDF_NAME(FT));
-        if (pdf_name_eq(ctx, ft, PDF_NAME(Sig))) {
-            if (pdf_signature_is_signed(ctx, pdf_doc, f)) {
-                active_sigs++;
-            }
-        }
-    }
-    return active_sigs;
-}
-
-/*
- * When signature invalidation is explicitly permitted, marks existing signatures
- * as invalidated and removes their /ByteRange so no reader can mistake them for valid.
- */
-static void mark_signatures_invalidated(fz_context *ctx, pdf_document *pdf_doc) {
-    pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
-    if (!root) return;
-    pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
-    if (!acroform) return;
-    pdf_obj *fields = pdf_dict_get(ctx, acroform, PDF_NAME(Fields));
-    if (!pdf_is_array(ctx, fields)) return;
-
-    int n_fields = pdf_array_len(ctx, fields);
-    for (int i = 0; i < n_fields; i++) {
-        pdf_obj *f = pdf_array_get(ctx, fields, i);
-        if (!f) continue;
-        pdf_obj *ft = pdf_dict_get_inheritable(ctx, f, PDF_NAME(FT));
-        if (pdf_name_eq(ctx, ft, PDF_NAME(Sig))) {
-            /* Converting signed document to an editable working copy:
-             * Strip the invalid cryptographic signature dictionary /V cleanly
-             * per ISO 32000-1 §12.8, converting it to an unsigned signature field.
-             * This preserves PDF compliance without artificial /ByteRange tampering. */
-            pdf_dict_del(ctx, f, PDF_NAME(V));
-        }
-    }
-}
-
-static int is_same_object(fz_context *ctx, pdf_obj *a, pdf_obj *b) {
-    if (a == b) return 1;
-    if (!a || !b) return 0;
-    int num_a = pdf_to_num(ctx, a);
-    int num_b = pdf_to_num(ctx, b);
-    if (num_a != 0 && num_a == num_b) return 1;
-    return pdf_objcmp_resolve(ctx, a, b) == 0;
-}
-
-/*
- * Traverses outline bookmarks and re-anchors any bookmark targeting a deleted page
- * to the nearest surviving page target.
- */
-static void reanchor_outline_item(
-    fz_context *ctx,
-    pdf_obj *item,
-    pdf_obj **del_pages,
-    int del_count,
-    pdf_obj *surviving_target
-) {
-    if (!item || !pdf_is_dict(ctx, item)) return;
-
-    pdf_obj *dest = pdf_dict_get(ctx, item, PDF_NAME(Dest));
-    if (!dest) {
-        pdf_obj *a = pdf_dict_get(ctx, item, PDF_NAME(A));
-        if (pdf_is_dict(ctx, a)) {
-            pdf_obj *s = pdf_dict_get(ctx, a, PDF_NAME(S));
-            if (pdf_name_eq(ctx, s, PDF_NAME(GoTo))) {
-                dest = pdf_dict_get(ctx, a, PDF_NAME(D));
-            }
-        }
-    }
-
-    if (dest && pdf_is_array(ctx, dest) && pdf_array_len(ctx, dest) > 0) {
-        pdf_obj *target_page = pdf_array_get(ctx, dest, 0);
-        if (target_page) {
-            for (int d = 0; d < del_count; d++) {
-                if (is_same_object(ctx, target_page, del_pages[d])) {
-                    if (surviving_target) {
-                        pdf_array_put(ctx, dest, 0, surviving_target);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    pdf_obj *first_child = pdf_dict_get(ctx, item, PDF_NAME(First));
-    while (first_child && pdf_is_dict(ctx, first_child)) {
-        reanchor_outline_item(ctx, first_child, del_pages, del_count, surviving_target);
-        first_child = pdf_dict_get(ctx, first_child, PDF_NAME(Next));
-    }
-}
-
-/*
- * Cleans up /AcroForm /Fields references to widget annotations located on deleted pages.
- */
-static void cleanup_acroform_fields_for_deleted_pages(
-    fz_context *ctx,
-    pdf_document *pdf_doc,
-    pdf_obj **del_pages,
-    int del_count
-) {
-    pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
-    if (!root) return;
-    pdf_obj *acroform = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
-    if (!acroform) return;
-    pdf_obj *fields = pdf_dict_get(ctx, acroform, PDF_NAME(Fields));
-    if (!pdf_is_array(ctx, fields)) return;
-
-    for (int p = 0; p < del_count; p++) {
-        pdf_obj *annots = pdf_dict_get(ctx, del_pages[p], PDF_NAME(Annots));
-        if (!pdf_is_array(ctx, annots)) continue;
-        int n_annots = pdf_array_len(ctx, annots);
-        for (int a = 0; a < n_annots; a++) {
-            pdf_obj *annot = pdf_array_get(ctx, annots, a);
-            for (int f = pdf_array_len(ctx, fields) - 1; f >= 0; f--) {
-                pdf_obj *field = pdf_array_get(ctx, fields, f);
-                if (is_same_object(ctx, annot, field)) {
-                    pdf_array_delete(ctx, fields, f);
-                    break;
-                }
-            }
-        }
-    }
-}
+#include "mupdf_page_helpers.h"
 
 /*
  * Reorders the pages of a PDF document according to `order` (0-indexed).
@@ -264,6 +103,8 @@ int vocument_mupdf_reorder_pages_ext(
 
                         fz_free(ctx, page_objs);
 
+                        restructure_pagelabels_for_reorder(ctx, pdf_doc, order, count);
+
                         if (sigs > 0 && allow_signature_invalidation) {
                             mark_signatures_invalidated(ctx, pdf_doc);
                         }
@@ -358,6 +199,39 @@ int vocument_mupdf_duplicate_page_ext(
                     pdf_dict_del(ctx, new_page_dict, PDF_NAME(Parent));
                     pdf_dict_del(ctx, new_page_dict, PDF_NAME(Annots));
 
+                    int src_sp = pdf_dict_get_int(ctx, src_page_ref, PDF_NAME(StructParents));
+                    if (src_sp >= 0) {
+                        pdf_obj *root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf_doc), PDF_NAME(Root));
+                        pdf_obj *struct_tree_root = root ? pdf_dict_get(ctx, root, PDF_NAME(StructTreeRoot)) : NULL;
+                        if (struct_tree_root) {
+                            pdf_obj *parent_tree = pdf_dict_get(ctx, struct_tree_root, PDF_NAME(ParentTree));
+                            if (parent_tree) {
+                                pdf_obj *nums = pdf_dict_get(ctx, parent_tree, PDF_NAME(Nums));
+                                if (pdf_is_array(ctx, nums)) {
+                                    int nums_len = pdf_array_len(ctx, nums);
+                                    int max_sp = 0;
+                                    pdf_obj *found_arr = NULL;
+                                    for (int n = 0; n < nums_len; n += 2) {
+                                        int k = pdf_to_int(ctx, pdf_array_get(ctx, nums, n));
+                                        if (k > max_sp) max_sp = k;
+                                        if (k == src_sp) {
+                                            found_arr = pdf_array_get(ctx, nums, n + 1);
+                                        }
+                                    }
+                                    int new_sp = max_sp + 1;
+                                    pdf_dict_put_int(ctx, new_page_dict, PDF_NAME(StructParents), new_sp);
+                                    if (found_arr) {
+                                        pdf_obj *cloned_arr = pdf_deep_copy_obj(ctx, found_arr);
+                                        pdf_array_push_int(ctx, nums, new_sp);
+                                        pdf_array_push_drop(ctx, nums, cloned_arr);
+                                    }
+                                } else {
+                                    pdf_dict_put_int(ctx, new_page_dict, PDF_NAME(StructParents), src_sp + 1000);
+                                }
+                            }
+                        }
+                    }
+
                     pdf_obj *new_page_ref = pdf_add_object_drop(ctx, pdf_doc, new_page_dict);
 
                     /* Clone annotations and form fields if present */
@@ -372,7 +246,7 @@ int vocument_mupdf_duplicate_page_ext(
 
                         for (int a = 0; a < n_annots; a++) {
                             pdf_obj *src_a = pdf_array_get(ctx, src_annots, a);
-                            pdf_obj *annot_copy = pdf_deep_copy_obj(ctx, src_a);
+                            pdf_obj *annot_copy = pdf_deep_copy_obj(ctx, pdf_resolve_indirect(ctx, src_a));
                             pdf_dict_put(ctx, annot_copy, PDF_NAME(P), new_page_ref);
 
                             /* Check for form widget */
@@ -382,7 +256,7 @@ int vocument_mupdf_duplicate_page_ext(
                                 if (t) {
                                     const char *orig_name = pdf_to_text_string(ctx, t);
                                     char renamed[256];
-                                    snprintf(renamed, sizeof(renamed), "%s_Copy1", orig_name ? orig_name : "Field");
+                                    generate_unique_field_name(ctx, fields, orig_name, renamed, sizeof(renamed));
                                     pdf_dict_put_text_string(ctx, annot_copy, PDF_NAME(T), renamed);
                                 }
                             }
@@ -533,6 +407,12 @@ int vocument_mupdf_delete_pages_ext(
                                 first_item = pdf_dict_get(ctx, first_item, PDF_NAME(Next));
                             }
                         }
+
+                        /* Re-anchor internal links targeting deleted pages */
+                        reanchor_internal_links_for_deleted_pages(ctx, pdf_doc, del_page_objs, (int)deleted_count, surviving_target);
+
+                        /* Clean up Tagged PDF ParentTree for deleted pages */
+                        cleanup_parent_tree_for_deleted_pages(ctx, pdf_doc, del_page_objs, (int)deleted_count);
 
                         fz_free(ctx, del_page_objs);
 

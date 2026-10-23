@@ -68,6 +68,7 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/mupdf_comment_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_sanitize_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_page_bridge.c");
+    println!("cargo:rerun-if-changed=csrc/mupdf_page_helpers.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_text_search.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_walk.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_serialize.h");
