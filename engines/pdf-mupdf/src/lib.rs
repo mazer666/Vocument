@@ -9,6 +9,7 @@ pub mod inspect;
 pub mod inspect_summary;
 pub mod multidoc_ops;
 pub mod mutate;
+pub mod optimize_ops;
 pub mod page_ops;
 pub mod render_page;
 pub mod sanitize;
@@ -52,11 +53,12 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use vocument_core::pdf_engine::{
-    BatesNumberingOptions, BookmarkItem, HeaderFooterOptions, PageBoxUpdate, PdfCommentAnnotation,
+    BatesNumberingOptions, BookmarkItem, ExtractedImageData, ExtractedImageInfo,
+    HeaderFooterOptions, OptimizationOptions, PageBoxUpdate, PdfCommentAnnotation,
     PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
     PdfHighlightAnnotation, PdfPageBoxes, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText,
-    PdfRectMilliPt, PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest,
-    StampOrWatermarkOptions,
+    PdfRectMilliPt, PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest, PdfxPreflightReport,
+    PrintPreflightReport, StampOrWatermarkOptions,
 };
 
 use inspect_summary::inspect_summary;
@@ -810,6 +812,41 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         self.summary = inspect_summary(&updated)?;
         self.pdf_bytes = updated.clone();
         Ok(updated)
+    }
+
+    fn optimize_document_ext(
+        &mut self,
+        options: &OptimizationOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let (updated, _) = optimize_ops::optimize_document_ext(
+            &self.pdf_bytes,
+            options,
+            allow_signature_invalidation,
+        )?;
+        self.summary = inspect_summary(&updated)?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
+
+    fn get_document_images(&self) -> Result<Vec<ExtractedImageInfo>, PdfEngineError> {
+        optimize_ops::get_document_images(&self.pdf_bytes)
+    }
+
+    fn extract_image_bytes(
+        &self,
+        page_index: u32,
+        image_index: u32,
+    ) -> Result<ExtractedImageData, PdfEngineError> {
+        optimize_ops::extract_image_bytes(&self.pdf_bytes, page_index, image_index)
+    }
+
+    fn preflight_pdfx(&self) -> Result<PdfxPreflightReport, PdfEngineError> {
+        optimize_ops::preflight_pdfx(&self.pdf_bytes)
+    }
+
+    fn preflight_print(&self) -> Result<PrintPreflightReport, PdfEngineError> {
+        optimize_ops::preflight_print(&self.pdf_bytes)
     }
 }
 

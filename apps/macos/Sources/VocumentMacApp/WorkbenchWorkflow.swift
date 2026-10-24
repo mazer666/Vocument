@@ -23,6 +23,7 @@ enum WorkbenchAction {
     case headerFooter([UInt32], FfiHeaderFooterOptions, String?, String?)
     case setBookmarks([FfiBookmarkItem])
     case stampOrWatermark([UInt32], FfiStampOrWatermarkOptions)
+    case optimize(FfiOptimizationOptions)
 }
 
 @MainActor
@@ -155,6 +156,13 @@ extension MacDocumentSessionCoordinator {
                 allowSignatureInvalidation: allowInvalidation
             )
             return "Applied '\(options.text)' stamp to \(indices.count) page(s)"
+        case .optimize(let options):
+            _ = try coreClient.optimizeDocument(
+                sessionId: session.sessionId,
+                options: options,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Optimized document streams and structure"
         }
     }
 

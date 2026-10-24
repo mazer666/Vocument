@@ -277,3 +277,54 @@ fun DocumentCoreBridge.applyStampOrWatermark(
     return documentCoreApplyStampOrWatermarkWithOptions(sessionId, pageIndices, options, workbenchOptions)
 }
 
+/**
+ * Optimizes document streams, removes duplicates, and optionally linearizes for Fast Web View (`M3.5`).
+ */
+fun DocumentCoreBridge.optimizeDocument(
+    sessionId: String,
+    options: FfiOptimizationOptions,
+    allowSignatureInvalidation: Boolean = false
+): FfiTransactionRecord {
+    val workbenchOptions = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
+    return documentCoreOptimizeDocumentWithOptions(sessionId, options, workbenchOptions)
+}
+
+/**
+ * Discovers embedded raster images across the document (`M3.5`).
+ */
+fun DocumentCoreBridge.getDocumentImages(
+    sessionId: String
+): List<FfiExtractedImageInfo> {
+    return documentCoreGetDocumentImages(sessionId)
+}
+
+/**
+ * Extracts raw PNG image bytes from a page (`M3.5`).
+ */
+fun DocumentCoreBridge.extractImageBytes(
+    sessionId: String,
+    pageIndex: UInt,
+    imageIndex: UInt
+): FfiExtractedImageData {
+    return documentCoreExtractImageBytes(sessionId, pageIndex, imageIndex)
+}
+
+/**
+ * Validates document against ISO 15930 PDF/X preflight rules (`M3.5`).
+ */
+fun DocumentCoreBridge.preflightPdfx(
+    sessionId: String
+): FfiPdfxPreflightReport {
+    return documentCorePreflightPdfx(sessionId)
+}
+
+/**
+ * Preflights document dimensions and margin boxes for professional printing (`PRINT-003`, `PRINT-004`).
+ */
+fun DocumentCoreBridge.preflightPrint(
+    sessionId: String
+): FfiPrintPreflightReport {
+    return documentCorePreflightPrint(sessionId)
+}
+
+

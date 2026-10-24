@@ -931,6 +931,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1012,11 +1022,15 @@ fun uniffi_vocument_ffi_checksum_func_document_core_export_session_bytes(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_extract_image_bytes(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_extract_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_document_images(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page(
 ): Short
@@ -1072,6 +1086,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_page_descriptors(
@@ -1085,6 +1101,10 @@ fun uniffi_vocument_ffi_checksum_func_document_core_page_rotation_degrees(
 fun uniffi_vocument_ffi_checksum_func_document_core_page_words(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_power_limits(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_preflight_pdfx(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_preflight_print(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_recovery_status(
 ): Short
@@ -1277,11 +1297,15 @@ fun uniffi_vocument_ffi_fn_func_document_core_export_session_bytes(`sessionId`: 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_extract_image_bytes(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`imageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_extract_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_document_images(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1337,6 +1361,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: R
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_optimize_document_with_options(`sessionId`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_comment_annotations(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_page_descriptors(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1350,6 +1376,10 @@ fun uniffi_vocument_ffi_fn_func_document_core_page_rotation_degrees(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_page_words(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_power_limits(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_preflight_pdfx(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_preflight_print(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_recovery_status(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1656,6 +1686,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_extract_image_bytes() != 35864.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_extract_pages() != 21313.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1663,6 +1696,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks() != 64469.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_document_images() != 2357.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055.toShort()) {
@@ -1746,6 +1782,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options() != 44244.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations() != 61030.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1765,6 +1804,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_preflight_pdfx() != 64601.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_preflight_print() != 3239.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_recovery_status() != 1356.toShort()) {
@@ -2947,6 +2992,108 @@ public object FfiConverterTypeFfiExternalChangeCheckResult: FfiConverterRustBuff
 
 
 /**
+ * Full extracted raster image payload (`M3.5`).
+ */
+data class FfiExtractedImageData (
+    var `width`: kotlin.UInt, 
+    var `height`: kotlin.UInt, 
+    var `format`: kotlin.String, 
+    var `data`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer<FfiExtractedImageData> {
+    override fun read(buf: ByteBuffer): FfiExtractedImageData {
+        return FfiExtractedImageData(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiExtractedImageData) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterString.allocationSize(value.`format`) +
+            FfiConverterByteArray.allocationSize(value.`data`)
+    )
+
+    override fun write(value: FfiExtractedImageData, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterString.write(value.`format`, buf)
+            FfiConverterByteArray.write(value.`data`, buf)
+    }
+}
+
+
+
+/**
+ * Metadata description of an embedded raster image in a document (`M3.5`).
+ */
+data class FfiExtractedImageInfo (
+    var `pageIndex`: kotlin.UInt, 
+    var `imageIndex`: kotlin.UInt, 
+    var `objNum`: kotlin.UInt, 
+    var `width`: kotlin.UInt, 
+    var `height`: kotlin.UInt, 
+    var `bits`: kotlin.UInt, 
+    var `format`: kotlin.String, 
+    var `colorspace`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiExtractedImageInfo: FfiConverterRustBuffer<FfiExtractedImageInfo> {
+    override fun read(buf: ByteBuffer): FfiExtractedImageInfo {
+        return FfiExtractedImageInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiExtractedImageInfo) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterUInt.allocationSize(value.`imageIndex`) +
+            FfiConverterUInt.allocationSize(value.`objNum`) +
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterUInt.allocationSize(value.`bits`) +
+            FfiConverterString.allocationSize(value.`format`) +
+            FfiConverterString.allocationSize(value.`colorspace`)
+    )
+
+    override fun write(value: FfiExtractedImageInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterUInt.write(value.`imageIndex`, buf)
+            FfiConverterUInt.write(value.`objNum`, buf)
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterUInt.write(value.`bits`, buf)
+            FfiConverterString.write(value.`format`, buf)
+            FfiConverterString.write(value.`colorspace`, buf)
+    }
+}
+
+
+
+/**
  * Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
  */
 data class FfiFileIdentity (
@@ -3523,6 +3670,41 @@ public object FfiConverterTypeFfiOcrWord: FfiConverterRustBuffer<FfiOcrWord> {
             FfiConverterUInt.write(value.`blockIndex`, buf)
             FfiConverterUInt.write(value.`lineIndex`, buf)
             FfiConverterUInt.write(value.`wordIndex`, buf)
+    }
+}
+
+
+
+/**
+ * Options controlling document optimization and compression (`M3.5`).
+ */
+data class FfiOptimizationOptions (
+    var `preset`: FfiOptimizationPreset, 
+    var `doLinearize`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOptimizationOptions: FfiConverterRustBuffer<FfiOptimizationOptions> {
+    override fun read(buf: ByteBuffer): FfiOptimizationOptions {
+        return FfiOptimizationOptions(
+            FfiConverterTypeFfiOptimizationPreset.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOptimizationOptions) = (
+            FfiConverterTypeFfiOptimizationPreset.allocationSize(value.`preset`) +
+            FfiConverterBoolean.allocationSize(value.`doLinearize`)
+    )
+
+    override fun write(value: FfiOptimizationOptions, buf: ByteBuffer) {
+            FfiConverterTypeFfiOptimizationPreset.write(value.`preset`, buf)
+            FfiConverterBoolean.write(value.`doLinearize`, buf)
     }
 }
 
@@ -4285,6 +4467,65 @@ public object FfiConverterTypeFfiPdfSignatureInfo: FfiConverterRustBuffer<FfiPdf
 
 
 /**
+ * Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+ */
+data class FfiPdfxPreflightReport (
+    var `isValid`: kotlin.Boolean, 
+    var `version`: kotlin.String, 
+    var `hasOutputIntent`: kotlin.Boolean, 
+    var `outputIntentProfile`: kotlin.String, 
+    var `hasTrappedKey`: kotlin.Boolean, 
+    var `hasBleedOrTrimBox`: kotlin.Boolean, 
+    var `isEncrypted`: kotlin.Boolean, 
+    var `issues`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfxPreflightReport: FfiConverterRustBuffer<FfiPdfxPreflightReport> {
+    override fun read(buf: ByteBuffer): FfiPdfxPreflightReport {
+        return FfiPdfxPreflightReport(
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfxPreflightReport) = (
+            FfiConverterBoolean.allocationSize(value.`isValid`) +
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterBoolean.allocationSize(value.`hasOutputIntent`) +
+            FfiConverterString.allocationSize(value.`outputIntentProfile`) +
+            FfiConverterBoolean.allocationSize(value.`hasTrappedKey`) +
+            FfiConverterBoolean.allocationSize(value.`hasBleedOrTrimBox`) +
+            FfiConverterBoolean.allocationSize(value.`isEncrypted`) +
+            FfiConverterSequenceString.allocationSize(value.`issues`)
+    )
+
+    override fun write(value: FfiPdfxPreflightReport, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`isValid`, buf)
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterBoolean.write(value.`hasOutputIntent`, buf)
+            FfiConverterString.write(value.`outputIntentProfile`, buf)
+            FfiConverterBoolean.write(value.`hasTrappedKey`, buf)
+            FfiConverterBoolean.write(value.`hasBleedOrTrimBox`, buf)
+            FfiConverterBoolean.write(value.`isEncrypted`, buf)
+            FfiConverterSequenceString.write(value.`issues`, buf)
+    }
+}
+
+
+
+/**
  * 2D point in normalized coordinates `[0.0, 1.0]`.
  */
 data class FfiPoint2D (
@@ -4424,6 +4665,61 @@ public object FfiConverterTypeFfiPowerState: FfiConverterRustBuffer<FfiPowerStat
             FfiConverterBoolean.write(value.`isCharging`, buf)
             FfiConverterInt.write(value.`thermalLevel`, buf)
             FfiConverterBoolean.write(value.`powerSaveMode`, buf)
+    }
+}
+
+
+
+/**
+ * Preflight readiness report for professional printing (`PRINT-003`, `PRINT-004`).
+ */
+data class FfiPrintPreflightReport (
+    var `pageCount`: kotlin.UInt, 
+    var `isUniformSize`: kotlin.Boolean, 
+    var `widthPt`: kotlin.Float, 
+    var `heightPt`: kotlin.Float, 
+    var `hasBleedBox`: kotlin.Boolean, 
+    var `hasCropBox`: kotlin.Boolean, 
+    var `warnings`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPrintPreflightReport: FfiConverterRustBuffer<FfiPrintPreflightReport> {
+    override fun read(buf: ByteBuffer): FfiPrintPreflightReport {
+        return FfiPrintPreflightReport(
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPrintPreflightReport) = (
+            FfiConverterUInt.allocationSize(value.`pageCount`) +
+            FfiConverterBoolean.allocationSize(value.`isUniformSize`) +
+            FfiConverterFloat.allocationSize(value.`widthPt`) +
+            FfiConverterFloat.allocationSize(value.`heightPt`) +
+            FfiConverterBoolean.allocationSize(value.`hasBleedBox`) +
+            FfiConverterBoolean.allocationSize(value.`hasCropBox`) +
+            FfiConverterSequenceString.allocationSize(value.`warnings`)
+    )
+
+    override fun write(value: FfiPrintPreflightReport, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageCount`, buf)
+            FfiConverterBoolean.write(value.`isUniformSize`, buf)
+            FfiConverterFloat.write(value.`widthPt`, buf)
+            FfiConverterFloat.write(value.`heightPt`, buf)
+            FfiConverterBoolean.write(value.`hasBleedBox`, buf)
+            FfiConverterBoolean.write(value.`hasCropBox`, buf)
+            FfiConverterSequenceString.write(value.`warnings`, buf)
     }
 }
 
@@ -6336,6 +6632,40 @@ public object FfiConverterTypeFfiMemoryPressureLevel: FfiConverterRustBuffer<Ffi
 
 
 /**
+ * Preset strategies for document optimization (`M3.5`).
+ */
+
+enum class FfiOptimizationPreset {
+    
+    LOSSLESS,
+    BALANCED,
+    MAXIMUM;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOptimizationPreset: FfiConverterRustBuffer<FfiOptimizationPreset> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiOptimizationPreset.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiOptimizationPreset) = 4UL
+
+    override fun write(value: FfiOptimizationPreset, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Numbering style for a logical page-label range (`PAGELABEL-001`).
  */
 
@@ -7436,6 +7766,34 @@ public object FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuff
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiExtractedImageInfo: FfiConverterRustBuffer<List<FfiExtractedImageInfo>> {
+    override fun read(buf: ByteBuffer): List<FfiExtractedImageInfo> {
+        val len = buf.getInt()
+        return List<FfiExtractedImageInfo>(len) {
+            FfiConverterTypeFfiExtractedImageInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiExtractedImageInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiExtractedImageInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiExtractedImageInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiExtractedImageInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer<List<FfiHighlightAnnotation>> {
     override fun read(buf: ByteBuffer): List<FfiHighlightAnnotation> {
         val len = buf.getInt()
@@ -8408,6 +8766,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Extracts raster image bytes for a specified page and image index (`M3.5`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreExtractImageBytes`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `imageIndex`: kotlin.UInt): FfiExtractedImageData {
+            return FfiConverterTypeFfiExtractedImageData.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_extract_image_bytes(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterUInt.lower(`imageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts selected `page_indices` into a new standalone PDF buffer without modifying the current document (`M3`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreExtractPages`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>): kotlin.ByteArray {
@@ -8439,6 +8810,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
             return FfiConverterSequenceTypeFfiBookmarkItem.lift(
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns metadata of all embedded raster images discovered in the document (`M3.5`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetDocumentImages`(`sessionId`: kotlin.String): List<FfiExtractedImageInfo> {
+            return FfiConverterSequenceTypeFfiExtractedImageInfo.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_document_images(
         FfiConverterString.lower(`sessionId`),_status)
 }
     )
@@ -8827,6 +9211,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Optimizes document streams, compacts objects, and optionally linearizes for Fast Web View (`M3.5`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOptimizeDocumentWithOptions`(`sessionId`: kotlin.String, `options`: FfiOptimizationOptions, `workbenchOptions`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_optimize_document_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterTypeFfiOptimizationOptions.lower(`options`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`workbenchOptions`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Lists the comments of the reviewer on `page_index` (`ANNOT-001`).
          */
     @Throws(DocumentCoreException::class) fun `documentCorePageCommentAnnotations`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): List<FfiCommentAnnotation> {
@@ -8915,6 +9312,32 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_power_limits(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Performs PDF/X compliance preflight analysis (`ISO 15930`, `M3.5`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePreflightPdfx`(`sessionId`: kotlin.String): FfiPdfxPreflightReport {
+            return FfiConverterTypeFfiPdfxPreflightReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_preflight_pdfx(
+        FfiConverterString.lower(`sessionId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Performs print readiness preflight analysis (`PRINT-003`, `PRINT-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCorePreflightPrint`(`sessionId`: kotlin.String): FfiPrintPreflightReport {
+            return FfiConverterTypeFfiPrintPreflightReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_preflight_print(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }

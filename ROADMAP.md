@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M3 — Page Workbench (**IN PROGRESS**). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), and M2 (macOS Professional Review) are **complete**. Milestone M2 closure was formally approved by the Project Owner under **CR-0005 Option A** on 2026-10-23, delivering verified secure redaction (M2.1), link/action inspection (M2.2), attachment and cryptographic signature inspection (M2.3), reviewer comment palette (M2.4), document sanitization (`SAN-001`), and macOS review workflow panels (Rubber Stamps relocated to M3.4; Structured Document Comparison scheduled to Track M3.7). **M3.0 (Architecture, Invariants & Structural Preservation)** is **COMPLETE & VERIFIED** (see [M3.0 Acceptance Record](docs/acceptance/M3.0-ACCEPTANCE.md)). M3.1 (Visual Page Workbench) is next. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating and fast-check fallback. All tools across platforms require intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M3 — Page Workbench (**IN PROGRESS**). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), and M2 (macOS Professional Review) are **complete**. Milestone M2 closure was formally approved by the Project Owner under **CR-0005 Option A** on 2026-10-23. In Milestone M3, **M3.0–M3.5 (Invariants, Visual Workbench, Multi-Document Ops, Geometry/Crop/Deskew, Bates/Headers/Bookmarks/Stamps, Optimization/Image Extraction/Print Preflight)** are **COMPLETE & VERIFIED**. M3.6 (Platform Integration & Overall M3 Acceptance) is next. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating and fast-check fallback. All tools across platforms require intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -761,10 +761,12 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Full transaction integration with bidirectional undo/redo and crash recovery journal rehydration (`TransactionCommand::ApplyBatesNumbering`, `ApplyHeaderFooter`, `SetBookmarks`, `ApplyStampOrWatermark`).
   - [x] Native macOS sheets (`BatesStampSheetView`, `HeaderFooterSheetView`, `BookmarkEditorSheetView`, `StampWatermarkSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
-- **M3.5 — Image Extraction, Compression, Optimization & Print/Export:**
-  - Lossless extraction of embedded raster streams (JPEG, PNG, JBIG2).
-  - Stream recompression, duplicate object removal, and Fast Web View linearization.
-  - Professional print preparation and PDF/X verification.
+- **M3.5 — Image Extraction, Compression, Optimization & Print/Export (COMPLETE & VERIFIED):**
+  - [x] Full-fidelity extraction of embedded raster streams to PNG (`vocument_mupdf_get_document_images_json`, `vocument_mupdf_extract_image_bytes`).
+  - [x] Stream recompression (Lossless, Balanced, Maximum), duplicate object deduplication (`do_garbage = 3`), and Fast Web View optimization via object streams (`opts.do_use_objstms = 1`).
+  - [x] Professional print readiness audit (`PRINT-003`, `PRINT-004`) and ISO 15930 PDF/X compliance preflight (`vocument_mupdf_preflight_pdfx_json`).
+  - [x] Native macOS sheets (`OptimizeSheetView`, `ImageExtractionSheetView`, `PreflightPdfxSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
+  - [x] Reversible Undo/Redo integration and fail-closed digital signature preflight guards (`TransactionCommand::OptimizeDocument`).
 
 - **M3.6 — Platform Integration, Usability & Overall M3 Acceptance:**
   - Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces.

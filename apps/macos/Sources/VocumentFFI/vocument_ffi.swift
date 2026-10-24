@@ -2098,6 +2098,216 @@ public func FfiConverterTypeFfiExternalChangeCheckResult_lower(_ value: FfiExter
 
 
 /**
+ * Full extracted raster image payload (`M3.5`).
+ */
+public struct FfiExtractedImageData {
+    public var width: UInt32
+    public var height: UInt32
+    public var format: String
+    public var data: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(width: UInt32, height: UInt32, format: String, data: Data) {
+        self.width = width
+        self.height = height
+        self.format = format
+        self.data = data
+    }
+}
+
+#if compiler(>=6)
+extension FfiExtractedImageData: Sendable {}
+#endif
+
+
+extension FfiExtractedImageData: Equatable, Hashable {
+    public static func ==(lhs: FfiExtractedImageData, rhs: FfiExtractedImageData) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(format)
+        hasher.combine(data)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiExtractedImageData {
+        return
+            try FfiExtractedImageData(
+                width: FfiConverterUInt32.read(from: &buf), 
+                height: FfiConverterUInt32.read(from: &buf), 
+                format: FfiConverterString.read(from: &buf), 
+                data: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiExtractedImageData, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterString.write(value.format, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExtractedImageData_lift(_ buf: RustBuffer) throws -> FfiExtractedImageData {
+    return try FfiConverterTypeFfiExtractedImageData.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExtractedImageData_lower(_ value: FfiExtractedImageData) -> RustBuffer {
+    return FfiConverterTypeFfiExtractedImageData.lower(value)
+}
+
+
+/**
+ * Metadata description of an embedded raster image in a document (`M3.5`).
+ */
+public struct FfiExtractedImageInfo {
+    public var pageIndex: UInt32
+    public var imageIndex: UInt32
+    public var objNum: UInt32
+    public var width: UInt32
+    public var height: UInt32
+    public var bits: UInt32
+    public var format: String
+    public var colorspace: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, imageIndex: UInt32, objNum: UInt32, width: UInt32, height: UInt32, bits: UInt32, format: String, colorspace: String) {
+        self.pageIndex = pageIndex
+        self.imageIndex = imageIndex
+        self.objNum = objNum
+        self.width = width
+        self.height = height
+        self.bits = bits
+        self.format = format
+        self.colorspace = colorspace
+    }
+}
+
+#if compiler(>=6)
+extension FfiExtractedImageInfo: Sendable {}
+#endif
+
+
+extension FfiExtractedImageInfo: Equatable, Hashable {
+    public static func ==(lhs: FfiExtractedImageInfo, rhs: FfiExtractedImageInfo) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.imageIndex != rhs.imageIndex {
+            return false
+        }
+        if lhs.objNum != rhs.objNum {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.bits != rhs.bits {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.colorspace != rhs.colorspace {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(imageIndex)
+        hasher.combine(objNum)
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(bits)
+        hasher.combine(format)
+        hasher.combine(colorspace)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiExtractedImageInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiExtractedImageInfo {
+        return
+            try FfiExtractedImageInfo(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                imageIndex: FfiConverterUInt32.read(from: &buf), 
+                objNum: FfiConverterUInt32.read(from: &buf), 
+                width: FfiConverterUInt32.read(from: &buf), 
+                height: FfiConverterUInt32.read(from: &buf), 
+                bits: FfiConverterUInt32.read(from: &buf), 
+                format: FfiConverterString.read(from: &buf), 
+                colorspace: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiExtractedImageInfo, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterUInt32.write(value.imageIndex, into: &buf)
+        FfiConverterUInt32.write(value.objNum, into: &buf)
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterUInt32.write(value.bits, into: &buf)
+        FfiConverterString.write(value.format, into: &buf)
+        FfiConverterString.write(value.colorspace, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExtractedImageInfo_lift(_ buf: RustBuffer) throws -> FfiExtractedImageInfo {
+    return try FfiConverterTypeFfiExtractedImageInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiExtractedImageInfo_lower(_ value: FfiExtractedImageInfo) -> RustBuffer {
+    return FfiConverterTypeFfiExtractedImageInfo.lower(value)
+}
+
+
+/**
  * Multi-signal file identity DTO exposed across UniFFI (`ARCHITECTURE.md` §14).
  */
 public struct FfiFileIdentity {
@@ -3288,6 +3498,79 @@ public func FfiConverterTypeFfiOcrWord_lift(_ buf: RustBuffer) throws -> FfiOcrW
 #endif
 public func FfiConverterTypeFfiOcrWord_lower(_ value: FfiOcrWord) -> RustBuffer {
     return FfiConverterTypeFfiOcrWord.lower(value)
+}
+
+
+/**
+ * Options controlling document optimization and compression (`M3.5`).
+ */
+public struct FfiOptimizationOptions {
+    public var preset: FfiOptimizationPreset
+    public var doLinearize: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(preset: FfiOptimizationPreset, doLinearize: Bool) {
+        self.preset = preset
+        self.doLinearize = doLinearize
+    }
+}
+
+#if compiler(>=6)
+extension FfiOptimizationOptions: Sendable {}
+#endif
+
+
+extension FfiOptimizationOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiOptimizationOptions, rhs: FfiOptimizationOptions) -> Bool {
+        if lhs.preset != rhs.preset {
+            return false
+        }
+        if lhs.doLinearize != rhs.doLinearize {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(preset)
+        hasher.combine(doLinearize)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiOptimizationOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiOptimizationOptions {
+        return
+            try FfiOptimizationOptions(
+                preset: FfiConverterTypeFfiOptimizationPreset.read(from: &buf), 
+                doLinearize: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiOptimizationOptions, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiOptimizationPreset.write(value.preset, into: &buf)
+        FfiConverterBool.write(value.doLinearize, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOptimizationOptions_lift(_ buf: RustBuffer) throws -> FfiOptimizationOptions {
+    return try FfiConverterTypeFfiOptimizationOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOptimizationOptions_lower(_ value: FfiOptimizationOptions) -> RustBuffer {
+    return FfiConverterTypeFfiOptimizationOptions.lower(value)
 }
 
 
@@ -4842,6 +5125,127 @@ public func FfiConverterTypeFfiPdfSignatureInfo_lower(_ value: FfiPdfSignatureIn
 
 
 /**
+ * Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+ */
+public struct FfiPdfxPreflightReport {
+    public var isValid: Bool
+    public var version: String
+    public var hasOutputIntent: Bool
+    public var outputIntentProfile: String
+    public var hasTrappedKey: Bool
+    public var hasBleedOrTrimBox: Bool
+    public var isEncrypted: Bool
+    public var issues: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(isValid: Bool, version: String, hasOutputIntent: Bool, outputIntentProfile: String, hasTrappedKey: Bool, hasBleedOrTrimBox: Bool, isEncrypted: Bool, issues: [String]) {
+        self.isValid = isValid
+        self.version = version
+        self.hasOutputIntent = hasOutputIntent
+        self.outputIntentProfile = outputIntentProfile
+        self.hasTrappedKey = hasTrappedKey
+        self.hasBleedOrTrimBox = hasBleedOrTrimBox
+        self.isEncrypted = isEncrypted
+        self.issues = issues
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfxPreflightReport: Sendable {}
+#endif
+
+
+extension FfiPdfxPreflightReport: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfxPreflightReport, rhs: FfiPdfxPreflightReport) -> Bool {
+        if lhs.isValid != rhs.isValid {
+            return false
+        }
+        if lhs.version != rhs.version {
+            return false
+        }
+        if lhs.hasOutputIntent != rhs.hasOutputIntent {
+            return false
+        }
+        if lhs.outputIntentProfile != rhs.outputIntentProfile {
+            return false
+        }
+        if lhs.hasTrappedKey != rhs.hasTrappedKey {
+            return false
+        }
+        if lhs.hasBleedOrTrimBox != rhs.hasBleedOrTrimBox {
+            return false
+        }
+        if lhs.isEncrypted != rhs.isEncrypted {
+            return false
+        }
+        if lhs.issues != rhs.issues {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(isValid)
+        hasher.combine(version)
+        hasher.combine(hasOutputIntent)
+        hasher.combine(outputIntentProfile)
+        hasher.combine(hasTrappedKey)
+        hasher.combine(hasBleedOrTrimBox)
+        hasher.combine(isEncrypted)
+        hasher.combine(issues)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfxPreflightReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfxPreflightReport {
+        return
+            try FfiPdfxPreflightReport(
+                isValid: FfiConverterBool.read(from: &buf), 
+                version: FfiConverterString.read(from: &buf), 
+                hasOutputIntent: FfiConverterBool.read(from: &buf), 
+                outputIntentProfile: FfiConverterString.read(from: &buf), 
+                hasTrappedKey: FfiConverterBool.read(from: &buf), 
+                hasBleedOrTrimBox: FfiConverterBool.read(from: &buf), 
+                isEncrypted: FfiConverterBool.read(from: &buf), 
+                issues: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfxPreflightReport, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.isValid, into: &buf)
+        FfiConverterString.write(value.version, into: &buf)
+        FfiConverterBool.write(value.hasOutputIntent, into: &buf)
+        FfiConverterString.write(value.outputIntentProfile, into: &buf)
+        FfiConverterBool.write(value.hasTrappedKey, into: &buf)
+        FfiConverterBool.write(value.hasBleedOrTrimBox, into: &buf)
+        FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterSequenceString.write(value.issues, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfxPreflightReport_lift(_ buf: RustBuffer) throws -> FfiPdfxPreflightReport {
+    return try FfiConverterTypeFfiPdfxPreflightReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfxPreflightReport_lower(_ value: FfiPdfxPreflightReport) -> RustBuffer {
+    return FfiConverterTypeFfiPdfxPreflightReport.lower(value)
+}
+
+
+/**
  * 2D point in normalized coordinates `[0.0, 1.0]`.
  */
 public struct FfiPoint2D {
@@ -5137,6 +5541,119 @@ public func FfiConverterTypeFfiPowerState_lift(_ buf: RustBuffer) throws -> FfiP
 #endif
 public func FfiConverterTypeFfiPowerState_lower(_ value: FfiPowerState) -> RustBuffer {
     return FfiConverterTypeFfiPowerState.lower(value)
+}
+
+
+/**
+ * Preflight readiness report for professional printing (`PRINT-003`, `PRINT-004`).
+ */
+public struct FfiPrintPreflightReport {
+    public var pageCount: UInt32
+    public var isUniformSize: Bool
+    public var widthPt: Float
+    public var heightPt: Float
+    public var hasBleedBox: Bool
+    public var hasCropBox: Bool
+    public var warnings: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageCount: UInt32, isUniformSize: Bool, widthPt: Float, heightPt: Float, hasBleedBox: Bool, hasCropBox: Bool, warnings: [String]) {
+        self.pageCount = pageCount
+        self.isUniformSize = isUniformSize
+        self.widthPt = widthPt
+        self.heightPt = heightPt
+        self.hasBleedBox = hasBleedBox
+        self.hasCropBox = hasCropBox
+        self.warnings = warnings
+    }
+}
+
+#if compiler(>=6)
+extension FfiPrintPreflightReport: Sendable {}
+#endif
+
+
+extension FfiPrintPreflightReport: Equatable, Hashable {
+    public static func ==(lhs: FfiPrintPreflightReport, rhs: FfiPrintPreflightReport) -> Bool {
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.isUniformSize != rhs.isUniformSize {
+            return false
+        }
+        if lhs.widthPt != rhs.widthPt {
+            return false
+        }
+        if lhs.heightPt != rhs.heightPt {
+            return false
+        }
+        if lhs.hasBleedBox != rhs.hasBleedBox {
+            return false
+        }
+        if lhs.hasCropBox != rhs.hasCropBox {
+            return false
+        }
+        if lhs.warnings != rhs.warnings {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageCount)
+        hasher.combine(isUniformSize)
+        hasher.combine(widthPt)
+        hasher.combine(heightPt)
+        hasher.combine(hasBleedBox)
+        hasher.combine(hasCropBox)
+        hasher.combine(warnings)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPrintPreflightReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPrintPreflightReport {
+        return
+            try FfiPrintPreflightReport(
+                pageCount: FfiConverterUInt32.read(from: &buf), 
+                isUniformSize: FfiConverterBool.read(from: &buf), 
+                widthPt: FfiConverterFloat.read(from: &buf), 
+                heightPt: FfiConverterFloat.read(from: &buf), 
+                hasBleedBox: FfiConverterBool.read(from: &buf), 
+                hasCropBox: FfiConverterBool.read(from: &buf), 
+                warnings: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPrintPreflightReport, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterBool.write(value.isUniformSize, into: &buf)
+        FfiConverterFloat.write(value.widthPt, into: &buf)
+        FfiConverterFloat.write(value.heightPt, into: &buf)
+        FfiConverterBool.write(value.hasBleedBox, into: &buf)
+        FfiConverterBool.write(value.hasCropBox, into: &buf)
+        FfiConverterSequenceString.write(value.warnings, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPrintPreflightReport_lift(_ buf: RustBuffer) throws -> FfiPrintPreflightReport {
+    return try FfiConverterTypeFfiPrintPreflightReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPrintPreflightReport_lower(_ value: FfiPrintPreflightReport) -> RustBuffer {
+    return FfiConverterTypeFfiPrintPreflightReport.lower(value)
 }
 
 
@@ -8477,6 +8994,86 @@ extension FfiMemoryPressureLevel: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Preset strategies for document optimization (`M3.5`).
+ */
+
+public enum FfiOptimizationPreset {
+    
+    case lossless
+    case balanced
+    case maximum
+}
+
+
+#if compiler(>=6)
+extension FfiOptimizationPreset: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiOptimizationPreset: FfiConverterRustBuffer {
+    typealias SwiftType = FfiOptimizationPreset
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiOptimizationPreset {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .lossless
+        
+        case 2: return .balanced
+        
+        case 3: return .maximum
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiOptimizationPreset, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .lossless:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .balanced:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .maximum:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOptimizationPreset_lift(_ buf: RustBuffer) throws -> FfiOptimizationPreset {
+    return try FfiConverterTypeFfiOptimizationPreset.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOptimizationPreset_lower(_ value: FfiOptimizationPreset) -> RustBuffer {
+    return FfiConverterTypeFfiOptimizationPreset.lower(value)
+}
+
+
+extension FfiOptimizationPreset: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Numbering style for a logical page-label range (`PAGELABEL-001`).
  */
 
@@ -9724,6 +10321,31 @@ fileprivate struct FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRus
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiExtractedImageInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiExtractedImageInfo]
+
+    public static func write(_ value: [FfiExtractedImageInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiExtractedImageInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiExtractedImageInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiExtractedImageInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiExtractedImageInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer {
     typealias SwiftType = [FfiHighlightAnnotation]
 
@@ -10586,6 +11208,18 @@ public func documentCoreExportTransactionJournalJson(sessionId: String)throws  -
 })
 }
 /**
+ * Extracts raster image bytes for a specified page and image index (`M3.5`).
+ */
+public func documentCoreExtractImageBytes(sessionId: String, pageIndex: UInt32, imageIndex: UInt32)throws  -> FfiExtractedImageData  {
+    return try  FfiConverterTypeFfiExtractedImageData_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_extract_image_bytes(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterUInt32.lower(imageIndex),$0
+    )
+})
+}
+/**
  * Extracts selected `page_indices` into a new standalone PDF buffer without modifying the current document (`M3`).
  */
 public func documentCoreExtractPages(sessionId: String, pageIndices: [UInt32])throws  -> Data  {
@@ -10613,6 +11247,16 @@ public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: Stri
 public func documentCoreGetBookmarks(sessionId: String)throws  -> [FfiBookmarkItem]  {
     return try  FfiConverterSequenceTypeFfiBookmarkItem.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Returns metadata of all embedded raster images discovered in the document (`M3.5`).
+ */
+public func documentCoreGetDocumentImages(sessionId: String)throws  -> [FfiExtractedImageInfo]  {
+    return try  FfiConverterSequenceTypeFfiExtractedImageInfo.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_document_images(
         FfiConverterString.lower(sessionId),$0
     )
 })
@@ -10937,6 +11581,18 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
 })
 }
 /**
+ * Optimizes document streams, compacts objects, and optionally linearizes for Fast Web View (`M3.5`).
+ */
+public func documentCoreOptimizeDocumentWithOptions(sessionId: String, options: FfiOptimizationOptions, workbenchOptions: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_optimize_document_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterTypeFfiOptimizationOptions_lower(options),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(workbenchOptions),$0
+    )
+})
+}
+/**
  * Lists the comments of the reviewer on `page_index` (`ANNOT-001`).
  */
 public func documentCorePageCommentAnnotations(sessionId: String, pageIndex: UInt32)throws  -> [FfiCommentAnnotation]  {
@@ -11010,6 +11666,26 @@ public func documentCorePageWords(sessionId: String, pageIndex: UInt32)throws  -
 public func documentCorePowerLimits()throws  -> FfiPowerLimits  {
     return try  FfiConverterTypeFfiPowerLimits_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_power_limits($0
+    )
+})
+}
+/**
+ * Performs PDF/X compliance preflight analysis (`ISO 15930`, `M3.5`).
+ */
+public func documentCorePreflightPdfx(sessionId: String)throws  -> FfiPdfxPreflightReport  {
+    return try  FfiConverterTypeFfiPdfxPreflightReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_preflight_pdfx(
+        FfiConverterString.lower(sessionId),$0
+    )
+})
+}
+/**
+ * Performs print readiness preflight analysis (`PRINT-003`, `PRINT-004`).
+ */
+public func documentCorePreflightPrint(sessionId: String)throws  -> FfiPrintPreflightReport  {
+    return try  FfiConverterTypeFfiPrintPreflightReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_preflight_print(
+        FfiConverterString.lower(sessionId),$0
     )
 })
 }
@@ -11581,6 +12257,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_json() != 44789) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_extract_image_bytes() != 35864) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_extract_pages() != 21313) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11588,6 +12267,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks() != 64469) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_document_images() != 2357) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055) {
@@ -11671,6 +12353,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options() != 44244) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_page_comment_annotations() != 61030) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11690,6 +12375,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_power_limits() != 1883) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_preflight_pdfx() != 64601) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_preflight_print() != 3239) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_recovery_status() != 1356) {

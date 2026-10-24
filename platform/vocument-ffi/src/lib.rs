@@ -11,6 +11,7 @@ pub mod job_dto;
 pub mod mutation_dto;
 pub mod navigation_search_dto;
 pub mod ocr_dto;
+pub mod optimize_dto;
 pub mod power_dto;
 pub mod recovery_dto;
 pub mod redaction_dto;
@@ -53,6 +54,12 @@ pub use ocr_dto::{
     FfiBoundingBox, FfiOcrCharacter, FfiOcrLine, FfiOcrPageResult, FfiOcrWord,
     document_core_detect_text_language, document_core_ocr_clean_scan_frame,
     document_core_ocr_frame, document_core_ocr_scan_session_page,
+};
+pub use optimize_dto::{
+    FfiExtractedImageData, FfiExtractedImageInfo, FfiOptimizationOptions, FfiOptimizationPreset,
+    FfiPdfxPreflightReport, FfiPrintPreflightReport, document_core_extract_image_bytes,
+    document_core_get_document_images, document_core_optimize_document_with_options,
+    document_core_preflight_pdfx, document_core_preflight_print,
 };
 pub use recovery_dto::{
     FfiRecoverableDocumentInfo, FfiRecoveryAction, FfiRecoveryActionResult,

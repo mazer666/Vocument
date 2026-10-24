@@ -340,5 +340,56 @@ extension DocumentCoreClient {
             workbenchOptions: workbenchOptions
         )
     }
+
+    /// Optimizes document streams, removes duplicates, and optionally linearizes for Fast Web View (`M3.5`).
+    public func optimizeDocument(
+        sessionId: String,
+        options: FfiOptimizationOptions,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let workbenchOptions = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreOptimizeDocumentWithOptions(
+            sessionId: sessionId,
+            options: options,
+            workbenchOptions: workbenchOptions
+        )
+    }
+
+    /// Discovers embedded raster images across the document (`M3.5`).
+    public func getDocumentImages(
+        sessionId: String
+    ) throws -> [FfiExtractedImageInfo] {
+        try documentCoreGetDocumentImages(sessionId: sessionId)
+    }
+
+    /// Extracts raw PNG image bytes from a page (`M3.5`).
+    public func extractImageBytes(
+        sessionId: String,
+        pageIndex: UInt32,
+        imageIndex: UInt32
+    ) throws -> FfiExtractedImageData {
+        try documentCoreExtractImageBytes(
+            sessionId: sessionId,
+            pageIndex: pageIndex,
+            imageIndex: imageIndex
+        )
+    }
+
+    /// Validates document against ISO 15930 PDF/X preflight rules (`M3.5`).
+    public func preflightPdfx(
+        sessionId: String
+    ) throws -> FfiPdfxPreflightReport {
+        try documentCorePreflightPdfx(sessionId: sessionId)
+    }
+
+    /// Preflights document dimensions and margin boxes for professional printing (`PRINT-003`, `PRINT-004`).
+    public func preflightPrint(
+        sessionId: String
+    ) throws -> FfiPrintPreflightReport {
+        try documentCorePreflightPrint(sessionId: sessionId)
+    }
 }
+
 

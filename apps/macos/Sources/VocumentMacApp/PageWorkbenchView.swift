@@ -128,6 +128,15 @@ struct PageWorkbenchView: View {
         .sheet(isPresented: $coordinator.showStampSheet) {
             StampWatermarkSheetView(coordinator: coordinator)
         }
+        .sheet(isPresented: $coordinator.showOptimizeSheet) {
+            OptimizeSheetView(coordinator: coordinator)
+        }
+        .sheet(isPresented: $coordinator.showImageExtractionSheet) {
+            ImageExtractionSheetView(coordinator: coordinator)
+        }
+        .sheet(isPresented: $coordinator.showPreflightPdfxSheet) {
+            PreflightPdfxSheetView(coordinator: coordinator)
+        }
         .onAppear {
             coordinator.refreshWorkbenchPreflight()
         }
@@ -308,6 +317,33 @@ struct PageWorkbenchView: View {
             }
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
             .help("Apply rubber stamp or watermark overlay to selected page(s) (M3.4)")
+
+            Divider().frame(height: 18)
+
+            // Optimization, Compression, Extraction, Preflight (M3.5)
+            Button {
+                coordinator.showOptimizeSheet = true
+            } label: {
+                Label("Optimize…", systemImage: "gauge.with.dots.needle.bottom.50percent")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Optimize streams, deduplicate objects, and linearize for Fast Web View (M3.5)")
+
+            Button {
+                coordinator.showImageExtractionSheet = true
+            } label: {
+                Label("Images…", systemImage: "photo.on.rectangle")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Discover and extract embedded raster images in original fidelity (M3.5)")
+
+            Button {
+                coordinator.showPreflightPdfxSheet = true
+            } label: {
+                Label("Preflight…", systemImage: "checkmark.seal")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Audit PDF/X ISO 15930 compliance and print readiness (M3.5)")
 
             Spacer()
 

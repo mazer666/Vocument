@@ -192,6 +192,12 @@ pub enum TransactionCommand {
         #[serde(default)]
         allow_signature_invalidation: bool,
     },
+    /// Optimizes and compresses document streams and structures (`ROADMAP.md` M3.5).
+    OptimizeDocument {
+        options: crate::workbench_optimize::OptimizationOptions,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// The inverse of a command that cannot be undone (`REDACT-001`, `SAN-001`).
     Irreversible { description: String },
 }
@@ -338,6 +344,9 @@ impl TransactionCommand {
                     page_indices.len()
                 )
             }
+            Self::OptimizeDocument { options, .. } => {
+                format!("Optimize document ({:?} preset)", options.preset)
+            }
             Self::Irreversible { description } => description.clone(),
         }
     }
@@ -379,6 +388,7 @@ impl TransactionCommand {
             Self::ApplyHeaderFooter { page_indices, .. } => page_indices.clone(),
             Self::SetBookmarks { .. } => Vec::new(),
             Self::ApplyStampOrWatermark { page_indices, .. } => page_indices.clone(),
+            Self::OptimizeDocument { .. } => Vec::new(),
             Self::Irreversible { .. } => Vec::new(),
         }
     }
@@ -449,6 +459,7 @@ impl TransactionCommand {
                 .iter()
                 .map(|idx| format!("stamp:{idx}"))
                 .collect(),
+            Self::OptimizeDocument { .. } => vec!["document:optimize".to_owned()],
             Self::Irreversible { .. } => Vec::new(),
         }
     }

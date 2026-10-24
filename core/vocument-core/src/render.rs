@@ -275,6 +275,48 @@ impl DocumentActor {
         Ok(guard.get_bookmarks()?)
     }
 
+    pub fn get_document_images(
+        &self,
+    ) -> Result<Vec<crate::workbench_optimize::ExtractedImageInfo>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.get_document_images()?)
+    }
+
+    pub fn extract_image_bytes(
+        &self,
+        page_index: u32,
+        image_index: u32,
+    ) -> Result<crate::workbench_optimize::ExtractedImageData, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.extract_image_bytes(page_index, image_index)?)
+    }
+
+    pub fn preflight_pdfx(
+        &self,
+    ) -> Result<crate::workbench_optimize::PdfxPreflightReport, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.preflight_pdfx()?)
+    }
+
+    pub fn preflight_print(
+        &self,
+    ) -> Result<crate::workbench_optimize::PrintPreflightReport, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.preflight_print()?)
+    }
+
     /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:
     /// *"Mutation never bypasses TransactionManager"*).
     pub(crate) fn apply_engine_mutation_for_transaction_manager<F, R>(

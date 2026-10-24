@@ -476,5 +476,22 @@ pub fn apply_command_on_actor(
             };
             Ok((forward, inverse, updated_bytes))
         }
+        TransactionCommand::OptimizeDocument {
+            options,
+            allow_signature_invalidation,
+        } => {
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.optimize_document_ext(&options, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::OptimizeDocument {
+                options,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
     }
 }

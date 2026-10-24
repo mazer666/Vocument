@@ -8,6 +8,10 @@ use thiserror::Error;
 
 use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 pub use crate::page_geometry::{CropMode, PageBoxUpdate, PdfPageBoxes};
+pub use crate::workbench_optimize::{
+    ExtractedImageData, ExtractedImageInfo, OptimizationOptions, OptimizationPreset,
+    OptimizationResult, PdfxPreflightReport, PrintPreflightReport,
+};
 pub use crate::workbench_stamps::{
     BatesNumberingOptions, BatesPosition, BookmarkItem, HeaderFooterOptions,
     StampOrWatermarkOptions,
@@ -793,6 +797,51 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = (page_indices, options, allow_signature_invalidation);
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support stamps or watermarks".to_owned(),
+        })
+    }
+
+    /// Optimizes and compresses document streams and structures (`ROADMAP.md` M3.5).
+    fn optimize_document_ext(
+        &mut self,
+        options: &OptimizationOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (options, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support document optimization".to_owned(),
+        })
+    }
+
+    /// Scans document for embedded raster images (`M3.5`).
+    fn get_document_images(&self) -> Result<Vec<ExtractedImageInfo>, PdfEngineError> {
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support embedded image discovery".to_owned(),
+        })
+    }
+
+    /// Extracts raster image bytes for a specified page and image index (`M3.5`).
+    fn extract_image_bytes(
+        &self,
+        page_index: u32,
+        image_index: u32,
+    ) -> Result<ExtractedImageData, PdfEngineError> {
+        let _ = (page_index, image_index);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support image extraction".to_owned(),
+        })
+    }
+
+    /// Preflight verification for PDF/X (ISO 15930) compliance (`M3.5`).
+    fn preflight_pdfx(&self) -> Result<PdfxPreflightReport, PdfEngineError> {
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support PDF/X preflight".to_owned(),
+        })
+    }
+
+    /// Preflight verification for print readiness (`PRINT-003`, `PRINT-004`).
+    fn preflight_print(&self) -> Result<PrintPreflightReport, PdfEngineError> {
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support print preflight".to_owned(),
         })
     }
 }
