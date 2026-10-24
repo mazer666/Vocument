@@ -259,4 +259,86 @@ extension DocumentCoreClient {
             options: options
         )
     }
+
+    /// Applies Bates numbering to `pageIndices` in `sessionId` (`M3.4`).
+    public func applyBatesNumbering(
+        sessionId: String,
+        pageIndices: [UInt32],
+        options: FfiBatesNumberingOptions,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let workbenchOptions = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreApplyBatesNumberingWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            options: options,
+            workbenchOptions: workbenchOptions
+        )
+    }
+
+    /// Applies multi-zone headers and footers with dynamic macros (`M3.4`).
+    public func applyHeaderFooter(
+        sessionId: String,
+        pageIndices: [UInt32],
+        options: FfiHeaderFooterOptions,
+        docTitle: String? = nil,
+        dateStr: String? = nil,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let workbenchOptions = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreApplyHeaderFooterWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            options: options,
+            docTitle: docTitle,
+            dateStr: dateStr,
+            workbenchOptions: workbenchOptions
+        )
+    }
+
+    /// Retrieves document bookmark (outline) hierarchy (`M3.4`).
+    public func getBookmarks(
+        sessionId: String
+    ) throws -> [FfiBookmarkItem] {
+        try documentCoreGetBookmarks(sessionId: sessionId)
+    }
+
+    /// Replaces document bookmark (outline) hierarchy (`M3.4`).
+    public func setBookmarks(
+        sessionId: String,
+        bookmarks: [FfiBookmarkItem],
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let workbenchOptions = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreSetBookmarksWithOptions(
+            sessionId: sessionId,
+            bookmarks: bookmarks,
+            workbenchOptions: workbenchOptions
+        )
+    }
+
+    /// Applies rubber stamp or watermark overlay to `pageIndices` (`WATER-001`–`003`, `M3.4`).
+    public func applyStampOrWatermark(
+        sessionId: String,
+        pageIndices: [UInt32],
+        options: FfiStampOrWatermarkOptions,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let workbenchOptions = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreApplyStampOrWatermarkWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            options: options,
+            workbenchOptions: workbenchOptions
+        )
+    }
 }
+

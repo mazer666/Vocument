@@ -754,10 +754,12 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Native macOS AppKit/SwiftUI controls ("Crop…", "Deskew", modal `CropSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
 - **M3.4 — Bates Stamping, Numbering, Headers/Footers & Rubber Stamps (`WATER-001`–`003`):**
-  - Bates numbering with custom prefix, digit padding, suffix, and starting index.
-  - Multi-zone headers and footers with dynamic macros (`{page}`, `{total}`, `{date}`, `{filename}`).
-  - Interactive bookmark hierarchy editor (add, edit title, indent/outdent, viewport anchor).
-  - Rubber stamps and watermarks: Legal presets ("DRAFT", "CONFIDENTIAL", "APPROVED"), custom text/image stamps, opacity control, and foreground/background placement.
+  - [x] Bates numbering with custom prefix, digit padding, suffix, 6 standard positions, and starting index (`vocument_mupdf_apply_bates_numbering`).
+  - [x] Multi-zone headers and footers with dynamic macros (`{page}`, `{total}`, `{date}`, `{filename}`) across 6 layout positions (`vocument_mupdf_apply_header_footer`).
+  - [x] Interactive bookmark hierarchy editor with JSON tree exchange, add/delete, indent/outdent, and page target links (`vocument_mupdf_get_bookmarks_json` / `vocument_mupdf_set_bookmarks_json`).
+  - [x] Rubber stamps and watermarks: Legal presets ("DRAFT", "CONFIDENTIAL", "APPROVED"), custom text, configurable opacity, rotation, and foreground/background layering (`WATER-001`–`003`).
+  - [x] Full transaction integration with bidirectional undo/redo and crash recovery journal rehydration (`TransactionCommand::ApplyBatesNumbering`, `ApplyHeaderFooter`, `SetBookmarks`, `ApplyStampOrWatermark`).
+  - [x] Native macOS sheets (`BatesStampSheetView`, `HeaderFooterSheetView`, `BookmarkEditorSheetView`, `StampWatermarkSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
 - **M3.5 — Image Extraction, Compression, Optimization & Print/Export:**
   - Lossless extraction of embedded raster streams (JPEG, PNG, JBIG2).

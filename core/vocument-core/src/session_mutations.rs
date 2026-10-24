@@ -782,7 +782,6 @@ impl SessionRegistry {
             TransactionCommand::ApplyHardCrop {
                 page_indices: page_indices.clone(),
                 crop_rect,
-                previous_bytes: Vec::new(),
                 allow_signature_invalidation: options.allow_signature_invalidation,
             },
         )?;

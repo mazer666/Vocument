@@ -8,6 +8,7 @@ build = "build.rs"
 
 [dependencies]
 vocument-core = { path = "../../core/vocument-core" }
+serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

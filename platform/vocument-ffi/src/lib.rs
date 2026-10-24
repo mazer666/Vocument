@@ -20,6 +20,7 @@ pub mod sanitize_dto;
 pub mod save_dto;
 pub mod scan_dto;
 pub mod session_dto;
+pub mod stamp_dto;
 pub mod workbench_dto;
 
 use std::sync::OnceLock;
@@ -84,6 +85,13 @@ pub use scan_dto::{
 pub use session_dto::{
     DocumentCoreHandshake, FfiBrokeredFileDescriptor, FfiDocumentSessionSnapshot,
     FfiFileAccessOrigin, FfiFileIdentity, FfiPdfDocumentSummary,
+};
+pub use stamp_dto::{
+    FfiBatesNumberingOptions, FfiBatesPosition, FfiBookmarkItem, FfiHeaderFooterOptions,
+    FfiStampOrWatermarkOptions, document_core_apply_bates_numbering_with_options,
+    document_core_apply_header_footer_with_options,
+    document_core_apply_stamp_or_watermark_with_options, document_core_get_bookmarks,
+    document_core_set_bookmarks_with_options,
 };
 
 uniffi::setup_scaffolding!("vocument_ffi");

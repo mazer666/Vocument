@@ -6,12 +6,14 @@ pub mod attach;
 pub mod comment;
 pub mod geometry_ops;
 pub mod inspect;
+pub mod inspect_summary;
 pub mod multidoc_ops;
 pub mod mutate;
 pub mod page_ops;
 pub mod render_page;
 pub mod sanitize;
 pub mod scrub;
+pub mod stamp_ops;
 pub mod text_extract;
 
 #[cfg(test)]
@@ -50,32 +52,17 @@ use std::ptr::NonNull;
 use std::sync::Mutex;
 use vocument_core::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 use vocument_core::pdf_engine::{
-    PageBoxUpdate, PdfCommentAnnotation, PdfDocumentSummary, PdfEngine, PdfEngineDisplayList,
-    PdfEngineDocument, PdfEngineError, PdfHighlightAnnotation, PdfPageBoxes, PdfPageGeometry,
-    PdfPageRaster, PdfPageStructuredText, PdfRectMilliPt, PdfTextOccurrence, PdfTileBitmap,
-    PdfTileRenderRequest,
+    BatesNumberingOptions, BookmarkItem, HeaderFooterOptions, PageBoxUpdate, PdfCommentAnnotation,
+    PdfDocumentSummary, PdfEngine, PdfEngineDisplayList, PdfEngineDocument, PdfEngineError,
+    PdfHighlightAnnotation, PdfPageBoxes, PdfPageGeometry, PdfPageRaster, PdfPageStructuredText,
+    PdfRectMilliPt, PdfTextOccurrence, PdfTileBitmap, PdfTileRenderRequest,
+    StampOrWatermarkOptions,
 };
+
+use inspect_summary::inspect_summary;
 
 /// Identifier prefix of the PDF engine adapter.
 pub const ENGINE_NAME: &str = "mupdf";
-
-#[repr(C)]
-struct RawMuPdfSummary {
-    status_code: c_int,
-    page_count: c_int,
-    needs_password: c_int,
-    format_version: [c_char; 64],
-    title: [c_char; 512],
-    author: [c_char; 512],
-    subject: [c_char; 512],
-    keywords: [c_char; 512],
-    creator: [c_char; 512],
-    producer: [c_char; 512],
-    creation_date: [c_char; 128],
-    modification_date: [c_char; 128],
-    error_message: [c_char; 512],
-    engine_version: [c_char; 64],
-}
 
 #[repr(C)]
 struct RawMuPdfPageGeometry {
@@ -91,11 +78,6 @@ struct RawMuPdfDisplayListHandle {
 }
 
 unsafe extern "C" {
-    fn vocument_mupdf_inspect_pdf_bytes(
-        bytes: *const c_uchar,
-        len: usize,
-        out_summary: *mut RawMuPdfSummary,
-    ) -> c_int;
 
     fn vocument_mupdf_query_page_geometry(
         bytes: *const c_uchar,
@@ -134,19 +116,6 @@ pub(crate) fn c_buf_to_optional_string(buf: &[c_char]) -> Option<String> {
     let c_str = unsafe { CStr::from_ptr(buf.as_ptr()) };
     let text = c_str.to_string_lossy().trim().to_owned();
     if text.is_empty() { None } else { Some(text) }
-}
-
-/// Builds the runtime engine identifier from the version string reported by the bridge.
-///
-/// The bridge reports the real MuPDF version together with the build target, for
-/// example `1.28.5-aarch64-android`. The identifier is therefore
-/// `mupdf-1.28.5-aarch64-android`, which proves at runtime which engine and which
-/// platform produced the document. A placeholder engine cannot report this.
-fn engine_identifier_from_version(engine_version: &str) -> String {
-    if engine_version.starts_with("mupdf-") {
-        return engine_version.to_owned();
-    }
-    format!("mupdf-{engine_version}")
 }
 
 /// Safe wrapper around the C `vocument_mupdf_display_list_handle_t` pointer.
@@ -771,68 +740,76 @@ impl PdfEngineDocument for MuPdfDocumentHandle {
         self.pdf_bytes = updated.clone();
         Ok(updated)
     }
-}
 
-fn inspect_summary(bytes: &[u8]) -> Result<PdfDocumentSummary, PdfEngineError> {
-    if !bytes.starts_with(b"%PDF-") {
-        return Err(PdfEngineError::InvalidPdf {
-            details: "missing %PDF- header".to_owned(),
-        });
+    fn apply_bates_numbering_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &BatesNumberingOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = stamp_ops::apply_bates_numbering_ext(
+            &self.pdf_bytes,
+            page_indices,
+            options,
+            allow_signature_invalidation,
+        )?;
+        self.summary = inspect_summary(&updated)?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
     }
 
-    let mut raw = RawMuPdfSummary {
-        status_code: 0,
-        page_count: 0,
-        needs_password: 0,
-        format_version: [0; 64],
-        title: [0; 512],
-        author: [0; 512],
-        subject: [0; 512],
-        keywords: [0; 512],
-        creator: [0; 512],
-        producer: [0; 512],
-        creation_date: [0; 128],
-        modification_date: [0; 128],
-        error_message: [0; 512],
-        engine_version: [0; 64],
-    };
+    fn apply_header_footer_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &HeaderFooterOptions,
+        doc_title: Option<&str>,
+        date_str: Option<&str>,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = stamp_ops::apply_header_footer_ext(
+            &self.pdf_bytes,
+            page_indices,
+            options,
+            doc_title,
+            date_str,
+            allow_signature_invalidation,
+        )?;
+        self.summary = inspect_summary(&updated)?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
 
-    // SAFETY: `bytes` is a valid slice and `raw` is a valid stack-allocated struct.
-    let status =
-        unsafe { vocument_mupdf_inspect_pdf_bytes(bytes.as_ptr(), bytes.len(), &raw mut raw) };
+    fn get_bookmarks(&self) -> Result<Vec<BookmarkItem>, PdfEngineError> {
+        stamp_ops::get_bookmarks(&self.pdf_bytes)
+    }
 
-    let engine_version =
-        c_buf_to_optional_string(&raw.engine_version).unwrap_or_else(|| "unknown".to_owned());
+    fn set_bookmarks_ext(
+        &mut self,
+        bookmarks: &[BookmarkItem],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated =
+            stamp_ops::set_bookmarks_ext(&self.pdf_bytes, bookmarks, allow_signature_invalidation)?;
+        self.summary = inspect_summary(&updated)?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
+    }
 
-    match status {
-        0 => {
-            let page_count = u32::try_from(raw.page_count).unwrap_or(0);
-            Ok(PdfDocumentSummary {
-                page_count,
-                format_version: c_buf_to_optional_string(&raw.format_version),
-                title: c_buf_to_optional_string(&raw.title),
-                author: c_buf_to_optional_string(&raw.author),
-                subject: c_buf_to_optional_string(&raw.subject),
-                keywords: c_buf_to_optional_string(&raw.keywords),
-                creator: c_buf_to_optional_string(&raw.creator),
-                producer: c_buf_to_optional_string(&raw.producer),
-                creation_date: c_buf_to_optional_string(&raw.creation_date),
-                modification_date: c_buf_to_optional_string(&raw.modification_date),
-                needs_password: raw.needs_password != 0,
-                engine_identifier: engine_identifier_from_version(&engine_version),
-            })
-        }
-        1 => Err(PdfEngineError::PasswordRequired),
-        2 => {
-            let details = c_buf_to_optional_string(&raw.error_message)
-                .unwrap_or_else(|| "failed to parse PDF".to_owned());
-            Err(PdfEngineError::InvalidPdf { details })
-        }
-        _ => {
-            let details = c_buf_to_optional_string(&raw.error_message)
-                .unwrap_or_else(|| "internal MuPDF context error".to_owned());
-            Err(PdfEngineError::EngineFailure { details })
-        }
+    fn apply_stamp_or_watermark_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &StampOrWatermarkOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let updated = stamp_ops::apply_stamp_or_watermark_ext(
+            &self.pdf_bytes,
+            page_indices,
+            options,
+            allow_signature_invalidation,
+        )?;
+        self.summary = inspect_summary(&updated)?;
+        self.pdf_bytes = updated.clone();
+        Ok(updated)
     }
 }
 

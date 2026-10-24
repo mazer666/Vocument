@@ -114,6 +114,10 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var showSignatureConfirmation: Bool = false
     @Published var showDeleteConfirmation: Bool = false
     @Published var showCropSheet: Bool = false
+    @Published var showBatesSheet: Bool = false
+    @Published var showHeaderFooterSheet: Bool = false
+    @Published var showBookmarksSheet: Bool = false
+    @Published var showStampSheet: Bool = false
     @Published var workbenchNotificationMessage: String?
     @Published var isWorkbenchProcessing: Bool = false
     @Published var workbenchProcessingStatus: String?

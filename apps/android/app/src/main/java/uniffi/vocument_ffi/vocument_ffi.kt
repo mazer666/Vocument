@@ -921,6 +921,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -942,9 +952,15 @@ fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_apply_bates_numbering_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_apply_header_footer_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_apply_stamp_or_watermark_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options(
 ): Short
@@ -999,6 +1015,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_export_transaction_journal_j
 fun uniffi_vocument_ffi_checksum_func_document_core_extract_pages(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page(
 ): Short
@@ -1120,6 +1138,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_search_index_progress(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_set_bookmarks_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_boxes_with_options(
@@ -1197,9 +1217,15 @@ fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionI
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: RustBuffer.ByValue,`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_apply_bates_numbering_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_apply_display_crop_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`cropRect`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_apply_hard_crop_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`cropRect`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_apply_header_footer_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`docTitle`: RustBuffer.ByValue,`dateStr`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_apply_stamp_or_watermark_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_auto_crop_pages_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`safetyMarginMilliPt`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1254,6 +1280,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_export_transaction_journal_json(`s
 fun uniffi_vocument_ffi_fn_func_document_core_extract_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1374,6 +1402,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_search_exact(`sessionId`: RustBuff
 fun uniffi_vocument_ffi_fn_func_document_core_search_index_progress(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`selectionRect`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_set_bookmarks_with_options(`sessionId`: RustBuffer.ByValue,`bookmarks`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(`entries`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1536,10 +1566,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_bates_numbering_with_options() != 50954.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options() != 65379.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options() != 63603.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_header_footer_with_options() != 15428.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_stamp_or_watermark_with_options() != 44609.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options() != 60289.toShort()) {
@@ -1621,6 +1660,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks() != 64469.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055.toShort()) {
@@ -1801,6 +1843,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_bookmarks_with_options() != 32072.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903.toShort()) {
@@ -2211,6 +2256,100 @@ public object FfiConverterTypeDocumentCoreHandshake: FfiConverterRustBuffer<Docu
             FfiConverterUInt.write(value.`targetFps`, buf)
             FfiConverterString.write(value.`defaultGermanVariant`, buf)
             FfiConverterSequenceString.write(value.`builtInOcrLanguages`, buf)
+    }
+}
+
+
+
+/**
+ * Configuration options for legal Bates numbering (`M3.4`).
+ */
+data class FfiBatesNumberingOptions (
+    var `prefix`: kotlin.String, 
+    var `startNumber`: kotlin.UInt, 
+    var `digitPadding`: kotlin.UInt, 
+    var `suffix`: kotlin.String, 
+    var `position`: FfiBatesPosition, 
+    var `fontSizePt`: kotlin.UInt, 
+    var `marginPt`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBatesNumberingOptions: FfiConverterRustBuffer<FfiBatesNumberingOptions> {
+    override fun read(buf: ByteBuffer): FfiBatesNumberingOptions {
+        return FfiBatesNumberingOptions(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiBatesPosition.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBatesNumberingOptions) = (
+            FfiConverterString.allocationSize(value.`prefix`) +
+            FfiConverterUInt.allocationSize(value.`startNumber`) +
+            FfiConverterUInt.allocationSize(value.`digitPadding`) +
+            FfiConverterString.allocationSize(value.`suffix`) +
+            FfiConverterTypeFfiBatesPosition.allocationSize(value.`position`) +
+            FfiConverterUInt.allocationSize(value.`fontSizePt`) +
+            FfiConverterUInt.allocationSize(value.`marginPt`)
+    )
+
+    override fun write(value: FfiBatesNumberingOptions, buf: ByteBuffer) {
+            FfiConverterString.write(value.`prefix`, buf)
+            FfiConverterUInt.write(value.`startNumber`, buf)
+            FfiConverterUInt.write(value.`digitPadding`, buf)
+            FfiConverterString.write(value.`suffix`, buf)
+            FfiConverterTypeFfiBatesPosition.write(value.`position`, buf)
+            FfiConverterUInt.write(value.`fontSizePt`, buf)
+            FfiConverterUInt.write(value.`marginPt`, buf)
+    }
+}
+
+
+
+/**
+ * Hierarchical bookmark item (`M3.4`).
+ */
+data class FfiBookmarkItem (
+    var `title`: kotlin.String, 
+    var `targetPage`: kotlin.UInt, 
+    var `children`: List<FfiBookmarkItem>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBookmarkItem: FfiConverterRustBuffer<FfiBookmarkItem> {
+    override fun read(buf: ByteBuffer): FfiBookmarkItem {
+        return FfiBookmarkItem(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeFfiBookmarkItem.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBookmarkItem) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterUInt.allocationSize(value.`targetPage`) +
+            FfiConverterSequenceTypeFfiBookmarkItem.allocationSize(value.`children`)
+    )
+
+    override fun write(value: FfiBookmarkItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterUInt.write(value.`targetPage`, buf)
+            FfiConverterSequenceTypeFfiBookmarkItem.write(value.`children`, buf)
     }
 }
 
@@ -2853,6 +2992,65 @@ public object FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIde
             FfiConverterULong.write(value.`sizeBytes`, buf)
             FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
             FfiConverterString.write(value.`sha256Hex`, buf)
+    }
+}
+
+
+
+/**
+ * Configuration options for multi-zone headers and footers with dynamic macros (`M3.4`).
+ */
+data class FfiHeaderFooterOptions (
+    var `headerLeft`: kotlin.String?, 
+    var `headerCenter`: kotlin.String?, 
+    var `headerRight`: kotlin.String?, 
+    var `footerLeft`: kotlin.String?, 
+    var `footerCenter`: kotlin.String?, 
+    var `footerRight`: kotlin.String?, 
+    var `fontSizePt`: kotlin.UInt, 
+    var `marginPt`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiHeaderFooterOptions: FfiConverterRustBuffer<FfiHeaderFooterOptions> {
+    override fun read(buf: ByteBuffer): FfiHeaderFooterOptions {
+        return FfiHeaderFooterOptions(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiHeaderFooterOptions) = (
+            FfiConverterOptionalString.allocationSize(value.`headerLeft`) +
+            FfiConverterOptionalString.allocationSize(value.`headerCenter`) +
+            FfiConverterOptionalString.allocationSize(value.`headerRight`) +
+            FfiConverterOptionalString.allocationSize(value.`footerLeft`) +
+            FfiConverterOptionalString.allocationSize(value.`footerCenter`) +
+            FfiConverterOptionalString.allocationSize(value.`footerRight`) +
+            FfiConverterUInt.allocationSize(value.`fontSizePt`) +
+            FfiConverterUInt.allocationSize(value.`marginPt`)
+    )
+
+    override fun write(value: FfiHeaderFooterOptions, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`headerLeft`, buf)
+            FfiConverterOptionalString.write(value.`headerCenter`, buf)
+            FfiConverterOptionalString.write(value.`headerRight`, buf)
+            FfiConverterOptionalString.write(value.`footerLeft`, buf)
+            FfiConverterOptionalString.write(value.`footerCenter`, buf)
+            FfiConverterOptionalString.write(value.`footerRight`, buf)
+            FfiConverterUInt.write(value.`fontSizePt`, buf)
+            FfiConverterUInt.write(value.`marginPt`, buf)
     }
 }
 
@@ -5162,6 +5360,65 @@ public object FfiConverterTypeFfiSearchResponse: FfiConverterRustBuffer<FfiSearc
 
 
 /**
+ * Configuration options for rubber stamps and watermarks (`WATER-001`–`003`, `M3.4`).
+ */
+data class FfiStampOrWatermarkOptions (
+    var `text`: kotlin.String, 
+    var `opacityMilli`: kotlin.UInt, 
+    var `rotationDegrees`: kotlin.Int, 
+    var `r`: kotlin.UByte, 
+    var `g`: kotlin.UByte, 
+    var `b`: kotlin.UByte, 
+    var `isBackground`: kotlin.Boolean, 
+    var `rect`: FfiPdfRectMilliPt?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiStampOrWatermarkOptions: FfiConverterRustBuffer<FfiStampOrWatermarkOptions> {
+    override fun read(buf: ByteBuffer): FfiStampOrWatermarkOptions {
+        return FfiStampOrWatermarkOptions(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiStampOrWatermarkOptions) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterUInt.allocationSize(value.`opacityMilli`) +
+            FfiConverterInt.allocationSize(value.`rotationDegrees`) +
+            FfiConverterUByte.allocationSize(value.`r`) +
+            FfiConverterUByte.allocationSize(value.`g`) +
+            FfiConverterUByte.allocationSize(value.`b`) +
+            FfiConverterBoolean.allocationSize(value.`isBackground`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`rect`)
+    )
+
+    override fun write(value: FfiStampOrWatermarkOptions, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterUInt.write(value.`opacityMilli`, buf)
+            FfiConverterInt.write(value.`rotationDegrees`, buf)
+            FfiConverterUByte.write(value.`r`, buf)
+            FfiConverterUByte.write(value.`g`, buf)
+            FfiConverterUByte.write(value.`b`, buf)
+            FfiConverterBoolean.write(value.`isBackground`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`rect`, buf)
+    }
+}
+
+
+
+/**
  * Text selection result containing both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`).
  */
 data class FfiTextSelectionResult (
@@ -5970,6 +6227,43 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
     }
 
 }
+
+
+
+/**
+ * Page positions for Bates numbering stamps (`M3.4`).
+ */
+
+enum class FfiBatesPosition {
+    
+    TOP_LEFT,
+    TOP_CENTER,
+    TOP_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_CENTER,
+    BOTTOM_RIGHT;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBatesPosition: FfiConverterRustBuffer<FfiBatesPosition> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiBatesPosition.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiBatesPosition) = 4UL
+
+    override fun write(value: FfiBatesPosition, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
 
 
 
@@ -7058,6 +7352,34 @@ public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiBookmarkItem: FfiConverterRustBuffer<List<FfiBookmarkItem>> {
+    override fun read(buf: ByteBuffer): List<FfiBookmarkItem> {
+        val len = buf.getInt()
+        return List<FfiBookmarkItem>(len) {
+            FfiConverterTypeFfiBookmarkItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiBookmarkItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiBookmarkItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiBookmarkItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiBookmarkItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer<List<FfiCapturedScanPage>> {
     override fun read(buf: ByteBuffer): List<FfiCapturedScanPage> {
         val len = buf.getInt()
@@ -7683,6 +8005,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Applies Bates numbering to the selected pages (`M3.4`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreApplyBatesNumberingWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `options`: FfiBatesNumberingOptions, `workbenchOptions`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_bates_numbering_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiBatesNumberingOptions.lower(`options`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`workbenchOptions`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreApplyDisplayCropWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `cropRect`: FfiPdfRectMilliPt, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
@@ -7703,6 +8038,32 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_hard_crop_with_options(
         FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiPdfRectMilliPt.lower(`cropRect`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Applies multi-zone headers and footers with dynamic macros (`M3.4`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreApplyHeaderFooterWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `options`: FfiHeaderFooterOptions, `docTitle`: kotlin.String?, `dateStr`: kotlin.String?, `workbenchOptions`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_header_footer_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiHeaderFooterOptions.lower(`options`),FfiConverterOptionalString.lower(`docTitle`),FfiConverterOptionalString.lower(`dateStr`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`workbenchOptions`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Applies a rubber stamp or watermark overlay to the selected pages (`WATER-001`–`003`, `M3.4`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreApplyStampOrWatermarkWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `options`: FfiStampOrWatermarkOptions, `workbenchOptions`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_stamp_or_watermark_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiStampOrWatermarkOptions.lower(`options`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`workbenchOptions`),_status)
 }
     )
     }
@@ -8066,6 +8427,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(`basePath`),FfiConverterString.lower(`suffix`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Retrieves document bookmark hierarchy (`M3.4`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetBookmarks`(`sessionId`: kotlin.String): List<FfiBookmarkItem> {
+            return FfiConverterSequenceTypeFfiBookmarkItem.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(
+        FfiConverterString.lower(`sessionId`),_status)
 }
     )
     }
@@ -8895,6 +9269,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_select_page_text(
         FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterOptionalTypeFfiPdfRectMilliPt.lower(`selectionRect`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sets document bookmark hierarchy (`M3.4`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSetBookmarksWithOptions`(`sessionId`: kotlin.String, `bookmarks`: List<FfiBookmarkItem>, `workbenchOptions`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_bookmarks_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceTypeFfiBookmarkItem.lower(`bookmarks`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`workbenchOptions`),_status)
 }
     )
     }

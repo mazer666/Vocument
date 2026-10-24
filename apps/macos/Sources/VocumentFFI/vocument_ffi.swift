@@ -692,6 +692,200 @@ public func FfiConverterTypeDocumentCoreHandshake_lower(_ value: DocumentCoreHan
 
 
 /**
+ * Configuration options for legal Bates numbering (`M3.4`).
+ */
+public struct FfiBatesNumberingOptions {
+    public var prefix: String
+    public var startNumber: UInt32
+    public var digitPadding: UInt32
+    public var suffix: String
+    public var position: FfiBatesPosition
+    public var fontSizePt: UInt32
+    public var marginPt: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(prefix: String, startNumber: UInt32, digitPadding: UInt32, suffix: String, position: FfiBatesPosition, fontSizePt: UInt32, marginPt: UInt32) {
+        self.prefix = prefix
+        self.startNumber = startNumber
+        self.digitPadding = digitPadding
+        self.suffix = suffix
+        self.position = position
+        self.fontSizePt = fontSizePt
+        self.marginPt = marginPt
+    }
+}
+
+#if compiler(>=6)
+extension FfiBatesNumberingOptions: Sendable {}
+#endif
+
+
+extension FfiBatesNumberingOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiBatesNumberingOptions, rhs: FfiBatesNumberingOptions) -> Bool {
+        if lhs.prefix != rhs.prefix {
+            return false
+        }
+        if lhs.startNumber != rhs.startNumber {
+            return false
+        }
+        if lhs.digitPadding != rhs.digitPadding {
+            return false
+        }
+        if lhs.suffix != rhs.suffix {
+            return false
+        }
+        if lhs.position != rhs.position {
+            return false
+        }
+        if lhs.fontSizePt != rhs.fontSizePt {
+            return false
+        }
+        if lhs.marginPt != rhs.marginPt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(prefix)
+        hasher.combine(startNumber)
+        hasher.combine(digitPadding)
+        hasher.combine(suffix)
+        hasher.combine(position)
+        hasher.combine(fontSizePt)
+        hasher.combine(marginPt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiBatesNumberingOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBatesNumberingOptions {
+        return
+            try FfiBatesNumberingOptions(
+                prefix: FfiConverterString.read(from: &buf), 
+                startNumber: FfiConverterUInt32.read(from: &buf), 
+                digitPadding: FfiConverterUInt32.read(from: &buf), 
+                suffix: FfiConverterString.read(from: &buf), 
+                position: FfiConverterTypeFfiBatesPosition.read(from: &buf), 
+                fontSizePt: FfiConverterUInt32.read(from: &buf), 
+                marginPt: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiBatesNumberingOptions, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.prefix, into: &buf)
+        FfiConverterUInt32.write(value.startNumber, into: &buf)
+        FfiConverterUInt32.write(value.digitPadding, into: &buf)
+        FfiConverterString.write(value.suffix, into: &buf)
+        FfiConverterTypeFfiBatesPosition.write(value.position, into: &buf)
+        FfiConverterUInt32.write(value.fontSizePt, into: &buf)
+        FfiConverterUInt32.write(value.marginPt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBatesNumberingOptions_lift(_ buf: RustBuffer) throws -> FfiBatesNumberingOptions {
+    return try FfiConverterTypeFfiBatesNumberingOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBatesNumberingOptions_lower(_ value: FfiBatesNumberingOptions) -> RustBuffer {
+    return FfiConverterTypeFfiBatesNumberingOptions.lower(value)
+}
+
+
+/**
+ * Hierarchical bookmark item (`M3.4`).
+ */
+public struct FfiBookmarkItem {
+    public var title: String
+    public var targetPage: UInt32
+    public var children: [FfiBookmarkItem]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, targetPage: UInt32, children: [FfiBookmarkItem]) {
+        self.title = title
+        self.targetPage = targetPage
+        self.children = children
+    }
+}
+
+#if compiler(>=6)
+extension FfiBookmarkItem: Sendable {}
+#endif
+
+
+extension FfiBookmarkItem: Equatable, Hashable {
+    public static func ==(lhs: FfiBookmarkItem, rhs: FfiBookmarkItem) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.targetPage != rhs.targetPage {
+            return false
+        }
+        if lhs.children != rhs.children {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(targetPage)
+        hasher.combine(children)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiBookmarkItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBookmarkItem {
+        return
+            try FfiBookmarkItem(
+                title: FfiConverterString.read(from: &buf), 
+                targetPage: FfiConverterUInt32.read(from: &buf), 
+                children: FfiConverterSequenceTypeFfiBookmarkItem.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiBookmarkItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterUInt32.write(value.targetPage, into: &buf)
+        FfiConverterSequenceTypeFfiBookmarkItem.write(value.children, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBookmarkItem_lift(_ buf: RustBuffer) throws -> FfiBookmarkItem {
+    return try FfiConverterTypeFfiBookmarkItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBookmarkItem_lower(_ value: FfiBookmarkItem) -> RustBuffer {
+    return FfiConverterTypeFfiBookmarkItem.lower(value)
+}
+
+
+/**
  * 2D bounding box representing spatial text extents.
  */
 public struct FfiBoundingBox {
@@ -2005,6 +2199,127 @@ public func FfiConverterTypeFfiFileIdentity_lift(_ buf: RustBuffer) throws -> Ff
 #endif
 public func FfiConverterTypeFfiFileIdentity_lower(_ value: FfiFileIdentity) -> RustBuffer {
     return FfiConverterTypeFfiFileIdentity.lower(value)
+}
+
+
+/**
+ * Configuration options for multi-zone headers and footers with dynamic macros (`M3.4`).
+ */
+public struct FfiHeaderFooterOptions {
+    public var headerLeft: String?
+    public var headerCenter: String?
+    public var headerRight: String?
+    public var footerLeft: String?
+    public var footerCenter: String?
+    public var footerRight: String?
+    public var fontSizePt: UInt32
+    public var marginPt: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(headerLeft: String?, headerCenter: String?, headerRight: String?, footerLeft: String?, footerCenter: String?, footerRight: String?, fontSizePt: UInt32, marginPt: UInt32) {
+        self.headerLeft = headerLeft
+        self.headerCenter = headerCenter
+        self.headerRight = headerRight
+        self.footerLeft = footerLeft
+        self.footerCenter = footerCenter
+        self.footerRight = footerRight
+        self.fontSizePt = fontSizePt
+        self.marginPt = marginPt
+    }
+}
+
+#if compiler(>=6)
+extension FfiHeaderFooterOptions: Sendable {}
+#endif
+
+
+extension FfiHeaderFooterOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiHeaderFooterOptions, rhs: FfiHeaderFooterOptions) -> Bool {
+        if lhs.headerLeft != rhs.headerLeft {
+            return false
+        }
+        if lhs.headerCenter != rhs.headerCenter {
+            return false
+        }
+        if lhs.headerRight != rhs.headerRight {
+            return false
+        }
+        if lhs.footerLeft != rhs.footerLeft {
+            return false
+        }
+        if lhs.footerCenter != rhs.footerCenter {
+            return false
+        }
+        if lhs.footerRight != rhs.footerRight {
+            return false
+        }
+        if lhs.fontSizePt != rhs.fontSizePt {
+            return false
+        }
+        if lhs.marginPt != rhs.marginPt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(headerLeft)
+        hasher.combine(headerCenter)
+        hasher.combine(headerRight)
+        hasher.combine(footerLeft)
+        hasher.combine(footerCenter)
+        hasher.combine(footerRight)
+        hasher.combine(fontSizePt)
+        hasher.combine(marginPt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiHeaderFooterOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiHeaderFooterOptions {
+        return
+            try FfiHeaderFooterOptions(
+                headerLeft: FfiConverterOptionString.read(from: &buf), 
+                headerCenter: FfiConverterOptionString.read(from: &buf), 
+                headerRight: FfiConverterOptionString.read(from: &buf), 
+                footerLeft: FfiConverterOptionString.read(from: &buf), 
+                footerCenter: FfiConverterOptionString.read(from: &buf), 
+                footerRight: FfiConverterOptionString.read(from: &buf), 
+                fontSizePt: FfiConverterUInt32.read(from: &buf), 
+                marginPt: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiHeaderFooterOptions, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.headerLeft, into: &buf)
+        FfiConverterOptionString.write(value.headerCenter, into: &buf)
+        FfiConverterOptionString.write(value.headerRight, into: &buf)
+        FfiConverterOptionString.write(value.footerLeft, into: &buf)
+        FfiConverterOptionString.write(value.footerCenter, into: &buf)
+        FfiConverterOptionString.write(value.footerRight, into: &buf)
+        FfiConverterUInt32.write(value.fontSizePt, into: &buf)
+        FfiConverterUInt32.write(value.marginPt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiHeaderFooterOptions_lift(_ buf: RustBuffer) throws -> FfiHeaderFooterOptions {
+    return try FfiConverterTypeFfiHeaderFooterOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiHeaderFooterOptions_lower(_ value: FfiHeaderFooterOptions) -> RustBuffer {
+    return FfiConverterTypeFfiHeaderFooterOptions.lower(value)
 }
 
 
@@ -6713,6 +7028,127 @@ public func FfiConverterTypeFfiSearchResponse_lower(_ value: FfiSearchResponse) 
 
 
 /**
+ * Configuration options for rubber stamps and watermarks (`WATER-001`–`003`, `M3.4`).
+ */
+public struct FfiStampOrWatermarkOptions {
+    public var text: String
+    public var opacityMilli: UInt32
+    public var rotationDegrees: Int32
+    public var r: UInt8
+    public var g: UInt8
+    public var b: UInt8
+    public var isBackground: Bool
+    public var rect: FfiPdfRectMilliPt?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, opacityMilli: UInt32, rotationDegrees: Int32, r: UInt8, g: UInt8, b: UInt8, isBackground: Bool, rect: FfiPdfRectMilliPt?) {
+        self.text = text
+        self.opacityMilli = opacityMilli
+        self.rotationDegrees = rotationDegrees
+        self.r = r
+        self.g = g
+        self.b = b
+        self.isBackground = isBackground
+        self.rect = rect
+    }
+}
+
+#if compiler(>=6)
+extension FfiStampOrWatermarkOptions: Sendable {}
+#endif
+
+
+extension FfiStampOrWatermarkOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiStampOrWatermarkOptions, rhs: FfiStampOrWatermarkOptions) -> Bool {
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.opacityMilli != rhs.opacityMilli {
+            return false
+        }
+        if lhs.rotationDegrees != rhs.rotationDegrees {
+            return false
+        }
+        if lhs.r != rhs.r {
+            return false
+        }
+        if lhs.g != rhs.g {
+            return false
+        }
+        if lhs.b != rhs.b {
+            return false
+        }
+        if lhs.isBackground != rhs.isBackground {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(text)
+        hasher.combine(opacityMilli)
+        hasher.combine(rotationDegrees)
+        hasher.combine(r)
+        hasher.combine(g)
+        hasher.combine(b)
+        hasher.combine(isBackground)
+        hasher.combine(rect)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiStampOrWatermarkOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiStampOrWatermarkOptions {
+        return
+            try FfiStampOrWatermarkOptions(
+                text: FfiConverterString.read(from: &buf), 
+                opacityMilli: FfiConverterUInt32.read(from: &buf), 
+                rotationDegrees: FfiConverterInt32.read(from: &buf), 
+                r: FfiConverterUInt8.read(from: &buf), 
+                g: FfiConverterUInt8.read(from: &buf), 
+                b: FfiConverterUInt8.read(from: &buf), 
+                isBackground: FfiConverterBool.read(from: &buf), 
+                rect: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiStampOrWatermarkOptions, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterUInt32.write(value.opacityMilli, into: &buf)
+        FfiConverterInt32.write(value.rotationDegrees, into: &buf)
+        FfiConverterUInt8.write(value.r, into: &buf)
+        FfiConverterUInt8.write(value.g, into: &buf)
+        FfiConverterUInt8.write(value.b, into: &buf)
+        FfiConverterBool.write(value.isBackground, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.rect, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiStampOrWatermarkOptions_lift(_ buf: RustBuffer) throws -> FfiStampOrWatermarkOptions {
+    return try FfiConverterTypeFfiStampOrWatermarkOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiStampOrWatermarkOptions_lower(_ value: FfiStampOrWatermarkOptions) -> RustBuffer {
+    return FfiConverterTypeFfiStampOrWatermarkOptions.lower(value)
+}
+
+
+/**
  * Text selection result containing both `raw_text` (`OCRCOPY-001`) and `cleaned_text` (`OCRCOPY-002`).
  */
 public struct FfiTextSelectionResult {
@@ -7773,6 +8209,107 @@ extension DocumentCoreError: Foundation.LocalizedError {
         String(reflecting: self)
     }
 }
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Page positions for Bates numbering stamps (`M3.4`).
+ */
+
+public enum FfiBatesPosition {
+    
+    case topLeft
+    case topCenter
+    case topRight
+    case bottomLeft
+    case bottomCenter
+    case bottomRight
+}
+
+
+#if compiler(>=6)
+extension FfiBatesPosition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiBatesPosition: FfiConverterRustBuffer {
+    typealias SwiftType = FfiBatesPosition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBatesPosition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .topLeft
+        
+        case 2: return .topCenter
+        
+        case 3: return .topRight
+        
+        case 4: return .bottomLeft
+        
+        case 5: return .bottomCenter
+        
+        case 6: return .bottomRight
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiBatesPosition, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .topLeft:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .topCenter:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .topRight:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .bottomLeft:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .bottomCenter:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .bottomRight:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBatesPosition_lift(_ buf: RustBuffer) throws -> FfiBatesPosition {
+    return try FfiConverterTypeFfiBatesPosition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiBatesPosition_lower(_ value: FfiBatesPosition) -> RustBuffer {
+    return FfiConverterTypeFfiBatesPosition.lower(value)
+}
+
+
+extension FfiBatesPosition: Equatable, Hashable {}
+
+
 
 
 
@@ -9112,6 +9649,31 @@ fileprivate struct FfiConverterSequenceData: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiBookmarkItem: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiBookmarkItem]
+
+    public static func write(_ value: [FfiBookmarkItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiBookmarkItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiBookmarkItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiBookmarkItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiBookmarkItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffer {
     typealias SwiftType = [FfiCapturedScanPage]
 
@@ -9673,6 +10235,19 @@ public func documentCoreAppendScanPage(sessionId: String, frame: FfiScanFrame, c
 })
 }
 /**
+ * Applies Bates numbering to the selected pages (`M3.4`).
+ */
+public func documentCoreApplyBatesNumberingWithOptions(sessionId: String, pageIndices: [UInt32], options: FfiBatesNumberingOptions, workbenchOptions: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_apply_bates_numbering_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiBatesNumberingOptions_lower(options),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(workbenchOptions),$0
+    )
+})
+}
+/**
  * Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
  */
 public func documentCoreApplyDisplayCropWithOptions(sessionId: String, pageIndices: [UInt32], cropRect: FfiPdfRectMilliPt, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
@@ -9695,6 +10270,34 @@ public func documentCoreApplyHardCropWithOptions(sessionId: String, pageIndices:
         FfiConverterSequenceUInt32.lower(pageIndices),
         FfiConverterTypeFfiPdfRectMilliPt_lower(cropRect),
         FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Applies multi-zone headers and footers with dynamic macros (`M3.4`).
+ */
+public func documentCoreApplyHeaderFooterWithOptions(sessionId: String, pageIndices: [UInt32], options: FfiHeaderFooterOptions, docTitle: String?, dateStr: String?, workbenchOptions: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_apply_header_footer_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiHeaderFooterOptions_lower(options),
+        FfiConverterOptionString.lower(docTitle),
+        FfiConverterOptionString.lower(dateStr),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(workbenchOptions),$0
+    )
+})
+}
+/**
+ * Applies a rubber stamp or watermark overlay to the selected pages (`WATER-001`–`003`, `M3.4`).
+ */
+public func documentCoreApplyStampOrWatermarkWithOptions(sessionId: String, pageIndices: [UInt32], options: FfiStampOrWatermarkOptions, workbenchOptions: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_apply_stamp_or_watermark_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiStampOrWatermarkOptions_lower(options),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(workbenchOptions),$0
     )
 })
 }
@@ -10001,6 +10604,16 @@ public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: Stri
     uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(
         FfiConverterString.lower(basePath),
         FfiConverterString.lower(suffix),$0
+    )
+})
+}
+/**
+ * Retrieves document bookmark hierarchy (`M3.4`).
+ */
+public func documentCoreGetBookmarks(sessionId: String)throws  -> [FfiBookmarkItem]  {
+    return try  FfiConverterSequenceTypeFfiBookmarkItem.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_bookmarks(
+        FfiConverterString.lower(sessionId),$0
     )
 })
 }
@@ -10702,6 +11315,18 @@ public func documentCoreSelectPageText(sessionId: String, pageIndex: UInt32, sel
 })
 }
 /**
+ * Sets document bookmark hierarchy (`M3.4`).
+ */
+public func documentCoreSetBookmarksWithOptions(sessionId: String, bookmarks: [FfiBookmarkItem], workbenchOptions: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_set_bookmarks_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceTypeFfiBookmarkItem.lower(bookmarks),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(workbenchOptions),$0
+    )
+})
+}
+/**
  * Replaces the rail of the profession with the palette of the user
  * (`ANNOT-001`).
  *
@@ -10866,10 +11491,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_apply_bates_numbering_with_options() != 50954) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options() != 65379) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options() != 63603) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_apply_header_footer_with_options() != 15428) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_apply_stamp_or_watermark_with_options() != 44609) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options() != 60289) {
@@ -10951,6 +11585,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path() != 60302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_bookmarks() != 64469) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055) {
@@ -11131,6 +11768,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_select_page_text() != 46942) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_set_bookmarks_with_options() != 32072) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903) {

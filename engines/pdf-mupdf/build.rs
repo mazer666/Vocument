@@ -70,6 +70,8 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/mupdf_page_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_multidoc_bridge.c");
     println!("cargo:rerun-if-changed=csrc/mupdf_geometry_bridge.c");
+    println!("cargo:rerun-if-changed=csrc/mupdf_stamp_bridge.c");
+    println!("cargo:rerun-if-changed=csrc/mupdf_stamp_bridge.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_geometry_algo.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_struct_tree.h");
     println!("cargo:rerun-if-changed=csrc/mupdf_page_helpers.h");
@@ -122,6 +124,7 @@ fn main() {
         .file("csrc/mupdf_page_bridge.c")
         .file("csrc/mupdf_multidoc_bridge.c")
         .file("csrc/mupdf_geometry_bridge.c")
+        .file("csrc/mupdf_stamp_bridge.c")
         .include(&include_dir)
         .define(
             "VOCRUMENT_MUPDF_ENGINE_ID",

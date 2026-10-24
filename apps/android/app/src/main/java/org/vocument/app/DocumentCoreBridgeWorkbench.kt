@@ -214,3 +214,66 @@ fun DocumentCoreBridge.autoCropPages(
     val options = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
     return documentCoreAutoCropPagesWithOptions(sessionId, pageIndices, safetyMarginMilliPt, options)
 }
+
+/**
+ * Applies Bates numbering to selected pages (`M3.4`).
+ */
+fun DocumentCoreBridge.applyBatesNumbering(
+    sessionId: String,
+    pageIndices: List<UInt>,
+    options: FfiBatesNumberingOptions,
+    allowSignatureInvalidation: Boolean = false
+): FfiTransactionRecord {
+    val workbenchOptions = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
+    return documentCoreApplyBatesNumberingWithOptions(sessionId, pageIndices, options, workbenchOptions)
+}
+
+/**
+ * Applies multi-zone headers and footers with dynamic macros (`M3.4`).
+ */
+fun DocumentCoreBridge.applyHeaderFooter(
+    sessionId: String,
+    pageIndices: List<UInt>,
+    options: FfiHeaderFooterOptions,
+    docTitle: String? = null,
+    dateStr: String? = null,
+    allowSignatureInvalidation: Boolean = false
+): FfiTransactionRecord {
+    val workbenchOptions = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
+    return documentCoreApplyHeaderFooterWithOptions(sessionId, pageIndices, options, docTitle, dateStr, workbenchOptions)
+}
+
+/**
+ * Retrieves document bookmark hierarchy (`M3.4`).
+ */
+fun DocumentCoreBridge.getBookmarks(
+    sessionId: String
+): List<FfiBookmarkItem> {
+    return documentCoreGetBookmarks(sessionId)
+}
+
+/**
+ * Replaces document bookmark hierarchy (`M3.4`).
+ */
+fun DocumentCoreBridge.setBookmarks(
+    sessionId: String,
+    bookmarks: List<FfiBookmarkItem>,
+    allowSignatureInvalidation: Boolean = false
+): FfiTransactionRecord {
+    val workbenchOptions = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
+    return documentCoreSetBookmarksWithOptions(sessionId, bookmarks, workbenchOptions)
+}
+
+/**
+ * Applies rubber stamp or watermark overlay to selected pages (`WATER-001`–`003`, `M3.4`).
+ */
+fun DocumentCoreBridge.applyStampOrWatermark(
+    sessionId: String,
+    pageIndices: List<UInt>,
+    options: FfiStampOrWatermarkOptions,
+    allowSignatureInvalidation: Boolean = false
+): FfiTransactionRecord {
+    val workbenchOptions = FfiPageWorkbenchOptions(allowSignatureInvalidation = allowSignatureInvalidation)
+    return documentCoreApplyStampOrWatermarkWithOptions(sessionId, pageIndices, options, workbenchOptions)
+}
+

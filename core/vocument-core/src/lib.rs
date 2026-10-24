@@ -26,12 +26,14 @@ pub mod save;
 pub mod search_index;
 pub mod session;
 pub mod session_mutations;
+pub mod session_stamps;
 pub mod text_selection;
 pub mod thumbnail_cache;
 pub mod tile_cache;
 pub mod transaction_execution;
 pub mod transactions;
 pub mod workbench;
+pub mod workbench_stamps;
 
 use config::{AppDefaultsConfig, ConfigError, PerformanceBudgetsConfig, SecurityPolicyConfig};
 

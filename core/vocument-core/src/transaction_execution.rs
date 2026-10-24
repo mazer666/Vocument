@@ -295,24 +295,18 @@ pub fn apply_command_on_actor(
         TransactionCommand::ApplyHardCrop {
             page_indices,
             crop_rect,
-            previous_bytes,
             allow_signature_invalidation,
         } => {
             if page_indices.is_empty() {
                 return Err(TransactionError::EmptyPageSelection);
             }
-            let before_bytes = if previous_bytes.is_empty() {
-                actor.current_pdf_bytes()?
-            } else {
-                previous_bytes
-            };
+            let before_bytes = actor.current_pdf_bytes()?;
             let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
                 doc.apply_hard_crop_ext(&page_indices, crop_rect, allow_signature_invalidation)
             })?;
             let forward = TransactionCommand::ApplyHardCrop {
                 page_indices,
                 crop_rect,
-                previous_bytes: before_bytes.clone(),
                 allow_signature_invalidation,
             };
             let inverse = TransactionCommand::RestorePages {
@@ -370,6 +364,111 @@ pub fn apply_command_on_actor(
                 page_indices,
                 safety_margin_milli_pt,
                 previous_boxes: captured_prev,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::ApplyBatesNumbering {
+            page_indices,
+            options,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.apply_bates_numbering_ext(&page_indices, &options, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::ApplyBatesNumbering {
+                page_indices,
+                options,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::ApplyHeaderFooter {
+            page_indices,
+            options,
+            doc_title,
+            date_str,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let before_bytes = actor.current_pdf_bytes()?;
+            let title_ref = doc_title.as_deref();
+            let date_ref = date_str.as_deref();
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.apply_header_footer_ext(
+                    &page_indices,
+                    &options,
+                    title_ref,
+                    date_ref,
+                    allow_signature_invalidation,
+                )
+            })?;
+            let forward = TransactionCommand::ApplyHeaderFooter {
+                page_indices,
+                options,
+                doc_title,
+                date_str,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::SetBookmarks {
+            bookmarks,
+            previous_bookmarks,
+            allow_signature_invalidation,
+        } => {
+            let mut captured_prev = previous_bookmarks;
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                if captured_prev.is_empty() {
+                    captured_prev = doc.get_bookmarks().unwrap_or_default();
+                }
+                doc.set_bookmarks_ext(&bookmarks, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::SetBookmarks {
+                bookmarks,
+                previous_bookmarks: captured_prev,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::ApplyStampOrWatermark {
+            page_indices,
+            options,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.apply_stamp_or_watermark_ext(
+                    &page_indices,
+                    &options,
+                    allow_signature_invalidation,
+                )
+            })?;
+            let forward = TransactionCommand::ApplyStampOrWatermark {
+                page_indices,
+                options,
                 allow_signature_invalidation,
             };
             let inverse = TransactionCommand::RestorePages {

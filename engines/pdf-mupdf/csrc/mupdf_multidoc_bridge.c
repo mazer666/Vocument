@@ -52,7 +52,9 @@ static pdf_obj *remap_destination_to_grafted_pages(
     pdf_document *dst_doc,
     pdf_document *src_doc,
     pdf_obj *dest,
-    int page_offset
+    int page_offset,
+    const int *source_page_indices,
+    size_t source_page_indices_len
 ) {
     if (!dest) return NULL;
     pdf_obj *res_dest = pdf_resolve_indirect(ctx, dest);
@@ -77,7 +79,22 @@ static pdf_obj *remap_destination_to_grafted_pages(
         return NULL;
     }
 
-    int dst_pno = page_offset + src_pno;
+    int dst_pno = -1;
+    if (source_page_indices && source_page_indices_len > 0) {
+        for (size_t i = 0; i < source_page_indices_len; i++) {
+            if (source_page_indices[i] == src_pno) {
+                dst_pno = page_offset + (int)i;
+                break;
+            }
+        }
+        if (dst_pno < 0) {
+            /* The target page was not among the selected inserted pages */
+            return NULL;
+        }
+    } else {
+        dst_pno = page_offset + src_pno;
+    }
+
     if (dst_pno < 0 || dst_pno >= pdf_count_pages(ctx, dst_doc)) {
         return NULL;
     }
@@ -94,6 +111,32 @@ static pdf_obj *remap_destination_to_grafted_pages(
 }
 
 /*
+ * Sorts key-value pairs in a NameTree /Names array lexicographically by key (ISO 32000-1 §7.9.6).
+ */
+static void sort_name_tree_names(fz_context *ctx, pdf_obj *arr) {
+    if (!arr || !pdf_is_array(ctx, arr)) return;
+    int len = pdf_array_len(ctx, arr);
+    if (len < 4) return;
+    int n_pairs = len / 2;
+    for (int i = 0; i < n_pairs - 1; i++) {
+        for (int j = i + 1; j < n_pairs; j++) {
+            pdf_obj *k1 = pdf_array_get(ctx, arr, i * 2);
+            pdf_obj *k2 = pdf_array_get(ctx, arr, j * 2);
+            const char *s1 = pdf_to_text_string(ctx, k1);
+            const char *s2 = pdf_to_text_string(ctx, k2);
+            if (s1 && s2 && strcmp(s1, s2) > 0) {
+                pdf_obj *v1 = pdf_array_get(ctx, arr, i * 2 + 1);
+                pdf_obj *v2 = pdf_array_get(ctx, arr, j * 2 + 1);
+                pdf_array_put(ctx, arr, i * 2, k2);
+                pdf_array_put(ctx, arr, i * 2 + 1, v2);
+                pdf_array_put(ctx, arr, j * 2, k1);
+                pdf_array_put(ctx, arr, j * 2 + 1, v1);
+            }
+        }
+    }
+}
+
+/*
  * Neutralizes or re-maps internal link annotations on a grafted page.
  */
 static void sanitize_links_for_grafted_page(
@@ -101,7 +144,9 @@ static void sanitize_links_for_grafted_page(
     pdf_document *dst_doc,
     pdf_document *src_doc,
     pdf_obj *dst_page_ref,
-    int page_offset
+    int page_offset,
+    const int *source_page_indices,
+    size_t source_page_indices_len
 ) {
     pdf_obj *annots = pdf_dict_get(ctx, dst_page_ref, PDF_NAME(Annots));
     if (!pdf_is_array(ctx, annots)) return;
@@ -115,7 +160,7 @@ static void sanitize_links_for_grafted_page(
 
         pdf_obj *dest = pdf_dict_get(ctx, annot, PDF_NAME(Dest));
         if (dest) {
-            pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, dest, page_offset);
+            pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, dest, page_offset, source_page_indices, source_page_indices_len);
             if (remapped) {
                 pdf_dict_put(ctx, annot, PDF_NAME(Dest), remapped);
             } else if (!is_destination_target_valid_in_doc(ctx, dst_doc, dest)) {
@@ -130,7 +175,7 @@ static void sanitize_links_for_grafted_page(
             if (pdf_name_eq(ctx, s, PDF_NAME(GoTo))) {
                 pdf_obj *d_obj = pdf_dict_get(ctx, act, PDF_NAME(D));
                 if (d_obj) {
-                    pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, d_obj, page_offset);
+                    pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, d_obj, page_offset, source_page_indices, source_page_indices_len);
                     if (remapped) {
                         pdf_dict_put(ctx, act, PDF_NAME(D), remapped);
                     } else if (!is_destination_target_valid_in_doc(ctx, dst_doc, d_obj)) {
@@ -144,14 +189,15 @@ static void sanitize_links_for_grafted_page(
 
 /*
  * Grafts Named Destinations (/Dests and /Names /Dests) from src_doc into dst_doc,
- * re-mapping page targets to the correct newly grafted pages.
+ * re-mapping page targets to the correct newly grafted pages and resolving name collisions.
  */
 static void append_grafted_named_dests(
     fz_context *ctx,
     pdf_document *dst_doc,
     pdf_document *src_doc,
     pdf_graft_map *map,
-    int page_offset
+    int page_offset,
+    const char *collision_suffix
 ) {
     pdf_obj *src_root = pdf_dict_get(ctx, pdf_trailer(ctx, src_doc), PDF_NAME(Root));
     if (!src_root) return;
@@ -170,14 +216,25 @@ static void append_grafted_named_dests(
         for (int i = 0; i < n; i++) {
             pdf_obj *k = pdf_dict_get_key(ctx, src_dests, i);
             pdf_obj *v = pdf_dict_get_val(ctx, src_dests, i);
-            pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, v, page_offset);
-            if (remapped) {
-                pdf_dict_put(ctx, dst_dests, k, remapped);
-            } else {
+            pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, v, page_offset, NULL, 0);
+            pdf_obj *target_v = remapped;
+            if (!target_v) {
                 pdf_obj *grafted_v = pdf_graft_mapped_object(ctx, map, v);
                 if (is_destination_target_valid_in_doc(ctx, dst_doc, grafted_v)) {
-                    pdf_dict_put(ctx, dst_dests, k, grafted_v);
+                    target_v = grafted_v;
                 }
+            }
+            if (target_v) {
+                pdf_obj *target_k = k;
+                if (pdf_dict_get(ctx, dst_dests, k)) {
+                    /* Disambiguate colliding destination name */
+                    const char *orig_key = pdf_to_name(ctx, k);
+                    if (!orig_key || !orig_key[0]) orig_key = pdf_to_text_string(ctx, k);
+                    char disambiguated[256];
+                    snprintf(disambiguated, sizeof(disambiguated), "%s_%s", orig_key, collision_suffix ? collision_suffix : "Grafted");
+                    target_k = pdf_new_name(ctx, disambiguated);
+                }
+                pdf_dict_put(ctx, dst_dests, target_k, target_v);
             }
         }
     }
@@ -207,18 +264,36 @@ static void append_grafted_named_dests(
                     for (int i = 0; i < len; i += 2) {
                         pdf_obj *k = pdf_array_get(ctx, src_arr, i);
                         pdf_obj *v = pdf_array_get(ctx, src_arr, i + 1);
-                        pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, v, page_offset);
-                        if (remapped) {
-                            pdf_array_push(ctx, dst_arr, k);
-                            pdf_array_push(ctx, dst_arr, remapped);
-                        } else {
+                        pdf_obj *remapped = remap_destination_to_grafted_pages(ctx, dst_doc, src_doc, v, page_offset, NULL, 0);
+                        pdf_obj *target_v = remapped;
+                        if (!target_v) {
                             pdf_obj *grafted_v = pdf_graft_mapped_object(ctx, map, v);
                             if (is_destination_target_valid_in_doc(ctx, dst_doc, grafted_v)) {
-                                pdf_array_push(ctx, dst_arr, k);
-                                pdf_array_push(ctx, dst_arr, grafted_v);
+                                target_v = grafted_v;
                             }
                         }
+                        if (target_v) {
+                            pdf_obj *target_k = k;
+                            const char *orig_key = pdf_to_text_string(ctx, k);
+                            if (orig_key) {
+                                int existing_len = pdf_array_len(ctx, dst_arr);
+                                for (int e = 0; e < existing_len; e += 2) {
+                                    pdf_obj *ex_k = pdf_array_get(ctx, dst_arr, e);
+                                    const char *ex_str = pdf_to_text_string(ctx, ex_k);
+                                    if (ex_str && strcmp(ex_str, orig_key) == 0) {
+                                        char disambiguated[256];
+                                        snprintf(disambiguated, sizeof(disambiguated), "%s_%s", orig_key, collision_suffix ? collision_suffix : "Grafted");
+                                        target_k = pdf_new_text_string(ctx, disambiguated);
+                                        break;
+                                    }
+                                }
+                            }
+                            pdf_array_push(ctx, dst_arr, target_k);
+                            pdf_array_push(ctx, dst_arr, target_v);
+                        }
                     }
+                    /* Maintain sorted NameTree property (ISO 32000-1 §7.9.6) */
+                    sort_name_tree_names(ctx, dst_arr);
                 }
             }
         }
@@ -506,13 +581,20 @@ int vocument_mupdf_merge_documents_ext(
                                     if (grafted_page) {
                                         make_page_self_contained(ctx, grafted_page);
                                         merge_acroform_fields_for_grafted_page(ctx, dst_pdf_doc, grafted_page, suffix);
-                                        sanitize_links_for_grafted_page(ctx, dst_pdf_doc, src_pdf_doc, grafted_page, dst_count_before);
+                                    }
+                                }
+
+                                for (int p = 0; p < src_count; p++) {
+                                    int newly_added_idx = dst_count_before + p;
+                                    pdf_obj *grafted_page = pdf_lookup_page_obj(ctx, dst_pdf_doc, newly_added_idx);
+                                    if (grafted_page) {
+                                        sanitize_links_for_grafted_page(ctx, dst_pdf_doc, src_pdf_doc, grafted_page, dst_count_before, NULL, 0);
                                     }
                                 }
 
                                 append_grafted_outlines(ctx, dst_pdf_doc, src_pdf_doc, map);
                                 append_grafted_pagelabels(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before);
-                                append_grafted_named_dests(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before);
+                                append_grafted_named_dests(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before, suffix);
 
                                 if (vocument_merge_tagged_structures(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before, src_count) != 0) {
                                     status = 5;
@@ -664,11 +746,18 @@ int vocument_mupdf_insert_pages_ext(
                             if (grafted_page) {
                                 make_page_self_contained(ctx, grafted_page);
                                 merge_acroform_fields_for_grafted_page(ctx, tgt_pdf_doc, grafted_page, "Insert");
-                                sanitize_links_for_grafted_page(ctx, tgt_pdf_doc, src_pdf_doc, grafted_page, insert_at);
                             }
                         }
 
-                        append_grafted_named_dests(ctx, tgt_pdf_doc, src_pdf_doc, map, insert_at);
+                        for (size_t i = 0; i < source_page_indices_len; i++) {
+                            int pos_in_tgt = insert_at + (int)i;
+                            pdf_obj *grafted_page = pdf_lookup_page_obj(ctx, tgt_pdf_doc, pos_in_tgt);
+                            if (grafted_page) {
+                                sanitize_links_for_grafted_page(ctx, tgt_pdf_doc, src_pdf_doc, grafted_page, insert_at, source_page_indices, source_page_indices_len);
+                            }
+                        }
+
+                        append_grafted_named_dests(ctx, tgt_pdf_doc, src_pdf_doc, map, insert_at, "Insert");
 
                         if (vocument_merge_tagged_structures(ctx, tgt_pdf_doc, src_pdf_doc, map, insert_at, (int)source_page_indices_len) != 0) {
                             status = 5;

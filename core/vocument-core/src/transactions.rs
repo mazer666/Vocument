@@ -140,8 +140,6 @@ pub enum TransactionCommand {
     ApplyHardCrop {
         page_indices: Vec<u32>,
         crop_rect: PdfRectMilliPt,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        previous_bytes: Vec<u8>,
         #[serde(default)]
         allow_signature_invalidation: bool,
     },
@@ -158,6 +156,39 @@ pub enum TransactionCommand {
         safety_margin_milli_pt: i32,
         #[serde(default)]
         previous_boxes: Vec<(u32, PdfPageBoxes)>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Applies legal Bates numbering to selected pages (`ROADMAP.md` M3.4).
+    ApplyBatesNumbering {
+        page_indices: Vec<u32>,
+        options: crate::workbench_stamps::BatesNumberingOptions,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Applies multi-zone headers and footers with dynamic macros (`ROADMAP.md` M3.4).
+    ApplyHeaderFooter {
+        page_indices: Vec<u32>,
+        options: crate::workbench_stamps::HeaderFooterOptions,
+        #[serde(default)]
+        doc_title: Option<String>,
+        #[serde(default)]
+        date_str: Option<String>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Replaces the document bookmark (outlines) hierarchy (`ROADMAP.md` M3.4).
+    SetBookmarks {
+        bookmarks: Vec<crate::workbench_stamps::BookmarkItem>,
+        #[serde(default)]
+        previous_bookmarks: Vec<crate::workbench_stamps::BookmarkItem>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Applies rubber stamp or watermark overlay to selected pages (`WATER-001`–`003`, `ROADMAP.md` M3.4).
+    ApplyStampOrWatermark {
+        page_indices: Vec<u32>,
+        options: crate::workbench_stamps::StampOrWatermarkOptions,
         #[serde(default)]
         allow_signature_invalidation: bool,
     },
@@ -278,6 +309,35 @@ impl TransactionCommand {
                     format!("Auto-crop {} pages", page_indices.len())
                 }
             }
+            Self::ApplyBatesNumbering {
+                page_indices,
+                options,
+                ..
+            } => {
+                format!(
+                    "Apply Bates numbering ({}{}) to {} pages",
+                    options.prefix,
+                    options.start_number,
+                    page_indices.len()
+                )
+            }
+            Self::ApplyHeaderFooter { page_indices, .. } => {
+                format!("Apply headers and footers to {} pages", page_indices.len())
+            }
+            Self::SetBookmarks { bookmarks, .. } => {
+                format!("Update bookmark hierarchy ({} bookmarks)", bookmarks.len())
+            }
+            Self::ApplyStampOrWatermark {
+                page_indices,
+                options,
+                ..
+            } => {
+                format!(
+                    "Apply stamp \"{}\" to {} pages",
+                    options.text,
+                    page_indices.len()
+                )
+            }
             Self::Irreversible { description } => description.clone(),
         }
     }
@@ -315,6 +375,10 @@ impl TransactionCommand {
             Self::ApplyHardCrop { page_indices, .. } => page_indices.clone(),
             Self::DeskewPages { page_indices, .. } => page_indices.clone(),
             Self::AutoCropPages { page_indices, .. } => page_indices.clone(),
+            Self::ApplyBatesNumbering { page_indices, .. } => page_indices.clone(),
+            Self::ApplyHeaderFooter { page_indices, .. } => page_indices.clone(),
+            Self::SetBookmarks { .. } => Vec::new(),
+            Self::ApplyStampOrWatermark { page_indices, .. } => page_indices.clone(),
             Self::Irreversible { .. } => Vec::new(),
         }
     }
@@ -371,6 +435,19 @@ impl TransactionCommand {
             Self::AutoCropPages { page_indices, .. } => page_indices
                 .iter()
                 .map(|idx| format!("page_autocrop:{idx}"))
+                .collect(),
+            Self::ApplyBatesNumbering { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("bates:{idx}"))
+                .collect(),
+            Self::ApplyHeaderFooter { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("header_footer:{idx}"))
+                .collect(),
+            Self::SetBookmarks { .. } => vec!["document:bookmarks".to_owned()],
+            Self::ApplyStampOrWatermark { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("stamp:{idx}"))
                 .collect(),
             Self::Irreversible { .. } => Vec::new(),
         }
@@ -623,20 +700,10 @@ impl TransactionManager {
 
     /// Exports a versioned, checksum-verified `PersistentTransactionJournal` (`ARCHITECTURE.md` §§11–12).
     pub fn export_persistent_journal(&self) -> PersistentTransactionJournal {
-        let sanitize_command = |cmd: &mut TransactionCommand| match cmd {
-            TransactionCommand::RestorePages { previous_bytes } => {
+        let sanitize_command = |cmd: &mut TransactionCommand| {
+            if let TransactionCommand::RestorePages { previous_bytes } = cmd {
                 *previous_bytes = Vec::new();
             }
-            TransactionCommand::ApplyHardCrop { previous_bytes, .. } => {
-                *previous_bytes = Vec::new();
-            }
-            TransactionCommand::InsertPagesFromDocument { source_pdf, .. } => {
-                *source_pdf = Vec::new();
-            }
-            TransactionCommand::MergeDocuments { source_pdfs, .. } => {
-                *source_pdfs = Vec::new();
-            }
-            _ => {}
         };
 
         let sanitize_records = |records: &[TransactionRecord]| -> Vec<TransactionRecord> {
@@ -644,9 +711,11 @@ impl TransactionManager {
                 .iter()
                 .map(|r| {
                     let mut sanitized = r.clone();
-                    // Privacy protection (ROLE-10): strip raw full-document byte snapshots from commands
+                    // Privacy & storage optimization (ROLE-10): strip raw full-document byte snapshots from inverse commands
                     // before writing to disk journal to avoid plaintext leaks, sensitive data retention, and journal bloat.
-                    sanitize_command(&mut sanitized.forward_command);
+                    // Forward commands retain their parameters (e.g. source_pdf for insertions/merges) so crash recovery
+                    // can deterministically reconstruct mutations. Live inverse commands with real restoration bytes
+                    // are rehydrated in-memory during recovery replay.
                     sanitize_command(&mut sanitized.inverse_command);
                     sanitized
                 })
@@ -707,6 +776,7 @@ impl TransactionManager {
         // between the removal and the verification. Replaying it would put
         // content into the document without a proof. The document is restored
         // to the state before the redaction, and the caller has to say so.
+        let mut live_undo_stack = Vec::new();
         for rec in &journal.committed_records {
             if matches!(
                 rec.forward_command,
@@ -714,20 +784,15 @@ impl TransactionManager {
             ) {
                 continue;
             }
-            let _ = Self::apply_command_on_actor(actor, rec.forward_command.clone())?;
+            let (forward, inverse, _) =
+                Self::apply_command_on_actor(actor, rec.forward_command.clone())?;
+            let mut live_rec = rec.clone();
+            live_rec.forward_command = forward;
+            live_rec.inverse_command = inverse;
+            live_undo_stack.push(live_rec);
         }
 
-        self.undo_stack = journal
-            .committed_records
-            .iter()
-            .filter(|record| {
-                !matches!(
-                    record.forward_command,
-                    TransactionCommand::RedactPageRegions { .. }
-                )
-            })
-            .cloned()
-            .collect();
+        self.undo_stack = live_undo_stack;
         self.redo_stack = journal.redo_records.clone();
         // The revision has to describe the state of the document, not the state
         // of the journal. A redaction was not replayed, so the document stands

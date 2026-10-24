@@ -264,6 +264,17 @@ impl DocumentActor {
         Ok(guard.detect_content_margins(page_index, safety_margin_milli_pt)?)
     }
 
+    /// Retrieves document bookmark (outline) hierarchy (`M3.4`).
+    pub fn get_bookmarks(
+        &self,
+    ) -> Result<Vec<crate::workbench_stamps::BookmarkItem>, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.get_bookmarks()?)
+    }
+
     /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:
     /// *"Mutation never bypasses TransactionManager"*).
     pub(crate) fn apply_engine_mutation_for_transaction_manager<F, R>(

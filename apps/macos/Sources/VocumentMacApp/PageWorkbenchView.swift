@@ -116,6 +116,18 @@ struct PageWorkbenchView: View {
         .sheet(isPresented: $coordinator.showCropSheet) {
             CropSheetView(coordinator: coordinator)
         }
+        .sheet(isPresented: $coordinator.showBatesSheet) {
+            BatesStampSheetView(coordinator: coordinator)
+        }
+        .sheet(isPresented: $coordinator.showHeaderFooterSheet) {
+            HeaderFooterSheetView(coordinator: coordinator)
+        }
+        .sheet(isPresented: $coordinator.showBookmarksSheet) {
+            BookmarkEditorSheetView(coordinator: coordinator)
+        }
+        .sheet(isPresented: $coordinator.showStampSheet) {
+            StampWatermarkSheetView(coordinator: coordinator)
+        }
         .onAppear {
             coordinator.refreshWorkbenchPreflight()
         }
@@ -261,6 +273,41 @@ struct PageWorkbenchView: View {
             }
             .disabled((coordinator.activeSession?.pdfSummary.pageCount ?? 0) < 2)
             .help("Split document into standalone PDF parts by selection or into single pages (M3.2)")
+
+            Divider().frame(height: 18)
+
+            // Bates, Headers/Footers, Bookmarks, Stamps (M3.4)
+            Button {
+                coordinator.showBatesSheet = true
+            } label: {
+                Label("Bates…", systemImage: "number")
+            }
+            .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .help("Apply legal Bates numbering to selected page(s) (M3.4)")
+
+            Button {
+                coordinator.showHeaderFooterSheet = true
+            } label: {
+                Label("Header/Footer…", systemImage: "text.alignleft")
+            }
+            .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .help("Apply multi-zone headers and footers with dynamic macros (M3.4)")
+
+            Button {
+                coordinator.showBookmarksSheet = true
+            } label: {
+                Label("Bookmarks…", systemImage: "bookmark")
+            }
+            .disabled(coordinator.activeSession == nil)
+            .help("Edit document outline bookmarks hierarchy (M3.4)")
+
+            Button {
+                coordinator.showStampSheet = true
+            } label: {
+                Label("Stamp…", systemImage: "seal")
+            }
+            .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .help("Apply rubber stamp or watermark overlay to selected page(s) (M3.4)")
 
             Spacer()
 

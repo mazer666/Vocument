@@ -19,6 +19,10 @@ enum WorkbenchAction {
     case displayCrop([UInt32], FfiPdfRectMilliPt)
     case deskew([UInt32], Int32)
     case autoCrop([UInt32], Int32)
+    case bates([UInt32], FfiBatesNumberingOptions)
+    case headerFooter([UInt32], FfiHeaderFooterOptions, String?, String?)
+    case setBookmarks([FfiBookmarkItem])
+    case stampOrWatermark([UInt32], FfiStampOrWatermarkOptions)
 }
 
 @MainActor
@@ -118,6 +122,39 @@ extension MacDocumentSessionCoordinator {
                 allowSignatureInvalidation: allowInvalidation
             )
             return "Auto-cropped margins on \(indices.count) page(s)"
+        case .bates(let indices, let options):
+            _ = try coreClient.applyBatesNumbering(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                options: options,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Applied Bates numbering to \(indices.count) page(s)"
+        case .headerFooter(let indices, let options, let title, let date):
+            _ = try coreClient.applyHeaderFooter(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                options: options,
+                docTitle: title,
+                dateStr: date,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Applied headers/footers to \(indices.count) page(s)"
+        case .setBookmarks(let bookmarks):
+            _ = try coreClient.setBookmarks(
+                sessionId: session.sessionId,
+                bookmarks: bookmarks,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Updated document bookmarks (\(bookmarks.count) root items)"
+        case .stampOrWatermark(let indices, let options):
+            _ = try coreClient.applyStampOrWatermark(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                options: options,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Applied '\(options.text)' stamp to \(indices.count) page(s)"
         }
     }
 

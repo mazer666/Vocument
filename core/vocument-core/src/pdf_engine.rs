@@ -8,6 +8,10 @@ use thiserror::Error;
 
 use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
 pub use crate::page_geometry::{CropMode, PageBoxUpdate, PdfPageBoxes};
+pub use crate::workbench_stamps::{
+    BatesNumberingOptions, BatesPosition, BookmarkItem, HeaderFooterOptions,
+    StampOrWatermarkOptions,
+};
 
 /// Basic PDF metadata and page summary read when opening a `DocumentSession` (`ROADMAP.md` M0.1, `INSPECT-001`, `META-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -723,6 +727,72 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         );
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support auto-cropping".to_owned(),
+        })
+    }
+
+    /// Applies Bates numbering to selected pages (`M3.4`).
+    fn apply_bates_numbering_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &BatesNumberingOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, options, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support Bates numbering".to_owned(),
+        })
+    }
+
+    /// Applies multi-zone headers and footers with dynamic macros (`M3.4`).
+    fn apply_header_footer_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &HeaderFooterOptions,
+        doc_title: Option<&str>,
+        date_str: Option<&str>,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (
+            page_indices,
+            options,
+            doc_title,
+            date_str,
+            allow_signature_invalidation,
+        );
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support headers and footers".to_owned(),
+        })
+    }
+
+    /// Retrieves document bookmark (outline) hierarchy (`M3.4`).
+    fn get_bookmarks(&self) -> Result<Vec<BookmarkItem>, PdfEngineError> {
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support reading bookmarks".to_owned(),
+        })
+    }
+
+    /// Replaces document bookmark (outline) hierarchy (`M3.4`).
+    fn set_bookmarks_ext(
+        &mut self,
+        bookmarks: &[BookmarkItem],
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (bookmarks, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support setting bookmarks".to_owned(),
+        })
+    }
+
+    /// Applies rubber stamp or watermark overlay to selected pages (`WATER-001`–`003`, `M3.4`).
+    fn apply_stamp_or_watermark_ext(
+        &mut self,
+        page_indices: &[u32],
+        options: &StampOrWatermarkOptions,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, options, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support stamps or watermarks".to_owned(),
         })
     }
 }
