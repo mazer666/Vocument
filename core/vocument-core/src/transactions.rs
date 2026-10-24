@@ -107,9 +107,13 @@ pub enum TransactionCommand {
         allow_signature_invalidation: bool,
     },
     /// Restores previously deleted document bytes (`ROADMAP.md` M3).
-    RestorePages { previous_bytes: Vec<u8> },
+    RestorePages {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        previous_bytes: Vec<u8>,
+    },
     /// Inserts pages from another PDF document at the given target index (`ROADMAP.md` M3.2).
     InsertPagesFromDocument {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         source_pdf: Vec<u8>,
         source_page_indices: Vec<u32>,
         insert_at: u32,
@@ -118,6 +122,7 @@ pub enum TransactionCommand {
     },
     /// Merges multiple PDF documents into the current document (`ROADMAP.md` M3.2).
     MergeDocuments {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         source_pdfs: Vec<Vec<u8>>,
         #[serde(default)]
         allow_signature_invalidation: bool,
@@ -135,7 +140,7 @@ pub enum TransactionCommand {
     ApplyHardCrop {
         page_indices: Vec<u32>,
         crop_rect: PdfRectMilliPt,
-        #[serde(default)]
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         previous_bytes: Vec<u8>,
         #[serde(default)]
         allow_signature_invalidation: bool,
@@ -618,18 +623,31 @@ impl TransactionManager {
 
     /// Exports a versioned, checksum-verified `PersistentTransactionJournal` (`ARCHITECTURE.md` §§11–12).
     pub fn export_persistent_journal(&self) -> PersistentTransactionJournal {
+        let sanitize_command = |cmd: &mut TransactionCommand| match cmd {
+            TransactionCommand::RestorePages { previous_bytes } => {
+                *previous_bytes = Vec::new();
+            }
+            TransactionCommand::ApplyHardCrop { previous_bytes, .. } => {
+                *previous_bytes = Vec::new();
+            }
+            TransactionCommand::InsertPagesFromDocument { source_pdf, .. } => {
+                *source_pdf = Vec::new();
+            }
+            TransactionCommand::MergeDocuments { source_pdfs, .. } => {
+                *source_pdfs = Vec::new();
+            }
+            _ => {}
+        };
+
         let sanitize_records = |records: &[TransactionRecord]| -> Vec<TransactionRecord> {
             records
                 .iter()
                 .map(|r| {
                     let mut sanitized = r.clone();
-                    // Privacy protection: strip raw full-document bytes from inverse undo commands
-                    // before writing to disk journal to avoid plaintext leaks and journal file bloat.
-                    if let TransactionCommand::RestorePages { .. } = &sanitized.inverse_command {
-                        sanitized.inverse_command = TransactionCommand::RestorePages {
-                            previous_bytes: Vec::new(),
-                        };
-                    }
+                    // Privacy protection (ROLE-10): strip raw full-document byte snapshots from commands
+                    // before writing to disk journal to avoid plaintext leaks, sensitive data retention, and journal bloat.
+                    sanitize_command(&mut sanitized.forward_command);
+                    sanitize_command(&mut sanitized.inverse_command);
                     sanitized
                 })
                 .collect()

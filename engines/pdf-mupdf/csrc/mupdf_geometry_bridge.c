@@ -280,6 +280,50 @@ int vocument_mupdf_apply_hard_crop_ext(
                     }
                     make_page_self_contained(ctx, page_obj);
 
+                    /* Permanent and secure content removal: redact out-of-bounds page margins
+                       using MuPDF's authentic redaction engine (PDF_REDACT_TEXT_REMOVE,
+                       PDF_REDACT_IMAGE_PIXELS, PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED) so that
+                       text, glyphs, and image pixels in the cropped-out margins are permanently
+                       destroyed from the content stream rather than merely masked. */
+                    pdf_page *page = pdf_load_page(ctx, pdf_doc, p_idx);
+                    if (page) {
+                        pdf_redact_options opts;
+                        memset(&opts, 0, sizeof(opts));
+                        opts.black_boxes = 0;
+                        opts.image_method = PDF_REDACT_IMAGE_PIXELS;
+                        opts.line_art = PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED;
+                        opts.text = PDF_REDACT_TEXT_REMOVE;
+
+                        pdf_obj *mb_obj = pdf_dict_get(ctx, page_obj, PDF_NAME(MediaBox));
+                        fz_rect page_media = mb_obj ? pdf_to_rect(ctx, mb_obj) : fz_empty_rect;
+                        fz_rect margins[4];
+                        int num_margins = 0;
+
+                        if (page_media.y1 > y1) {
+                            margins[num_margins++] = fz_make_rect(page_media.x0, y1, page_media.x1, page_media.y1);
+                        }
+                        if (page_media.y0 < y0) {
+                            margins[num_margins++] = fz_make_rect(page_media.x0, page_media.y0, page_media.x1, y0);
+                        }
+                        if (page_media.x0 < x0) {
+                            margins[num_margins++] = fz_make_rect(page_media.x0, y0, x0, y1);
+                        }
+                        if (page_media.x1 > x1) {
+                            margins[num_margins++] = fz_make_rect(x1, y0, page_media.x1, y1);
+                        }
+
+                        for (int m = 0; m < num_margins; m++) {
+                            if (!fz_is_empty_rect(margins[m])) {
+                                pdf_annot *redact_annot = pdf_create_annot(ctx, page, PDF_ANNOT_REDACT);
+                                pdf_set_annot_rect(ctx, redact_annot, margins[m]);
+                                pdf_apply_redaction(ctx, redact_annot, &opts);
+                                pdf_drop_annot(ctx, redact_annot);
+                            }
+                        }
+                        pdf_update_page(ctx, page);
+                        pdf_drop_page(ctx, page);
+                    }
+
                     float norm_box[4] = { x0, y0, x1, y1 };
                     helper_put_box(ctx, pdf_doc, page_obj, PDF_NAME(MediaBox), norm_box);
                     helper_put_box(ctx, pdf_doc, page_obj, PDF_NAME(CropBox), norm_box);

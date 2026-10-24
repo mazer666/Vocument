@@ -186,6 +186,12 @@ pub fn apply_command_on_actor(
             Ok((forward, inverse, updated_bytes))
         }
         TransactionCommand::RestorePages { previous_bytes } => {
+            if previous_bytes.is_empty() {
+                return Err(TransactionError::IntegrityMismatch {
+                    details: "Cannot execute RestorePages: previous_bytes is empty (fail-closed)"
+                        .to_owned(),
+                });
+            }
             let before_bytes = actor.current_pdf_bytes()?;
             let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
                 doc.replace_pdf_bytes(previous_bytes.clone())?;
@@ -203,6 +209,16 @@ pub fn apply_command_on_actor(
             insert_at,
             allow_signature_invalidation,
         } => {
+            if source_pdf.is_empty() {
+                return Err(TransactionError::IntegrityMismatch {
+                    details:
+                        "Cannot execute InsertPagesFromDocument: source_pdf is empty (fail-closed)"
+                            .to_owned(),
+                });
+            }
+            if source_page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
             let before_bytes = actor.current_pdf_bytes()?;
             let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
                 doc.insert_pages_ext(
@@ -227,6 +243,11 @@ pub fn apply_command_on_actor(
             source_pdfs,
             allow_signature_invalidation,
         } => {
+            if source_pdfs.is_empty() || source_pdfs.iter().any(|b| b.is_empty()) {
+                return Err(TransactionError::IntegrityMismatch {
+                    details: "Cannot execute MergeDocuments: source_pdfs is empty or contains empty buffer (fail-closed)".to_owned(),
+                });
+            }
             let before_bytes = actor.current_pdf_bytes()?;
             let doc_slices: Vec<&[u8]> = source_pdfs.iter().map(|b| b.as_slice()).collect();
             let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {

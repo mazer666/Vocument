@@ -259,7 +259,16 @@ impl SessionRegistry {
         let actor = session.actor();
         let record = session.transaction_manager.undo(&actor)?;
         session.sync_from_transaction_manager();
+        let pages_to_reindex = match &record.forward_command {
+            TransactionCommand::ApplyHardCrop { page_indices, .. }
+            | TransactionCommand::RotatePages { page_indices, .. }
+            | TransactionCommand::DeskewPages { page_indices, .. } => page_indices.clone(),
+            _ => Vec::new(),
+        };
         drop(guard);
+        for p in pages_to_reindex {
+            let _ = self.reindex_page(session_id, p);
+        }
         // The state of the transaction is secured in the recovery store. If
         // that fails, the state of the document is not protected against a
         // crash any more. The transaction itself has succeeded — the error
@@ -290,7 +299,16 @@ impl SessionRegistry {
         let actor = session.actor();
         let record = session.transaction_manager.redo(&actor)?;
         session.sync_from_transaction_manager();
+        let pages_to_reindex = match &record.forward_command {
+            TransactionCommand::ApplyHardCrop { page_indices, .. }
+            | TransactionCommand::RotatePages { page_indices, .. }
+            | TransactionCommand::DeskewPages { page_indices, .. } => page_indices.clone(),
+            _ => Vec::new(),
+        };
         drop(guard);
+        for p in pages_to_reindex {
+            let _ = self.reindex_page(session_id, p);
+        }
         // The state of the transaction is secured in the recovery store. If
         // that fails, the state of the document is not protected against a
         // crash any more. The transaction itself has succeeded — the error
@@ -759,15 +777,19 @@ impl SessionRegistry {
                 .into(),
             );
         }
-        self.execute_transaction(
+        let record = self.execute_transaction(
             session_id,
             TransactionCommand::ApplyHardCrop {
-                page_indices,
+                page_indices: page_indices.clone(),
                 crop_rect,
                 previous_bytes: Vec::new(),
                 allow_signature_invalidation: options.allow_signature_invalidation,
             },
-        )
+        )?;
+        for p in page_indices {
+            let _ = self.reindex_page(session_id, p);
+        }
+        Ok(record)
     }
 
     /// Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
