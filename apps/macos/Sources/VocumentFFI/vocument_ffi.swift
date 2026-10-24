@@ -2104,14 +2104,16 @@ public struct FfiExtractedImageData {
     public var width: UInt32
     public var height: UInt32
     public var format: String
+    public var isRawStream: Bool
     public var data: Data
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(width: UInt32, height: UInt32, format: String, data: Data) {
+    public init(width: UInt32, height: UInt32, format: String, isRawStream: Bool, data: Data) {
         self.width = width
         self.height = height
         self.format = format
+        self.isRawStream = isRawStream
         self.data = data
     }
 }
@@ -2132,6 +2134,9 @@ extension FfiExtractedImageData: Equatable, Hashable {
         if lhs.format != rhs.format {
             return false
         }
+        if lhs.isRawStream != rhs.isRawStream {
+            return false
+        }
         if lhs.data != rhs.data {
             return false
         }
@@ -2142,6 +2147,7 @@ extension FfiExtractedImageData: Equatable, Hashable {
         hasher.combine(width)
         hasher.combine(height)
         hasher.combine(format)
+        hasher.combine(isRawStream)
         hasher.combine(data)
     }
 }
@@ -2158,6 +2164,7 @@ public struct FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer {
                 width: FfiConverterUInt32.read(from: &buf), 
                 height: FfiConverterUInt32.read(from: &buf), 
                 format: FfiConverterString.read(from: &buf), 
+                isRawStream: FfiConverterBool.read(from: &buf), 
                 data: FfiConverterData.read(from: &buf)
         )
     }
@@ -2166,6 +2173,7 @@ public struct FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.width, into: &buf)
         FfiConverterUInt32.write(value.height, into: &buf)
         FfiConverterString.write(value.format, into: &buf)
+        FfiConverterBool.write(value.isRawStream, into: &buf)
         FfiConverterData.write(value.data, into: &buf)
     }
 }
@@ -3506,13 +3514,11 @@ public func FfiConverterTypeFfiOcrWord_lower(_ value: FfiOcrWord) -> RustBuffer 
  */
 public struct FfiOptimizationOptions {
     public var preset: FfiOptimizationPreset
-    public var doLinearize: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(preset: FfiOptimizationPreset, doLinearize: Bool) {
+    public init(preset: FfiOptimizationPreset) {
         self.preset = preset
-        self.doLinearize = doLinearize
     }
 }
 
@@ -3526,15 +3532,11 @@ extension FfiOptimizationOptions: Equatable, Hashable {
         if lhs.preset != rhs.preset {
             return false
         }
-        if lhs.doLinearize != rhs.doLinearize {
-            return false
-        }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(preset)
-        hasher.combine(doLinearize)
     }
 }
 
@@ -3547,14 +3549,12 @@ public struct FfiConverterTypeFfiOptimizationOptions: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiOptimizationOptions {
         return
             try FfiOptimizationOptions(
-                preset: FfiConverterTypeFfiOptimizationPreset.read(from: &buf), 
-                doLinearize: FfiConverterBool.read(from: &buf)
+                preset: FfiConverterTypeFfiOptimizationPreset.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiOptimizationOptions, into buf: inout [UInt8]) {
         FfiConverterTypeFfiOptimizationPreset.write(value.preset, into: &buf)
-        FfiConverterBool.write(value.doLinearize, into: &buf)
     }
 }
 
@@ -5125,28 +5125,34 @@ public func FfiConverterTypeFfiPdfSignatureInfo_lower(_ value: FfiPdfSignatureIn
 
 
 /**
- * Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+ * Restricted structural preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
  */
 public struct FfiPdfxPreflightReport {
     public var isValid: Bool
+    public var isRestrictedPreflight: Bool
+    public var disclaimer: String
     public var version: String
     public var hasOutputIntent: Bool
     public var outputIntentProfile: String
     public var hasTrappedKey: Bool
     public var hasBleedOrTrimBox: Bool
     public var isEncrypted: Bool
+    public var unembeddedFonts: [String]
     public var issues: [String]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(isValid: Bool, version: String, hasOutputIntent: Bool, outputIntentProfile: String, hasTrappedKey: Bool, hasBleedOrTrimBox: Bool, isEncrypted: Bool, issues: [String]) {
+    public init(isValid: Bool, isRestrictedPreflight: Bool, disclaimer: String, version: String, hasOutputIntent: Bool, outputIntentProfile: String, hasTrappedKey: Bool, hasBleedOrTrimBox: Bool, isEncrypted: Bool, unembeddedFonts: [String], issues: [String]) {
         self.isValid = isValid
+        self.isRestrictedPreflight = isRestrictedPreflight
+        self.disclaimer = disclaimer
         self.version = version
         self.hasOutputIntent = hasOutputIntent
         self.outputIntentProfile = outputIntentProfile
         self.hasTrappedKey = hasTrappedKey
         self.hasBleedOrTrimBox = hasBleedOrTrimBox
         self.isEncrypted = isEncrypted
+        self.unembeddedFonts = unembeddedFonts
         self.issues = issues
     }
 }
@@ -5159,6 +5165,12 @@ extension FfiPdfxPreflightReport: Sendable {}
 extension FfiPdfxPreflightReport: Equatable, Hashable {
     public static func ==(lhs: FfiPdfxPreflightReport, rhs: FfiPdfxPreflightReport) -> Bool {
         if lhs.isValid != rhs.isValid {
+            return false
+        }
+        if lhs.isRestrictedPreflight != rhs.isRestrictedPreflight {
+            return false
+        }
+        if lhs.disclaimer != rhs.disclaimer {
             return false
         }
         if lhs.version != rhs.version {
@@ -5179,6 +5191,9 @@ extension FfiPdfxPreflightReport: Equatable, Hashable {
         if lhs.isEncrypted != rhs.isEncrypted {
             return false
         }
+        if lhs.unembeddedFonts != rhs.unembeddedFonts {
+            return false
+        }
         if lhs.issues != rhs.issues {
             return false
         }
@@ -5187,12 +5202,15 @@ extension FfiPdfxPreflightReport: Equatable, Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(isValid)
+        hasher.combine(isRestrictedPreflight)
+        hasher.combine(disclaimer)
         hasher.combine(version)
         hasher.combine(hasOutputIntent)
         hasher.combine(outputIntentProfile)
         hasher.combine(hasTrappedKey)
         hasher.combine(hasBleedOrTrimBox)
         hasher.combine(isEncrypted)
+        hasher.combine(unembeddedFonts)
         hasher.combine(issues)
     }
 }
@@ -5207,24 +5225,30 @@ public struct FfiConverterTypeFfiPdfxPreflightReport: FfiConverterRustBuffer {
         return
             try FfiPdfxPreflightReport(
                 isValid: FfiConverterBool.read(from: &buf), 
+                isRestrictedPreflight: FfiConverterBool.read(from: &buf), 
+                disclaimer: FfiConverterString.read(from: &buf), 
                 version: FfiConverterString.read(from: &buf), 
                 hasOutputIntent: FfiConverterBool.read(from: &buf), 
                 outputIntentProfile: FfiConverterString.read(from: &buf), 
                 hasTrappedKey: FfiConverterBool.read(from: &buf), 
                 hasBleedOrTrimBox: FfiConverterBool.read(from: &buf), 
                 isEncrypted: FfiConverterBool.read(from: &buf), 
+                unembeddedFonts: FfiConverterSequenceString.read(from: &buf), 
                 issues: FfiConverterSequenceString.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiPdfxPreflightReport, into buf: inout [UInt8]) {
         FfiConverterBool.write(value.isValid, into: &buf)
+        FfiConverterBool.write(value.isRestrictedPreflight, into: &buf)
+        FfiConverterString.write(value.disclaimer, into: &buf)
         FfiConverterString.write(value.version, into: &buf)
         FfiConverterBool.write(value.hasOutputIntent, into: &buf)
         FfiConverterString.write(value.outputIntentProfile, into: &buf)
         FfiConverterBool.write(value.hasTrappedKey, into: &buf)
         FfiConverterBool.write(value.hasBleedOrTrimBox, into: &buf)
         FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterSequenceString.write(value.unembeddedFonts, into: &buf)
         FfiConverterSequenceString.write(value.issues, into: &buf)
     }
 }

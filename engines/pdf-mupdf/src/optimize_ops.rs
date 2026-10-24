@@ -12,7 +12,6 @@ unsafe extern "C" {
         pdf_bytes: *const u8,
         pdf_len: usize,
         preset: i32,
-        do_linearize: i32,
         allow_signature_invalidation: i32,
         out_pdf_bytes: *mut *mut u8,
         out_pdf_len: *mut usize,
@@ -32,6 +31,7 @@ unsafe extern "C" {
         out_format_str: *mut *mut c_char,
         out_width: *mut i32,
         out_height: *mut i32,
+        out_is_raw: *mut i32,
         out_img_bytes: *mut *mut u8,
         out_img_len: *mut usize,
     ) -> i32;
@@ -83,7 +83,6 @@ pub fn optimize_document_ext(
         OptimizationPreset::Balanced => 1,
         OptimizationPreset::Maximum => 2,
     };
-    let linearize_val = if options.do_linearize { 1 } else { 0 };
     let sig_val = if allow_signature_invalidation { 1 } else { 0 };
 
     let mut out_bytes: *mut u8 = std::ptr::null_mut();
@@ -94,7 +93,6 @@ pub fn optimize_document_ext(
             pdf_bytes.as_ptr(),
             pdf_bytes.len(),
             preset_val,
-            linearize_val,
             sig_val,
             &mut out_bytes,
             &mut out_len,
@@ -168,6 +166,7 @@ pub fn extract_image_bytes(
     let mut out_format: *mut c_char = std::ptr::null_mut();
     let mut out_w: i32 = 0;
     let mut out_h: i32 = 0;
+    let mut out_is_raw: i32 = 0;
     let mut out_bytes: *mut u8 = std::ptr::null_mut();
     let mut out_len: usize = 0;
 
@@ -180,6 +179,7 @@ pub fn extract_image_bytes(
             &mut out_format,
             &mut out_w,
             &mut out_h,
+            &mut out_is_raw,
             &mut out_bytes,
             &mut out_len,
         )
@@ -214,6 +214,7 @@ pub fn extract_image_bytes(
         width: out_w.max(0) as u32,
         height: out_h.max(0) as u32,
         format: format_str,
+        is_raw_stream: out_is_raw != 0,
         data,
     })
 }

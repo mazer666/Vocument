@@ -70,7 +70,7 @@ struct PreflightPdfxSheetView: View {
     private var pdfxSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("PDF/X ISO 15930 Compliance")
+                Text("PDF/X Eingeschränkte Vorprüfung")
                     .font(.subheadline)
                     .bold()
 
@@ -78,12 +78,12 @@ struct PreflightPdfxSheetView: View {
 
                 if let report = pdfxReport {
                     if report.isValid {
-                        Label("Compliant (\(report.version))", systemImage: "checkmark.circle.fill")
+                        Label("Strukturell konform (\(report.version))", systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .bold()
                             .foregroundStyle(.green)
                     } else {
-                        Label("Non-Compliant", systemImage: "exclamationmark.triangle.fill")
+                        Label("Abweichungen festgestellt", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .bold()
                             .foregroundStyle(.orange)
@@ -92,19 +92,49 @@ struct PreflightPdfxSheetView: View {
             }
 
             if let report = pdfxReport {
+                // Disclaimer Callout
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                        .font(.caption)
+                    Text(report.disclaimer)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(8)
+                .background(Color.accentColor.opacity(0.08))
+                .cornerRadius(6)
+
                 VStack(alignment: .leading, spacing: 6) {
                     attributeRow(label: "Output Intent", value: report.hasOutputIntent ? report.outputIntentProfile : "None (Missing)")
                     attributeRow(label: "Trapped Key", value: report.hasTrappedKey ? "True" : "Missing")
                     attributeRow(label: "Bleed / Trim Box", value: report.hasBleedOrTrimBox ? "Present" : "Missing")
-                    attributeRow(label: "Encryption", value: report.isEncrypted ? "Encrypted (Violates PDF/X)" : "Unencrypted")
+                    attributeRow(label: "Schrifteneinbettung", value: report.unembeddedFonts.isEmpty ? "100% eingebettet" : "\(report.unembeddedFonts.count) nicht eingebettet")
+                    attributeRow(label: "Verschlüsselung", value: report.isEncrypted ? "Verschlüsselt (Unzulässig in PDF/X)" : "Unverschlüsselt")
                 }
                 .padding(10)
                 .background(Color.secondary.opacity(0.06))
                 .cornerRadius(6)
 
+                if !report.unembeddedFonts.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Nicht eingebettete Schriften:")
+                            .font(.caption2)
+                            .bold()
+                            .foregroundStyle(.orange)
+                        ForEach(report.unembeddedFonts, id: \.self) { font in
+                            Text("• \(font)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+
                 if !report.issues.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Issues Detected:")
+                        Text("Festgestellte Prüfungsbefunde:")
                             .font(.caption)
                             .bold()
                             .foregroundStyle(.secondary)

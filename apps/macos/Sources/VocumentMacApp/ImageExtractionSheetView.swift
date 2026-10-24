@@ -69,12 +69,12 @@ struct ImageExtractionSheetView: View {
 
                                 Spacer()
 
-                                Text(img.format.uppercased())
-                                    .font(.caption)
+                                Text(img.format.lowercased() == "jpeg" ? "JPEG (Raw)" : (img.format.lowercased() == "jp2" ? "JP2 (Raw)" : "PNG (Rendered)"))
+                                    .font(.caption2)
                                     .bold()
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.secondary.opacity(0.15))
+                                    .background(img.format.lowercased() == "jpeg" ? Color.green.opacity(0.15) : Color.secondary.opacity(0.15))
                                     .cornerRadius(4)
                             }
                             .padding(.vertical, 2)
@@ -125,6 +125,14 @@ struct ImageExtractionSheetView: View {
         }
     }
 
+    private func fileExtension(for format: String) -> String {
+        switch format.lowercased() {
+        case "jpeg", "jpg": return "jpg"
+        case "jp2", "jpx": return "jp2"
+        default: return "png"
+        }
+    }
+
     private func exportSelectedImage() {
         guard let idx = selectedIndex, idx < images.count else { return }
         let img = images[idx]
@@ -136,14 +144,16 @@ struct ImageExtractionSheetView: View {
             return
         }
 
+        let ext = fileExtension(for: data.format)
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "image_page\(img.pageIndex + 1)_\(img.imageIndex + 1).png"
+        panel.nameFieldStringValue = "image_page\(img.pageIndex + 1)_\(img.imageIndex + 1).\(ext)"
 
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try data.data.write(to: url, options: .atomic)
-                statusMessage = "Exported image to \(url.lastPathComponent)"
+                let typeStr = data.isRawStream ? "Lossless original stream" : "Converted PNG"
+                statusMessage = "\(typeStr) exported to \(url.lastPathComponent)"
             } catch {
                 statusMessage = "Export failed: \(error.localizedDescription)"
             }
@@ -166,7 +176,8 @@ struct ImageExtractionSheetView: View {
                     pageIndex: img.pageIndex,
                     imageIndex: img.imageIndex
                 ) {
-                    let fileUrl = folderUrl.appendingPathComponent("image_page\(img.pageIndex + 1)_\(img.imageIndex + 1).png")
+                    let ext = fileExtension(for: data.format)
+                    let fileUrl = folderUrl.appendingPathComponent("image_page\(img.pageIndex + 1)_\(img.imageIndex + 1).\(ext)")
                     try? data.data.write(to: fileUrl, options: .atomic)
                     count += 1
                 }

@@ -27,7 +27,6 @@ int vocument_mupdf_optimize_document(
     const unsigned char *pdf_bytes,
     size_t pdf_len,
     int preset,
-    int do_linearize,
     int allow_signature_invalidation,
     unsigned char **out_pdf_bytes,
     size_t *out_pdf_len
@@ -66,24 +65,20 @@ int vocument_mupdf_optimize_document(
             opts.reproducible = 1;
             opts.do_preserve_metadata = 1;
             opts.do_appearance = 1;
-            /* Legacy linearisation was deprecated/removed by MuPDF ("Linearisation is no longer supported").
-             * Modern fast web viewing (RFC 7233 HTTP range requests) is powered by compressed object streams.
-             * Per user requirement ("soweit technisch zuverlässig unterstützt"), enable object streams. */
-            if (do_linearize) {
-                opts.do_use_objstms = 1;
-            }
+            /* In accordance with M3.5 remediation: never call do_clean or do_sanitize during
+             * file size optimization. Content modifications are strictly reserved for SAN-001. */
+            opts.do_clean = 0;
+            opts.do_sanitize = 0;
 
             switch (preset) {
                 case VOCUMENT_OPT_LOSSLESS:
-                    opts.do_garbage = 1;
+                    opts.do_garbage = 2; /* Compact xref, drop unreferenced objects */
                     opts.do_compress = 1;
                     opts.do_use_objstms = 1;
                     opts.compression_effort = 50;
                     break;
                 case VOCUMENT_OPT_MAXIMUM:
-                    opts.do_garbage = 3; /* De-duplicate objects */
-                    opts.do_clean = 1;
-                    opts.do_sanitize = 1;
+                    opts.do_garbage = 3; /* De-duplicate identical objects/fonts */
                     opts.do_compress = 1;
                     opts.do_compress_images = 1;
                     opts.do_compress_fonts = 1;
@@ -92,8 +87,7 @@ int vocument_mupdf_optimize_document(
                     break;
                 case VOCUMENT_OPT_BALANCED:
                 default:
-                    opts.do_garbage = 3; /* De-duplicate objects */
-                    opts.do_clean = 1;
+                    opts.do_garbage = 3; /* De-duplicate identical objects/fonts */
                     opts.do_compress = 1;
                     opts.do_compress_images = 1;
                     opts.do_compress_fonts = 1;
@@ -244,10 +238,11 @@ int vocument_mupdf_extract_image_bytes(
     char **out_format_str,
     int *out_width,
     int *out_height,
+    int *out_is_raw,
     unsigned char **out_img_bytes,
     size_t *out_img_len
 ) {
-    if (!pdf_bytes || pdf_len == 0 || !out_format_str || !out_width || !out_height || !out_img_bytes || !out_img_len) {
+    if (!pdf_bytes || pdf_len == 0 || !out_format_str || !out_width || !out_height || !out_is_raw || !out_img_bytes || !out_img_len) {
         return 1;
     }
     *out_format_str = NULL;
@@ -255,6 +250,7 @@ int vocument_mupdf_extract_image_bytes(
     *out_img_len = 0;
     *out_width = 0;
     *out_height = 0;
+    *out_is_raw = 0;
 
     fz_context *ctx = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
     if (!ctx) return 3;
@@ -311,29 +307,76 @@ int vocument_mupdf_extract_image_bytes(
                 if (!target_xobj) {
                     status = 1; /* Image index not found */
                 } else {
-                    img = pdf_load_image(ctx, pdf_doc, target_xobj);
-                    if (!img) {
-                        status = 2;
-                    } else {
-                        *out_width = img->w;
-                        *out_height = img->h;
+                    int width = pdf_to_int(ctx, pdf_dict_get(ctx, target_xobj, PDF_NAME(Width)));
+                    int height = pdf_to_int(ctx, pdf_dict_get(ctx, target_xobj, PDF_NAME(Height)));
+                    *out_width = width;
+                    *out_height = height;
 
-                        pix = fz_get_pixmap_from_image(ctx, img, NULL, NULL, NULL, NULL);
-                        buf = fz_new_buffer(ctx, 4096);
-                        out = fz_new_output_with_buffer(ctx, buf);
-                        fz_write_pixmap_as_png(ctx, out, pix);
-                        fz_close_output(ctx, out);
+                    pdf_obj *filter = pdf_dict_get(ctx, target_xobj, PDF_NAME(Filter));
+                    int extracted_raw = 0;
 
-                        unsigned char *storage = NULL;
-                        size_t storage_len = fz_buffer_storage(ctx, buf, &storage);
-                        unsigned char *copied = (unsigned char *)malloc(storage_len > 0 ? storage_len : 1);
-                        if (!copied) {
-                            status = 3;
+                    if (filter && (pdf_name_eq(ctx, filter, PDF_NAME(DCTDecode)) || pdf_name_eq(ctx, filter, PDF_NAME(JPXDecode)))) {
+                        fz_stream *raw_stm = NULL;
+                        fz_buffer *raw_buf = NULL;
+                        fz_var(raw_stm);
+                        fz_var(raw_buf);
+                        fz_try(ctx) {
+                            raw_stm = pdf_open_raw_stream(ctx, target_xobj);
+                            if (raw_stm) {
+                                raw_buf = fz_read_all(ctx, raw_stm, 0);
+                                if (raw_buf) {
+                                    unsigned char *storage = NULL;
+                                    size_t storage_len = fz_buffer_storage(ctx, raw_buf, &storage);
+                                    if (storage_len > 0 && storage) {
+                                        unsigned char *copied = (unsigned char *)malloc(storage_len);
+                                        if (copied) {
+                                            memcpy(copied, storage, storage_len);
+                                            *out_img_bytes = copied;
+                                            *out_img_len = storage_len;
+                                            *out_is_raw = 1;
+                                            *out_format_str = strdup(pdf_name_eq(ctx, filter, PDF_NAME(DCTDecode)) ? "jpeg" : "jp2");
+                                            extracted_raw = 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        fz_always(ctx) {
+                            if (raw_buf) fz_drop_buffer(ctx, raw_buf);
+                            if (raw_stm) fz_drop_stream(ctx, raw_stm);
+                        }
+                        fz_catch(ctx) {
+                            extracted_raw = 0;
+                        }
+                    }
+
+                    if (!extracted_raw) {
+                        /* Fall back to pixmap rendering for FlateDecode, JBIG2, or raw rasters */
+                        img = pdf_load_image(ctx, pdf_doc, target_xobj);
+                        if (!img) {
+                            status = 2;
                         } else {
-                            if (storage_len > 0 && storage) memcpy(copied, storage, storage_len);
-                            *out_img_bytes = copied;
-                            *out_img_len = storage_len;
-                            *out_format_str = strdup("png");
+                            if (*out_width <= 0) *out_width = img->w;
+                            if (*out_height <= 0) *out_height = img->h;
+
+                            pix = fz_get_pixmap_from_image(ctx, img, NULL, NULL, NULL, NULL);
+                            buf = fz_new_buffer(ctx, 4096);
+                            out = fz_new_output_with_buffer(ctx, buf);
+                            fz_write_pixmap_as_png(ctx, out, pix);
+                            fz_close_output(ctx, out);
+
+                            unsigned char *storage = NULL;
+                            size_t storage_len = fz_buffer_storage(ctx, buf, &storage);
+                            unsigned char *copied = (unsigned char *)malloc(storage_len > 0 ? storage_len : 1);
+                            if (!copied) {
+                                status = 3;
+                            } else {
+                                if (storage_len > 0 && storage) memcpy(copied, storage, storage_len);
+                                *out_img_bytes = copied;
+                                *out_img_len = storage_len;
+                                *out_is_raw = 0;
+                                *out_format_str = strdup("png");
+                            }
                         }
                     }
                 }
@@ -434,30 +477,92 @@ int vocument_mupdf_preflight_pdfx_json(
             }
 
             int all_pages_have_bleed_or_trim = 1;
+            int has_unembedded_fonts = 0;
+            int has_transparency = 0;
+            fz_buffer *unembedded_buf = fz_new_buffer(ctx, 256);
+            fz_append_string(ctx, unembedded_buf, "[");
+            int unembedded_count = 0;
+
             int page_count = pdf_count_pages(ctx, pdf_doc);
             for (int p = 0; p < page_count; p++) {
                 pdf_obj *page_obj = pdf_lookup_page_obj(ctx, pdf_doc, p);
                 if (!page_obj) continue;
-                pdf_obj *bleed = pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(BleedBox));
-                pdf_obj *trim = pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(TrimBox));
-                if (!bleed && !trim) {
+                if (!pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(BleedBox)) &&
+                    !pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(TrimBox))) {
                     all_pages_have_bleed_or_trim = 0;
-                    break;
+                }
+                pdf_obj *res = pdf_dict_get_inheritable(ctx, page_obj, PDF_NAME(Resources));
+                if (res && pdf_is_dict(ctx, res)) {
+                    pdf_obj *fonts = pdf_dict_get(ctx, res, PDF_NAME(Font));
+                    if (fonts && pdf_is_dict(ctx, fonts)) {
+                        int num_f = pdf_dict_len(ctx, fonts);
+                        for (int f = 0; f < num_f; f++) {
+                            pdf_obj *fobj = pdf_dict_get_val(ctx, fonts, f);
+                            if (!fobj || !pdf_is_dict(ctx, fobj)) continue;
+                            pdf_obj *desc = pdf_dict_get(ctx, fobj, PDF_NAME(FontDescriptor));
+                            if (!desc) {
+                                pdf_obj *df = pdf_dict_get(ctx, fobj, PDF_NAME(DescendantFonts));
+                                if (df && pdf_is_array(ctx, df) && pdf_array_len(ctx, df) > 0) {
+                                    desc = pdf_dict_get(ctx, pdf_array_get(ctx, df, 0), PDF_NAME(FontDescriptor));
+                                }
+                            }
+                            int embedded = (desc && pdf_is_dict(ctx, desc) &&
+                                           (pdf_dict_get(ctx, desc, PDF_NAME(FontFile)) ||
+                                            pdf_dict_get(ctx, desc, PDF_NAME(FontFile2)) ||
+                                            pdf_dict_get(ctx, desc, PDF_NAME(FontFile3))));
+                            if (!embedded) {
+                                has_unembedded_fonts = 1;
+                                pdf_obj *bf = pdf_dict_get(ctx, fobj, PDF_NAME(BaseFont));
+                                const char *name = (bf && pdf_is_name(ctx, bf)) ? pdf_to_name(ctx, bf) : "UnknownFont";
+                                if (unembedded_count > 0) fz_append_string(ctx, unembedded_buf, ",");
+                                fz_append_printf(ctx, unembedded_buf, "\"%s\"", name);
+                                unembedded_count++;
+                            }
+                        }
+                    }
+                    pdf_obj *extg = pdf_dict_get(ctx, res, PDF_NAME(ExtGState));
+                    if (extg && pdf_is_dict(ctx, extg)) {
+                        int num_g = pdf_dict_len(ctx, extg);
+                        for (int g = 0; g < num_g; g++) {
+                            pdf_obj *gstate = pdf_dict_get_val(ctx, extg, g);
+                            if (gstate && pdf_is_dict(ctx, gstate)) {
+                                pdf_obj *bm = pdf_dict_get(ctx, gstate, PDF_NAME(BM));
+                                if (bm && !pdf_name_eq(ctx, bm, PDF_NAME(Normal))) has_transparency = 1;
+                                pdf_obj *ca = pdf_dict_get(ctx, gstate, PDF_NAME(ca));
+                                if (ca && pdf_to_real(ctx, ca) < 0.999f) has_transparency = 1;
+                                pdf_obj *smask = pdf_dict_get(ctx, gstate, PDF_NAME(SMask));
+                                if (smask && !pdf_name_eq(ctx, smask, PDF_NAME(None))) has_transparency = 1;
+                            }
+                        }
+                    }
                 }
             }
+            fz_append_string(ctx, unembedded_buf, "]");
 
-            int is_valid = (!is_encrypted && has_output_intent && has_trapped && all_pages_have_bleed_or_trim && strcmp(pdfx_ver, "None") != 0);
+            int is_valid = (!is_encrypted && has_output_intent && has_trapped &&
+                            all_pages_have_bleed_or_trim && strcmp(pdfx_ver, "None") != 0 &&
+                            !has_unembedded_fonts && !has_transparency);
+
+            const char *disclaimer = "Eingeschraenkte strukturelle Vorpruefung (Struktur, Boxen, Output-Intent, Schrifteneinbettung). Ersetzt keine akkreditierte ISO 15930 Zertifizierung.";
 
             buf = fz_new_buffer(ctx, 1024);
             fz_append_printf(ctx, buf,
-                "{\"is_valid\":%s,\"version\":\"%s\",\"has_output_intent\":%s,\"output_intent_profile\":\"%s\","
-                "\"has_trapped_key\":%s,\"has_bleed_or_trim_box\":%s,\"is_encrypted\":%s,\"issues\":[",
-                is_valid ? "true" : "false", pdfx_ver,
+                "{\"is_valid\":%s,\"is_restricted_preflight\":true,\"disclaimer\":\"%s\","
+                "\"version\":\"%s\",\"has_output_intent\":%s,\"output_intent_profile\":\"%s\","
+                "\"has_trapped_key\":%s,\"has_bleed_or_trim_box\":%s,\"is_encrypted\":%s,"
+                "\"unembedded_fonts\":",
+                is_valid ? "true" : "false", disclaimer, pdfx_ver,
                 has_output_intent ? "true" : "false", oi_profile,
                 has_trapped ? "true" : "false",
                 all_pages_have_bleed_or_trim ? "true" : "false",
                 is_encrypted ? "true" : "false");
 
+            unsigned char *ubytes = NULL;
+            size_t ulen = fz_buffer_storage(ctx, unembedded_buf, &ubytes);
+            if (ulen > 0 && ubytes) fz_append_data(ctx, buf, ubytes, ulen);
+            fz_drop_buffer(ctx, unembedded_buf);
+
+            fz_append_string(ctx, buf, ",\"issues\":[");
             int first_issue = 1;
             if (is_encrypted) {
                 fz_append_string(ctx, buf, "\"Document encryption is prohibited in PDF/X\"");
@@ -481,6 +586,16 @@ int vocument_mupdf_preflight_pdfx_json(
             if (strcmp(pdfx_ver, "None") == 0) {
                 if (!first_issue) fz_append_string(ctx, buf, ",");
                 fz_append_string(ctx, buf, "\"Document lacks GTS_PDFXVersion identifier\"");
+                first_issue = 0;
+            }
+            if (has_unembedded_fonts) {
+                if (!first_issue) fz_append_string(ctx, buf, ",");
+                fz_append_string(ctx, buf, "\"Document contains non-embedded fonts (violates ISO 15930 font embedding requirement)\"");
+                first_issue = 0;
+            }
+            if (has_transparency) {
+                if (!first_issue) fz_append_string(ctx, buf, ",");
+                fz_append_string(ctx, buf, "\"Document contains transparency (BlendMode/SoftMask/Alpha) prohibited in PDF/X-1a\"");
             }
             fz_append_string(ctx, buf, "]}");
 

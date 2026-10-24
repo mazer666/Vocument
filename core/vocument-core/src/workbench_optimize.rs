@@ -17,14 +17,12 @@ pub enum OptimizationPreset {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OptimizationOptions {
     pub preset: OptimizationPreset,
-    pub do_linearize: bool,
 }
 
 impl Default for OptimizationOptions {
     fn default() -> Self {
         Self {
             preset: OptimizationPreset::Balanced,
-            do_linearize: false,
         }
     }
 }
@@ -57,19 +55,23 @@ pub struct ExtractedImageData {
     pub width: u32,
     pub height: u32,
     pub format: String,
+    pub is_raw_stream: bool,
     pub data: Vec<u8>,
 }
 
-/// Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+/// Restricted structural preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PdfxPreflightReport {
     pub is_valid: bool,
+    pub is_restricted_preflight: bool,
+    pub disclaimer: String,
     pub version: String,
     pub has_output_intent: bool,
     pub output_intent_profile: String,
     pub has_trapped_key: bool,
     pub has_bleed_or_trim_box: bool,
     pub is_encrypted: bool,
+    pub unembedded_fonts: Vec<String>,
     pub issues: Vec<String>,
 }
 

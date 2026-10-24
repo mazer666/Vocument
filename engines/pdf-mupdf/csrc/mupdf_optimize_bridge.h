@@ -19,7 +19,9 @@ enum vocument_optimization_preset {
 };
 
 /*
- * Optimizes PDF streams, deduplicates objects, and optionally linearizes for Fast Web View.
+ * Optimizes PDF streams and deduplicates objects.
+ * Separates size optimization from destructive sanitization.
+ * Preserves document appearance, metadata, and form fields.
  *
  * Status:
  *   0: success
@@ -32,7 +34,6 @@ int vocument_mupdf_optimize_document(
     const unsigned char *pdf_bytes,
     size_t pdf_len,
     int preset,
-    int do_linearize,
     int allow_signature_invalidation,
     unsigned char **out_pdf_bytes,
     size_t *out_pdf_len
@@ -50,7 +51,9 @@ int vocument_mupdf_get_document_images_json(
 );
 
 /*
- * Extracts raw or PNG-encoded bytes for a specified page image.
+ * Extracts raw stream bytes (lossless for DCTDecode JPEG / JPXDecode JP2)
+ * or rendered PNG bytes for other raster image types.
+ * Sets *out_is_raw to 1 if untouched original stream was extracted, or 0 if converted to PNG.
  */
 int vocument_mupdf_extract_image_bytes(
     const unsigned char *pdf_bytes,
@@ -60,16 +63,19 @@ int vocument_mupdf_extract_image_bytes(
     char **out_format_str,
     int *out_width,
     int *out_height,
+    int *out_is_raw,
     unsigned char **out_img_bytes,
     size_t *out_img_len
 );
 
 /*
- * Performs PDF/X compliance preflight analysis (ISO 15930) and returns JSON report:
- * {"is_valid": true, "version": "PDF/X-1a:2001", "has_output_intent": true,
+ * Performs restricted structural PDF/X preflight analysis (ISO 15930 structural checks)
+ * and returns JSON report with disclaimer:
+ * {"is_valid": false, "is_restricted_preflight": true, "disclaimer": "...",
+ *  "version": "PDF/X-1a:2001", "has_output_intent": true,
  *  "output_intent_profile": "Coated FOGRA39", "has_trapped_key": true,
- *  "has_bleed_or_trim_box": true, "has_unembedded_fonts": false,
- *  "has_rgb_content": false, "is_encrypted": false, "issues": []}
+ *  "has_bleed_or_trim_box": true, "unembedded_fonts": [],
+ *  "is_encrypted": false, "issues": []}
  */
 int vocument_mupdf_preflight_pdfx_json(
     const unsigned char *pdf_bytes,

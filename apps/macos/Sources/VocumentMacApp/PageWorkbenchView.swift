@@ -327,7 +327,7 @@ struct PageWorkbenchView: View {
                 Label("Optimize…", systemImage: "gauge.with.dots.needle.bottom.50percent")
             }
             .disabled(coordinator.activeSession == nil)
-            .help("Optimize streams, deduplicate objects, and linearize for Fast Web View (M3.5)")
+            .help("Optimize document file size, deduplicate objects, and compact into object streams (M3.5)")
 
             Button {
                 coordinator.showImageExtractionSheet = true
@@ -343,7 +343,7 @@ struct PageWorkbenchView: View {
                 Label("Preflight…", systemImage: "checkmark.seal")
             }
             .disabled(coordinator.activeSession == nil)
-            .help("Audit PDF/X ISO 15930 compliance and print readiness (M3.5)")
+            .help("Perform restricted structural PDF/X preflight and print readiness audit (M3.5)")
 
             Spacer()
 

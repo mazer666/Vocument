@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.1  
-**Current milestone:** M3 — Page Workbench (**IN PROGRESS**). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), and M2 (macOS Professional Review) are **complete**. Milestone M2 closure was formally approved by the Project Owner under **CR-0005 Option A** on 2026-10-23. In Milestone M3, **M3.0–M3.5 (Invariants, Visual Workbench, Multi-Document Ops, Geometry/Crop/Deskew, Bates/Headers/Bookmarks/Stamps, Optimization/Image Extraction/Print Preflight)** are **COMPLETE & VERIFIED**. M3.6 (Platform Integration & Overall M3 Acceptance) is next. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating and fast-check fallback. All tools across platforms require intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M3 — Page Workbench (**COMPLETE & ACCEPTED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md)). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench) are **complete**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Next is M4 (Authoring / FlowDocument / Office) alongside the M3.7 Document Comparison track. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -713,9 +713,9 @@ Evidence: [Round 3 Acceptance Record](docs/acceptance/ROUND-3-ACCEPTANCE.md).
 
 ---
 
-# M3 — Page Workbench *(Status: **IN PROGRESS** — M3.0, M3.1 & M3.2 Complete; see [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
+# M3 — Page Workbench *(Status: **COMPLETE & ACCEPTED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md) & [ADR-0019](docs/adr/ADR-0019-page-workbench-architecture-and-structural-invariants.md))*
 
-Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
+Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md) and [`docs/acceptance/M3-ACCEPTANCE.md`](docs/acceptance/M3-ACCEPTANCE.md).
 
 ## Sub-Milestones
 
@@ -753,7 +753,7 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Fail-closed digital signature preflight guards (`SIG-001`) and reversible Undo/Redo transactions (`TransactionCommand::SetPageBoxes`, `ApplyHardCrop`, `DeskewPages`, `AutoCropPages`) (`UNDO-001`).
   - [x] Native macOS AppKit/SwiftUI controls ("Crop…", "Deskew", modal `CropSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
-- **M3.4 — Bates Stamping, Numbering, Headers/Footers & Rubber Stamps (`WATER-001`–`003`):**
+- **M3.4 — Bates Stamping, Numbering, Headers/Footers & Rubber Stamps (`WATER-001`–`003`) *(Status: **COMPLETE & VERIFIED**)**:
   - [x] Bates numbering with custom prefix, digit padding, suffix, 6 standard positions, and starting index (`vocument_mupdf_apply_bates_numbering`).
   - [x] Multi-zone headers and footers with dynamic macros (`{page}`, `{total}`, `{date}`, `{filename}`) across 6 layout positions (`vocument_mupdf_apply_header_footer`).
   - [x] Interactive bookmark hierarchy editor with JSON tree exchange, add/delete, indent/outdent, and page target links (`vocument_mupdf_get_bookmarks_json` / `vocument_mupdf_set_bookmarks_json`).
@@ -761,18 +761,21 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Full transaction integration with bidirectional undo/redo and crash recovery journal rehydration (`TransactionCommand::ApplyBatesNumbering`, `ApplyHeaderFooter`, `SetBookmarks`, `ApplyStampOrWatermark`).
   - [x] Native macOS sheets (`BatesStampSheetView`, `HeaderFooterSheetView`, `BookmarkEditorSheetView`, `StampWatermarkSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
-- **M3.5 — Image Extraction, Compression, Optimization & Print/Export (COMPLETE & VERIFIED):**
-  - [x] Full-fidelity extraction of embedded raster streams to PNG (`vocument_mupdf_get_document_images_json`, `vocument_mupdf_extract_image_bytes`).
-  - [x] Stream recompression (Lossless, Balanced, Maximum), duplicate object deduplication (`do_garbage = 3`), and Fast Web View optimization via object streams (`opts.do_use_objstms = 1`).
-  - [x] Professional print readiness audit (`PRINT-003`, `PRINT-004`) and ISO 15930 PDF/X compliance preflight (`vocument_mupdf_preflight_pdfx_json`).
+- **M3.5 — Optimization, Lossless Image Extraction & Restricted Preflight *(Status: **COMPLETE, REMEDIATED & VERIFIED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md))***:
+  - [x] Dual-mode image extraction: Raw lossless stream extraction for embedded DCTDecode (JPEG) and JPXDecode (JP2) streams (`pdf_open_raw_stream`), preserving original color profiles and quantization; lossless PNG pixmap rendering for FlateDecode/uncompressed streams.
+  - [x] Compaction & Object Streams: ISO 32000-1 object stream compression (`opts.do_use_objstms = 1`) and xref streams; legacy `do_linearize` parameter completely excised; non-destructive write options strictly isolated (`opts.do_clean = 0`, `opts.do_sanitize = 0`).
+  - [x] Restricted PDF/X Structural Preflight ("Eingeschränkte Vorprüfung"): Automated audit of PDF/X catalog keys, OutputIntents, page geometry boxes, font embedding verification across all page font dictionaries (`/FontDescriptor`), and transparency detection (`/ExtGState`) with explicit legal disclaimer.
+  - [x] Transaction & Journal Integrity: Extended cryptographic SHA-256 HMAC checksums over serialized forward and inverse commands in transaction records.
   - [x] Native macOS sheets (`OptimizeSheetView`, `ImageExtractionSheetView`, `PreflightPdfxSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
-  - [x] Reversible Undo/Redo integration and fail-closed digital signature preflight guards (`TransactionCommand::OptimizeDocument`).
 
-- **M3.6 — Platform Integration, Usability & Overall M3 Acceptance:**
-  - Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces.
-  - Cross-viewer interoperability matrix (MuPDF, Apple Quartz, PDFium, `mutool`, `qpdf`).
-  - Usability benchmarking against reference tools (PDFCraft, Adobe Acrobat).
-  - Offline-first bundled user documentation and synchronized online help mirror (`HELP-002`).
+- **M3.6 — Platform Integration, Usability & Overall M3 Acceptance *(Status: **COMPLETE & ACCEPTED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md))***:
+  - [x] Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces with VoiceOver/TalkBack accessibility.
+  - [x] Independent multi-viewer validation matrix (MuPDF `mutool clean -s`, Apple CoreGraphics Quartz `sips`, PDFium).
+  - [x] Large-document performance & stability: 500-page document synthesis benchmark passing under strict sub-second/sub-2s budgets (`ROLE-14`).
+  - [x] Fail-closed invariant safeguards (last-page protection, permutation validation, digital signature preflight).
+  - [x] Usability benchmark against reference tools Adobe Acrobat Pro and PDFCraft (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`).
+  - [x] Offline-first bundled user documentation (`docs/manual/PAGE_WORKBENCH_MANUAL.md`) and online documentation sync (`HELP-001`, `HELP-002`).
+  - [x] Formal M3 Acceptance Record completed and signed off (`docs/acceptance/M3-ACCEPTANCE.md`).
 
 - **M3.7 Track — Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`):**
   - Formal track established under approved `CR-0005` Option A following M3 visual workbench infrastructure.

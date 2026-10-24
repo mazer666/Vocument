@@ -31,12 +31,11 @@ enum OptimizePresetChoice: String, CaseIterable, Identifiable {
     }
 }
 
-/// Native SwiftUI dialog for PDF optimization, compression, and Fast Web View linearization (`ROADMAP.md` M3.5).
+/// Native SwiftUI dialog for PDF optimization, object deduplication, and stream compression (`ROADMAP.md` M3.5).
 struct OptimizeSheetView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
 
     @State private var selectedPreset: OptimizePresetChoice = .lossless
-    @State private var enableFastWebView: Bool = true
 
     var body: some View {
         VStack(spacing: 20) {
@@ -49,7 +48,7 @@ struct OptimizeSheetView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Optimize & Compress Document")
                         .font(.headline)
-                    Text("Reduce file size, remove duplicates, and linearize for Fast Web View.")
+                    Text("Reduce file size, remove orphaned objects, and compact cross-reference streams.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -81,18 +80,21 @@ struct OptimizeSheetView: View {
 
             Divider()
 
-            // Linearization / Fast Web View
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Web & Streaming")
-                    .font(.subheadline)
-                    .bold()
+            // Object Streams & Web Byte-Range Access
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "network")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accentColor)
+                    Text("Object Streams & Byte-Range Delivery (/ObjStm)")
+                        .font(.subheadline)
+                        .bold()
+                }
 
-                Toggle("Fast Web View (Linearize document)", isOn: $enableFastWebView)
-                    .font(.body)
-
-                Text("Organizes PDF objects so page 1 renders immediately over HTTP connections before downloading the full file.")
+                Text("All presets compact internal PDF structures into ISO 32000-1 object streams. This enables fast HTTP range-request delivery (RFC 7233) in modern viewers and web browsers with zero loss of document appearance, forms, or metadata.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
@@ -110,8 +112,7 @@ struct OptimizeSheetView: View {
 
                 Button("Optimize Document") {
                     let options = FfiOptimizationOptions(
-                        preset: selectedPreset.ffiPreset,
-                        doLinearize: enableFastWebView
+                        preset: selectedPreset.ffiPreset
                     )
                     coordinator.showOptimizeSheet = false
                     coordinator.workbenchOptimizeDocument(options: options)

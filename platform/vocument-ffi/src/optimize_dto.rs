@@ -40,14 +40,12 @@ impl From<OptimizationPreset> for FfiOptimizationPreset {
 #[derive(uniffi::Record, Debug, Clone, PartialEq, Eq)]
 pub struct FfiOptimizationOptions {
     pub preset: FfiOptimizationPreset,
-    pub do_linearize: bool,
 }
 
 impl From<FfiOptimizationOptions> for OptimizationOptions {
     fn from(opts: FfiOptimizationOptions) -> Self {
         Self {
             preset: opts.preset.into(),
-            do_linearize: opts.do_linearize,
         }
     }
 }
@@ -56,7 +54,6 @@ impl From<OptimizationOptions> for FfiOptimizationOptions {
     fn from(opts: OptimizationOptions) -> Self {
         Self {
             preset: opts.preset.into(),
-            do_linearize: opts.do_linearize,
         }
     }
 }
@@ -95,6 +92,7 @@ pub struct FfiExtractedImageData {
     pub width: u32,
     pub height: u32,
     pub format: String,
+    pub is_raw_stream: bool,
     pub data: Vec<u8>,
 }
 
@@ -104,21 +102,25 @@ impl From<ExtractedImageData> for FfiExtractedImageData {
             width: data.width,
             height: data.height,
             format: data.format,
+            is_raw_stream: data.is_raw_stream,
             data: data.data,
         }
     }
 }
 
-/// Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+/// Restricted structural preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
 #[derive(uniffi::Record, Debug, Clone, PartialEq, Eq)]
 pub struct FfiPdfxPreflightReport {
     pub is_valid: bool,
+    pub is_restricted_preflight: bool,
+    pub disclaimer: String,
     pub version: String,
     pub has_output_intent: bool,
     pub output_intent_profile: String,
     pub has_trapped_key: bool,
     pub has_bleed_or_trim_box: bool,
     pub is_encrypted: bool,
+    pub unembedded_fonts: Vec<String>,
     pub issues: Vec<String>,
 }
 
@@ -126,12 +128,15 @@ impl From<PdfxPreflightReport> for FfiPdfxPreflightReport {
     fn from(r: PdfxPreflightReport) -> Self {
         Self {
             is_valid: r.is_valid,
+            is_restricted_preflight: r.is_restricted_preflight,
+            disclaimer: r.disclaimer,
             version: r.version,
             has_output_intent: r.has_output_intent,
             output_intent_profile: r.output_intent_profile,
             has_trapped_key: r.has_trapped_key,
             has_bleed_or_trim_box: r.has_bleed_or_trim_box,
             is_encrypted: r.is_encrypted,
+            unembedded_fonts: r.unembedded_fonts,
             issues: r.issues,
         }
     }

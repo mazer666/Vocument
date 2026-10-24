@@ -2998,6 +2998,7 @@ data class FfiExtractedImageData (
     var `width`: kotlin.UInt, 
     var `height`: kotlin.UInt, 
     var `format`: kotlin.String, 
+    var `isRawStream`: kotlin.Boolean, 
     var `data`: kotlin.ByteArray
 ) {
     
@@ -3013,6 +3014,7 @@ public object FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer<FfiE
             FfiConverterUInt.read(buf),
             FfiConverterUInt.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterByteArray.read(buf),
         )
     }
@@ -3021,6 +3023,7 @@ public object FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer<FfiE
             FfiConverterUInt.allocationSize(value.`width`) +
             FfiConverterUInt.allocationSize(value.`height`) +
             FfiConverterString.allocationSize(value.`format`) +
+            FfiConverterBoolean.allocationSize(value.`isRawStream`) +
             FfiConverterByteArray.allocationSize(value.`data`)
     )
 
@@ -3028,6 +3031,7 @@ public object FfiConverterTypeFfiExtractedImageData: FfiConverterRustBuffer<FfiE
             FfiConverterUInt.write(value.`width`, buf)
             FfiConverterUInt.write(value.`height`, buf)
             FfiConverterString.write(value.`format`, buf)
+            FfiConverterBoolean.write(value.`isRawStream`, buf)
             FfiConverterByteArray.write(value.`data`, buf)
     }
 }
@@ -3679,8 +3683,7 @@ public object FfiConverterTypeFfiOcrWord: FfiConverterRustBuffer<FfiOcrWord> {
  * Options controlling document optimization and compression (`M3.5`).
  */
 data class FfiOptimizationOptions (
-    var `preset`: FfiOptimizationPreset, 
-    var `doLinearize`: kotlin.Boolean
+    var `preset`: FfiOptimizationPreset
 ) {
     
     companion object
@@ -3693,18 +3696,15 @@ public object FfiConverterTypeFfiOptimizationOptions: FfiConverterRustBuffer<Ffi
     override fun read(buf: ByteBuffer): FfiOptimizationOptions {
         return FfiOptimizationOptions(
             FfiConverterTypeFfiOptimizationPreset.read(buf),
-            FfiConverterBoolean.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiOptimizationOptions) = (
-            FfiConverterTypeFfiOptimizationPreset.allocationSize(value.`preset`) +
-            FfiConverterBoolean.allocationSize(value.`doLinearize`)
+            FfiConverterTypeFfiOptimizationPreset.allocationSize(value.`preset`)
     )
 
     override fun write(value: FfiOptimizationOptions, buf: ByteBuffer) {
             FfiConverterTypeFfiOptimizationPreset.write(value.`preset`, buf)
-            FfiConverterBoolean.write(value.`doLinearize`, buf)
     }
 }
 
@@ -4467,16 +4467,19 @@ public object FfiConverterTypeFfiPdfSignatureInfo: FfiConverterRustBuffer<FfiPdf
 
 
 /**
- * Compliance preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
+ * Restricted structural preflight report for PDF/X (ISO 15930) verification (`ROADMAP.md` M3.5).
  */
 data class FfiPdfxPreflightReport (
     var `isValid`: kotlin.Boolean, 
+    var `isRestrictedPreflight`: kotlin.Boolean, 
+    var `disclaimer`: kotlin.String, 
     var `version`: kotlin.String, 
     var `hasOutputIntent`: kotlin.Boolean, 
     var `outputIntentProfile`: kotlin.String, 
     var `hasTrappedKey`: kotlin.Boolean, 
     var `hasBleedOrTrimBox`: kotlin.Boolean, 
     var `isEncrypted`: kotlin.Boolean, 
+    var `unembeddedFonts`: List<kotlin.String>, 
     var `issues`: List<kotlin.String>
 ) {
     
@@ -4490,6 +4493,8 @@ public object FfiConverterTypeFfiPdfxPreflightReport: FfiConverterRustBuffer<Ffi
     override fun read(buf: ByteBuffer): FfiPdfxPreflightReport {
         return FfiPdfxPreflightReport(
             FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterString.read(buf),
@@ -4497,28 +4502,35 @@ public object FfiConverterTypeFfiPdfxPreflightReport: FfiConverterRustBuffer<Ffi
             FfiConverterBoolean.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiPdfxPreflightReport) = (
             FfiConverterBoolean.allocationSize(value.`isValid`) +
+            FfiConverterBoolean.allocationSize(value.`isRestrictedPreflight`) +
+            FfiConverterString.allocationSize(value.`disclaimer`) +
             FfiConverterString.allocationSize(value.`version`) +
             FfiConverterBoolean.allocationSize(value.`hasOutputIntent`) +
             FfiConverterString.allocationSize(value.`outputIntentProfile`) +
             FfiConverterBoolean.allocationSize(value.`hasTrappedKey`) +
             FfiConverterBoolean.allocationSize(value.`hasBleedOrTrimBox`) +
             FfiConverterBoolean.allocationSize(value.`isEncrypted`) +
+            FfiConverterSequenceString.allocationSize(value.`unembeddedFonts`) +
             FfiConverterSequenceString.allocationSize(value.`issues`)
     )
 
     override fun write(value: FfiPdfxPreflightReport, buf: ByteBuffer) {
             FfiConverterBoolean.write(value.`isValid`, buf)
+            FfiConverterBoolean.write(value.`isRestrictedPreflight`, buf)
+            FfiConverterString.write(value.`disclaimer`, buf)
             FfiConverterString.write(value.`version`, buf)
             FfiConverterBoolean.write(value.`hasOutputIntent`, buf)
             FfiConverterString.write(value.`outputIntentProfile`, buf)
             FfiConverterBoolean.write(value.`hasTrappedKey`, buf)
             FfiConverterBoolean.write(value.`hasBleedOrTrimBox`, buf)
             FfiConverterBoolean.write(value.`isEncrypted`, buf)
+            FfiConverterSequenceString.write(value.`unembeddedFonts`, buf)
             FfiConverterSequenceString.write(value.`issues`, buf)
     }
 }

@@ -485,8 +485,10 @@ pub struct TransactionRecord {
 
 impl TransactionRecord {
     pub fn compute_checksum(&self) -> String {
+        let cmd_json = serde_json::to_string(&self.forward_command).unwrap_or_default();
+        let inv_json = serde_json::to_string(&self.inverse_command).unwrap_or_default();
         let payload = format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}",
+            "{}|{}|{}|{}|{}|{}|{}|{}|cmd={}|inv={}",
             self.transaction_id,
             self.sequence_number,
             self.revision_before,
@@ -494,7 +496,9 @@ impl TransactionRecord {
             self.timestamp_unix_ms,
             self.description,
             self.before_pdf_sha256,
-            self.after_pdf_sha256
+            self.after_pdf_sha256,
+            cmd_json,
+            inv_json
         );
         sha256_hex(payload.as_bytes())
     }
@@ -728,6 +732,7 @@ impl TransactionManager {
                     // can deterministically reconstruct mutations. Live inverse commands with real restoration bytes
                     // are rehydrated in-memory during recovery replay.
                     sanitize_command(&mut sanitized.inverse_command);
+                    sanitized.record_checksum_sha256 = sanitized.compute_checksum();
                     sanitized
                 })
                 .collect()

@@ -99,7 +99,6 @@ fn test_m3_5_lossless_optimization_and_undo_redo() {
 
     let options = FfiOptimizationOptions {
         preset: FfiOptimizationPreset::Lossless,
-        do_linearize: false,
     };
     let workbench_options = FfiPageWorkbenchOptions {
         allow_signature_invalidation: false,
@@ -132,7 +131,6 @@ fn test_m3_5_balanced_and_maximum_optimization_presets() {
     // Test Balanced preset
     let balanced_opts = FfiOptimizationOptions {
         preset: FfiOptimizationPreset::Balanced,
-        do_linearize: false,
     };
     let wb_opts = FfiPageWorkbenchOptions {
         allow_signature_invalidation: false,
@@ -146,14 +144,13 @@ fn test_m3_5_balanced_and_maximum_optimization_presets() {
         rec_balanced.revision_before + 1
     );
 
-    // Test Maximum preset with Fast Web View linearization
+    // Test Maximum preset
     let max_opts = FfiOptimizationOptions {
         preset: FfiOptimizationPreset::Maximum,
-        do_linearize: true,
     };
     let rec_max =
         document_core_optimize_document_with_options(session_id.clone(), max_opts, wb_opts)
-            .expect("optimize maximum linearized");
+            .expect("optimize maximum");
     assert_eq!(rec_max.revision_after, rec_balanced.revision_after + 1);
 
     let _ = document_core_close_session(session_id);
@@ -175,12 +172,16 @@ fn test_m3_5_image_discovery_and_png_extraction() {
     assert_eq!(img.bits, 8);
     assert_eq!(img.colorspace, "DeviceGray");
 
-    // 2. Extract image bytes as PNG
+    // 2. Extract image bytes as PNG (uncompressed raster is converted to PNG)
     let extracted =
         document_core_extract_image_bytes(session_id.clone(), 0, 0).expect("extract png bytes");
     assert_eq!(extracted.width, 120);
     assert_eq!(extracted.height, 80);
     assert_eq!(extracted.format, "png");
+    assert!(
+        !extracted.is_raw_stream,
+        "Uncompressed raster must indicate converted PNG"
+    );
     assert!(extracted.data.len() > 8);
 
     // Verify PNG signature (\x89PNG\r\n\x1a\n)
@@ -190,6 +191,68 @@ fn test_m3_5_image_discovery_and_png_extraction() {
         png_magic,
         "Extracted bytes must begin with genuine PNG header"
     );
+
+    let _ = document_core_close_session(session_id);
+}
+
+/// Helper that creates a valid PDF carrying an embedded raw DCTDecode (JPEG) image (`M3.5`).
+fn build_pdf_with_dct_image() -> Vec<u8> {
+    // Minimal valid 1x1 JFIF JPEG
+    let jpeg_bytes: Vec<u8> = vec![
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0x01, 0x01, 0x00, 0x00,
+        0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0xFF, 0xC0, 0x00,
+        0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x1F, 0x00,
+        0x00, 0x01, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0xFF, 0xDA,
+        0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0x7F, 0xFF, 0xD9,
+    ];
+
+    let content = "q 100 0 0 100 0 0 cm /Im1 Do Q\n";
+    let objects: Vec<Vec<u8>> = vec![
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_vec(),
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_vec(),
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_vec(),
+        {
+            let mut obj = format!(
+                "4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n",
+                jpeg_bytes.len()
+            ).into_bytes();
+            obj.extend_from_slice(&jpeg_bytes);
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+        {
+            let mut obj = format!("5 0 obj\n<< /Length {} >>\nstream\n", content.len()).into_bytes();
+            obj.extend_from_slice(content.as_bytes());
+            obj.extend_from_slice(b"\nendstream\nendobj\n");
+            obj
+        },
+    ];
+
+    assemble_pdf(&objects)
+}
+
+#[test]
+fn test_m3_5_lossless_raw_jpeg_stream_extraction() {
+    let pdf_bytes = build_pdf_with_dct_image();
+    let session_id = open_session_with_bytes(pdf_bytes, "raw_jpeg_extract");
+
+    let images = document_core_get_document_images(session_id.clone()).expect("discover images");
+    assert_eq!(images.len(), 1);
+    assert_eq!(images[0].format, "jpeg");
+
+    let extracted =
+        document_core_extract_image_bytes(session_id.clone(), 0, 0).expect("extract jpeg bytes");
+    assert_eq!(extracted.format, "jpeg");
+    assert!(
+        extracted.is_raw_stream,
+        "Must extract untouched original stream"
+    );
+    assert!(extracted.data.len() > 2);
+    // Verify JPEG SOI magic bytes [0xFF, 0xD8, 0xFF]
+    assert_eq!(&extracted.data[0..3], &[0xFF, 0xD8, 0xFF]);
 
     let _ = document_core_close_session(session_id);
 }
@@ -252,6 +315,14 @@ fn test_m3_5_pdfx_preflight_audit() {
     let report = document_core_preflight_pdfx(session_id.clone()).expect("preflight pdfx");
     // Standard test PDF does not have OutputIntent or GTS_PDFXVersion
     assert!(!report.is_valid || report.issues.is_empty() == report.is_valid);
+    assert!(
+        report.is_restricted_preflight,
+        "Report must be labeled as restricted preflight"
+    );
+    assert!(
+        !report.disclaimer.is_empty(),
+        "Report must include legal preflight disclaimer"
+    );
     assert!(!report.is_encrypted);
 
     let _ = document_core_close_session(session_id);
@@ -264,7 +335,6 @@ fn test_m3_5_digital_signature_protection_fail_closed() {
 
     let options = FfiOptimizationOptions {
         preset: FfiOptimizationPreset::Lossless,
-        do_linearize: false,
     };
     let wb_options_refuse = FfiPageWorkbenchOptions {
         allow_signature_invalidation: false,
@@ -292,4 +362,53 @@ fn test_m3_5_digital_signature_protection_fail_closed() {
     assert_eq!(record.revision_after, record.revision_before + 1);
 
     let _ = document_core_close_session(session_id);
+}
+
+#[test]
+fn test_m3_5_transaction_journal_tamper_evident_protection() {
+    use vocument_core::transactions::PersistentTransactionJournal;
+    use vocument_ffi::mutation_dto::{
+        document_core_export_transaction_journal_json,
+        document_core_restore_transaction_journal_json,
+    };
+
+    let session_id = open_session_with_bytes(TWO_PAGE_PDF.to_vec(), "journal_tamper_test");
+    let options = FfiOptimizationOptions {
+        preset: FfiOptimizationPreset::Lossless,
+    };
+    let wb_opts = FfiPageWorkbenchOptions {
+        allow_signature_invalidation: false,
+    };
+
+    let _ = document_core_optimize_document_with_options(session_id.clone(), options, wb_opts)
+        .expect("optimize doc");
+
+    let json = document_core_export_transaction_journal_json(session_id.clone())
+        .expect("export journal json");
+
+    let verified = PersistentTransactionJournal::from_json_verified(&json);
+    assert!(verified.is_ok(), "Authentic journal must pass verification");
+
+    // Tamper with transaction forward command in JSON (e.g. change preset name or inject altered parameter)
+    let tampered_json = json.replace("\"preset\": \"Lossless\"", "\"preset\": \"Maximum\"");
+    assert_ne!(tampered_json, json, "JSON must contain the replaced preset");
+
+    let tampered_res = PersistentTransactionJournal::from_json_verified(&tampered_json);
+    assert!(
+        tampered_res.is_err(),
+        "Tampered forward command must fail checksum verification"
+    );
+
+    // Replay tampered journal onto a freshly opened session must be rejected with IntegrityMismatch
+    let fresh_session_id =
+        open_session_with_bytes(TWO_PAGE_PDF.to_vec(), "journal_tamper_replay_test");
+    let replay_res =
+        document_core_restore_transaction_journal_json(fresh_session_id.clone(), tampered_json);
+    assert!(
+        replay_res.is_err(),
+        "Restoring tampered journal must fail closed"
+    );
+
+    let _ = document_core_close_session(session_id);
+    let _ = document_core_close_session(fresh_session_id);
 }

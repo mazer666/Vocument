@@ -278,7 +278,7 @@ fun DocumentCoreBridge.applyStampOrWatermark(
 }
 
 /**
- * Optimizes document streams, removes duplicates, and optionally linearizes for Fast Web View (`M3.5`).
+ * Optimizes document streams, compacts xref into object streams, and removes duplicates (`M3.5`).
  */
 fun DocumentCoreBridge.optimizeDocument(
     sessionId: String,
@@ -299,7 +299,7 @@ fun DocumentCoreBridge.getDocumentImages(
 }
 
 /**
- * Extracts raw PNG image bytes from a page (`M3.5`).
+ * Extracts raw lossless stream bytes (JPEG/JP2) or rendered PNG bytes from a page (`M3.5`).
  */
 fun DocumentCoreBridge.extractImageBytes(
     sessionId: String,
@@ -310,7 +310,7 @@ fun DocumentCoreBridge.extractImageBytes(
 }
 
 /**
- * Validates document against ISO 15930 PDF/X preflight rules (`M3.5`).
+ * Performs restricted structural preflight against ISO 15930 PDF/X rules (`M3.5`).
  */
 fun DocumentCoreBridge.preflightPdfx(
     sessionId: String
