@@ -1,6 +1,8 @@
 //! UniFFI DTOs and exported functions for Page Workbench operations (`ROADMAP.md` M3).
 
+use crate::navigation_search_dto::FfiPdfRectMilliPt;
 use crate::{DocumentCoreError, mutation_dto::FfiTransactionRecord, session_registry};
+use vocument_core::page_geometry::{PageBoxUpdate, PdfPageBoxes};
 
 /// Execution options for Page Workbench operations (`M3`, `ADR-0019`).
 #[derive(uniffi::Record, Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -14,6 +16,52 @@ impl From<FfiPageWorkbenchOptions> for vocument_core::workbench::PageWorkbenchOp
     fn from(ffi: FfiPageWorkbenchOptions) -> Self {
         Self {
             allow_signature_invalidation: ffi.allow_signature_invalidation,
+        }
+    }
+}
+
+/// The 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+#[derive(uniffi::Record, Clone, Debug, PartialEq, Eq)]
+pub struct FfiPdfPageBoxes {
+    pub media_box: FfiPdfRectMilliPt,
+    pub crop_box: FfiPdfRectMilliPt,
+    pub bleed_box: FfiPdfRectMilliPt,
+    pub trim_box: FfiPdfRectMilliPt,
+    pub art_box: FfiPdfRectMilliPt,
+    pub rotation_degrees: i32,
+}
+
+impl From<PdfPageBoxes> for FfiPdfPageBoxes {
+    fn from(b: PdfPageBoxes) -> Self {
+        Self {
+            media_box: b.media_box.into(),
+            crop_box: b.crop_box.into(),
+            bleed_box: b.bleed_box.into(),
+            trim_box: b.trim_box.into(),
+            art_box: b.art_box.into(),
+            rotation_degrees: b.rotation_degrees,
+        }
+    }
+}
+
+/// Partial or complete update of page boundary boxes (`CROP-002`).
+#[derive(uniffi::Record, Clone, Debug, PartialEq, Eq, Default)]
+pub struct FfiPageBoxUpdate {
+    pub media_box: Option<FfiPdfRectMilliPt>,
+    pub crop_box: Option<FfiPdfRectMilliPt>,
+    pub bleed_box: Option<FfiPdfRectMilliPt>,
+    pub trim_box: Option<FfiPdfRectMilliPt>,
+    pub art_box: Option<FfiPdfRectMilliPt>,
+}
+
+impl From<FfiPageBoxUpdate> for PageBoxUpdate {
+    fn from(u: FfiPageBoxUpdate) -> Self {
+        Self {
+            media_box: u.media_box.map(Into::into),
+            crop_box: u.crop_box.map(Into::into),
+            bleed_box: u.bleed_box.map(Into::into),
+            trim_box: u.trim_box.map(Into::into),
+            art_box: u.art_box.map(Into::into),
         }
     }
 }
@@ -204,4 +252,128 @@ pub fn document_core_split_document(
     let registry = session_registry();
     let split_docs = registry.split_document(&session_id, split_ranges)?;
     Ok(split_docs)
+}
+
+/// Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+#[uniffi::export]
+pub fn document_core_get_page_boxes(
+    session_id: String,
+    page_index: u32,
+) -> Result<FfiPdfPageBoxes, DocumentCoreError> {
+    let registry = session_registry();
+    let boxes = registry.get_page_boxes(&session_id, page_index)?;
+    Ok(boxes.into())
+}
+
+/// Sets or updates page boundary boxes with explicit preflight options (`CROP-002`).
+#[uniffi::export]
+pub fn document_core_set_page_boxes_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    boxes: FfiPageBoxUpdate,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.set_page_boxes_with_options(
+        &session_id,
+        page_indices,
+        boxes.into(),
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Applies a destructive hard crop to selected pages (`CROP-001`).
+#[uniffi::export]
+pub fn document_core_apply_hard_crop_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    crop_rect: FfiPdfRectMilliPt,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.apply_hard_crop_with_options(
+        &session_id,
+        page_indices,
+        crop_rect.into(),
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
+#[uniffi::export]
+pub fn document_core_apply_display_crop_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    crop_rect: FfiPdfRectMilliPt,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.apply_display_crop_with_options(
+        &session_id,
+        page_indices,
+        crop_rect.into(),
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+#[uniffi::export]
+pub fn document_core_detect_deskew_angle(
+    session_id: String,
+    page_index: u32,
+) -> Result<f32, DocumentCoreError> {
+    let registry = session_registry();
+    let angle = registry.detect_deskew_angle(&session_id, page_index)?;
+    Ok(angle)
+}
+
+/// Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+#[uniffi::export]
+pub fn document_core_deskew_pages_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    angle_milli_degrees: i32,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.deskew_pages_with_options(
+        &session_id,
+        page_indices,
+        angle_milli_degrees,
+        options.into(),
+    )?;
+    Ok(record.into())
+}
+
+/// Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+#[uniffi::export]
+pub fn document_core_detect_content_margins(
+    session_id: String,
+    page_index: u32,
+    safety_margin_milli_pt: i32,
+) -> Result<FfiPdfRectMilliPt, DocumentCoreError> {
+    let registry = session_registry();
+    let rect = registry.detect_content_margins(&session_id, page_index, safety_margin_milli_pt)?;
+    Ok(rect.into())
+}
+
+/// Automatically crops pages by detecting content margins and setting CropBox (`CROP-003`).
+#[uniffi::export]
+pub fn document_core_auto_crop_pages_with_options(
+    session_id: String,
+    page_indices: Vec<u32>,
+    safety_margin_milli_pt: i32,
+    options: FfiPageWorkbenchOptions,
+) -> Result<FfiTransactionRecord, DocumentCoreError> {
+    let registry = session_registry();
+    let record = registry.auto_crop_pages_with_options(
+        &session_id,
+        page_indices,
+        safety_margin_milli_pt,
+        options.into(),
+    )?;
+    Ok(record.into())
 }

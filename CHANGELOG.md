@@ -23,6 +23,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   job went on. It is checked now.
 
 ### Added
+- **Full technical acceptance of Milestone M3.3 (Page Geometry, Crop & Deskew)**:
+  Implemented millimeter-accurate calibration of all 5 standard ISO 32000-1 page
+  boundary boxes (`MediaBox`, `CropBox`, `BleedBox`, `TrimBox`, `ArtBox`).
+  Delivered non-destructive display cropping (`/CropBox`) vs. destructive hard cropping
+  (content stream clipping path injection `q x y w h re W n ... Q`, clamping bounds,
+  and out-of-bounds annotation pruning). Built automatic deskew angle detection via
+  projection variance optimization across $[-15^\circ, +15^\circ]$ with safe blank-page fallback,
+  and fine vector rotation via transformation matrix `cm`. Implemented scan margin auto-crop
+  with configurable safety margin. Enforced digital signature fail-closed preflights and
+  reversible Undo/Redo transactions in `TransactionManager`. Added native macOS SwiftUI
+  controls (`CropSheetView.swift`, `PageWorkbenchView.swift`, `WorkbenchWorkflow.swift`),
+  handshake verification in `main.swift`, and Android bridge extension
+  `DocumentCoreBridgeWorkbench.kt`. Documented in `docs/acceptance/M3.3-ACCEPTANCE.md`.
 - **Consolidated M3–M7 Master Development Plan & Architectural Baseline**:
   Submitted `CR-0005` with Decision Paper (`docs/decisions/DECISION-CR-0005-SCOPE-REALIGNMENT.md`) for Project Owner clearance (rescheduling document comparison to Track M3.7 and relocating rubber stamps to M3.4). Defined `ADR-0018` for `SAN-001` sanitization native capabilities and explicit limitations, `ADR-0019` for M3 Page Workbench invariants (mandating M3.0 structural stability gate to preserve catalog structures and fail closed on signed documents), and `ADR-0020` for M4 FlowDocument deterministic cross-platform layout and `.pdoc` specification. Established detailed sub-milestones M3.0–M3.7 and M4.0–M4.5 with verifiable entry/exit gates in `docs/project/M3-M7-DEVELOPMENT-PLAN.md`. Corrected Windows and Linux UI toolkit references in `CR-0003` to dedicated future ADRs.
 - **Full technical acceptance of Milestone M2 (macOS Professional Review)**:

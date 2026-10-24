@@ -241,5 +241,120 @@ pub fn apply_command_on_actor(
             };
             Ok((forward, inverse, updated_bytes))
         }
+        TransactionCommand::SetPageBoxes {
+            page_indices,
+            boxes,
+            previous_boxes,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let mut captured_prev = previous_boxes;
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                if captured_prev.is_empty() {
+                    for &idx in &page_indices {
+                        captured_prev.push((idx, doc.get_page_boxes(idx)?));
+                    }
+                }
+                doc.set_page_boxes_ext(&page_indices, &boxes, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::SetPageBoxes {
+                page_indices,
+                boxes,
+                previous_boxes: captured_prev,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::ApplyHardCrop {
+            page_indices,
+            crop_rect,
+            previous_bytes,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let before_bytes = if previous_bytes.is_empty() {
+                actor.current_pdf_bytes()?
+            } else {
+                previous_bytes
+            };
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.apply_hard_crop_ext(&page_indices, crop_rect, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::ApplyHardCrop {
+                page_indices,
+                crop_rect,
+                previous_bytes: before_bytes.clone(),
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::DeskewPages {
+            page_indices,
+            angle_milli_degrees,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let before_bytes = actor.current_pdf_bytes()?;
+            let angle_deg = angle_milli_degrees as f32 / 1000.0;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                doc.apply_deskew_ext(&page_indices, angle_deg, allow_signature_invalidation)
+            })?;
+            let forward = TransactionCommand::DeskewPages {
+                page_indices,
+                angle_milli_degrees,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
+        TransactionCommand::AutoCropPages {
+            page_indices,
+            safety_margin_milli_pt,
+            previous_boxes,
+            allow_signature_invalidation,
+        } => {
+            if page_indices.is_empty() {
+                return Err(TransactionError::EmptyPageSelection);
+            }
+            let mut captured_prev = previous_boxes;
+            let before_bytes = actor.current_pdf_bytes()?;
+            let updated_bytes = actor.apply_engine_mutation_for_transaction_manager(|doc| {
+                if captured_prev.is_empty() {
+                    for &idx in &page_indices {
+                        captured_prev.push((idx, doc.get_page_boxes(idx)?));
+                    }
+                }
+                doc.apply_auto_crop_ext(
+                    &page_indices,
+                    safety_margin_milli_pt,
+                    allow_signature_invalidation,
+                )
+            })?;
+            let forward = TransactionCommand::AutoCropPages {
+                page_indices,
+                safety_margin_milli_pt,
+                previous_boxes: captured_prev,
+                allow_signature_invalidation,
+            };
+            let inverse = TransactionCommand::RestorePages {
+                previous_bytes: before_bytes,
+            };
+            Ok((forward, inverse, updated_bytes))
+        }
     }
 }

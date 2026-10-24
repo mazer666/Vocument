@@ -2,7 +2,9 @@
 //!
 //! Gate (`ROADMAP.md` M0.4): **Mutation never bypasses `TransactionManager`.**
 
-use crate::pdf_engine::{PdfHighlightAnnotation, PdfRectMilliPt, PdfSanitizeOptions};
+use crate::pdf_engine::{
+    PageBoxUpdate, PdfHighlightAnnotation, PdfPageBoxes, PdfRectMilliPt, PdfSanitizeOptions,
+};
 use crate::session::{SessionError, SessionRegistry};
 use crate::transactions::{
     PersistentTransactionJournal, TransactionCommand, TransactionError, TransactionHistorySnapshot,
@@ -640,6 +642,215 @@ impl SessionRegistry {
         let actor = session.actor();
         let split_docs = actor.split_document(&split_ranges)?;
         Ok(split_docs)
+    }
+
+    /// Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+    pub fn get_page_boxes(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<PdfPageBoxes, SessionError> {
+        let actor = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            session.actor()
+        };
+        Ok(actor.get_page_boxes(page_index)?)
+    }
+
+    /// Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+    pub fn detect_deskew_angle(
+        &self,
+        session_id: &str,
+        page_index: u32,
+    ) -> Result<f32, SessionError> {
+        let actor = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            session.actor()
+        };
+        Ok(actor.detect_deskew_angle(page_index)?)
+    }
+
+    /// Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+    pub fn detect_content_margins(
+        &self,
+        session_id: &str,
+        page_index: u32,
+        safety_margin_milli_pt: i32,
+    ) -> Result<PdfRectMilliPt, SessionError> {
+        let actor = {
+            let guard = self
+                .sessions
+                .lock()
+                .map_err(|_| SessionError::RegistryPoisoned)?;
+            let session = guard
+                .get(session_id)
+                .ok_or_else(|| SessionError::SessionNotFound {
+                    session_id: session_id.to_owned(),
+                })?;
+            session.actor()
+        };
+        Ok(actor.detect_content_margins(page_index, safety_margin_milli_pt)?)
+    }
+
+    /// Sets or updates page boundary boxes with explicit preflight options (`CROP-002`).
+    pub fn set_page_boxes_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        boxes: PageBoxUpdate,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        if page_indices.is_empty() {
+            return Err(TransactionError::EmptyPageSelection.into());
+        }
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::SetPageBoxes {
+                page_indices,
+                boxes,
+                previous_boxes: Vec::new(),
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
+    }
+
+    /// Applies a destructive hard crop to selected pages (`CROP-001`).
+    pub fn apply_hard_crop_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        crop_rect: PdfRectMilliPt,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        if page_indices.is_empty() {
+            return Err(TransactionError::EmptyPageSelection.into());
+        }
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::ApplyHardCrop {
+                page_indices,
+                crop_rect,
+                previous_bytes: Vec::new(),
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
+    }
+
+    /// Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
+    pub fn apply_display_crop_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        crop_rect: PdfRectMilliPt,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        self.set_page_boxes_with_options(
+            session_id,
+            page_indices,
+            PageBoxUpdate {
+                media_box: None,
+                crop_box: Some(crop_rect),
+                bleed_box: None,
+                trim_box: None,
+                art_box: None,
+            },
+            options,
+        )
+    }
+
+    /// Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+    pub fn deskew_pages_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        angle_milli_degrees: i32,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        if page_indices.is_empty() {
+            return Err(TransactionError::EmptyPageSelection.into());
+        }
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::DeskewPages {
+                page_indices,
+                angle_milli_degrees,
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
+    }
+
+    /// Automatically crops pages by detecting content margins and setting CropBox (`CROP-003`).
+    pub fn auto_crop_pages_with_options(
+        &self,
+        session_id: &str,
+        page_indices: Vec<u32>,
+        safety_margin_milli_pt: i32,
+        options: crate::workbench::PageWorkbenchOptions,
+    ) -> Result<TransactionRecord, SessionError> {
+        if page_indices.is_empty() {
+            return Err(TransactionError::EmptyPageSelection.into());
+        }
+        let preflight = self.workbench_preflight(session_id)?;
+        if preflight.is_signed && !options.allow_signature_invalidation {
+            return Err(
+                crate::workbench::WorkbenchError::OperationBlockedBySignature {
+                    signature_count: preflight.signature_count,
+                }
+                .into(),
+            );
+        }
+        self.execute_transaction(
+            session_id,
+            TransactionCommand::AutoCropPages {
+                page_indices,
+                safety_margin_milli_pt,
+                previous_boxes: Vec::new(),
+                allow_signature_invalidation: options.allow_signature_invalidation,
+            },
+        )
     }
 }
 

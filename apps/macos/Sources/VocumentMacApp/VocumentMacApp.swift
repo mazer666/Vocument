@@ -113,6 +113,7 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var workbenchPreflightReport: FfiPageWorkbenchPreflightReport?
     @Published var showSignatureConfirmation: Bool = false
     @Published var showDeleteConfirmation: Bool = false
+    @Published var showCropSheet: Bool = false
     @Published var workbenchNotificationMessage: String?
     @Published var isWorkbenchProcessing: Bool = false
     @Published var workbenchProcessingStatus: String?

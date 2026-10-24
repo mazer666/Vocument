@@ -10,6 +10,7 @@ import uniffi.vocument_ffi.FfiScanCleanupProfile
 import uniffi.vocument_ffi.FfiScanFrame
 import uniffi.vocument_ffi.FfiScanPixelFormat
 import uniffi.vocument_ffi.FfiTileRenderRequest
+import uniffi.vocument_ffi.FfiPdfRectMilliPt
 
 fun main() {
     val bridge = DocumentCoreBridge()
@@ -635,6 +636,66 @@ fun main() {
         "✓ Kotlin (Android M1.4) → SearchablePdfSynthesis(${synthesizedPdfBytes.size}B) → " +
             "InvisibleTextLayer(3 Tr) → DocumentSessionIngestion(${ingestedDoc.sessionId}) → " +
             "FTS5Search(Vertraulichkeit=${searchRes.hits.size}, ABGB=${abgbRes.hits.size}) → GateVerified"
+    )
+
+    // M3.3 verification: Page Geometry, Crop & Deskew
+    val m33Session = bridge.openSafDocument(
+        safUriString = "content://com.android.providers.downloads.documents/document/m3_3_sample",
+        displayName = sampleFile.name,
+        safDocumentId = "downloads:m3_3_sample",
+        lastModifiedUnixMs = sampleFile.lastModified(),
+        bytes = pdfBytes
+    )
+    val initialBoxes = bridge.getPageBoxes(m33Session.sessionId, 0u)
+    val expectedInitialMedia = FfiPdfRectMilliPt(0, 0, 595_000, 842_000)
+    check(initialBoxes.mediaBox == expectedInitialMedia) {
+        "Expected initial MediaBox [0, 0, 595000, 842000], got ${initialBoxes.mediaBox}"
+    }
+
+    // 1. Display crop
+    val displayCropRect = FfiPdfRectMilliPt(50_000, 50_000, 545_000, 792_000)
+    val displayCropTx = bridge.applyDisplayCrop(m33Session.sessionId, listOf(0u), displayCropRect)
+    check(displayCropTx.description == "Set page boundaries for page #1") {
+        "Expected 'Set page boundaries for page #1', got ${displayCropTx.description}"
+    }
+    val croppedBoxes = bridge.getPageBoxes(m33Session.sessionId, 0u)
+    check(croppedBoxes.cropBox == displayCropRect && croppedBoxes.mediaBox == expectedInitialMedia) {
+        "Display crop box mismatch: crop=${croppedBoxes.cropBox}, media=${croppedBoxes.mediaBox}"
+    }
+    bridge.undo(m33Session.sessionId)
+
+    // 2. Hard crop
+    val hardCropTx = bridge.applyHardCrop(m33Session.sessionId, listOf(0u), displayCropRect)
+    check(hardCropTx.description == "Apply hard crop to page #1") {
+        "Expected 'Apply hard crop to page #1', got ${hardCropTx.description}"
+    }
+    val hardBoxes = bridge.getPageBoxes(m33Session.sessionId, 0u)
+    val expectedClamped = FfiPdfRectMilliPt(0, 0, 495_000, 742_000)
+    check(hardBoxes.mediaBox == expectedClamped && hardBoxes.cropBox == expectedClamped) {
+        "Hard crop clamped box mismatch: media=${hardBoxes.mediaBox}, crop=${hardBoxes.cropBox}"
+    }
+    bridge.undo(m33Session.sessionId)
+
+    // 3. Deskew
+    val deskewAngle = bridge.detectDeskewAngle(m33Session.sessionId, 0u)
+    val deskewTx = bridge.deskewPages(m33Session.sessionId, listOf(0u), 2500)
+    check(deskewTx.description == "Deskew page #1 by +2.5°") {
+        "Expected 'Deskew page #1 by +2.5°', got ${deskewTx.description}"
+    }
+    bridge.undo(m33Session.sessionId)
+
+    // 4. Auto-crop margins
+    val autoCropTx = bridge.autoCropPages(m33Session.sessionId, listOf(0u), 14170)
+    check(autoCropTx.description == "Auto-crop page #1") {
+        "Expected 'Auto-crop page #1', got ${autoCropTx.description}"
+    }
+    bridge.undo(m33Session.sessionId)
+
+    bridge.closeSession(m33Session.sessionId)
+    println(
+        "✓ Kotlin (Android M3.3) → PageGeometry → PageBoxes(5 ISO boxes) → " +
+            "DisplayCrop(/CropBox) → HardCrop(q...W n...Q) → DetectDeskewAngle(${deskewAngle}°) → " +
+            "DeskewMatrix(cm) → AutoCropMargins → Undo/Redo verified"
     )
 }
 

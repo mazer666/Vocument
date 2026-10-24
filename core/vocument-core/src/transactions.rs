@@ -5,8 +5,8 @@
 
 use crate::identity::{DocumentId, compute_sha256_hex as sha256_hex};
 use crate::pdf_engine::{
-    PdfCommentAnnotation, PdfEngineError, PdfHighlightAnnotation, PdfRectMilliPt,
-    PdfSanitizeOptions,
+    PageBoxUpdate, PdfCommentAnnotation, PdfEngineError, PdfHighlightAnnotation, PdfPageBoxes,
+    PdfRectMilliPt, PdfSanitizeOptions,
 };
 use crate::render::{DocumentActor, RenderPipelineError};
 use serde::{Deserialize, Serialize};
@@ -122,6 +122,40 @@ pub enum TransactionCommand {
         #[serde(default)]
         allow_signature_invalidation: bool,
     },
+    /// Sets or updates page boundary boxes (MediaBox, CropBox, BleedBox, TrimBox, ArtBox) (`CROP-002`).
+    SetPageBoxes {
+        page_indices: Vec<u32>,
+        boxes: PageBoxUpdate,
+        #[serde(default)]
+        previous_boxes: Vec<(u32, PdfPageBoxes)>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Applies a destructive hard crop with clipping path injection (`CROP-001`).
+    ApplyHardCrop {
+        page_indices: Vec<u32>,
+        crop_rect: PdfRectMilliPt,
+        #[serde(default)]
+        previous_bytes: Vec<u8>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+    DeskewPages {
+        page_indices: Vec<u32>,
+        angle_milli_degrees: i32,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
+    /// Automatically detects content margins and applies a non-destructive crop (`CROP-003`).
+    AutoCropPages {
+        page_indices: Vec<u32>,
+        safety_margin_milli_pt: i32,
+        #[serde(default)]
+        previous_boxes: Vec<(u32, PdfPageBoxes)>,
+        #[serde(default)]
+        allow_signature_invalidation: bool,
+    },
     /// The inverse of a command that cannot be undone (`REDACT-001`, `SAN-001`).
     Irreversible { description: String },
 }
@@ -200,6 +234,45 @@ impl TransactionCommand {
             Self::MergeDocuments { source_pdfs, .. } => {
                 format!("Merge {} document(s)", source_pdfs.len())
             }
+            Self::SetPageBoxes { page_indices, .. } => {
+                if page_indices.len() == 1 {
+                    format!("Set page boundaries for page #{}", page_indices[0] + 1)
+                } else {
+                    format!("Set page boundaries for {} pages", page_indices.len())
+                }
+            }
+            Self::ApplyHardCrop { page_indices, .. } => {
+                if page_indices.len() == 1 {
+                    format!("Apply hard crop to page #{}", page_indices[0] + 1)
+                } else {
+                    format!("Apply hard crop to {} pages", page_indices.len())
+                }
+            }
+            Self::DeskewPages {
+                page_indices,
+                angle_milli_degrees,
+                ..
+            } => {
+                let deg = *angle_milli_degrees as f64 / 1000.0;
+                let sign = if *angle_milli_degrees >= 0 { "+" } else { "" };
+                if page_indices.len() == 1 {
+                    format!(
+                        "Deskew page #{} by {}{:.1}°",
+                        page_indices[0] + 1,
+                        sign,
+                        deg
+                    )
+                } else {
+                    format!("Deskew {} pages by {}{:.1}°", page_indices.len(), sign, deg)
+                }
+            }
+            Self::AutoCropPages { page_indices, .. } => {
+                if page_indices.len() == 1 {
+                    format!("Auto-crop page #{}", page_indices[0] + 1)
+                } else {
+                    format!("Auto-crop {} pages", page_indices.len())
+                }
+            }
             Self::Irreversible { description } => description.clone(),
         }
     }
@@ -233,6 +306,10 @@ impl TransactionCommand {
                 ..
             } => (*insert_at..(*insert_at + source_page_indices.len() as u32)).collect(),
             Self::MergeDocuments { .. } => Vec::new(),
+            Self::SetPageBoxes { page_indices, .. } => page_indices.clone(),
+            Self::ApplyHardCrop { page_indices, .. } => page_indices.clone(),
+            Self::DeskewPages { page_indices, .. } => page_indices.clone(),
+            Self::AutoCropPages { page_indices, .. } => page_indices.clone(),
             Self::Irreversible { .. } => Vec::new(),
         }
     }
@@ -274,6 +351,22 @@ impl TransactionCommand {
                 vec![format!("document:insert_pages_at:{insert_at}")]
             }
             Self::MergeDocuments { .. } => vec!["document:merge".to_owned()],
+            Self::SetPageBoxes { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("page_boxes:{idx}"))
+                .collect(),
+            Self::ApplyHardCrop { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("page_crop:{idx}"))
+                .collect(),
+            Self::DeskewPages { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("page_deskew:{idx}"))
+                .collect(),
+            Self::AutoCropPages { page_indices, .. } => page_indices
+                .iter()
+                .map(|idx| format!("page_autocrop:{idx}"))
+                .collect(),
             Self::Irreversible { .. } => Vec::new(),
         }
     }

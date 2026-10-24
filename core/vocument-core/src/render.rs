@@ -12,8 +12,8 @@ use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureI
 use crate::jobs::{JobKind, JobManager, JobPriority};
 use crate::pdf_engine::{
     PdfCommentAnnotation, PdfDocumentSummary, PdfEngineDisplayList, PdfEngineDocument,
-    PdfEngineError, PdfHighlightAnnotation, PdfPageGeometry, PdfPageStructuredText,
-    PdfTextOccurrence, PdfTileRenderRequest,
+    PdfEngineError, PdfHighlightAnnotation, PdfPageBoxes, PdfPageGeometry, PdfPageStructuredText,
+    PdfRectMilliPt, PdfTextOccurrence, PdfTileRenderRequest,
 };
 use crate::thumbnail_cache::{
     RenderedThumbnail, ThumbnailCache, ThumbnailCacheStats, ThumbnailKey,
@@ -231,6 +231,37 @@ impl DocumentActor {
             .lock()
             .map_err(|_| RenderPipelineError::ActorPoisoned)?;
         Ok(crate::workbench::audit_workbench_preflight(guard.as_ref())?)
+    }
+
+    /// Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+    pub fn get_page_boxes(&self, page_index: u32) -> Result<PdfPageBoxes, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.get_page_boxes(page_index)?)
+    }
+
+    /// Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+    pub fn detect_deskew_angle(&self, page_index: u32) -> Result<f32, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.detect_deskew_angle(page_index)?)
+    }
+
+    /// Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+    pub fn detect_content_margins(
+        &self,
+        page_index: u32,
+        safety_margin_milli_pt: i32,
+    ) -> Result<PdfRectMilliPt, RenderPipelineError> {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        Ok(guard.detect_content_margins(page_index, safety_margin_milli_pt)?)
     }
 
     /// Crate-private mutation hook invoked **exclusively** by `TransactionManager` (`ROADMAP.md` M0.4 Gate:

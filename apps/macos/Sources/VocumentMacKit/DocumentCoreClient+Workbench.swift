@@ -140,4 +140,123 @@ extension DocumentCoreClient {
         )
         return resultBuffers.map { Data($0) }
     }
+
+    /// Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+    public func getPageBoxes(
+        sessionId: String,
+        pageIndex: UInt32
+    ) throws -> FfiPdfPageBoxes {
+        try documentCoreGetPageBoxes(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
+    /// Sets or updates page boundary boxes (MediaBox, CropBox, BleedBox, TrimBox, ArtBox) (`CROP-002`).
+    public func setPageBoxes(
+        sessionId: String,
+        pageIndices: [UInt32],
+        boxes: FfiPageBoxUpdate,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreSetPageBoxesWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            boxes: boxes,
+            options: options
+        )
+    }
+
+    /// Applies a destructive hard crop with clipping path injection (`CROP-001`).
+    public func applyHardCrop(
+        sessionId: String,
+        pageIndices: [UInt32],
+        cropRect: FfiPdfRectMilliPt,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreApplyHardCropWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            cropRect: cropRect,
+            options: options
+        )
+    }
+
+    /// Applies a non-destructive display crop by adjusting /CropBox in the page dictionary (`CROP-001`).
+    public func applyDisplayCrop(
+        sessionId: String,
+        pageIndices: [UInt32],
+        cropRect: FfiPdfRectMilliPt,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreApplyDisplayCropWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            cropRect: cropRect,
+            options: options
+        )
+    }
+
+    /// Detects document skew angle on `pageIndex` in degrees (`ROTATE-003`).
+    public func detectDeskewAngle(
+        sessionId: String,
+        pageIndex: UInt32
+    ) throws -> Float {
+        try documentCoreDetectDeskewAngle(sessionId: sessionId, pageIndex: pageIndex)
+    }
+
+    /// Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+    public func deskewPages(
+        sessionId: String,
+        pageIndices: [UInt32],
+        angleMilliDegrees: Int32,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreDeskewPagesWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            angleMilliDegrees: angleMilliDegrees,
+            options: options
+        )
+    }
+
+    /// Detects content bounding box on `pageIndex` with a safety margin (`CROP-003`).
+    public func detectContentMargins(
+        sessionId: String,
+        pageIndex: UInt32,
+        safetyMarginMilliPt: Int32
+    ) throws -> FfiPdfRectMilliPt {
+        try documentCoreDetectContentMargins(
+            sessionId: sessionId,
+            pageIndex: pageIndex,
+            safetyMarginMilliPt: safetyMarginMilliPt
+        )
+    }
+
+    /// Automatically detects content margins and applies a non-destructive crop with a safety margin (`CROP-003`).
+    public func autoCropPages(
+        sessionId: String,
+        pageIndices: [UInt32],
+        safetyMarginMilliPt: Int32,
+        allowSignatureInvalidation: Bool = false
+    ) throws -> FfiTransactionRecord {
+        let options = FfiPageWorkbenchOptions(
+            allowSignatureInvalidation: allowSignatureInvalidation
+        )
+        return try documentCoreAutoCropPagesWithOptions(
+            sessionId: sessionId,
+            pageIndices: pageIndices,
+            safetyMarginMilliPt: safetyMarginMilliPt,
+            options: options
+        )
+    }
 }

@@ -905,6 +905,22 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -925,6 +941,12 @@ internal interface IntegrityCheckingUniffiLib : Library {
 fun uniffi_vocument_ffi_checksum_func_document_core_add_highlight_annotation(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_append_scan_page(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame(
 ): Short
@@ -950,6 +972,12 @@ fun uniffi_vocument_ffi_checksum_func_document_core_delete_pages_with_options(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_deskew_frame(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_deskew_pages_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_detect_content_margins(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_detect_deskew_angle(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_detect_text_language(
@@ -973,6 +1001,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_extract_pages(
 fun uniffi_vocument_ffi_checksum_func_document_core_generate_collision_free_path(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_get_page_boxes(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_get_scan_session(
 ): Short
@@ -1092,6 +1122,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_select_page_text(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_set_page_boxes_with_options(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_split_document(
@@ -1165,6 +1197,12 @@ fun uniffi_vocument_ffi_fn_func_document_core_add_highlight_annotation(`sessionI
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_append_scan_page(`sessionId`: RustBuffer.ByValue,`frame`: RustBuffer.ByValue,`corners`: RustBuffer.ByValue,`cleanupProfile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_apply_display_crop_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`cropRect`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_apply_hard_crop_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`cropRect`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_auto_crop_pages_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`safetyMarginMilliPt`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_auto_orient_frame(`frame`: RustBuffer.ByValue,`preferPortrait`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_build_info(uniffi_out_err: UniffiRustCallStatus, 
@@ -1189,6 +1227,12 @@ fun uniffi_vocument_ffi_fn_func_document_core_delete_pages_with_options(`session
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_deskew_frame(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_deskew_pages_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`angleMilliDegrees`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_detect_content_margins(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`safetyMarginMilliPt`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_detect_deskew_angle(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): Float
 fun uniffi_vocument_ffi_fn_func_document_core_detect_document_edges(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_detect_text_language(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1212,6 +1256,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_extract_pages(`sessionId`: RustBuf
 fun uniffi_vocument_ffi_fn_func_document_core_generate_collision_free_path(`basePath`: RustBuffer.ByValue,`suffix`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_get_page_boxes(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_get_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1331,6 +1377,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_select_page_text(`sessionId`: Rust
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_set_jurist_palette(`entries`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_set_page_boxes_with_options(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,`boxes`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_set_page_label_ranges(`sessionId`: RustBuffer.ByValue,`ranges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_split_document(`sessionId`: RustBuffer.ByValue,`splitRanges`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1488,6 +1536,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options() != 65379.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options() != 63603.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options() != 60289.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1524,6 +1581,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_deskew_pages_with_options() != 28944.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_content_margins() != 51548.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_deskew_angle() != 12926.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1558,6 +1624,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_page_boxes() != 23305.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558.toShort()) {
@@ -1735,6 +1804,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_boxes_with_options() != 63809.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833.toShort()) {
@@ -3259,6 +3331,53 @@ public object FfiConverterTypeFfiOcrWord: FfiConverterRustBuffer<FfiOcrWord> {
 
 
 /**
+ * Partial or complete update of page boundary boxes (`CROP-002`).
+ */
+data class FfiPageBoxUpdate (
+    var `mediaBox`: FfiPdfRectMilliPt?, 
+    var `cropBox`: FfiPdfRectMilliPt?, 
+    var `bleedBox`: FfiPdfRectMilliPt?, 
+    var `trimBox`: FfiPdfRectMilliPt?, 
+    var `artBox`: FfiPdfRectMilliPt?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageBoxUpdate: FfiConverterRustBuffer<FfiPageBoxUpdate> {
+    override fun read(buf: ByteBuffer): FfiPageBoxUpdate {
+        return FfiPageBoxUpdate(
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageBoxUpdate) = (
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`mediaBox`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`cropBox`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`bleedBox`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`trimBox`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`artBox`)
+    )
+
+    override fun write(value: FfiPageBoxUpdate, buf: ByteBuffer) {
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`mediaBox`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`cropBox`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`bleedBox`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`trimBox`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`artBox`, buf)
+    }
+}
+
+
+
+/**
  * Combined physical and logical identity of a page (`PAGELABEL-002`).
  */
 data class FfiPageDescriptor (
@@ -3697,6 +3816,57 @@ public object FfiConverterTypeFfiPdfDocumentSummary: FfiConverterRustBuffer<FfiP
             FfiConverterOptionalString.write(value.`modificationDate`, buf)
             FfiConverterBoolean.write(value.`needsPassword`, buf)
             FfiConverterString.write(value.`engineIdentifier`, buf)
+    }
+}
+
+
+
+/**
+ * The 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+ */
+data class FfiPdfPageBoxes (
+    var `mediaBox`: FfiPdfRectMilliPt, 
+    var `cropBox`: FfiPdfRectMilliPt, 
+    var `bleedBox`: FfiPdfRectMilliPt, 
+    var `trimBox`: FfiPdfRectMilliPt, 
+    var `artBox`: FfiPdfRectMilliPt, 
+    var `rotationDegrees`: kotlin.Int
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPdfPageBoxes: FfiConverterRustBuffer<FfiPdfPageBoxes> {
+    override fun read(buf: ByteBuffer): FfiPdfPageBoxes {
+        return FfiPdfPageBoxes(
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPdfPageBoxes) = (
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`mediaBox`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`cropBox`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`bleedBox`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`trimBox`) +
+            FfiConverterTypeFfiPdfRectMilliPt.allocationSize(value.`artBox`) +
+            FfiConverterInt.allocationSize(value.`rotationDegrees`)
+    )
+
+    override fun write(value: FfiPdfPageBoxes, buf: ByteBuffer) {
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`mediaBox`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`cropBox`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`bleedBox`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`trimBox`, buf)
+            FfiConverterTypeFfiPdfRectMilliPt.write(value.`artBox`, buf)
+            FfiConverterInt.write(value.`rotationDegrees`, buf)
     }
 }
 
@@ -7513,6 +7683,45 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreApplyDisplayCropWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `cropRect`: FfiPdfRectMilliPt, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_display_crop_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiPdfRectMilliPt.lower(`cropRect`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Applies a destructive hard crop to selected pages (`CROP-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreApplyHardCropWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `cropRect`: FfiPdfRectMilliPt, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_apply_hard_crop_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiPdfRectMilliPt.lower(`cropRect`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Automatically crops pages by detecting content margins and setting CropBox (`CROP-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreAutoCropPagesWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `safetyMarginMilliPt`: kotlin.Int, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_auto_crop_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`safetyMarginMilliPt`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Automatically aligns a scan frame into upright portrait based on aspect ratio and orientation hints (`SCAN-004`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreAutoOrientFrame`(`frame`: FfiScanFrame, `preferPortrait`: kotlin.Boolean): FfiScanFrame {
@@ -7676,6 +7885,45 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDeskewPagesWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `angleMilliDegrees`: kotlin.Int, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_deskew_pages_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterInt.lower(`angleMilliDegrees`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDetectContentMargins`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt, `safetyMarginMilliPt`: kotlin.Int): FfiPdfRectMilliPt {
+            return FfiConverterTypeFfiPdfRectMilliPt.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_detect_content_margins(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterInt.lower(`safetyMarginMilliPt`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreDetectDeskewAngle`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): kotlin.Float {
+            return FfiConverterFloat.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_detect_deskew_angle(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Detects document edges and corner coordinates in real time from a live camera frame (`SCAN-001`, `SCAN-004`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreDetectDocumentEdges`(`frame`: FfiScanFrame): FfiQuadCorners? {
@@ -7830,6 +8078,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
             return FfiConverterTypeFfiScanFrame.lift(
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(
+        FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreGetPageBoxes`(`sessionId`: kotlin.String, `pageIndex`: kotlin.UInt): FfiPdfPageBoxes {
+            return FfiConverterTypeFfiPdfPageBoxes.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_get_page_boxes(
         FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),_status)
 }
     )
@@ -8653,6 +8914,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
         FfiConverterSequenceTypeFfiJuristPaletteEntry.lower(`entries`),_status)
 }
     
+    
+
+        /**
+         * Sets or updates page boundary boxes with explicit preflight options (`CROP-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreSetPageBoxesWithOptions`(`sessionId`: kotlin.String, `pageIndices`: List<kotlin.UInt>, `boxes`: FfiPageBoxUpdate, `options`: FfiPageWorkbenchOptions): FfiTransactionRecord {
+            return FfiConverterTypeFfiTransactionRecord.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_set_page_boxes_with_options(
+        FfiConverterString.lower(`sessionId`),FfiConverterSequenceUInt.lower(`pageIndices`),FfiConverterTypeFfiPageBoxUpdate.lower(`boxes`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
     
 
         /**

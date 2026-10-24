@@ -13,6 +13,7 @@ pub mod identity;
 pub mod jobs;
 pub mod journal;
 pub mod navigation;
+pub mod page_geometry;
 pub mod pdf_engine;
 pub mod recovery;
 pub mod recovery_actions;

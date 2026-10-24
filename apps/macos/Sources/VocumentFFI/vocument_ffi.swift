@@ -2977,6 +2977,103 @@ public func FfiConverterTypeFfiOcrWord_lower(_ value: FfiOcrWord) -> RustBuffer 
 
 
 /**
+ * Partial or complete update of page boundary boxes (`CROP-002`).
+ */
+public struct FfiPageBoxUpdate {
+    public var mediaBox: FfiPdfRectMilliPt?
+    public var cropBox: FfiPdfRectMilliPt?
+    public var bleedBox: FfiPdfRectMilliPt?
+    public var trimBox: FfiPdfRectMilliPt?
+    public var artBox: FfiPdfRectMilliPt?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(mediaBox: FfiPdfRectMilliPt?, cropBox: FfiPdfRectMilliPt?, bleedBox: FfiPdfRectMilliPt?, trimBox: FfiPdfRectMilliPt?, artBox: FfiPdfRectMilliPt?) {
+        self.mediaBox = mediaBox
+        self.cropBox = cropBox
+        self.bleedBox = bleedBox
+        self.trimBox = trimBox
+        self.artBox = artBox
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageBoxUpdate: Sendable {}
+#endif
+
+
+extension FfiPageBoxUpdate: Equatable, Hashable {
+    public static func ==(lhs: FfiPageBoxUpdate, rhs: FfiPageBoxUpdate) -> Bool {
+        if lhs.mediaBox != rhs.mediaBox {
+            return false
+        }
+        if lhs.cropBox != rhs.cropBox {
+            return false
+        }
+        if lhs.bleedBox != rhs.bleedBox {
+            return false
+        }
+        if lhs.trimBox != rhs.trimBox {
+            return false
+        }
+        if lhs.artBox != rhs.artBox {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(mediaBox)
+        hasher.combine(cropBox)
+        hasher.combine(bleedBox)
+        hasher.combine(trimBox)
+        hasher.combine(artBox)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageBoxUpdate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageBoxUpdate {
+        return
+            try FfiPageBoxUpdate(
+                mediaBox: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                cropBox: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                bleedBox: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                trimBox: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                artBox: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageBoxUpdate, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.mediaBox, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.cropBox, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.bleedBox, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.trimBox, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.artBox, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageBoxUpdate_lift(_ buf: RustBuffer) throws -> FfiPageBoxUpdate {
+    return try FfiConverterTypeFfiPageBoxUpdate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageBoxUpdate_lower(_ value: FfiPageBoxUpdate) -> RustBuffer {
+    return FfiConverterTypeFfiPageBoxUpdate.lower(value)
+}
+
+
+/**
  * Combined physical and logical identity of a page (`PAGELABEL-002`).
  */
 public struct FfiPageDescriptor {
@@ -3881,6 +3978,111 @@ public func FfiConverterTypeFfiPdfDocumentSummary_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeFfiPdfDocumentSummary_lower(_ value: FfiPdfDocumentSummary) -> RustBuffer {
     return FfiConverterTypeFfiPdfDocumentSummary.lower(value)
+}
+
+
+/**
+ * The 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+ */
+public struct FfiPdfPageBoxes {
+    public var mediaBox: FfiPdfRectMilliPt
+    public var cropBox: FfiPdfRectMilliPt
+    public var bleedBox: FfiPdfRectMilliPt
+    public var trimBox: FfiPdfRectMilliPt
+    public var artBox: FfiPdfRectMilliPt
+    public var rotationDegrees: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(mediaBox: FfiPdfRectMilliPt, cropBox: FfiPdfRectMilliPt, bleedBox: FfiPdfRectMilliPt, trimBox: FfiPdfRectMilliPt, artBox: FfiPdfRectMilliPt, rotationDegrees: Int32) {
+        self.mediaBox = mediaBox
+        self.cropBox = cropBox
+        self.bleedBox = bleedBox
+        self.trimBox = trimBox
+        self.artBox = artBox
+        self.rotationDegrees = rotationDegrees
+    }
+}
+
+#if compiler(>=6)
+extension FfiPdfPageBoxes: Sendable {}
+#endif
+
+
+extension FfiPdfPageBoxes: Equatable, Hashable {
+    public static func ==(lhs: FfiPdfPageBoxes, rhs: FfiPdfPageBoxes) -> Bool {
+        if lhs.mediaBox != rhs.mediaBox {
+            return false
+        }
+        if lhs.cropBox != rhs.cropBox {
+            return false
+        }
+        if lhs.bleedBox != rhs.bleedBox {
+            return false
+        }
+        if lhs.trimBox != rhs.trimBox {
+            return false
+        }
+        if lhs.artBox != rhs.artBox {
+            return false
+        }
+        if lhs.rotationDegrees != rhs.rotationDegrees {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(mediaBox)
+        hasher.combine(cropBox)
+        hasher.combine(bleedBox)
+        hasher.combine(trimBox)
+        hasher.combine(artBox)
+        hasher.combine(rotationDegrees)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPdfPageBoxes: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPdfPageBoxes {
+        return
+            try FfiPdfPageBoxes(
+                mediaBox: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                cropBox: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                bleedBox: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                trimBox: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                artBox: FfiConverterTypeFfiPdfRectMilliPt.read(from: &buf), 
+                rotationDegrees: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPdfPageBoxes, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.mediaBox, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.cropBox, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.bleedBox, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.trimBox, into: &buf)
+        FfiConverterTypeFfiPdfRectMilliPt.write(value.artBox, into: &buf)
+        FfiConverterInt32.write(value.rotationDegrees, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfPageBoxes_lift(_ buf: RustBuffer) throws -> FfiPdfPageBoxes {
+    return try FfiConverterTypeFfiPdfPageBoxes.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPdfPageBoxes_lower(_ value: FfiPdfPageBoxes) -> RustBuffer {
+    return FfiConverterTypeFfiPdfPageBoxes.lower(value)
 }
 
 
@@ -9471,6 +9673,45 @@ public func documentCoreAppendScanPage(sessionId: String, frame: FfiScanFrame, c
 })
 }
 /**
+ * Applies a non-destructive display crop by adjusting /CropBox (`CROP-001`).
+ */
+public func documentCoreApplyDisplayCropWithOptions(sessionId: String, pageIndices: [UInt32], cropRect: FfiPdfRectMilliPt, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_apply_display_crop_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiPdfRectMilliPt_lower(cropRect),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Applies a destructive hard crop to selected pages (`CROP-001`).
+ */
+public func documentCoreApplyHardCropWithOptions(sessionId: String, pageIndices: [UInt32], cropRect: FfiPdfRectMilliPt, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_apply_hard_crop_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiPdfRectMilliPt_lower(cropRect),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Automatically crops pages by detecting content margins and setting CropBox (`CROP-003`).
+ */
+public func documentCoreAutoCropPagesWithOptions(sessionId: String, pageIndices: [UInt32], safetyMarginMilliPt: Int32, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_auto_crop_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterInt32.lower(safetyMarginMilliPt),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
  * Automatically aligns a scan frame into upright portrait based on aspect ratio and orientation hints (`SCAN-004`).
  */
 public func documentCoreAutoOrientFrame(frame: FfiScanFrame, preferPortrait: Bool)throws  -> FfiScanFrame  {
@@ -9599,6 +9840,42 @@ public func documentCoreDeskewFrame(frame: FfiScanFrame)throws  -> FfiDeskewResu
     return try  FfiConverterTypeFfiDeskewResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_deskew_frame(
         FfiConverterTypeFfiScanFrame_lower(frame),$0
+    )
+})
+}
+/**
+ * Applies fine deskew rotation via transformation matrix (`ROTATE-003`).
+ */
+public func documentCoreDeskewPagesWithOptions(sessionId: String, pageIndices: [UInt32], angleMilliDegrees: Int32, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_deskew_pages_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterInt32.lower(angleMilliDegrees),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+ */
+public func documentCoreDetectContentMargins(sessionId: String, pageIndex: UInt32, safetyMarginMilliPt: Int32)throws  -> FfiPdfRectMilliPt  {
+    return try  FfiConverterTypeFfiPdfRectMilliPt_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_detect_content_margins(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterInt32.lower(safetyMarginMilliPt),$0
+    )
+})
+}
+/**
+ * Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+ */
+public func documentCoreDetectDeskewAngle(sessionId: String, pageIndex: UInt32)throws  -> Float  {
+    return try  FfiConverterFloat.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_detect_deskew_angle(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
     )
 })
 }
@@ -9733,6 +10010,17 @@ public func documentCoreGenerateCollisionFreePath(basePath: String, suffix: Stri
 public func documentCoreGetEnhancedScanPage(sessionId: String, pageIndex: UInt32)throws  -> FfiScanFrame  {
     return try  FfiConverterTypeFfiScanFrame_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_get_enhanced_scan_page(
+        FfiConverterString.lower(sessionId),
+        FfiConverterUInt32.lower(pageIndex),$0
+    )
+})
+}
+/**
+ * Queries the 5 standard ISO 32000-1 page boundary boxes and rotation (`CROP-002`).
+ */
+public func documentCoreGetPageBoxes(sessionId: String, pageIndex: UInt32)throws  -> FfiPdfPageBoxes  {
+    return try  FfiConverterTypeFfiPdfPageBoxes_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_get_page_boxes(
         FfiConverterString.lower(sessionId),
         FfiConverterUInt32.lower(pageIndex),$0
     )
@@ -10427,6 +10715,19 @@ public func documentCoreSetJuristPalette(entries: [FfiJuristPaletteEntry])throws
 }
 }
 /**
+ * Sets or updates page boundary boxes with explicit preflight options (`CROP-002`).
+ */
+public func documentCoreSetPageBoxesWithOptions(sessionId: String, pageIndices: [UInt32], boxes: FfiPageBoxUpdate, options: FfiPageWorkbenchOptions)throws  -> FfiTransactionRecord  {
+    return try  FfiConverterTypeFfiTransactionRecord_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_set_page_boxes_with_options(
+        FfiConverterString.lower(sessionId),
+        FfiConverterSequenceUInt32.lower(pageIndices),
+        FfiConverterTypeFfiPageBoxUpdate_lower(boxes),
+        FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
  * Creates or replaces custom logical page-label ranges on `session_id` (`PAGELABEL-004`).
  */
 public func documentCoreSetPageLabelRanges(sessionId: String, ranges: [FfiPageLabelRange])throws  -> [FfiPageDescriptor]  {
@@ -10565,6 +10866,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_append_scan_page() != 65323) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_apply_display_crop_with_options() != 65379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_apply_hard_crop_with_options() != 63603) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_auto_crop_pages_with_options() != 60289) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_auto_orient_frame() != 21087) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10601,6 +10911,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_deskew_frame() != 36175) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_deskew_pages_with_options() != 28944) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_detect_content_margins() != 51548) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_detect_deskew_angle() != 12926) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_detect_document_edges() != 2448) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10635,6 +10954,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_enhanced_scan_page() != 3055) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_get_page_boxes() != 23305) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_get_scan_session() != 1558) {
@@ -10812,6 +11134,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_jurist_palette() != 58903) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_set_page_boxes_with_options() != 63809) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_set_page_label_ranges() != 25833) {

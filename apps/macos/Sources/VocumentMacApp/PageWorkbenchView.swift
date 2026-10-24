@@ -113,6 +113,9 @@ struct PageWorkbenchView: View {
         } message: {
             Text("Are you sure you want to delete \(coordinator.selectedWorkbenchPages.count) page(s)? This action can be undone via Edit > Undo.")
         }
+        .sheet(isPresented: $coordinator.showCropSheet) {
+            CropSheetView(coordinator: coordinator)
+        }
         .onAppear {
             coordinator.refreshWorkbenchPreflight()
         }
@@ -204,6 +207,25 @@ struct PageWorkbenchView: View {
             .disabled(coordinator.selectedWorkbenchPages.isEmpty)
             .keyboardShortcut("r", modifiers: .command)
             .help("Rotate selected page(s) 90° clockwise (Cmd+R)")
+
+            Divider().frame(height: 18)
+
+            // Geometry, Crop & Deskew (M3.3, CROP-001, ROTATE-003)
+            Button {
+                coordinator.showCropSheet = true
+            } label: {
+                Label("Crop…", systemImage: "crop")
+            }
+            .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .help("Crop page boundaries (A4, Letter, Auto-Crop Margins, Custom) with Display or Hard Crop")
+
+            Button {
+                coordinator.workbenchDeskewSelectedPages()
+            } label: {
+                Label("Deskew", systemImage: "skew")
+            }
+            .disabled(coordinator.selectedWorkbenchPages.isEmpty)
+            .help("Automatically detect page skew angle and apply fine vector rotation matrix")
 
             Divider().frame(height: 18)
 

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::document_inspection::{PdfActionInfo, PdfAttachmentInfo, PdfSignatureInfo};
+pub use crate::page_geometry::{CropMode, PageBoxUpdate, PdfPageBoxes};
 
 /// Basic PDF metadata and page summary read when opening a `DocumentSession` (`ROADMAP.md` M0.1, `INSPECT-001`, `META-001`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -633,6 +634,95 @@ pub trait PdfEngineDocument: Send + Sync + std::fmt::Debug {
         let _ = split_ranges;
         Err(PdfEngineError::EngineFailure {
             details: "this engine does not support splitting documents".to_owned(),
+        })
+    }
+
+    /// Queries the 5 standard ISO 32000-1 page boundary boxes and rotation for `page_index` (`CROP-002`).
+    fn get_page_boxes(&self, page_index: u32) -> Result<PdfPageBoxes, PdfEngineError> {
+        let _ = page_index;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support querying page boxes".to_owned(),
+        })
+    }
+
+    /// Sets or updates page boundary boxes on selected pages (`CROP-002`).
+    /// Must only be invoked through `TransactionManager`.
+    fn set_page_boxes_ext(
+        &mut self,
+        page_indices: &[u32],
+        boxes: &PageBoxUpdate,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, boxes, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support updating page boxes".to_owned(),
+        })
+    }
+
+    /// Applies a destructive hard crop to selected pages (`CROP-001`).
+    /// Clamps MediaBox/CropBox, injects a clipping path around content, and prunes out-of-bounds annotations.
+    /// Must only be invoked through `TransactionManager`.
+    fn apply_hard_crop_ext(
+        &mut self,
+        page_indices: &[u32],
+        crop_rect: PdfRectMilliPt,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, crop_rect, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support hard cropping".to_owned(),
+        })
+    }
+
+    /// Detects document skew angle on `page_index` in degrees (`ROTATE-003`).
+    fn detect_deskew_angle(&self, page_index: u32) -> Result<f32, PdfEngineError> {
+        let _ = page_index;
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support deskew angle detection".to_owned(),
+        })
+    }
+
+    /// Applies fine deskew rotation to selected pages via transformation matrix `cm` (`ROTATE-003`).
+    /// Must only be invoked through `TransactionManager`.
+    fn apply_deskew_ext(
+        &mut self,
+        page_indices: &[u32],
+        angle_degrees: f32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (page_indices, angle_degrees, allow_signature_invalidation);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support deskew rotation".to_owned(),
+        })
+    }
+
+    /// Detects content bounding box on `page_index` with a safety margin (`CROP-003`).
+    fn detect_content_margins(
+        &self,
+        page_index: u32,
+        safety_margin_milli_pt: i32,
+    ) -> Result<PdfRectMilliPt, PdfEngineError> {
+        let _ = (page_index, safety_margin_milli_pt);
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support detecting content margins".to_owned(),
+        })
+    }
+
+    /// Automatically crops pages by detecting content margins and applying a non-destructive crop with `safety_margin_milli_pt` (`CROP-003`).
+    /// Must only be invoked through `TransactionManager`.
+    fn apply_auto_crop_ext(
+        &mut self,
+        page_indices: &[u32],
+        safety_margin_milli_pt: i32,
+        allow_signature_invalidation: bool,
+    ) -> Result<Vec<u8>, PdfEngineError> {
+        let _ = (
+            page_indices,
+            safety_margin_milli_pt,
+            allow_signature_invalidation,
+        );
+        Err(PdfEngineError::EngineFailure {
+            details: "this engine does not support auto-cropping".to_owned(),
         })
     }
 }

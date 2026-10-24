@@ -650,5 +650,80 @@ struct VocumentMacHandshakeCLI {
 
         try client.closeSession(sessionId: m31Session.sessionId)
         print("✓ Swift (macOS M3.1/M3.2) → WorkbenchPreflight → DuplicatePage → ReorderPages → RotatePages(+90°) → ExtractPages → DeletePages → LastPageGuard → InsertPages(2 pgs @ #2 → 5 pgs) → MergeDocuments(+1 doc → 7 pgs) → SplitDocument(3 parts) → UndoMerge(5 pgs) → UndoInsert(3 pgs) verified")
+
+        // M3.3 PAGE GEOMETRY, CROP & DESKEW (ROADMAP.md M3.3, CROP-001–003, ROTATE-001–003)
+        let m33Session = try client.openScopedDocument(at: samplePdfURL)
+        let expectedInitialMedia = FfiPdfRectMilliPt(x0MilliPt: 0, y0MilliPt: 0, x1MilliPt: 595_000, y1MilliPt: 842_000)
+        let expectedCroppedBox = FfiPdfRectMilliPt(x0MilliPt: 50_000, y0MilliPt: 50_000, x1MilliPt: 545_000, y1MilliPt: 792_000)
+
+        let initialBoxes = try client.getPageBoxes(sessionId: m33Session.sessionId, pageIndex: 0)
+        guard initialBoxes.mediaBox == expectedInitialMedia else {
+            fatalError("Expected initial MediaBox [0, 0, 595000, 842000], got \(initialBoxes.mediaBox)")
+        }
+
+        // 1. Non-destructive display crop (/CropBox)
+        let displayCropRect = expectedCroppedBox
+        let displayCropTx = try client.applyDisplayCrop(
+            sessionId: m33Session.sessionId,
+            pageIndices: [0],
+            cropRect: displayCropRect
+        )
+        guard displayCropTx.description == "Set page boundaries for page #1" else {
+            fatalError("Expected 'Set page boundaries for page #1', got \(displayCropTx.description)")
+        }
+        let croppedBoxes = try client.getPageBoxes(sessionId: m33Session.sessionId, pageIndex: 0)
+        guard croppedBoxes.cropBox == expectedCroppedBox else {
+            fatalError("Expected updated CropBox [50000, 50000, 545000, 792000], got \(croppedBoxes.cropBox)")
+        }
+        guard croppedBoxes.mediaBox == expectedInitialMedia else {
+            fatalError("Expected unchanged MediaBox after display crop, got \(croppedBoxes.mediaBox)")
+        }
+
+        // Undo display crop
+        _ = try client.undo(sessionId: m33Session.sessionId)
+        let restoredBoxes = try client.getPageBoxes(sessionId: m33Session.sessionId, pageIndex: 0)
+        guard restoredBoxes.cropBox == expectedInitialMedia else {
+            fatalError("Expected restored CropBox [0, 0, 595000, 842000], got \(restoredBoxes.cropBox)")
+        }
+
+        // 2. Destructive hard crop (content stream clipping path injection)
+        let hardCropTx = try client.applyHardCrop(
+            sessionId: m33Session.sessionId,
+            pageIndices: [0],
+            cropRect: displayCropRect
+        )
+        guard hardCropTx.description == "Apply hard crop to page #1" else {
+            fatalError("Expected 'Apply hard crop to page #1', got \(hardCropTx.description)")
+        }
+        let expectedHardCroppedBox = FfiPdfRectMilliPt(x0MilliPt: 0, y0MilliPt: 0, x1MilliPt: 495_000, y1MilliPt: 742_000)
+        let hardCroppedBoxes = try client.getPageBoxes(sessionId: m33Session.sessionId, pageIndex: 0)
+        guard hardCroppedBoxes.mediaBox == expectedHardCroppedBox && hardCroppedBoxes.cropBox == expectedHardCroppedBox else {
+            fatalError("Expected MediaBox and CropBox clamped to [0, 0, 495000, 742000], got media=\(hardCroppedBoxes.mediaBox), crop=\(hardCroppedBoxes.cropBox)")
+        }
+
+        // Undo hard crop
+        _ = try client.undo(sessionId: m33Session.sessionId)
+        let uncroppedBoxes = try client.getPageBoxes(sessionId: m33Session.sessionId, pageIndex: 0)
+        guard uncroppedBoxes.mediaBox == expectedInitialMedia else {
+            fatalError("Expected restored MediaBox after undo hard crop, got \(uncroppedBoxes.mediaBox)")
+        }
+
+        // 3. Deskew angle detection and fine rotation
+        let detectedAngle = try client.detectDeskewAngle(sessionId: m33Session.sessionId, pageIndex: 0)
+        let deskewTx = try client.deskewPages(sessionId: m33Session.sessionId, pageIndices: [0], angleMilliDegrees: 2500)
+        guard deskewTx.description == "Deskew page #1 by +2.5°" else {
+            fatalError("Expected 'Deskew page #1 by +2.5°', got \(deskewTx.description)")
+        }
+        _ = try client.undo(sessionId: m33Session.sessionId)
+
+        // 4. Auto-crop margin trimming
+        let autoCropTx = try client.autoCropPages(sessionId: m33Session.sessionId, pageIndices: [0], safetyMarginMilliPt: 14170)
+        guard autoCropTx.description == "Auto-crop page #1" else {
+            fatalError("Expected 'Auto-crop page #1', got \(autoCropTx.description)")
+        }
+        _ = try client.undo(sessionId: m33Session.sessionId)
+
+        try client.closeSession(sessionId: m33Session.sessionId)
+        print("✓ Swift (macOS M3.3) → PageGeometry → PageBoxes(5 ISO boxes) → DisplayCrop(/CropBox) → HardCrop(q...W n...Q) → DetectDeskewAngle(\(detectedAngle)°) → DeskewMatrix(cm) → AutoCropMargins → Undo/Redo verified")
     }
 }

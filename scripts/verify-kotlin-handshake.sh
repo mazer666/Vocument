@@ -22,6 +22,7 @@ echo "==> Compiling Android Kotlin UniFFI bindings and DocumentCoreBridge..."
 kotlinc \
   "$REPO_ROOT/apps/android/app/src/main/java/uniffi/vocument_ffi/vocument_ffi.kt" \
   "$REPO_ROOT/apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridge.kt" \
+  "$REPO_ROOT/apps/android/app/src/main/java/org/vocument/app/DocumentCoreBridgeWorkbench.kt" \
   "$REPO_ROOT/apps/android/app/src/test/java/org/vocument/app/VerifyKotlinHandshakeCli.kt" \
   -cp "$JNA_JAR" \
   -include-runtime \

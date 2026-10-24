@@ -7,7 +7,7 @@ import VocumentFFI
 /// Workflow logic and state orchestration for Visual Page Workbench (`ROADMAP.md` M3.1, `ADR-0019`).
 /// Connects the native SwiftUI UI to `DocumentCoreClient` and `TransactionManager`,
 /// ensuring safe transactions, multi-selection handling, preflight signature guards, and Undo/Redo.
-/// Pending mutating action that requires user confirmation if signatures exist (`M3.0`, `M3.1`, `M3.2`).
+/// Pending mutating action that requires user confirmation if signatures exist (`M3.0`, `M3.1`, `M3.2`, `M3.3`).
 enum WorkbenchAction {
     case reorder([UInt32])
     case duplicate([UInt32])
@@ -15,6 +15,10 @@ enum WorkbenchAction {
     case rotate([UInt32], Int32)
     case insert(Data, [UInt32], UInt32)
     case merge([Data])
+    case hardCrop([UInt32], FfiPdfRectMilliPt)
+    case displayCrop([UInt32], FfiPdfRectMilliPt)
+    case deskew([UInt32], Int32)
+    case autoCrop([UInt32], Int32)
 }
 
 @MainActor
@@ -81,6 +85,39 @@ extension MacDocumentSessionCoordinator {
                 allowSignatureInvalidation: allowInvalidation
             )
             return "Merged \(sourcePdfsData.count) external document(s)"
+        case .hardCrop(let indices, let rect):
+            _ = try coreClient.applyHardCrop(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                cropRect: rect,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Applied hard crop to \(indices.count) page(s)"
+        case .displayCrop(let indices, let rect):
+            _ = try coreClient.applyDisplayCrop(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                cropRect: rect,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Applied display crop to \(indices.count) page(s)"
+        case .deskew(let indices, let angleMilliDegrees):
+            _ = try coreClient.deskewPages(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                angleMilliDegrees: angleMilliDegrees,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            let angleDeg = Double(angleMilliDegrees) / 1000.0
+            return String(format: "Deskewed %d page(s) by %.2f°", indices.count, angleDeg)
+        case .autoCrop(let indices, let safetyMargin):
+            _ = try coreClient.autoCropPages(
+                sessionId: session.sessionId,
+                pageIndices: indices,
+                safetyMarginMilliPt: safetyMargin,
+                allowSignatureInvalidation: allowInvalidation
+            )
+            return "Auto-cropped margins on \(indices.count) page(s)"
         }
     }
 
@@ -445,5 +482,49 @@ extension MacDocumentSessionCoordinator {
     func workbenchSelectAllPages() {
         guard let session = activeSession else { return }
         selectedWorkbenchPages = Set(0..<session.pdfSummary.pageCount)
+    }
+
+    // MARK: - Page Geometry, Crop & Deskew Mutations (`M3.3`, `CROP-001`, `ROTATE-003`)
+
+    /// Applies a non-destructive display crop to selected pages (`CROP-001`).
+    func workbenchApplyDisplayCrop(cropRect: FfiPdfRectMilliPt) {
+        guard !selectedWorkbenchPages.isEmpty else { return }
+        let targets = Array(selectedWorkbenchPages).sorted()
+        requestWorkbenchAction(.displayCrop(targets, cropRect))
+    }
+
+    /// Applies a destructive hard crop with content clipping path injection to selected pages (`CROP-001`).
+    func workbenchApplyHardCrop(cropRect: FfiPdfRectMilliPt) {
+        guard !selectedWorkbenchPages.isEmpty else { return }
+        let targets = Array(selectedWorkbenchPages).sorted()
+        requestWorkbenchAction(.hardCrop(targets, cropRect))
+    }
+
+    /// Automatically detects content margins and applies a crop with `safetyMarginMilliPt` (`CROP-003`).
+    func workbenchAutoCropSelectedPages(safetyMarginMilliPt: Int32 = 14170) {
+        guard !selectedWorkbenchPages.isEmpty else { return }
+        let targets = Array(selectedWorkbenchPages).sorted()
+        requestWorkbenchAction(.autoCrop(targets, safetyMarginMilliPt))
+    }
+
+    /// Automatically detects deskew angle on the primary selected page and applies fine rotation matrix (`ROTATE-003`).
+    func workbenchDeskewSelectedPages() {
+        guard let session = activeSession, !selectedWorkbenchPages.isEmpty else { return }
+        let primaryPage = selectedWorkbenchPages.sorted().first ?? currentPageIndex
+        do {
+            let angleDegrees = try coreClient.detectDeskewAngle(
+                sessionId: session.sessionId,
+                pageIndex: primaryPage
+            )
+            let angleMilliDegrees = Int32((Double(angleDegrees) * 1000.0).rounded())
+            if abs(angleMilliDegrees) < 50 {
+                workbenchNotificationMessage = "Document already straight (skew angle < 0.05°)"
+                return
+            }
+            let targets = Array(selectedWorkbenchPages).sorted()
+            requestWorkbenchAction(.deskew(targets, angleMilliDegrees))
+        } catch {
+            errorMessage = "Deskew angle detection failed: \(error.localizedDescription)"
+        }
     }
 }

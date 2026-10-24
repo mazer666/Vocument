@@ -744,12 +744,14 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] AcroForm field collision resolution via unique suffix renaming and fail-closed digital signature preflight guards.
   - [x] Reversible Undo/Redo transactions (`TransactionCommand::MergeDocuments`, `TransactionCommand::InsertPagesFromDocument`) and native macOS AppKit/SwiftUI toolbar controls ("Insert…", "Merge…", "Split…").
 
-- **M3.3 — Page Geometry, Crop, Page Boxes, Rotation & Deskew:**
-  - Precise calibration of `MediaBox`, `CropBox`, `BleedBox`, `TrimBox`, and `ArtBox`.
-  - Non-destructive display crop vs destructive hard crop (clipping path removal).
-  - 90°/180°/270° orientation rotation with real-time OCR text layer alignment.
-  - Automated deskew angle detection via Hough transform and fine rotation.
-  - Auto-crop margin trimming for scanned documents.
+- **M3.3 — Page Geometry, Crop, Page Boxes, Rotation & Deskew *(Status: **COMPLETE & VERIFIED** — see [M3.3 Acceptance Record](docs/acceptance/M3.3-ACCEPTANCE.md))***:
+  - [x] Precise calibration of `MediaBox`, `CropBox`, `BleedBox`, `TrimBox`, and `ArtBox` with millimeter-accurate 1/1000 point integer representation (`CROP-002`).
+  - [x] Non-destructive display crop (/CropBox) vs destructive hard crop (content stream clipping path injection `q x y w h re W n ... Q`, clamping `MediaBox`/`CropBox`, and out-of-bounds annotation pruning) (`CROP-001`).
+  - [x] 90°/180°/270° orientation rotation with text layer alignment and coordinate invariance anchored to `MediaBox` (`ROTATE-001`, `ROTATE-002`).
+  - [x] Automated deskew angle detection via projection variance search and fine vector rotation via transformation matrix `cm` (`ROTATE-003`).
+  - [x] Auto-crop margin trimming for scanned documents with configurable safety margin (`CROP-003`).
+  - [x] Fail-closed digital signature preflight guards (`SIG-001`) and reversible Undo/Redo transactions (`TransactionCommand::SetPageBoxes`, `ApplyHardCrop`, `DeskewPages`, `AutoCropPages`) (`UNDO-001`).
+  - [x] Native macOS AppKit/SwiftUI controls ("Crop…", "Deskew", modal `CropSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
 - **M3.4 — Bates Stamping, Numbering, Headers/Footers & Rubber Stamps (`WATER-001`–`003`):**
   - Bates numbering with custom prefix, digit padding, suffix, and starting index.
