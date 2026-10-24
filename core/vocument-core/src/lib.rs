@@ -28,6 +28,7 @@ pub mod session_mutations;
 pub mod text_selection;
 pub mod thumbnail_cache;
 pub mod tile_cache;
+pub mod transaction_execution;
 pub mod transactions;
 pub mod workbench;
 

@@ -216,7 +216,7 @@ echo "✓ M0.1 Gate verified: No UI layer accesses MuPDF directly."
 
 # Enforce M0.4 Gate: Mutation never bypasses TransactionManager
 if grep -RIn 'apply_engine_mutation_for_transaction_manager' core/ platform/ apps/ \
-  --exclude='transactions.rs' --exclude='render.rs' >/dev/null 2>&1; then
+  --exclude='transactions.rs' --exclude='transaction_execution.rs' --exclude='render.rs' >/dev/null 2>&1; then
   echo "ERROR (M0.4 Gate): Direct engine mutation bypassing TransactionManager detected!" >&2
   exit 1
 fi

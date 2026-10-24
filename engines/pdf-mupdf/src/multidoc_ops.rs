@@ -35,6 +35,11 @@ fn map_bridge_status(status: i32, op_name: &str) -> PdfEngineError {
                 "{op_name} blocked by preflight check: document contains active digital signatures"
             ),
         },
+        5 => PdfEngineError::InvalidPdf {
+            details: format!(
+                "{op_name} refused fail-closed: Tagged PDF structural conflict (cannot combine tagged and untagged documents without violating ISO 32000-1 / PDF/UA structural integrity)"
+            ),
+        },
         _ => PdfEngineError::EngineFailure {
             details: format!("{op_name} failed with code {status}"),
         },

@@ -204,3 +204,133 @@ fn test_multidoc_operations_refuse_on_signed_documents_fail_closed() {
     assert_eq!(inserted_doc.summary().page_count, 2);
     assert!(!inserted_doc.document_signatures().expect("sigs")[0].is_signed);
 }
+
+fn create_valid_tagged_pdf(title: &str, page_text: &str) -> Vec<u8> {
+    let p_text = format!("BT /F1 12 Tf 72 700 Td ({page_text}) Tj ET\n");
+    let objects = [
+        // 1: Catalog
+        format!("<< /Type /Catalog /Pages 2 0 R /MarkInfo << /Marked true >> /StructTreeRoot 3 0 R /Dests << /Dest_{title} [4 0 R /XYZ 0 792 0] >> >>"),
+        // 2: Pages root
+        "<< /Type /Pages /Kids [4 0 R] /Count 1 >>".to_owned(),
+        // 3: StructTreeRoot with ParentTree
+        "<< /Type /StructTreeRoot /ParentTree 7 0 R /K [8 0 R] >>".to_owned(),
+        // 4: Page 1 with valid StructParents 0
+        "<< /Type /Page /Parent 2 0 R /StructParents 0 /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>".to_owned(),
+        // 5: Font
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_owned(),
+        // 6: Content
+        format!("<< /Length {} >>\nstream\n{p_text}endstream", p_text.len()),
+        // 7: ParentTree number tree with entry 0
+        "<< /Nums [0 [8 0 R]] >>".to_owned(),
+        // 8: StructElem for MCID 0
+        "<< /Type /StructElem /S /P /Pg 4 0 R >>".to_owned(),
+    ];
+
+    let mut out = Vec::new();
+    out.extend_from_slice(b"%PDF-1.7\n");
+    let mut offsets = Vec::with_capacity(objects.len());
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+    }
+    let xref_offset = out.len();
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in &offsets {
+        out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R /Info << /Title ({title}) >> >>\n\
+startxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    out
+}
+
+#[test]
+fn test_merge_tagged_documents_preserves_parent_tree_consistency() {
+    let doc1 = create_valid_tagged_pdf("Doc1", "Tagged Page One");
+    let doc2 = create_valid_tagged_pdf("Doc2", "Tagged Page Two");
+    let engine = MuPdfEngineAdapter::new();
+
+    let merged_bytes = merge_documents_ext(&[&doc1, &doc2], false)
+        .expect("merging two valid tagged pdfs should succeed");
+    let merged_doc = engine
+        .open_pdf_bytes(&merged_bytes)
+        .expect("open merged tagged pdf");
+
+    assert_eq!(merged_doc.summary().page_count, 2);
+
+    let pdf_str = String::from_utf8_lossy(&merged_bytes);
+    assert!(pdf_str.contains("/Marked true"));
+    assert!(pdf_str.contains("/StructTreeRoot"));
+    assert!(pdf_str.contains("/ParentTree"));
+    assert!(pdf_str.contains("Dest_Doc1"));
+    assert!(pdf_str.contains("Dest_Doc2"));
+}
+
+#[test]
+fn test_multidoc_refuses_mixing_tagged_and_untagged_documents_fail_closed() {
+    let tagged_pdf = create_valid_tagged_pdf("TaggedOnly", "Tagged Content");
+    let untagged_pdf = create_sample_pdf("UntaggedOnly", &["Untagged Content"]);
+
+    // 1. Merge tagged + untagged must fail-closed
+    let merge_err1 = merge_documents_ext(&[&tagged_pdf, &untagged_pdf], false);
+    assert!(matches!(merge_err1, Err(PdfEngineError::InvalidPdf { .. })));
+
+    let merge_err2 = merge_documents_ext(&[&untagged_pdf, &tagged_pdf], false);
+    assert!(matches!(merge_err2, Err(PdfEngineError::InvalidPdf { .. })));
+
+    // 2. Insert tagged into untagged or vice-versa must fail-closed
+    let insert_err1 = insert_pages_ext(&untagged_pdf, &tagged_pdf, &[0], 0, false);
+    assert!(matches!(
+        insert_err1,
+        Err(PdfEngineError::InvalidPdf { .. })
+    ));
+
+    let insert_err2 = insert_pages_ext(&tagged_pdf, &untagged_pdf, &[0], 0, false);
+    assert!(matches!(
+        insert_err2,
+        Err(PdfEngineError::InvalidPdf { .. })
+    ));
+}
+
+#[test]
+fn test_split_tagged_document_preserves_independent_structure_trees() {
+    let doc1 = create_valid_tagged_pdf("PartA", "Page A Content");
+    let doc2 = create_valid_tagged_pdf("PartB", "Page B Content");
+    let engine = MuPdfEngineAdapter::new();
+
+    let merged_bytes = merge_documents_ext(&[&doc1, &doc2], false).expect("merge");
+    assert_eq!(
+        engine
+            .open_pdf_bytes(&merged_bytes)
+            .expect("open merged pdf")
+            .summary()
+            .page_count,
+        2
+    );
+
+    let partitions = vec![vec![0], vec![1]];
+    let split_results = split_document(&merged_bytes, &partitions).expect("split tagged document");
+
+    assert_eq!(split_results.len(), 2);
+
+    for (idx, part_bytes) in split_results.iter().enumerate() {
+        let part_doc = engine.open_pdf_bytes(part_bytes).expect("open split part");
+        assert_eq!(part_doc.summary().page_count, 1);
+        let part_str = String::from_utf8_lossy(part_bytes);
+        assert!(
+            part_str.contains("/StructTreeRoot"),
+            "part {idx} must have StructTreeRoot"
+        );
+        assert!(
+            part_str.contains("/ParentTree"),
+            "part {idx} must have ParentTree"
+        );
+    }
+}

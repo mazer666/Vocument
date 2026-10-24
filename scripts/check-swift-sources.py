@@ -990,6 +990,12 @@ class SourceCheck:
             self.check_navigation(swift_file, node, scope, owner)
         if node_type == "call_expression":
             self.check_call(swift_file, node, scope, owner)
+            callee = node.get("c", [])[0] if node.get("c") else None
+            callee_text = swift_file.text(callee) if callee is not None else ""
+            is_task = callee_text == "Task" or callee_text.startswith("Task.")
+            for child in children(node):
+                self.visit(swift_file, child, scope, owner, in_async or is_task)
+            return
         if node_type == "await_expression" and not in_async:
             self.report(
                 swift_file,

@@ -114,6 +114,8 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var showSignatureConfirmation: Bool = false
     @Published var showDeleteConfirmation: Bool = false
     @Published var workbenchNotificationMessage: String?
+    @Published var isWorkbenchProcessing: Bool = false
+    @Published var workbenchProcessingStatus: String?
     var pendingWorkbenchAction: WorkbenchAction?
 
     init() {

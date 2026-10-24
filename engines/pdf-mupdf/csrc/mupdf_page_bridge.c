@@ -4,10 +4,10 @@
 #include <string.h>
 
 #include "mupdf_serialize.h"
+#include "mupdf_page_helpers.h"
+#include "mupdf_struct_tree.h"
 
 void vocument_mupdf_free_bytes(unsigned char *ptr);
-
-#include "mupdf_page_helpers.h"
 
 /*
  * Reorders the pages of a PDF document according to `order` (0-indexed).
@@ -572,10 +572,6 @@ int vocument_mupdf_extract_pages(
 
                         pdf_obj *src_page_ref = pdf_lookup_page_obj(ctx, src_doc, src_p);
                         pdf_obj *dst_page_ref = pdf_lookup_page_obj(ctx, dst_doc, dst_p);
-                        if (dst_page_ref) {
-                            pdf_dict_del(ctx, dst_page_ref, PDF_NAME(StructParents));
-                            pdf_dict_dels(ctx, dst_page_ref, "Tabs");
-                        }
 
                         /* Graft annotations and form fields */
                         pdf_obj *src_annots = pdf_dict_get(ctx, src_page_ref, PDF_NAME(Annots));
@@ -587,11 +583,15 @@ int vocument_mupdf_extract_pages(
                                 pdf_obj *src_a = pdf_array_get(ctx, src_annots, a);
                                 pdf_obj *dst_a = pdf_graft_mapped_object(ctx, map, src_a);
                                 pdf_dict_put(ctx, dst_a, PDF_NAME(P), dst_page_ref);
-                                pdf_dict_dels(ctx, dst_a, "StructParent");
                                 pdf_array_push(ctx, dst_annots, dst_a);
                             }
                             pdf_dict_put_drop(ctx, dst_page_ref, PDF_NAME(Annots), dst_annots);
                         }
+                    }
+
+                    if (vocument_extract_tagged_structures(ctx, dst_doc, src_doc, map, page_indices, page_indices_len) != 0 ||
+                        !validate_tagged_pdf_consistency(ctx, dst_doc)) {
+                        status = 1;
                     }
                 }
                 fz_always(ctx) {
@@ -601,7 +601,9 @@ int vocument_mupdf_extract_pages(
                     fz_rethrow(ctx);
                 }
 
-                vocument_serialize_pdf_doc_to_malloc(ctx, dst_doc, out_pdf_bytes, out_pdf_len);
+                if (status == 0) {
+                    vocument_serialize_pdf_doc_to_malloc(ctx, dst_doc, out_pdf_bytes, out_pdf_len);
+                }
             }
         }
     }

@@ -20,6 +20,20 @@ struct PageWorkbenchView: View {
 
             Divider()
 
+            if coordinator.isWorkbenchProcessing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(coordinator.workbenchProcessingStatus ?? "Processing document…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.10))
+            }
+
             if let preflight = coordinator.workbenchPreflightReport {
                 preflightNoticeBanner(preflight)
             }

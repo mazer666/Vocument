@@ -6,8 +6,75 @@
 
 #include "mupdf_serialize.h"
 #include "mupdf_page_helpers.h"
+#include "mupdf_struct_tree.h"
 
 void vocument_mupdf_free_bytes(unsigned char *ptr);
+
+/*
+ * Grafts Named Destinations (/Dests and /Names /Dests) from src_doc into dst_doc.
+ */
+static void append_grafted_named_dests(
+    fz_context *ctx,
+    pdf_document *dst_doc,
+    pdf_document *src_doc,
+    pdf_graft_map *map
+) {
+    pdf_obj *src_root = pdf_dict_get(ctx, pdf_trailer(ctx, src_doc), PDF_NAME(Root));
+    if (!src_root) return;
+    pdf_obj *dst_root = pdf_dict_get(ctx, pdf_trailer(ctx, dst_doc), PDF_NAME(Root));
+    if (!dst_root) return;
+
+    /* 1. Root /Dests dictionary */
+    pdf_obj *src_dests = pdf_dict_get(ctx, src_root, PDF_NAME(Dests));
+    if (src_dests && pdf_is_dict(ctx, src_dests)) {
+        pdf_obj *dst_dests = pdf_dict_get(ctx, dst_root, PDF_NAME(Dests));
+        if (!dst_dests) {
+            dst_dests = pdf_new_dict(ctx, dst_doc, 8);
+            pdf_dict_put_drop(ctx, dst_root, PDF_NAME(Dests), dst_dests);
+        }
+        int n = pdf_dict_len(ctx, src_dests);
+        for (int i = 0; i < n; i++) {
+            pdf_obj *k = pdf_dict_get_key(ctx, src_dests, i);
+            pdf_obj *v = pdf_dict_get_val(ctx, src_dests, i);
+            pdf_obj *grafted_v = pdf_graft_mapped_object(ctx, map, v);
+            pdf_dict_put(ctx, dst_dests, k, grafted_v);
+        }
+    }
+
+    /* 2. Root /Names /Dests NameTree */
+    pdf_obj *src_names = pdf_dict_get(ctx, src_root, PDF_NAME(Names));
+    if (src_names && pdf_is_dict(ctx, src_names)) {
+        pdf_obj *src_nd = pdf_dict_get(ctx, src_names, PDF_NAME(Dests));
+        if (src_nd && pdf_is_dict(ctx, src_nd)) {
+            pdf_obj *src_arr = pdf_dict_get(ctx, src_nd, PDF_NAME(Names));
+            if (pdf_is_array(ctx, src_arr)) {
+                pdf_obj *dst_names = pdf_dict_get(ctx, dst_root, PDF_NAME(Names));
+                if (!dst_names) {
+                    dst_names = pdf_new_dict(ctx, dst_doc, 4);
+                    pdf_dict_put_drop(ctx, dst_root, PDF_NAME(Names), dst_names);
+                }
+                pdf_obj *dst_nd = pdf_dict_get(ctx, dst_names, PDF_NAME(Dests));
+                if (!dst_nd) {
+                    dst_nd = pdf_new_dict(ctx, dst_doc, 4);
+                    pdf_obj *names_arr = pdf_new_array(ctx, dst_doc, 8);
+                    pdf_dict_put_drop(ctx, dst_nd, PDF_NAME(Names), names_arr);
+                    pdf_dict_put_drop(ctx, dst_names, PDF_NAME(Dests), dst_nd);
+                }
+                pdf_obj *dst_arr = pdf_dict_get(ctx, dst_nd, PDF_NAME(Names));
+                if (pdf_is_array(ctx, dst_arr)) {
+                    int len = pdf_array_len(ctx, src_arr);
+                    for (int i = 0; i < len; i += 2) {
+                        pdf_obj *k = pdf_array_get(ctx, src_arr, i);
+                        pdf_obj *v = pdf_array_get(ctx, src_arr, i + 1);
+                        pdf_obj *grafted_v = pdf_graft_mapped_object(ctx, map, v);
+                        pdf_array_push(ctx, dst_arr, k);
+                        pdf_array_push(ctx, dst_arr, grafted_v);
+                    }
+                }
+            }
+        }
+    }
+}
 
 /*
  * Appends grafted outline items from a source document into the destination document's outlines tree.
@@ -295,6 +362,11 @@ int vocument_mupdf_merge_documents_ext(
 
                                 append_grafted_outlines(ctx, dst_pdf_doc, src_pdf_doc, map);
                                 append_grafted_pagelabels(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before);
+                                append_grafted_named_dests(ctx, dst_pdf_doc, src_pdf_doc, map);
+
+                                if (vocument_merge_tagged_structures(ctx, dst_pdf_doc, src_pdf_doc, map, dst_count_before, src_count) != 0) {
+                                    status = 5;
+                                }
                             }
                             fz_always(ctx) {
                                 pdf_drop_graft_map(ctx, map);
@@ -311,6 +383,12 @@ int vocument_mupdf_merge_documents_ext(
                 }
                 fz_catch(ctx) {
                     status = 2;
+                }
+            }
+
+            if (status == 0) {
+                if (!validate_tagged_pdf_consistency(ctx, dst_pdf_doc)) {
+                    status = 5;
                 }
             }
 
@@ -438,6 +516,12 @@ int vocument_mupdf_insert_pages_ext(
                                 merge_acroform_fields_for_grafted_page(ctx, tgt_pdf_doc, grafted_page, "Insert");
                             }
                         }
+
+                        append_grafted_named_dests(ctx, tgt_pdf_doc, src_pdf_doc, map);
+
+                        if (vocument_merge_tagged_structures(ctx, tgt_pdf_doc, src_pdf_doc, map, insert_at, (int)source_page_indices_len) != 0) {
+                            status = 5;
+                        }
                     }
                     fz_always(ctx) {
                         pdf_drop_graft_map(ctx, map);
@@ -446,10 +530,18 @@ int vocument_mupdf_insert_pages_ext(
                         fz_rethrow(ctx);
                     }
 
-                    if (had_sigs && allow_signature_invalidation) {
-                        mark_signatures_invalidated(ctx, tgt_pdf_doc);
+                    if (status == 0) {
+                        if (!validate_tagged_pdf_consistency(ctx, tgt_pdf_doc)) {
+                            status = 5;
+                        }
                     }
-                    vocument_serialize_pdf_doc_to_malloc(ctx, tgt_pdf_doc, out_pdf_bytes, out_pdf_len);
+
+                    if (status == 0) {
+                        if (had_sigs && allow_signature_invalidation) {
+                            mark_signatures_invalidated(ctx, tgt_pdf_doc);
+                        }
+                        vocument_serialize_pdf_doc_to_malloc(ctx, tgt_pdf_doc, out_pdf_bytes, out_pdf_len);
+                    }
                 }
             }
         }

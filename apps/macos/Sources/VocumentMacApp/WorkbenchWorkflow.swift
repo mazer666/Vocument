@@ -31,8 +31,8 @@ extension MacDocumentSessionCoordinator {
     }
 
     /// Performs the given workbench mutation on the active document session.
-    private func executeWorkbenchAction(_ action: WorkbenchAction, allowInvalidation: Bool) throws {
-        guard let session = activeSession else { return }
+    private func executeWorkbenchAction(_ action: WorkbenchAction, allowInvalidation: Bool) throws -> String {
+        guard let session = activeSession else { return "" }
         switch action {
         case .reorder(let order):
             _ = try coreClient.reorderPages(
@@ -40,7 +40,7 @@ extension MacDocumentSessionCoordinator {
                 order: order,
                 allowSignatureInvalidation: allowInvalidation
             )
-            workbenchNotificationMessage = "Pages reordered"
+            return "Pages reordered"
         case .duplicate(let pageIndices):
             for pageIndex in pageIndices.sorted().reversed() {
                 _ = try coreClient.duplicatePage(
@@ -49,14 +49,14 @@ extension MacDocumentSessionCoordinator {
                     allowSignatureInvalidation: allowInvalidation
                 )
             }
-            workbenchNotificationMessage = "Duplicated \(pageIndices.count) page(s)"
+            return "Duplicated \(pageIndices.count) page(s)"
         case .delete(let indices):
             _ = try coreClient.deletePages(
                 sessionId: session.sessionId,
                 pageIndices: indices,
                 allowSignatureInvalidation: allowInvalidation
             )
-            workbenchNotificationMessage = "Deleted \(indices.count) page(s)"
+            return "Deleted \(indices.count) page(s)"
         case .rotate(let indices, let delta):
             _ = try coreClient.rotatePagesWithOptions(
                 sessionId: session.sessionId,
@@ -64,7 +64,7 @@ extension MacDocumentSessionCoordinator {
                 deltaDegrees: delta,
                 allowSignatureInvalidation: allowInvalidation
             )
-            workbenchNotificationMessage = "Rotated \(indices.count) page(s) by \(delta)°"
+            return "Rotated \(indices.count) page(s) by \(delta)°"
         case .insert(let sourceData, let sourceIndices, let insertAt):
             _ = try coreClient.insertPages(
                 sessionId: session.sessionId,
@@ -73,21 +73,21 @@ extension MacDocumentSessionCoordinator {
                 insertAt: insertAt,
                 allowSignatureInvalidation: allowInvalidation
             )
-            workbenchNotificationMessage = "Inserted \(sourceIndices.count) page(s) at position #\(insertAt + 1)"
+            return "Inserted \(sourceIndices.count) page(s) at position #\(insertAt + 1)"
         case .merge(let sourcePdfsData):
             _ = try coreClient.mergeDocuments(
                 sessionId: session.sessionId,
                 sourcePdfsData: sourcePdfsData,
                 allowSignatureInvalidation: allowInvalidation
             )
-            workbenchNotificationMessage = "Merged \(sourcePdfsData.count) external document(s)"
+            return "Merged \(sourcePdfsData.count) external document(s)"
         }
     }
 
     /// Requests execution of `action`: if the document contains digital signatures,
-    /// sets `pendingWorkbenchAction` and prompts for user confirmation; otherwise proceeds immediately.
+    /// sets `pendingWorkbenchAction` and prompts for user confirmation; otherwise proceeds with mutation.
     func requestWorkbenchAction(_ action: WorkbenchAction) {
-        guard let session = activeSession else { return }
+        guard let session = activeSession, !isWorkbenchProcessing else { return }
         do {
             let preflight = try coreClient.workbenchPreflight(sessionId: session.sessionId)
             workbenchPreflightReport = preflight
@@ -95,7 +95,10 @@ extension MacDocumentSessionCoordinator {
                 pendingWorkbenchAction = action
                 showSignatureConfirmation = true
             } else {
-                try executeWorkbenchAction(action, allowInvalidation: false)
+                isWorkbenchProcessing = true
+                defer { isWorkbenchProcessing = false }
+                let message = try executeWorkbenchAction(action, allowInvalidation: false)
+                workbenchNotificationMessage = message
                 refreshSessionStateAfterMutation()
             }
         } catch {
@@ -103,12 +106,15 @@ extension MacDocumentSessionCoordinator {
         }
     }
 
-    /// User confirmed invalidating signatures: executes the pending action.
+    /// User confirmed invalidating signatures: executes the pending action with signature stripping.
     func confirmAndExecutePendingAction() {
-        guard let action = pendingWorkbenchAction else { return }
+        guard let action = pendingWorkbenchAction, !isWorkbenchProcessing else { return }
         pendingWorkbenchAction = nil
+        isWorkbenchProcessing = true
+        defer { isWorkbenchProcessing = false }
         do {
-            try executeWorkbenchAction(action, allowInvalidation: true)
+            let message = try executeWorkbenchAction(action, allowInvalidation: true)
+            workbenchNotificationMessage = message
             refreshSessionStateAfterMutation()
         } catch {
             errorMessage = "Operation failed: \(error.localizedDescription)"
@@ -244,7 +250,7 @@ extension MacDocumentSessionCoordinator {
 
     /// Prompts the user to pick a PDF document and inserts all its pages after the current selection (`M3.2`).
     func workbenchInsertPages() {
-        guard let session = activeSession else { return }
+        guard let session = activeSession, !isWorkbenchProcessing else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.pdf]
         panel.allowsMultipleSelection = false
@@ -253,17 +259,19 @@ extension MacDocumentSessionCoordinator {
         panel.prompt = "Insert"
 
         if panel.runModal() == .OK, let url = panel.url {
+            let maxSelected = selectedWorkbenchPages.max()
+            let insertAt: UInt32 = maxSelected != nil ? (maxSelected! + 1) : session.pdfSummary.pageCount
+
+            isWorkbenchProcessing = true
+            defer { isWorkbenchProcessing = false }
+
             do {
                 let data = try Data(contentsOf: url)
-                // Determine insert position: after last selected page, or at end if no selection
-                let maxSelected = selectedWorkbenchPages.max()
-                let insertAt: UInt32 = maxSelected != nil ? (maxSelected! + 1) : session.pdfSummary.pageCount
-                // Open temporarily to query page count
                 let tempSession = try coreClient.openScopedDocument(at: url)
                 let pageCount = tempSession.pdfSummary.pageCount
                 _ = try? coreClient.closeSession(sessionId: tempSession.sessionId)
-
                 let sourceIndices = Array(0..<pageCount)
+
                 requestWorkbenchAction(.insert(data, sourceIndices, insertAt))
             } catch {
                 errorMessage = "Failed to load PDF for insertion: \(error.localizedDescription)"
@@ -273,7 +281,7 @@ extension MacDocumentSessionCoordinator {
 
     /// Prompts the user to pick one or more PDF documents to merge into the active document (`M3.2`).
     func workbenchMergeDocuments() {
-        guard activeSession != nil else { return }
+        guard activeSession != nil, !isWorkbenchProcessing else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.pdf]
         panel.allowsMultipleSelection = true
@@ -282,9 +290,13 @@ extension MacDocumentSessionCoordinator {
         panel.prompt = "Merge"
 
         if panel.runModal() == .OK && !panel.urls.isEmpty {
+            let urls = panel.urls
+            isWorkbenchProcessing = true
+            defer { isWorkbenchProcessing = false }
+
             do {
                 var pdfsData: [Data] = []
-                for url in panel.urls {
+                for url in urls {
                     let data = try Data(contentsOf: url)
                     pdfsData.append(data)
                 }
@@ -297,8 +309,10 @@ extension MacDocumentSessionCoordinator {
 
     /// Prompts the user to choose an export folder and splits the document into standalone PDF parts (`M3.2`).
     func workbenchSplitDocument() {
-        guard let session = activeSession, session.pdfSummary.pageCount > 1 else {
-            errorMessage = "A document must have at least 2 pages to be split."
+        guard let session = activeSession, session.pdfSummary.pageCount > 1, !isWorkbenchProcessing else {
+            if activeSession?.pdfSummary.pageCount ?? 0 <= 1 {
+                errorMessage = "A document must have at least 2 pages to be split."
+            }
             return
         }
 
@@ -310,28 +324,58 @@ extension MacDocumentSessionCoordinator {
         panel.message = "Choose destination directory for split PDF parts"
 
         if panel.runModal() == .OK, let folderUrl = panel.url {
-            do {
-                // If specific pages are selected and not all pages: split into [selected] and [surviving]
-                let splitRanges: [[UInt32]]
-                if !selectedWorkbenchPages.isEmpty && selectedWorkbenchPages.count < Int(session.pdfSummary.pageCount) {
-                    let selected = Array(selectedWorkbenchPages).sorted()
-                    let surviving = (0..<session.pdfSummary.pageCount).filter { !selectedWorkbenchPages.contains($0) }
-                    splitRanges = [selected, surviving]
-                } else {
-                    // Otherwise split into single-page documents
-                    splitRanges = (0..<session.pdfSummary.pageCount).map { [$0] }
-                }
+            let sessionId = session.sessionId
+            let pageCount = session.pdfSummary.pageCount
+            let selectedPages = selectedWorkbenchPages
+            let baseName = session.fileIdentity.displayName.replacingOccurrences(of: ".pdf", with: "")
 
+            let splitRanges: [[UInt32]]
+            if !selectedPages.isEmpty && selectedPages.count < Int(pageCount) {
+                let selected = Array(selectedPages).sorted()
+                let surviving = (0..<pageCount).filter { !selectedPages.contains($0) }
+                splitRanges = [selected, surviving]
+            } else {
+                splitRanges = (0..<pageCount).map { [$0] }
+            }
+
+            isWorkbenchProcessing = true
+            defer { isWorkbenchProcessing = false }
+
+            do {
                 let splitPdfs = try coreClient.splitDocument(
-                    sessionId: session.sessionId,
+                    sessionId: sessionId,
                     splitRanges: splitRanges
                 )
 
-                let baseName = session.fileIdentity.displayName.replacingOccurrences(of: ".pdf", with: "")
-                for (idx, pdfData) in splitPdfs.enumerated() {
-                    let fileUrl = folderUrl.appendingPathComponent("\(baseName)_part\(idx + 1).pdf")
-                    try pdfData.write(to: fileUrl, options: .atomic)
+                // Staging in temporary directory to prevent partially completed exports
+                let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("vocument_split_\(UUID().uuidString)")
+                try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                defer {
+                    try? FileManager.default.removeItem(at: tempDir)
                 }
+
+                var stagedFiles: [(URL, URL)] = []
+                for (idx, pdfData) in splitPdfs.enumerated() {
+                    let fileName = "\(baseName)_part\(idx + 1).pdf"
+                    let stagedUrl = tempDir.appendingPathComponent(fileName)
+                    try pdfData.write(to: stagedUrl, options: .atomic)
+
+                    // Collision protection: ensure existing files are never silently overwritten
+                    var destUrl = folderUrl.appendingPathComponent(fileName)
+                    var counter = 1
+                    while FileManager.default.fileExists(atPath: destUrl.path) {
+                        let candidateName = "\(baseName)_part\(idx + 1)_\(counter).pdf"
+                        destUrl = folderUrl.appendingPathComponent(candidateName)
+                        counter += 1
+                    }
+                    stagedFiles.append((stagedUrl, destUrl))
+                }
+
+                // Copy all files only after every single part has been successfully staged
+                for (stagedUrl, destUrl) in stagedFiles {
+                    try FileManager.default.copyItem(at: stagedUrl, to: destUrl)
+                }
+
                 workbenchNotificationMessage = "Document split into \(splitPdfs.count) parts in \(folderUrl.lastPathComponent)"
             } catch {
                 errorMessage = "Split failed: \(error.localizedDescription)"
@@ -341,7 +385,7 @@ extension MacDocumentSessionCoordinator {
 
     /// Undoes the last committed page mutation via `TransactionManager` (`M3.1`, `UNDO-001`).
     func workbenchUndo() {
-        guard let session = activeSession else { return }
+        guard let session = activeSession, !isWorkbenchProcessing else { return }
         do {
             transactionHistory = try coreClient.undo(sessionId: session.sessionId)
             refreshSessionStateAfterMutation()
@@ -353,7 +397,7 @@ extension MacDocumentSessionCoordinator {
 
     /// Redoes the last undone page mutation via `TransactionManager` (`M3.1`, `UNDO-001`).
     func workbenchRedo() {
-        guard let session = activeSession else { return }
+        guard let session = activeSession, !isWorkbenchProcessing else { return }
         do {
             transactionHistory = try coreClient.redo(sessionId: session.sessionId)
             refreshSessionStateAfterMutation()
