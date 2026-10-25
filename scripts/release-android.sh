@@ -178,7 +178,10 @@ case "$BUILD_TARGET" in
         BUILT="$(find apps/android/app/build/outputs/bundle -name '*.aab' 2>/dev/null | head -1)"
         ;;
     apk)
-        BUILT="$(find apps/android/app/build/outputs/apk -name "*${VARIANT}*.apk" 2>/dev/null | head -1)"
+        BUILT="$(find apps/android/app/build/outputs/apk -iname "*${VARIANT}*.apk" 2>/dev/null | head -1)"
+        if [[ -z "$BUILT" ]]; then
+            BUILT="$(find apps/android/app/build/outputs/apk -name '*.apk' 2>/dev/null | head -1)"
+        fi
         ;;
 esac
 
