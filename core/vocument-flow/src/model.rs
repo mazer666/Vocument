@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use crate::error::FlowError;
 use crate::metadata::DocumentMetadata;
 use crate::styles::{Alignment, ColorRgba, Stylesheet, TextSpan};
 
@@ -69,6 +70,81 @@ impl SectionGeometry {
             column_gap_pt: 18.0,
         }
     }
+
+    /// Validates geometric dimensions, positive printable bounds, and column configuration.
+    pub fn validate(&self, section_id: &str) -> Result<(), FlowError> {
+        if !self.width_pt.is_finite() || self.width_pt <= 0.0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: format!("page width must be finite and > 0, got {}", self.width_pt),
+            });
+        }
+        if !self.height_pt.is_finite() || self.height_pt <= 0.0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: format!("page height must be finite and > 0, got {}", self.height_pt),
+            });
+        }
+        if !self.margin_top_pt.is_finite()
+            || self.margin_top_pt < 0.0
+            || !self.margin_bottom_pt.is_finite()
+            || self.margin_bottom_pt < 0.0
+            || !self.margin_left_pt.is_finite()
+            || self.margin_left_pt < 0.0
+            || !self.margin_right_pt.is_finite()
+            || self.margin_right_pt < 0.0
+        {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: "margins must be finite and non-negative".to_string(),
+            });
+        }
+        let printable_width = self.width_pt - (self.margin_left_pt + self.margin_right_pt);
+        if printable_width <= 0.0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: format!(
+                    "horizontal margins ({:.1}pt + {:.1}pt) equal or exceed page width ({:.1}pt)",
+                    self.margin_left_pt, self.margin_right_pt, self.width_pt
+                ),
+            });
+        }
+        let printable_height = self.height_pt - (self.margin_top_pt + self.margin_bottom_pt);
+        if printable_height <= 0.0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: format!(
+                    "vertical margins ({:.1}pt + {:.1}pt) equal or exceed page height ({:.1}pt)",
+                    self.margin_top_pt, self.margin_bottom_pt, self.height_pt
+                ),
+            });
+        }
+        if self.column_count == 0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: "column count must be at least 1".to_string(),
+            });
+        }
+        if !self.column_gap_pt.is_finite() || self.column_gap_pt < 0.0 {
+            return Err(FlowError::InvalidGeometry {
+                section_id: section_id.to_string(),
+                details: "column gap must be finite and non-negative".to_string(),
+            });
+        }
+        if self.column_count > 1 {
+            let total_gaps = (self.column_count - 1) as f32 * self.column_gap_pt;
+            if total_gaps >= printable_width {
+                return Err(FlowError::InvalidGeometry {
+                    section_id: section_id.to_string(),
+                    details: format!(
+                        "total column gaps ({:.1}pt) equal or exceed printable width ({:.1}pt)",
+                        total_gaps, printable_width
+                    ),
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A paragraph block containing formatted inline spans.
@@ -112,6 +188,8 @@ impl ParagraphBlock {
 pub struct HeadingBlock {
     pub id: String,
     pub level: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_id: Option<String>,
     pub spans: Vec<TextSpan>,
     #[serde(default)]
     pub numbered: bool,
@@ -126,11 +204,17 @@ impl HeadingBlock {
         Self {
             id: id.into(),
             level,
+            style_id: None,
             spans,
             numbered: false,
             number_prefix: None,
             extra: BTreeMap::new(),
         }
+    }
+
+    pub fn with_style(mut self, style_id: impl Into<String>) -> Self {
+        self.style_id = Some(style_id.into());
+        self
     }
 }
 
@@ -173,6 +257,8 @@ impl ListItem {
 pub struct ListBlock {
     pub id: String,
     pub kind: ListKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_id: Option<String>,
     pub items: Vec<ListItem>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -183,9 +269,15 @@ impl ListBlock {
         Self {
             id: id.into(),
             kind,
+            style_id: None,
             items,
             extra: BTreeMap::new(),
         }
+    }
+
+    pub fn with_style(mut self, style_id: impl Into<String>) -> Self {
+        self.style_id = Some(style_id.into());
+        self
     }
 }
 
@@ -224,6 +316,16 @@ impl TableCell {
         self.col_span = col_span;
         self
     }
+
+    pub fn with_row_span(mut self, row_span: u32) -> Self {
+        self.row_span = row_span;
+        self
+    }
+
+    pub fn with_background_color(mut self, color: ColorRgba) -> Self {
+        self.background_color = Some(color);
+        self
+    }
 }
 
 /// A table row containing table cells.
@@ -259,6 +361,8 @@ impl TableRow {
 pub struct TableBlock {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caption: Option<String>,
     pub rows: Vec<TableRow>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -273,12 +377,33 @@ impl TableBlock {
     pub fn new(id: impl Into<String>, rows: Vec<TableRow>) -> Self {
         Self {
             id: id.into(),
+            style_id: None,
             caption: None,
             rows,
             column_widths_pt: Vec::new(),
             repeat_header_rows: 0,
             extra: BTreeMap::new(),
         }
+    }
+
+    pub fn with_style(mut self, style_id: impl Into<String>) -> Self {
+        self.style_id = Some(style_id.into());
+        self
+    }
+
+    pub fn with_caption(mut self, caption: impl Into<String>) -> Self {
+        self.caption = Some(caption.into());
+        self
+    }
+
+    pub fn with_column_widths(mut self, widths: Vec<f32>) -> Self {
+        self.column_widths_pt = widths;
+        self
+    }
+
+    pub fn with_repeat_header_rows(mut self, rows: u32) -> Self {
+        self.repeat_header_rows = rows;
+        self
     }
 }
 
@@ -448,44 +573,24 @@ impl FlowDocument {
     }
 }
 
-impl From<ParagraphBlock> for Block {
-    fn from(b: ParagraphBlock) -> Self {
-        Self::Paragraph(b)
-    }
+macro_rules! impl_from_block {
+    ($($variant:ident($type:ident)),* $(,)?) => {
+        $(
+            impl From<$type> for Block {
+                fn from(b: $type) -> Self {
+                    Self::$variant(b)
+                }
+            }
+        )*
+    };
 }
 
-impl From<HeadingBlock> for Block {
-    fn from(b: HeadingBlock) -> Self {
-        Self::Heading(b)
-    }
-}
-
-impl From<ListBlock> for Block {
-    fn from(b: ListBlock) -> Self {
-        Self::List(b)
-    }
-}
-
-impl From<TableBlock> for Block {
-    fn from(b: TableBlock) -> Self {
-        Self::Table(b)
-    }
-}
-
-impl From<ImageBlock> for Block {
-    fn from(b: ImageBlock) -> Self {
-        Self::Image(b)
-    }
-}
-
-impl From<CalloutBlock> for Block {
-    fn from(b: CalloutBlock) -> Self {
-        Self::Callout(b)
-    }
-}
-
-impl From<ThematicBreakBlock> for Block {
-    fn from(b: ThematicBreakBlock) -> Self {
-        Self::ThematicBreak(b)
-    }
+impl_from_block! {
+    Paragraph(ParagraphBlock),
+    Heading(HeadingBlock),
+    List(ListBlock),
+    Table(TableBlock),
+    Image(ImageBlock),
+    Callout(CalloutBlock),
+    ThematicBreak(ThematicBreakBlock),
 }

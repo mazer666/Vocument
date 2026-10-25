@@ -135,6 +135,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `toml_datetime` | 0.6.11 | MIT OR Apache-2.0 |
 | `toml_edit` | 0.22.27 | MIT OR Apache-2.0 |
 | `toml_write` | 0.1.2 | MIT OR Apache-2.0 |
+| `ttf-parser` | 0.25.1 | MIT OR Apache-2.0 |
 | `typenum` | 1.20.1 | MIT OR Apache-2.0 |
 | `unicode-ident` | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | `unicode-width` | 0.2.2 | MIT OR Apache-2.0 |
@@ -152,6 +153,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `vocument-ffi` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-flow` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-imaging` | 0.1.0 | AGPL-3.0-or-later |
+| `vocument-layout` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-ocr` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-pdf-mupdf` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-pdoc` | 0.1.0 | AGPL-3.0-or-later |

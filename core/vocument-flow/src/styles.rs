@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use crate::error::FlowError;
+
 /// 32-bit RGBA color representation with serialization helpers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ColorRgba {
@@ -202,6 +204,30 @@ impl TextSpan {
         self.footnote_ref = Some(footnote_id.into());
         self
     }
+
+    /// Validates inline typographic attributes.
+    pub fn validate(&self, context: &str) -> Result<(), FlowError> {
+        if let Some(size) = self.font_size_pt
+            && (!size.is_finite() || size <= 0.0)
+        {
+            return Err(FlowError::InvalidTypography {
+                context: context.to_string(),
+                details: format!("span font_size_pt must be finite and > 0, got {}", size),
+            });
+        }
+        if let Some(weight) = self.font_weight
+            && !(1..=1000).contains(&weight)
+        {
+            return Err(FlowError::InvalidTypography {
+                context: context.to_string(),
+                details: format!(
+                    "span font_weight must be between 1 and 1000, got {}",
+                    weight
+                ),
+            });
+        }
+        Ok(())
+    }
 }
 
 /// Paragraph text alignment.
@@ -245,6 +271,59 @@ fn default_line_spacing() -> f32 {
 
 fn default_true() -> bool {
     true
+}
+
+impl ParagraphStyle {
+    pub fn validate(&self) -> Result<(), FlowError> {
+        if self.id.trim().is_empty() {
+            return Err(FlowError::EmptyStyleId {
+                style_type: "paragraph".to_string(),
+            });
+        }
+        if !self.font_size_pt.is_finite() || self.font_size_pt <= 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("paragraph style '{}'", self.id),
+                details: format!(
+                    "font_size_pt must be finite and > 0, got {}",
+                    self.font_size_pt
+                ),
+            });
+        }
+        if !self.line_spacing_mult.is_finite() || self.line_spacing_mult <= 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("paragraph style '{}'", self.id),
+                details: format!(
+                    "line_spacing_mult must be finite and > 0, got {}",
+                    self.line_spacing_mult
+                ),
+            });
+        }
+        if !self.space_before_pt.is_finite() || self.space_before_pt < 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("paragraph style '{}'", self.id),
+                details: format!(
+                    "space_before_pt must be finite and >= 0, got {}",
+                    self.space_before_pt
+                ),
+            });
+        }
+        if !self.space_after_pt.is_finite() || self.space_after_pt < 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("paragraph style '{}'", self.id),
+                details: format!(
+                    "space_after_pt must be finite and >= 0, got {}",
+                    self.space_after_pt
+                ),
+            });
+        }
+        if !self.first_line_indent_pt.is_finite() {
+            return Err(FlowError::InvalidTypography {
+                context: format!("paragraph style '{}'", self.id),
+                details: "first_line_indent_pt must be finite".to_string(),
+            });
+        }
+        Ok(())
+    }
 }
 
 /// Reusable character styling.
@@ -310,6 +389,79 @@ fn default_list_indent() -> f32 {
     18.0
 }
 
+impl CharacterStyle {
+    pub fn validate(&self) -> Result<(), FlowError> {
+        if self.id.trim().is_empty() {
+            return Err(FlowError::EmptyStyleId {
+                style_type: "character".to_string(),
+            });
+        }
+        if let Some(size) = self.font_size_pt
+            && (!size.is_finite() || size <= 0.0)
+        {
+            return Err(FlowError::InvalidTypography {
+                context: format!("character style '{}'", self.id),
+                details: format!("font_size_pt must be finite and > 0, got {}", size),
+            });
+        }
+        if let Some(weight) = self.font_weight
+            && !(1..=1000).contains(&weight)
+        {
+            return Err(FlowError::InvalidTypography {
+                context: format!("character style '{}'", self.id),
+                details: format!("font_weight must be between 1 and 1000, got {}", weight),
+            });
+        }
+        Ok(())
+    }
+}
+
+impl TableStyle {
+    pub fn validate(&self) -> Result<(), FlowError> {
+        if self.id.trim().is_empty() {
+            return Err(FlowError::EmptyStyleId {
+                style_type: "table".to_string(),
+            });
+        }
+        if !self.border_width_pt.is_finite() || self.border_width_pt < 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("table style '{}'", self.id),
+                details: format!(
+                    "border_width_pt must be finite and >= 0, got {}",
+                    self.border_width_pt
+                ),
+            });
+        }
+        if !self.cell_padding_pt.is_finite() || self.cell_padding_pt < 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("table style '{}'", self.id),
+                details: format!(
+                    "cell_padding_pt must be finite and >= 0, got {}",
+                    self.cell_padding_pt
+                ),
+            });
+        }
+        Ok(())
+    }
+}
+
+impl ListStyle {
+    pub fn validate(&self) -> Result<(), FlowError> {
+        if self.id.trim().is_empty() {
+            return Err(FlowError::EmptyStyleId {
+                style_type: "list".to_string(),
+            });
+        }
+        if !self.indent_pt.is_finite() || self.indent_pt < 0.0 {
+            return Err(FlowError::InvalidTypography {
+                context: format!("list style '{}'", self.id),
+                details: format!("indent_pt must be finite and >= 0, got {}", self.indent_pt),
+            });
+        }
+        Ok(())
+    }
+}
+
 /// Document-level style catalog.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Stylesheet {
@@ -330,6 +482,47 @@ pub struct Stylesheet {
 }
 
 impl Stylesheet {
+    /// Validates internal consistency and all styles in the catalog.
+    pub fn validate(&self) -> Result<(), FlowError> {
+        for (key, style) in &self.paragraph_styles {
+            if key != &style.id {
+                return Err(FlowError::InvalidTypography {
+                    context: "stylesheet paragraph_styles".to_string(),
+                    details: format!("key '{}' does not match style id '{}'", key, style.id),
+                });
+            }
+            style.validate()?;
+        }
+        for (key, style) in &self.character_styles {
+            if key != &style.id {
+                return Err(FlowError::InvalidTypography {
+                    context: "stylesheet character_styles".to_string(),
+                    details: format!("key '{}' does not match style id '{}'", key, style.id),
+                });
+            }
+            style.validate()?;
+        }
+        for (key, style) in &self.table_styles {
+            if key != &style.id {
+                return Err(FlowError::InvalidTypography {
+                    context: "stylesheet table_styles".to_string(),
+                    details: format!("key '{}' does not match style id '{}'", key, style.id),
+                });
+            }
+            style.validate()?;
+        }
+        for (key, style) in &self.list_styles {
+            if key != &style.id {
+                return Err(FlowError::InvalidTypography {
+                    context: "stylesheet list_styles".to_string(),
+                    details: format!("key '{}' does not match style id '{}'", key, style.id),
+                });
+            }
+            style.validate()?;
+        }
+        Ok(())
+    }
+
     /// Creates a calibrated standard legal stylesheet.
     pub fn standard_legal() -> Self {
         let mut stylesheet = Self::default();
@@ -352,40 +545,29 @@ impl Stylesheet {
             },
         );
 
-        stylesheet.paragraph_styles.insert(
-            "Heading1".to_string(),
-            ParagraphStyle {
-                id: "Heading1".to_string(),
-                name: "Heading 1".to_string(),
+        let mk_heading =
+            |id: &str, name: &str, size: f32, before: f32, after: f32| ParagraphStyle {
+                id: id.to_string(),
+                name: name.to_string(),
                 font_family: "Inter".to_string(),
-                font_size_pt: 20.0,
-                line_spacing_mult: 1.1,
-                space_before_pt: 14.0,
-                space_after_pt: 6.0,
+                font_size_pt: size,
+                line_spacing_mult: 1.15,
+                space_before_pt: before,
+                space_after_pt: after,
                 alignment: Alignment::Left,
                 first_line_indent_pt: 0.0,
                 keep_with_next: true,
                 keep_lines_together: true,
                 orphan_control: true,
-            },
-        );
+            };
 
         stylesheet.paragraph_styles.insert(
+            "Heading1".to_string(),
+            mk_heading("Heading1", "Heading 1", 20.0, 14.0, 6.0),
+        );
+        stylesheet.paragraph_styles.insert(
             "Heading2".to_string(),
-            ParagraphStyle {
-                id: "Heading2".to_string(),
-                name: "Heading 2".to_string(),
-                font_family: "Inter".to_string(),
-                font_size_pt: 16.0,
-                line_spacing_mult: 1.15,
-                space_before_pt: 12.0,
-                space_after_pt: 4.0,
-                alignment: Alignment::Left,
-                first_line_indent_pt: 0.0,
-                keep_with_next: true,
-                keep_lines_together: true,
-                orphan_control: true,
-            },
+            mk_heading("Heading2", "Heading 2", 16.0, 12.0, 4.0),
         );
 
         stylesheet.table_styles.insert(

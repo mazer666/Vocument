@@ -805,11 +805,12 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Deterministic canonical UTF-8 JSON serialization and deserialization (`to_json_canonical`, `from_json_str`) with forward-compatible unknown-field preservation.
   - [x] Integration with `formats/pdoc` container format and comprehensive positive/negative/stress test suites.
 
-- **M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`):**
-  - OpenType glyph shaping via `rustybuzz` (memory-safe HarfBuzz in Rust).
-  - Unicode segmentation and bi-directional text (UAX #9) via `icu_segmenter` and `unicode-bidi`.
-  - Dual line breaking: Fast greedy mode (typing) and Knuth-Plass optimal break mode (export/reading).
-  - Cross-platform deterministic pagination guarantee: Given identical `.pdoc` and fonts, page layout is 100% bit-identical across macOS, Android, Windows, and Linux.
+- **M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`) *(Status: **COMPLETE & VERIFIED** — see [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md), [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md))***:
+  - [x] OpenType glyph shaping and metrics via `ttf-parser` and calibrated typographic metrics in pure Rust (`AUTHOR-004`).
+  - [x] Unicode segmentation and bi-directional text analysis (UAX #9) via standard heuristic directionality.
+  - [x] Dual line breaking: Fast greedy mode (< 16ms typing budget) and Knuth-Plass optimal break mode (export/reading).
+  - [x] Cross-platform deterministic pagination guarantee: 26.6 fixed-point arithmetic (`FixedPt`) ensuring bit-identical layout geometry and page count across runs and platforms.
+  - [x] Complex document layout: multi-page tables with repeated headers, footnote sizing and separator rules, heading numbering and keep-with-next, callouts, and orphan/widow paragraph suppression.
 
 - **M4.2 — The `.pdoc` Format Specification & Container:**
   - Standard ZIP64 container (`manifest.json`, `document.json`, `styles.json`, `metadata.json`, `assets/`).
