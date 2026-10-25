@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
-**Roadmap version:** 0.1  
-**Current milestone:** M3 — Page Workbench (**COMPLETE & ACCEPTED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md)). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench) are **complete**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Next is M4 (Authoring / FlowDocument / Office) alongside the M3.7 Document Comparison track. CI workflows run on GitHub-hosted runners (`ubuntu-latest` and `macos-15`) with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Roadmap version:** 0.2  
+**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema] and M4.1 [Deterministic Rust Layout Engine] are **COMPLETE & VERIFIED**; M4.2 `.pdoc` container in progress). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -838,6 +838,80 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
 - Deterministic pagination: `.pdoc` layout on macOS and Android matches bit-for-bit under identical font conditions.
 - Output validated green by PAC and veraPDF.
 - DOCX/ODT pass rate $\ge 95\%$ on structural test corpus.
+
+---
+
+# Release & Binary Delivery Plan (Alpha, Beta, Stable)
+
+Vocument delivers authentic, verifiable, native release packages across all supported platforms (`DIST-001`, `DIST-002`). Releases are published directly on GitHub Releases (https://github.com/mazer666/Vocument/releases) and include **both complete source code and compiled native platform binaries** alongside cryptographic SHA-256 checksums (`SHA256SUMS.txt`), third-party licensing notices (`THIRD-PARTY-NOTICES.txt`), and source offer declarations (`SOURCE.txt`, AGPL-3.0 §6).
+
+The release lifecycle is organized into three distinct tiers:
+
+```text
+    [Alpha Releases]                 [Beta Releases]                  [Stable Releases]
+(Developer & Tech Previews)    (Feature-Complete Testing)        (General Availability - GA)
+           │                                │                                │
+  v0.1.0-alpha.1 (Source)          v0.9.0-beta.1 (RC 1)             v1.0.0 (Production GA)
+  v0.3.0-alpha.2 (Workbench)       v0.9.1-beta.2 (RC 2)             v1.1.0 (Windows Track)
+  v0.4.0-alpha.3 (Authoring)       v0.9.x-beta.n (Hardening)        v1.2.0 (Linux Track)
+  v0.5.0-alpha.4 (Cross-Platform)                                   v1.3.0 (Local MCP)
+```
+
+---
+
+## 1. Alpha Releases (Developer & Technical Previews with Binaries)
+
+**Audience & Goal:** Early evaluators, legal tech specialists, and developers. Provides functional native applications to test core capabilities, UX responsiveness, and cross-platform rendering fidelity ahead of final feature completion.
+
+| Release | Milestone Gate | Included Capabilities | Published GitHub Binaries & Artifacts | Status |
+|---|---|---|---|---|
+| **`v0.1.0-alpha.1`** | M0–M2.5 Core Foundation | Trustworthy Viewer, Android Scan & OCR, Redaction, Reviewing Jurist Palette | • Source archive (`v0.1.0-alpha.1.tar.gz`)<br>• Reproducible build record | **Published (2026-10-22)** |
+| **`v0.3.0-alpha.2`** | M3 Page Workbench + M4.0/M4.1 Engine | Full Page Workbench (visual grid, merge, split, crop, deskew, Bates, headers/footers, stamps, optimize), FlowDocument schema & Deterministic Layout Engine | • macOS: `Vocument-0.3.0-alpha.2-macos-arm64.zip` (Universal/Apple Silicon `.app` bundle)<br>• Android: `Vocument-0.3.0-alpha.2-android-arm64.apk` (direct APK with 16 KB page-aligned MuPDF)<br>• Source archive: `vocument-0.3.0-alpha.2-source.tar.gz`<br>• Checksums: `SHA256SUMS.txt` | **Ready for Release** (Post M4.1) |
+| **`v0.4.0-alpha.3`** | M4.2 `.pdoc` + M4.3 Native Canvas | Interactive `.pdoc` container format, native typing canvas on macOS (AppKit `NSTextInputClient`) & Android (Compose), <16ms typing latency | • macOS: `Vocument-0.4.0-alpha.3-macos-arm64.zip` / `.dmg`<br>• Android: `Vocument-0.4.0-alpha.3-android-arm64.apk`<br>• Source archive & SHA-256 sums | **Scheduled (Post M4.3)** |
+| **`v0.5.0-alpha.4`** | M5 Windows / M6 Linux Tech Preview | Windows Shell (`apps/windows`) and Linux Shell (`apps/linux`) initial implementations of the shared acceptance scenario | • Windows: `Vocument-0.5.0-alpha.4-windows-x64.zip`<br>• Linux: `Vocument-0.5.0-alpha.4-linux-x86_64.tar.gz` / Flatpak<br>• Updated macOS & Android binaries | **Scheduled (Post M5/M6 Entry)** |
+
+---
+
+## 2. Beta Releases (Feature-Complete / Public Testing with Binaries)
+
+**Audience & Goal:** Broad public testing, enterprise law firms, accessibility evaluators, and performance stress validation. All planned features are implemented; focus is on eliminating defects, edge-case hardening, and performance calibration on large ($\ge 500$ page) documents.
+
+| Release | Milestone Gate | Included Capabilities | Published GitHub Binaries & Artifacts | Status |
+|---|---|---|---|---|
+| **`v0.9.0-beta.1`** | M4 Complete (M4.0–M4.5) + M3.7 Compare Track | Full authoring suite, `.pdoc` format, Tracked Changes, Margin Comments, PDF/A-PDF/UA export (veraPDF green), DOCX/ODT interop bake-off, and side-by-side Document Compare | • macOS: `Vocument-0.9.0-beta.1-macos.dmg` (Signed & Notarized with Apple Developer ID)<br>• Android: `Vocument-0.9.0-beta.1-android.apk` (Signed release key) and `.aab`<br>• Source archive: `vocument-0.9.0-beta.1-source.tar.gz`<br>• Checksums: `SHA256SUMS.txt.asc` (GPG signed) | **Scheduled (Post M4 & M3.7)** |
+| **`v0.9.1-beta.2` … `v0.9.x-beta.n`** | Bug Fixing & Hardening Sprints | Performance tuning for 1000+ page documents, VoiceOver/TalkBack accessibility refinement, localized language packs (German, French, Spanish) | • Iterative binary releases on GitHub with comprehensive changelogs and reproducible source archives | **Scheduled (Beta Period)** |
+
+---
+
+## 3. Stable Releases (General Availability / Production Releases with Binaries)
+
+**Audience & Goal:** Enterprise production use, everyday legal professionals, and general availability. Rock-solid stability, zero known P0/P1 defects, fully cleared legal and cryptographic signing gates.
+
+### Prerequisites for Stable v1.0.0 (Release Blocker Clearance)
+Before `v1.0.0` is published, the four Project Owner release blockers must be formally resolved (`RELEASE-BLOCKERS.md`):
+1. **`B-1` (Legal Compliance Clearance — E5):** Formal review of binary distribution under AGPL-3.0 §6 and §13 by Project Owner.
+2. **`B-2` (macOS Developer ID & Notarization):** Apple Developer ID certificate and `notarytool` automated stapling credentials configured.
+3. **`B-3` (Android Release Key):** Production keystore and signing credentials configured in Gradle.
+4. **`B-4` (Publisher Imprint & Contact):** Legal entity imprint, contact, and data privacy disclosures published.
+
+### Stable Release Schedule
+
+| Release | Milestone Scope | Distribution Channels & Binary Deliverables | Target Gate |
+|---|---|---|---|
+| **`v1.0.0` (GA)** | Full M0 through M4 Feature Set (macOS & Android) | • GitHub Releases: Signed & notarized `Vocument-1.0.0-macos.dmg`, signed `Vocument-1.0.0-android.apk`, source archive `vocument-1.0.0-source.tar.gz`, `SHA256SUMS.txt.asc`<br>• Direct installation mirrors (`DIST-001`)<br>• Google Play Store release (`scripts/release-android.sh --bundle`) | Production General Availability Gate: zero stubs (`QA-003`), 100% CI pass rate, veraPDF/PAC green, 60 FPS UI budgets met |
+| **`v1.1.0` (Windows GA)** | M5 Windows Shell Production | • GitHub Releases: Signed Windows installer (`Vocument-1.1.0-windows-x64-setup.exe` / MSIX)<br>• Updated macOS & Android production binaries | Windows Acceptance Scenario green on Windows 11 |
+| **`v1.2.0` (Linux GA)** | M6 Linux Shell Production | • GitHub Releases: Flatpak bundle (`org.vocument.Vocument.flatpak`), AppImage, and distribution tarball<br>• Flathub publication | Linux Acceptance Scenario green on Wayland and X11 |
+| **`v1.3.0` (MCP GA)** | M7 Local Interfaces (MCP) | • GitHub Releases: Local `vocument-mcp` standalone binary (macOS, Linux, Windows)<br>• Integrated MCP server in GUI applications | Zero network calls, 100% core verification parity |
+
+---
+
+## 4. Binary Packaging & GitHub Release Mechanics
+
+Every binary release on GitHub is generated through strictly deterministic scripts:
+- **macOS Application Bundle:** Generated via `scripts/release-macos.sh` (embeds `SOURCE.txt`, `THIRD-PARTY-NOTICES.txt`, links host MuPDF dylib, applies entitlements and codesign).
+- **Android Package (APK/AAB):** Generated via `scripts/release-android.sh` (embeds native `arm64-v8a` MuPDF with 16 KB page alignment, bundles AGPL notices).
+- **Source Archive:** Built via `scripts/release-source-archive.sh` ensuring 100% byte-for-byte reproducibility against the released Git tag.
+- **Unified Release Publisher:** Automated via `scripts/publish-github-release.sh` using the GitHub CLI (`gh release create`), attaching all compiled binaries, source archives, checksums, and release notes in a single atomic transaction.
 
 ---
 

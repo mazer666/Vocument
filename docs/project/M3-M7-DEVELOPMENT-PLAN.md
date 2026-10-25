@@ -280,6 +280,18 @@ Per Project Owner directive (2026-10-23), CI workflows run on official GitHub-ho
 | **M6** | Linux native shell | `PLATFORM-002` (`CR-0003`) | `CR-0003` (ADR deferred to M6 entry) | Windows Alpha reached | Shared acceptance scenario verified on Wayland and X11. |
 | **M7** | Optional local MCP interface | `LOCAL-001` (`CR-0004`) | `CR-0004` | Core review stable | Stdio MCP workflow passing identical compliance tests with 0 network calls. |
 
+### 6.1 Continuous Binary Delivery & GitHub Release Gates (Alpha, Beta, Stable)
+
+Per `DIST-001` and `DIST-002`, development milestones map directly to user-installable releases published on GitHub with compiled binaries:
+
+| Release Phase | Target Tags | Prerequisite Milestone Gate | Published Binary Packages | Release Channels |
+|---|---|---|---|---|
+| **Alpha Pre-Releases** | `v0.1.0-alpha.1`<br>`v0.3.0-alpha.2`<br>`v0.4.0-alpha.3`<br>`v0.5.0-alpha.4` | `v0.1.0`: M0–M2.5 (Done)<br>`v0.3.0`: M3.6 + M4.1 (Ready)<br>`v0.4.0`: M4.3 Canvas<br>`v0.5.0`: M5/M6 Shells | macOS `.zip` (direct app bundle), Android `.apk` (direct install with 16 KB page-aligned MuPDF), source `.tar.gz`, `SHA256SUMS.txt` | GitHub Releases (marked as Pre-release), direct developer download mirrors |
+| **Beta Pre-Releases** | `v0.9.0-beta.1`<br>…<br>`v0.9.x-beta.n` | M4 complete (M4.0–M4.5: Authoring, `.pdoc`, Reviewing, PDF/UA, DOCX) + M3.7 Document Comparison track | macOS signed & notarized `.dmg`/`.zip`, Android signed `.apk` and `.aab`, source `.tar.gz`, `SHA256SUMS.txt.asc` | GitHub Releases (Pre-release), public tester community, Google Play internal testing track |
+| **Stable Releases** | `v1.0.0` (GA)<br>`v1.1.0` (Win)<br>`v1.2.0` (Linux)<br>`v1.3.0` (MCP) | Full M0–M4 complete; Owner Release Blockers B-1–B-4 cleared; zero stubs (`QA-003`); 60 FPS verified | Official signed & notarized macOS `.dmg`, signed Android `.apk` & `.aab`, Windows installer, Linux Flatpak, source `.tar.gz`, SBOM | GitHub Releases (Production GA), Google Play Store, direct website download, Flathub |
+
+Releases are assembled and published deterministically via `scripts/publish-github-release.sh`.
+
 ---
 
 ## 7. Responsibilities & Development Quality Standards

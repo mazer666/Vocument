@@ -19,7 +19,15 @@ E1–E5) and the rules of `AGENTS.md`.
 | **macOS, direct** | The signed and notarised `.app` bundle (and its archive) with the notices and the offer of the source inside. | `scripts/release-macos.sh --sign "Developer ID Application: …"` |
 | **Android, direct** | The signed APK with the notices and the offer of the source inside. | `scripts/release-android.sh --apk` |
 | **Android, Play** | The bundle for the Play Store. The upload is a separate step that needs the approval of the project owner. | `scripts/release-android.sh --bundle` |
+| **GitHub Release (Binaries & Source)** | Complete release on GitHub Releases containing compiled native binaries, source tarball, SHA-256 sums, and notices. | `scripts/publish-github-release.sh --tag <tag>` |
 | **macOS, Mac App Store** | **Deferred** by the decision of the project owner (2026-10-21): the direct distribution comes first. The terms of Apple and the AGPL-3.0 still have to be weighed before that channel is prepared further (§7.5 of the licensing decision, `RISK-041`, B-7). | — |
+
+### 1.1 The Release Tiers (Alpha, Beta, Stable)
+
+As specified in `ROADMAP.md`:
+- **Alpha Releases (`v0.x.0-alpha.y`):** Developer and technical preview releases published on GitHub as pre-releases. Deliver authentic compiled binaries (macOS `.zip` and Android direct `.apk`) for early integration testing, benchmark measurements, and UX trials.
+- **Beta Releases (`v0.9.x-beta.y`):** Feature-complete release candidates published on GitHub as pre-releases. Feature freeze; focus is on stress testing ($\ge 500$ pages), crash resistance, VoiceOver/TalkBack accessibility, and wide viewer interop.
+- **Stable Releases (`v1.x.0`):** Production general availability releases. Zero known P0/P1 defects; requires formal closure of Owner Release Blockers B-1 through B-4 (legal review, signing identities).
 
 ## 2. The conditions before a release
 
@@ -60,6 +68,8 @@ scripts/release-android.sh --bundle                                # on a machin
 scripts/release-android.sh --apk
 
 # 5. The checksums and the announcement
+# 6. Publish to GitHub Releases with binaries:
+scripts/publish-github-release.sh --tag v0.3.0-alpha.2 --title "Vocument v0.3.0-alpha.2"
 ```
 
 The result of every step is in `target/release-*`. The files of the
