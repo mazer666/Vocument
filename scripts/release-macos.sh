@@ -101,6 +101,9 @@ echo "==> The revision of the source: $REVISION (version $VERSION)"
 
 # --- The build of the Swift package -------------------------------------
 echo "==> Building the Swift package (release)..."
+if [[ -z "${DEVELOPER_DIR:-}" && -d "/Applications/Xcode.app/Contents/Developer" ]]; then
+    export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+fi
 if command -v swift >/dev/null 2>&1; then
     swift build --package-path "$REPOSITORY_ROOT/apps/macos" -c release
     SWIFT_BIN="$(swift build --package-path "$REPOSITORY_ROOT/apps/macos" -c release --show-bin-path)"
