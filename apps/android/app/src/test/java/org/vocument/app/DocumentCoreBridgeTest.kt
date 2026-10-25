@@ -289,4 +289,46 @@ class DocumentCoreBridgeTest {
 
         bridge.closeSession(m03Session.sessionId)
     }
+
+    @Test
+    fun testNativeAndroidFlowEditorSession() {
+        val bridge = DocumentCoreBridge()
+        val session = bridge.createEditorSession("Android Authoring Brief")
+        val id = session.editorId
+
+        // Insert text
+        val s1 = bridge.editorInsertText(id, "Erster Schriftsatzparagraph.")
+        assertTrue(s1.plainText.contains("Erster Schriftsatzparagraph."))
+        assertTrue(s1.pages.isNotEmpty())
+
+        // Measure latency
+        val latencyMicros = bridge.editorMeasureTypingLatencyMicros(id, "Test typing sequence.")
+        assertTrue("Typing latency $latencyMicros µs must be within 16ms budget", latencyMicros < 16_000uL)
+
+        // Enable tracking
+        val sTrack = bridge.editorEnableTracking(id, "Anwalt Android")
+        assertTrue(sTrack.isTracking)
+
+        // Add tracked insertion
+        val sIns = bridge.editorInsertText(id, " Nachtrag 2026.")
+        assertEquals(1, sIns.trackedChanges.size)
+        assertEquals("Anwalt Android", sIns.trackedChanges[0].author)
+
+        // Add Comment
+        val sComm = bridge.editorAddComment(id, 0u, 6u, "Bitte prüfen.")
+        assertEquals(1, sComm.comments.size)
+        assertEquals("Bitte prüfen.", sComm.comments[0].content)
+
+        // Resolve Comment
+        val sRes = bridge.editorResolveComment(id, sComm.comments[0].commentId, true)
+        assertTrue(sRes.comments[0].resolved)
+
+        // Export PDF/A & PDF/UA
+        val pdfBytes = bridge.editorExportPdf(id, true, true)
+        assertTrue(pdfBytes.size > 500)
+        val pdfHeader = String(pdfBytes.sliceArray(0..7))
+        assertEquals("%PDF-1.7", pdfHeader)
+
+        bridge.closeEditorSession(id)
+    }
 }

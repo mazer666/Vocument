@@ -2460,12 +2460,15 @@ public struct FfiEditorSessionSnapshot {
     public var selectionRects: [FfiEditorSelectionRect]
     public var canUndo: Bool
     public var canRedo: Bool
+    public var isTracking: Bool
+    public var comments: [FfiFlowComment]
+    public var trackedChanges: [FfiTrackedChange]
     public var plainText: String
     public var pages: [FfiEditorPageSnapshot]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(editorId: String, title: String, filePath: String?, totalPages: UInt32, activeBlockId: String, cursorOffset: UInt32, cursorPageIndex: UInt32, cursorRect: FfiEditorRect?, selectionRects: [FfiEditorSelectionRect], canUndo: Bool, canRedo: Bool, plainText: String, pages: [FfiEditorPageSnapshot]) {
+    public init(editorId: String, title: String, filePath: String?, totalPages: UInt32, activeBlockId: String, cursorOffset: UInt32, cursorPageIndex: UInt32, cursorRect: FfiEditorRect?, selectionRects: [FfiEditorSelectionRect], canUndo: Bool, canRedo: Bool, isTracking: Bool, comments: [FfiFlowComment], trackedChanges: [FfiTrackedChange], plainText: String, pages: [FfiEditorPageSnapshot]) {
         self.editorId = editorId
         self.title = title
         self.filePath = filePath
@@ -2477,6 +2480,9 @@ public struct FfiEditorSessionSnapshot {
         self.selectionRects = selectionRects
         self.canUndo = canUndo
         self.canRedo = canRedo
+        self.isTracking = isTracking
+        self.comments = comments
+        self.trackedChanges = trackedChanges
         self.plainText = plainText
         self.pages = pages
     }
@@ -2522,6 +2528,15 @@ extension FfiEditorSessionSnapshot: Equatable, Hashable {
         if lhs.canRedo != rhs.canRedo {
             return false
         }
+        if lhs.isTracking != rhs.isTracking {
+            return false
+        }
+        if lhs.comments != rhs.comments {
+            return false
+        }
+        if lhs.trackedChanges != rhs.trackedChanges {
+            return false
+        }
         if lhs.plainText != rhs.plainText {
             return false
         }
@@ -2543,6 +2558,9 @@ extension FfiEditorSessionSnapshot: Equatable, Hashable {
         hasher.combine(selectionRects)
         hasher.combine(canUndo)
         hasher.combine(canRedo)
+        hasher.combine(isTracking)
+        hasher.combine(comments)
+        hasher.combine(trackedChanges)
         hasher.combine(plainText)
         hasher.combine(pages)
     }
@@ -2568,6 +2586,9 @@ public struct FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
                 selectionRects: FfiConverterSequenceTypeFfiEditorSelectionRect.read(from: &buf), 
                 canUndo: FfiConverterBool.read(from: &buf), 
                 canRedo: FfiConverterBool.read(from: &buf), 
+                isTracking: FfiConverterBool.read(from: &buf), 
+                comments: FfiConverterSequenceTypeFfiFlowComment.read(from: &buf), 
+                trackedChanges: FfiConverterSequenceTypeFfiTrackedChange.read(from: &buf), 
                 plainText: FfiConverterString.read(from: &buf), 
                 pages: FfiConverterSequenceTypeFfiEditorPageSnapshot.read(from: &buf)
         )
@@ -2585,6 +2606,9 @@ public struct FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
         FfiConverterSequenceTypeFfiEditorSelectionRect.write(value.selectionRects, into: &buf)
         FfiConverterBool.write(value.canUndo, into: &buf)
         FfiConverterBool.write(value.canRedo, into: &buf)
+        FfiConverterBool.write(value.isTracking, into: &buf)
+        FfiConverterSequenceTypeFfiFlowComment.write(value.comments, into: &buf)
+        FfiConverterSequenceTypeFfiTrackedChange.write(value.trackedChanges, into: &buf)
         FfiConverterString.write(value.plainText, into: &buf)
         FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.pages, into: &buf)
     }
@@ -3023,6 +3047,232 @@ public func FfiConverterTypeFfiFileIdentity_lift(_ buf: RustBuffer) throws -> Ff
 #endif
 public func FfiConverterTypeFfiFileIdentity_lower(_ value: FfiFileIdentity) -> RustBuffer {
     return FfiConverterTypeFfiFileIdentity.lower(value)
+}
+
+
+/**
+ * Margin comment representation for native platform UI.
+ */
+public struct FfiFlowComment {
+    public var commentId: String
+    public var author: String
+    public var timestamp: String
+    public var content: String
+    public var anchorBlockId: String?
+    public var anchorCharStart: UInt32?
+    public var anchorCharEnd: UInt32?
+    public var anchorText: String?
+    public var resolved: Bool
+    public var replies: [FfiFlowCommentReply]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commentId: String, author: String, timestamp: String, content: String, anchorBlockId: String?, anchorCharStart: UInt32?, anchorCharEnd: UInt32?, anchorText: String?, resolved: Bool, replies: [FfiFlowCommentReply]) {
+        self.commentId = commentId
+        self.author = author
+        self.timestamp = timestamp
+        self.content = content
+        self.anchorBlockId = anchorBlockId
+        self.anchorCharStart = anchorCharStart
+        self.anchorCharEnd = anchorCharEnd
+        self.anchorText = anchorText
+        self.resolved = resolved
+        self.replies = replies
+    }
+}
+
+#if compiler(>=6)
+extension FfiFlowComment: Sendable {}
+#endif
+
+
+extension FfiFlowComment: Equatable, Hashable {
+    public static func ==(lhs: FfiFlowComment, rhs: FfiFlowComment) -> Bool {
+        if lhs.commentId != rhs.commentId {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.timestamp != rhs.timestamp {
+            return false
+        }
+        if lhs.content != rhs.content {
+            return false
+        }
+        if lhs.anchorBlockId != rhs.anchorBlockId {
+            return false
+        }
+        if lhs.anchorCharStart != rhs.anchorCharStart {
+            return false
+        }
+        if lhs.anchorCharEnd != rhs.anchorCharEnd {
+            return false
+        }
+        if lhs.anchorText != rhs.anchorText {
+            return false
+        }
+        if lhs.resolved != rhs.resolved {
+            return false
+        }
+        if lhs.replies != rhs.replies {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(commentId)
+        hasher.combine(author)
+        hasher.combine(timestamp)
+        hasher.combine(content)
+        hasher.combine(anchorBlockId)
+        hasher.combine(anchorCharStart)
+        hasher.combine(anchorCharEnd)
+        hasher.combine(anchorText)
+        hasher.combine(resolved)
+        hasher.combine(replies)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiFlowComment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFlowComment {
+        return
+            try FfiFlowComment(
+                commentId: FfiConverterString.read(from: &buf), 
+                author: FfiConverterString.read(from: &buf), 
+                timestamp: FfiConverterString.read(from: &buf), 
+                content: FfiConverterString.read(from: &buf), 
+                anchorBlockId: FfiConverterOptionString.read(from: &buf), 
+                anchorCharStart: FfiConverterOptionUInt32.read(from: &buf), 
+                anchorCharEnd: FfiConverterOptionUInt32.read(from: &buf), 
+                anchorText: FfiConverterOptionString.read(from: &buf), 
+                resolved: FfiConverterBool.read(from: &buf), 
+                replies: FfiConverterSequenceTypeFfiFlowCommentReply.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiFlowComment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.commentId, into: &buf)
+        FfiConverterString.write(value.author, into: &buf)
+        FfiConverterString.write(value.timestamp, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+        FfiConverterOptionString.write(value.anchorBlockId, into: &buf)
+        FfiConverterOptionUInt32.write(value.anchorCharStart, into: &buf)
+        FfiConverterOptionUInt32.write(value.anchorCharEnd, into: &buf)
+        FfiConverterOptionString.write(value.anchorText, into: &buf)
+        FfiConverterBool.write(value.resolved, into: &buf)
+        FfiConverterSequenceTypeFfiFlowCommentReply.write(value.replies, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFlowComment_lift(_ buf: RustBuffer) throws -> FfiFlowComment {
+    return try FfiConverterTypeFfiFlowComment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFlowComment_lower(_ value: FfiFlowComment) -> RustBuffer {
+    return FfiConverterTypeFfiFlowComment.lower(value)
+}
+
+
+/**
+ * Margin comment reply representation.
+ */
+public struct FfiFlowCommentReply {
+    public var replyId: String
+    public var author: String
+    public var timestamp: String
+    public var content: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(replyId: String, author: String, timestamp: String, content: String) {
+        self.replyId = replyId
+        self.author = author
+        self.timestamp = timestamp
+        self.content = content
+    }
+}
+
+#if compiler(>=6)
+extension FfiFlowCommentReply: Sendable {}
+#endif
+
+
+extension FfiFlowCommentReply: Equatable, Hashable {
+    public static func ==(lhs: FfiFlowCommentReply, rhs: FfiFlowCommentReply) -> Bool {
+        if lhs.replyId != rhs.replyId {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.timestamp != rhs.timestamp {
+            return false
+        }
+        if lhs.content != rhs.content {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(replyId)
+        hasher.combine(author)
+        hasher.combine(timestamp)
+        hasher.combine(content)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiFlowCommentReply: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFlowCommentReply {
+        return
+            try FfiFlowCommentReply(
+                replyId: FfiConverterString.read(from: &buf), 
+                author: FfiConverterString.read(from: &buf), 
+                timestamp: FfiConverterString.read(from: &buf), 
+                content: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiFlowCommentReply, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.replyId, into: &buf)
+        FfiConverterString.write(value.author, into: &buf)
+        FfiConverterString.write(value.timestamp, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFlowCommentReply_lift(_ buf: RustBuffer) throws -> FfiFlowCommentReply {
+    return try FfiConverterTypeFfiFlowCommentReply.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiFlowCommentReply_lower(_ value: FfiFlowCommentReply) -> RustBuffer {
+    return FfiConverterTypeFfiFlowCommentReply.lower(value)
 }
 
 
@@ -8732,6 +8982,119 @@ public func FfiConverterTypeFfiTileRenderRequest_lower(_ value: FfiTileRenderReq
 
 
 /**
+ * Tracked change representation for native platform UI.
+ */
+public struct FfiTrackedChange {
+    public var changeId: String
+    public var changeType: String
+    public var author: String
+    public var timestamp: String
+    public var targetBlockId: String?
+    public var textSnippet: String?
+    public var details: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(changeId: String, changeType: String, author: String, timestamp: String, targetBlockId: String?, textSnippet: String?, details: String?) {
+        self.changeId = changeId
+        self.changeType = changeType
+        self.author = author
+        self.timestamp = timestamp
+        self.targetBlockId = targetBlockId
+        self.textSnippet = textSnippet
+        self.details = details
+    }
+}
+
+#if compiler(>=6)
+extension FfiTrackedChange: Sendable {}
+#endif
+
+
+extension FfiTrackedChange: Equatable, Hashable {
+    public static func ==(lhs: FfiTrackedChange, rhs: FfiTrackedChange) -> Bool {
+        if lhs.changeId != rhs.changeId {
+            return false
+        }
+        if lhs.changeType != rhs.changeType {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.timestamp != rhs.timestamp {
+            return false
+        }
+        if lhs.targetBlockId != rhs.targetBlockId {
+            return false
+        }
+        if lhs.textSnippet != rhs.textSnippet {
+            return false
+        }
+        if lhs.details != rhs.details {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(changeId)
+        hasher.combine(changeType)
+        hasher.combine(author)
+        hasher.combine(timestamp)
+        hasher.combine(targetBlockId)
+        hasher.combine(textSnippet)
+        hasher.combine(details)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiTrackedChange: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiTrackedChange {
+        return
+            try FfiTrackedChange(
+                changeId: FfiConverterString.read(from: &buf), 
+                changeType: FfiConverterString.read(from: &buf), 
+                author: FfiConverterString.read(from: &buf), 
+                timestamp: FfiConverterString.read(from: &buf), 
+                targetBlockId: FfiConverterOptionString.read(from: &buf), 
+                textSnippet: FfiConverterOptionString.read(from: &buf), 
+                details: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiTrackedChange, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.changeId, into: &buf)
+        FfiConverterString.write(value.changeType, into: &buf)
+        FfiConverterString.write(value.author, into: &buf)
+        FfiConverterString.write(value.timestamp, into: &buf)
+        FfiConverterOptionString.write(value.targetBlockId, into: &buf)
+        FfiConverterOptionString.write(value.textSnippet, into: &buf)
+        FfiConverterOptionString.write(value.details, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTrackedChange_lift(_ buf: RustBuffer) throws -> FfiTrackedChange {
+    return try FfiConverterTypeFfiTrackedChange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiTrackedChange_lower(_ value: FfiTrackedChange) -> RustBuffer {
+    return FfiConverterTypeFfiTrackedChange.lower(value)
+}
+
+
+/**
  * Live Undo/Redo and transaction history state snapshot exposed across UniFFI (`UNDO-001`, `UNDO-002`, `UNDO-004`, `ROADMAP.md` M0.4).
  */
 public struct FfiTransactionHistorySnapshot {
@@ -11110,6 +11473,56 @@ fileprivate struct FfiConverterSequenceTypeFfiExtractedImageInfo: FfiConverterRu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiFlowComment: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiFlowComment]
+
+    public static func write(_ value: [FfiFlowComment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiFlowComment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiFlowComment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiFlowComment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiFlowComment.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiFlowCommentReply: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiFlowCommentReply]
+
+    public static func write(_ value: [FfiFlowCommentReply], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiFlowCommentReply.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiFlowCommentReply] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiFlowCommentReply]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiFlowCommentReply.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer {
     typealias SwiftType = [FfiHighlightAnnotation]
 
@@ -11535,6 +11948,31 @@ fileprivate struct FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiTrackedChange: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiTrackedChange]
+
+    public static func write(_ value: [FfiTrackedChange], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiTrackedChange.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiTrackedChange] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiTrackedChange]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiTrackedChange.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuffer {
     typealias SwiftType = [FfiTransactionRecord]
 
@@ -11931,6 +12369,40 @@ public func documentCoreDuplicatePageWithOptions(sessionId: String, pageIndex: U
 })
 }
 /**
+ * Accepts all pending tracked changes across the document (`TRACK-003`).
+ */
+public func documentCoreEditorAcceptAllChanges(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_accept_all_changes(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Accepts an individual tracked change by ID (`TRACK-003`).
+ */
+public func documentCoreEditorAcceptChange(editorId: String, changeId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_accept_change(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(changeId),$0
+    )
+})
+}
+/**
+ * Adds a margin comment anchored to the active block and optional character range (`TRACK-005`).
+ */
+public func documentCoreEditorAddComment(editorId: String, anchorStart: UInt32?, anchorEnd: UInt32?, content: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_add_comment(
+        FfiConverterString.lower(editorId),
+        FfiConverterOptionUInt32.lower(anchorStart),
+        FfiConverterOptionUInt32.lower(anchorEnd),
+        FfiConverterString.lower(content),$0
+    )
+})
+}
+/**
  * Clears the active selection, collapsing to cursor position.
  */
 public func documentCoreEditorClearSelection(editorId: String)throws  -> FfiEditorSessionSnapshot  {
@@ -11951,12 +12423,56 @@ public func documentCoreEditorDeleteBackward(editorId: String)throws  -> FfiEdit
 })
 }
 /**
+ * Deletes a comment thread completely (`TRACK-005`).
+ */
+public func documentCoreEditorDeleteComment(editorId: String, commentId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_delete_comment(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(commentId),$0
+    )
+})
+}
+/**
  * Deletes the character or selection immediately following the cursor (Forward Delete).
  */
 public func documentCoreEditorDeleteForward(editorId: String)throws  -> FfiEditorSessionSnapshot  {
     return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(
         FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Disables change tracking for subsequent edits (`TRACK-001`).
+ */
+public func documentCoreEditorDisableTracking(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_disable_tracking(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Enables change tracking under the given author name (`TRACK-001`).
+ */
+public func documentCoreEditorEnableTracking(editorId: String, author: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_enable_tracking(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(author),$0
+    )
+})
+}
+/**
+ * Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
+ */
+public func documentCoreEditorExportPdf(editorId: String, includeComments: Bool, includeTrackedChanges: Bool)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_export_pdf(
+        FfiConverterString.lower(editorId),
+        FfiConverterBool.lower(includeComments),
+        FfiConverterBool.lower(includeTrackedChanges),$0
     )
 })
 }
@@ -12055,6 +12571,51 @@ public func documentCoreEditorRedo(editorId: String)throws  -> FfiEditorSessionS
     return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_editor_redo(
         FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Rejects all pending tracked changes across the document (`TRACK-003`).
+ */
+public func documentCoreEditorRejectAllChanges(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_reject_all_changes(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Rejects an individual tracked change by ID (`TRACK-003`).
+ */
+public func documentCoreEditorRejectChange(editorId: String, changeId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_reject_change(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(changeId),$0
+    )
+})
+}
+/**
+ * Appends a reply to an existing margin comment thread (`TRACK-005`).
+ */
+public func documentCoreEditorReplyComment(editorId: String, commentId: String, content: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_reply_comment(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(commentId),
+        FfiConverterString.lower(content),$0
+    )
+})
+}
+/**
+ * Sets the resolved status of a comment thread (`TRACK-005`).
+ */
+public func documentCoreEditorResolveComment(editorId: String, commentId: String, resolved: Bool)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_resolve_comment(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(commentId),
+        FfiConverterBool.lower(resolved),$0
     )
 })
 }
@@ -13247,13 +13808,34 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_accept_all_changes() != 61772) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_accept_change() != 55298) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_add_comment() != 52818) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection() != 25431) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward() != 44549) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_delete_comment() != 14348) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward() != 65137) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_disable_tracking() != 8654) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking() != 44052) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf() != 53605) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test() != 44237) {
@@ -13281,6 +13863,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_reject_all_changes() != 24520) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change() != 371) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment() != 31768) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_resolve_comment() != 60305) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424) {

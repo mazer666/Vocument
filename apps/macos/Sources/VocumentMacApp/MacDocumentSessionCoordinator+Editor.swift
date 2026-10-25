@@ -226,4 +226,135 @@ extension MacDocumentSessionCoordinator {
             sampleText: "Inkrementelle Layoutaktualisierung für juristischen Schriftsatz."
         )) ?? 0
     }
+
+    // MARK: - Reviewing System & Tracked Changes Actions (`TRACK-001`–`006`)
+
+    public func editorEnableTracking(author: String = "Anwalt") {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorEnableTracking(editorId: session.editorId, author: author)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorDisableTracking() {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorDisableTracking(editorId: session.editorId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorAddComment(anchorStart: UInt32?, anchorEnd: UInt32?, content: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorAddComment(
+                editorId: session.editorId,
+                anchorStart: anchorStart,
+                anchorEnd: anchorEnd,
+                content: content
+            )
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorReplyComment(commentId: String, content: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorReplyComment(
+                editorId: session.editorId,
+                commentId: commentId,
+                content: content
+            )
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorResolveComment(commentId: String, resolved: Bool) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorResolveComment(
+                editorId: session.editorId,
+                commentId: commentId,
+                resolved: resolved
+            )
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorDeleteComment(commentId: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorDeleteComment(editorId: session.editorId, commentId: commentId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorAcceptChange(changeId: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorAcceptChange(editorId: session.editorId, changeId: changeId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorRejectChange(changeId: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorRejectChange(editorId: session.editorId, changeId: changeId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorAcceptAllChanges() {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorAcceptAllChanges(editorId: session.editorId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorRejectAllChanges() {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorRejectAllChanges(editorId: session.editorId)
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorExportPdf(to url: URL, includeComments: Bool = true, includeTrackedChanges: Bool = true) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let data = try coreClient.editorExportPdf(
+                editorId: session.editorId,
+                includeComments: includeComments,
+                includeTrackedChanges: includeTrackedChanges
+            )
+            try data.write(to: url, options: .atomic)
+            self.saveNotificationMessage = "PDF/A & PDF/UA erfolgreich exportiert: \(url.lastPathComponent)"
+        } catch {
+            self.errorMessage = "Fehler beim PDF-Export: \(error.localizedDescription)"
+        }
+    }
 }
+

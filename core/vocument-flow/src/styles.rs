@@ -156,6 +156,10 @@ pub struct TextSpan {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_ref: Option<String>,
 
+    /// Associated tracked revision identifier, if inserted/modified under review.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracked_change_id: Option<String>,
+
     /// Unknown / forward-compatible span attributes.
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -177,6 +181,7 @@ impl TextSpan {
             background_color: None,
             link_url: None,
             footnote_ref: None,
+            tracked_change_id: None,
             extra: BTreeMap::new(),
         }
     }

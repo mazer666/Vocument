@@ -148,9 +148,23 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
                 }
             }
 
+            // Draw Marked Text (inline IME composition preview with underlined style)
+            if snap.cursorPageIndex == page.pageIndex, let cRect = snap.cursorRect, self.hasMarkedText() {
+                let imeX = pageOriginX + CGFloat(cRect.x)
+                let imeY = currentY + CGFloat(cRect.y)
+                let imeFont = NSFont.systemFont(ofSize: max(12.0, CGFloat(cRect.height)))
+                let imeAttrs: [NSAttributedString.Key: Any] = [
+                    .font: imeFont,
+                    .foregroundColor: NSColor.labelColor,
+                    .underlineStyle: NSUnderlineStyle.single.rawValue,
+                ]
+                (self.markedString.string as NSString).draw(at: NSPoint(x: imeX, y: imeY), withAttributes: imeAttrs)
+            }
+
             // Draw Caret on current cursor page
             if isCursorVisible, snap.cursorPageIndex == page.pageIndex, let cRect = snap.cursorRect {
-                let caretX = pageOriginX + CGFloat(cRect.x)
+                let caretOffset = self.hasMarkedText() ? CGFloat(self.markedString.length) * 8.0 : 0.0
+                let caretX = pageOriginX + CGFloat(cRect.x) + caretOffset
                 let caretY = currentY + CGFloat(cRect.y)
                 let caretRect = NSRect(x: caretX, y: caretY, width: 2.0, height: max(14.0, CGFloat(cRect.height)))
 
@@ -243,12 +257,23 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
         markedString = NSMutableAttributedString()
         markedSelectedRange = NSRange(location: NSNotFound, length: 0)
 
+        if replacementRange.location != NSNotFound && replacementRange.length > 0 {
+            for _ in 0..<replacementRange.length {
+                self.onDeleteBackward?()
+            }
+        }
+
         if !text.isEmpty {
             self.onInsertText?(text)
         }
     }
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        if replacementRange.location != NSNotFound && replacementRange.length > 0 {
+            for _ in 0..<replacementRange.length {
+                self.onDeleteBackward?()
+            }
+        }
         if let str = string as? String {
             markedString = NSMutableAttributedString(string: str)
         } else if let attr = string as? NSAttributedString {
@@ -298,7 +323,22 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
         guard let snap = snapshot, let cRect = snap.cursorRect else {
             return window?.convertToScreen(NSRect(origin: frame.origin, size: .zero)) ?? .zero
         }
-        let localRect = NSRect(x: CGFloat(cRect.x), y: CGFloat(cRect.y), width: CGFloat(cRect.width), height: CGFloat(cRect.height))
+        var currentY: CGFloat = 30.0
+        var pageOriginX: CGFloat = 40.0
+        for page in snap.pages {
+            if page.pageIndex == snap.cursorPageIndex {
+                pageOriginX = max(40.0, (bounds.width - CGFloat(page.widthPt)) / 2.0)
+                break
+            }
+            currentY += CGFloat(page.heightPt) + 40.0
+        }
+
+        let localRect = NSRect(
+            x: pageOriginX + CGFloat(cRect.x),
+            y: currentY + CGFloat(cRect.y),
+            width: max(2.0, CGFloat(cRect.width)),
+            height: max(14.0, CGFloat(cRect.height))
+        )
         let windowRect = self.convert(localRect, to: nil)
         return window?.convertToScreen(windowRect) ?? localRect
     }

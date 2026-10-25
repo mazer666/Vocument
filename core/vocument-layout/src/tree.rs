@@ -184,4 +184,8 @@ pub struct PositionedRun {
     pub link_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub glyph_advances: Vec<f32>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_rtl: bool,
 }

@@ -42,7 +42,7 @@ pub fn hit_test_page(page: &LayoutPage, x_pt: f32, y_pt: f32) -> Option<CursorLo
     })
 }
 
-/// Maps an x-coordinate along a line to a character offset.
+/// Maps an x-coordinate along a line to a character offset using exact glyph advances and direction.
 pub fn hit_test_line(line: &LayoutLine, x_pt: f32) -> usize {
     if line.runs.is_empty() {
         return 0;
@@ -56,18 +56,60 @@ pub fn hit_test_line(line: &LayoutLine, x_pt: f32) -> usize {
         let char_count = run.text.chars().count();
 
         if x_pt <= run_start_x {
+            if run.is_rtl {
+                return accumulated_chars + char_count;
+            }
             return accumulated_chars;
         }
 
         if x_pt >= run_end_x {
+            if run.is_rtl {
+                return accumulated_chars;
+            }
             accumulated_chars += char_count;
             continue;
         }
 
-        // Inside this run: interpolate character index based on width
+        // Inside this run
         if char_count > 0 && run.bounds.width > 0.0 {
+            if !run.glyph_advances.is_empty() {
+                if run.is_rtl {
+                    let mut current_dist = 0.0;
+                    let target_dist = run_end_x - x_pt;
+                    for (idx, &adv) in run.glyph_advances.iter().enumerate() {
+                        let next_dist = current_dist + adv;
+                        if target_dist < (current_dist + adv * 0.5) {
+                            return accumulated_chars + idx;
+                        }
+                        if target_dist < next_dist {
+                            return accumulated_chars + idx + 1;
+                        }
+                        current_dist = next_dist;
+                    }
+                    return accumulated_chars + char_count;
+                } else {
+                    let mut current_dist = 0.0;
+                    let target_dist = x_pt - run_start_x;
+                    for (idx, &adv) in run.glyph_advances.iter().enumerate() {
+                        let next_dist = current_dist + adv;
+                        if target_dist < (current_dist + adv * 0.5) {
+                            return accumulated_chars + idx;
+                        }
+                        if target_dist < next_dist {
+                            return accumulated_chars + idx + 1;
+                        }
+                        current_dist = next_dist;
+                    }
+                    return accumulated_chars + char_count;
+                }
+            }
+
             let char_width = run.bounds.width / char_count as f32;
-            let rel_x = x_pt - run_start_x;
+            let rel_x = if run.is_rtl {
+                run_end_x - x_pt
+            } else {
+                x_pt - run_start_x
+            };
             let idx = (rel_x / char_width).round() as usize;
             return accumulated_chars + idx.min(char_count);
         }
@@ -126,8 +168,28 @@ fn compute_x_in_line(line: &LayoutLine, mut offset_in_line: usize) -> f32 {
             if count == 0 || run.bounds.width <= 0.0 {
                 return run.bounds.x;
             }
-            let char_width = run.bounds.width / count as f32;
-            return run.bounds.x + (offset_in_line as f32 * char_width);
+
+            if run.is_rtl {
+                if !run.glyph_advances.is_empty() {
+                    let adv_sum: f32 = run.glyph_advances
+                        [..offset_in_line.min(run.glyph_advances.len())]
+                        .iter()
+                        .sum();
+                    return run.bounds.x + run.bounds.width - adv_sum;
+                }
+                let char_width = run.bounds.width / count as f32;
+                return run.bounds.x + run.bounds.width - (offset_in_line as f32 * char_width);
+            } else {
+                if !run.glyph_advances.is_empty() {
+                    let adv_sum: f32 = run.glyph_advances
+                        [..offset_in_line.min(run.glyph_advances.len())]
+                        .iter()
+                        .sum();
+                    return run.bounds.x + adv_sum;
+                }
+                let char_width = run.bounds.width / count as f32;
+                return run.bounds.x + (offset_in_line as f32 * char_width);
+            }
         }
         offset_in_line -= count;
     }
@@ -135,7 +197,13 @@ fn compute_x_in_line(line: &LayoutLine, mut offset_in_line: usize) -> f32 {
     // At the end of the line
     line.runs
         .last()
-        .map(|r| r.bounds.x + r.bounds.width)
+        .map(|r| {
+            if r.is_rtl {
+                r.bounds.x
+            } else {
+                r.bounds.x + r.bounds.width
+            }
+        })
         .unwrap_or(line.bounds.x)
 }
 

@@ -5,6 +5,7 @@ use vocument_flow::model::{
 };
 use vocument_flow::styles::TextSpan;
 
+use crate::editor_spans::*;
 use crate::font::FontRegistry;
 use crate::geometry::Rect;
 use crate::hit_test::{cursor_rect_for_offset, hit_test_page, selection_rects_for_range};
@@ -14,6 +15,19 @@ use crate::tree::LayoutDocument;
 
 /// Maximum number of undo transactions retained in memory.
 const MAX_UNDO_STACK: usize = 100;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TypingBatchKind {
+    Insert,
+    Delete,
+}
+
+#[derive(Debug, Clone)]
+struct ActiveTypingBatch {
+    block_id: String,
+    expected_offset: usize,
+    kind: TypingBatchKind,
+}
 
 /// Snapshot representing a document state for undo/redo.
 #[derive(Debug, Clone)]
@@ -30,6 +44,9 @@ pub struct FlowEditorState {
     pub active_block_id: String,
     pub cursor_offset: usize,
     pub selection_anchor: Option<(String, usize)>,
+    pub tracking_enabled: bool,
+    pub active_author: String,
+    active_batch: Option<ActiveTypingBatch>,
     undo_stack: Vec<EditorSnapshot>,
     redo_stack: Vec<EditorSnapshot>,
     pub font_registry: FontRegistry,
@@ -75,6 +92,9 @@ impl FlowEditorState {
             active_block_id: initial_block_id,
             cursor_offset: 0,
             selection_anchor: None,
+            tracking_enabled: false,
+            active_author: "Author".to_string(),
+            active_batch: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             font_registry,
@@ -84,7 +104,8 @@ impl FlowEditorState {
         }
     }
 
-    fn push_undo_snapshot(&mut self) {
+    pub fn push_undo_snapshot(&mut self) {
+        self.active_batch = None;
         self.redo_stack.clear();
         if self.undo_stack.len() >= MAX_UNDO_STACK {
             self.undo_stack.remove(0);
@@ -101,27 +122,96 @@ impl FlowEditorState {
         if text.is_empty() {
             return;
         }
-        self.push_undo_snapshot();
         self.clear_selection();
 
         let block_id = self.active_block_id.clone();
         let offset = self.cursor_offset;
+        let char_count = text.chars().count();
+
+        if self.tracking_enabled {
+            self.push_undo_snapshot();
+            let change_id = format!("chg_{}", uuid_fast());
+            let timestamp = format!(
+                "unix:{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            );
+            let mut change = vocument_flow::review::TrackedChange::new(
+                &change_id,
+                vocument_flow::review::ChangeType::Insert,
+                &self.active_author,
+                &timestamp,
+            );
+            change.target_block_id = Some(block_id.clone());
+            change.text_snippet = Some(text.to_string());
+            self.document.review.tracked_changes.push(change);
+
+            let mut span = TextSpan::plain(text);
+            span.tracked_change_id = Some(change_id);
+            span.style.underline = true;
+            span.color = Some(vocument_flow::styles::ColorRgba::rgb(0, 102, 204));
+
+            if let Some(para) = self.find_paragraph_mut(&block_id) {
+                insert_span_into_spans(&mut para.spans, offset, span);
+                self.cursor_offset += char_count;
+                self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
+                self.update_active_paragraph_fast();
+            } else if let Some(heading) = self.find_heading_mut(&block_id) {
+                insert_span_into_spans(&mut heading.spans, offset, span);
+                self.cursor_offset += char_count;
+                self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
+                self.recompute_full_layout();
+            }
+            return;
+        }
+
+        // Standard editing with typing run coalescing
+        let is_word_char = text.chars().all(|c| !c.is_whitespace());
+        let continues_batch = if let Some(ref mut batch) = self.active_batch {
+            if batch.block_id == block_id
+                && batch.expected_offset == offset
+                && batch.kind == TypingBatchKind::Insert
+                && is_word_char
+            {
+                batch.expected_offset += char_count;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !continues_batch {
+            self.push_undo_snapshot();
+            if is_word_char {
+                self.active_batch = Some(ActiveTypingBatch {
+                    block_id: block_id.clone(),
+                    expected_offset: offset + char_count,
+                    kind: TypingBatchKind::Insert,
+                });
+            } else {
+                self.active_batch = None;
+            }
+        }
 
         if let Some(para) = self.find_paragraph_mut(&block_id) {
             insert_into_spans(&mut para.spans, offset, text);
-            self.cursor_offset += text.chars().count();
+            self.cursor_offset += char_count;
+            self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
             self.update_active_paragraph_fast();
         } else if let Some(heading) = self.find_heading_mut(&block_id) {
             insert_into_spans(&mut heading.spans, offset, text);
-            self.cursor_offset += text.chars().count();
+            self.cursor_offset += char_count;
+            self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
             self.recompute_full_layout();
         }
     }
 
     /// Deletes the character before the cursor, or deletes the active selection.
     pub fn delete_backward(&mut self) {
-        self.push_undo_snapshot();
-
         let block_id = self.active_block_id.clone();
         let offset = self.cursor_offset;
 
@@ -129,13 +219,72 @@ impl FlowEditorState {
             return;
         }
 
+        if self.tracking_enabled {
+            self.push_undo_snapshot();
+            let change_id = format!("chg_{}", uuid_fast());
+            let timestamp = format!(
+                "unix:{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            );
+            let mut change = vocument_flow::review::TrackedChange::new(
+                &change_id,
+                vocument_flow::review::ChangeType::Delete,
+                &self.active_author,
+                &timestamp,
+            );
+            change.target_block_id = Some(block_id.clone());
+            self.document.review.tracked_changes.push(change);
+
+            if let Some(para) = self.find_paragraph_mut(&block_id) {
+                mark_char_before_deleted_in_spans(&mut para.spans, offset, &change_id);
+                self.cursor_offset = self.cursor_offset.saturating_sub(1);
+                self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
+                self.update_active_paragraph_fast();
+            } else if let Some(heading) = self.find_heading_mut(&block_id) {
+                mark_char_before_deleted_in_spans(&mut heading.spans, offset, &change_id);
+                self.cursor_offset = self.cursor_offset.saturating_sub(1);
+                self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
+                self.recompute_full_layout();
+            }
+            return;
+        }
+
+        // Standard editing with delete batch coalescing
+        let continues_batch = if let Some(ref mut batch) = self.active_batch {
+            if batch.block_id == block_id
+                && batch.expected_offset == offset
+                && batch.kind == TypingBatchKind::Delete
+            {
+                batch.expected_offset = batch.expected_offset.saturating_sub(1);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !continues_batch {
+            self.push_undo_snapshot();
+            self.active_batch = Some(ActiveTypingBatch {
+                block_id: block_id.clone(),
+                expected_offset: offset.saturating_sub(1),
+                kind: TypingBatchKind::Delete,
+            });
+        }
+
         if let Some(para) = self.find_paragraph_mut(&block_id) {
             delete_char_before_in_spans(&mut para.spans, offset);
             self.cursor_offset = self.cursor_offset.saturating_sub(1);
+            self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
             self.update_active_paragraph_fast();
         } else if let Some(heading) = self.find_heading_mut(&block_id) {
             delete_char_before_in_spans(&mut heading.spans, offset);
             self.cursor_offset = self.cursor_offset.saturating_sub(1);
+            self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
             self.recompute_full_layout();
         }
     }
@@ -149,9 +298,11 @@ impl FlowEditorState {
 
         if let Some(para) = self.find_paragraph_mut(&block_id) {
             delete_char_at_in_spans(&mut para.spans, offset);
+            self.adjust_comment_anchors_on_delete(&block_id, offset, 1);
             self.update_active_paragraph_fast();
         } else if let Some(heading) = self.find_heading_mut(&block_id) {
             delete_char_at_in_spans(&mut heading.spans, offset);
+            self.adjust_comment_anchors_on_delete(&block_id, offset, 1);
             self.recompute_full_layout();
         }
     }
@@ -183,6 +334,7 @@ impl FlowEditorState {
 
     /// Sets cursor position within a block.
     pub fn set_cursor(&mut self, block_id: &str, offset: usize) {
+        self.active_batch = None;
         self.active_block_id = block_id.to_string();
         self.cursor_offset = offset;
         self.selection_anchor = None;
@@ -196,6 +348,7 @@ impl FlowEditorState {
         focus_block: &str,
         focus_offset: usize,
     ) {
+        self.active_batch = None;
         self.selection_anchor = Some((anchor_block.to_string(), anchor_offset));
         self.active_block_id = focus_block.to_string();
         self.cursor_offset = focus_offset;
@@ -352,6 +505,7 @@ impl FlowEditorState {
 
     /// Restores the previous document state from the undo stack.
     pub fn undo(&mut self) -> bool {
+        self.active_batch = None;
         if let Some(snapshot) = self.undo_stack.pop() {
             self.redo_stack.push(EditorSnapshot {
                 document: self.document.clone(),
@@ -370,6 +524,7 @@ impl FlowEditorState {
 
     /// Re-applies the next document state from the redo stack.
     pub fn redo(&mut self) -> bool {
+        self.active_batch = None;
         if let Some(snapshot) = self.redo_stack.pop() {
             self.undo_stack.push(EditorSnapshot {
                 document: self.document.clone(),
@@ -403,6 +558,7 @@ impl FlowEditorState {
     ) -> Option<(String, usize)> {
         let page = self.layout.pages.get(page_index)?;
         let loc = hit_test_page(page, x_pt, y_pt)?;
+        self.active_batch = None;
         self.active_block_id = loc.block_id.clone();
         self.cursor_offset = loc.char_offset;
         self.selection_anchor = None;
@@ -522,136 +678,4 @@ impl FlowEditorState {
         }
         None
     }
-}
-
-fn block_id(block: &Block) -> String {
-    match block {
-        Block::Paragraph(p) => p.id.clone(),
-        Block::Heading(h) => h.id.clone(),
-        Block::List(l) => l.id.clone(),
-        Block::Table(t) => t.id.clone(),
-        Block::Image(i) => i.id.clone(),
-        Block::Callout(c) => c.id.clone(),
-        Block::ThematicBreak(tb) => tb.id.clone(),
-    }
-}
-
-fn insert_into_spans(spans: &mut Vec<TextSpan>, target_offset: usize, text: &str) {
-    if spans.is_empty() {
-        spans.push(TextSpan::plain(text));
-        return;
-    }
-
-    let mut accumulated = 0;
-    for span in spans.iter_mut() {
-        let char_count = span.text.chars().count();
-        if target_offset <= accumulated + char_count {
-            let offset_in_span = target_offset.saturating_sub(accumulated);
-            let byte_idx = span
-                .text
-                .char_indices()
-                .nth(offset_in_span)
-                .map(|(i, _)| i)
-                .unwrap_or(span.text.len());
-            span.text.insert_str(byte_idx, text);
-            return;
-        }
-        accumulated += char_count;
-    }
-
-    // Append to last span
-    if let Some(last) = spans.last_mut() {
-        last.text.push_str(text);
-    }
-}
-
-fn delete_char_before_in_spans(spans: &mut [TextSpan], target_offset: usize) {
-    if target_offset == 0 {
-        return;
-    }
-
-    let mut accumulated = 0;
-    for span in spans.iter_mut() {
-        let char_count = span.text.chars().count();
-        if target_offset <= accumulated + char_count {
-            let offset_in_span = target_offset.saturating_sub(accumulated);
-            if offset_in_span > 0 {
-                let char_to_delete_idx = offset_in_span - 1;
-                if let Some((byte_start, ch)) = span.text.char_indices().nth(char_to_delete_idx) {
-                    let byte_end = byte_start + ch.len_utf8();
-                    span.text.replace_range(byte_start..byte_end, "");
-                    return;
-                }
-            }
-        }
-        accumulated += char_count;
-    }
-}
-
-fn delete_char_at_in_spans(spans: &mut [TextSpan], target_offset: usize) {
-    let mut accumulated = 0;
-    for span in spans.iter_mut() {
-        let char_count = span.text.chars().count();
-        if target_offset < accumulated + char_count {
-            let offset_in_span = target_offset.saturating_sub(accumulated);
-            if let Some((byte_start, ch)) = span.text.char_indices().nth(offset_in_span) {
-                let byte_end = byte_start + ch.len_utf8();
-                span.text.replace_range(byte_start..byte_end, "");
-                return;
-            }
-        }
-        accumulated += char_count;
-    }
-}
-
-fn split_spans_at(spans: &mut Vec<TextSpan>, target_offset: usize) -> Vec<TextSpan> {
-    let mut tail = Vec::new();
-    let mut accumulated = 0;
-    let mut split_span_idx = None;
-    let mut split_offset_in_span = 0;
-
-    for (idx, span) in spans.iter().enumerate() {
-        let char_count = span.text.chars().count();
-        if target_offset <= accumulated + char_count {
-            split_span_idx = Some(idx);
-            split_offset_in_span = target_offset.saturating_sub(accumulated);
-            break;
-        }
-        accumulated += char_count;
-    }
-
-    if let Some(idx) = split_span_idx {
-        let mut span_to_split = spans.remove(idx);
-        let byte_split = span_to_split
-            .text
-            .char_indices()
-            .nth(split_offset_in_span)
-            .map(|(i, _)| i)
-            .unwrap_or(span_to_split.text.len());
-
-        let tail_text = span_to_split.text.split_off(byte_split);
-        let mut tail_span = span_to_split.clone();
-        tail_span.text = tail_text;
-
-        spans.insert(idx, span_to_split);
-        tail.push(tail_span);
-
-        // Move remaining spans after idx to tail
-        while spans.len() > idx + 1 {
-            tail.push(spans.remove(idx + 1));
-        }
-    }
-
-    if tail.is_empty() {
-        tail.push(TextSpan::plain(""));
-    }
-
-    tail
-}
-
-fn uuid_fast() -> String {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static COUNTER: AtomicU64 = AtomicU64::new(1);
-    let id = COUNTER.fetch_add(1, Ordering::Relaxed);
-    format!("{:08x}{:08x}", std::process::id(), id)
 }

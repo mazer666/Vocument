@@ -80,6 +80,7 @@ pub fn layout_table(table: &TableBlock, ctx: &TypesettingContext) -> PositionedT
             background_color: None,
             link_url: None,
             footnote_ref: None,
+            tracked_change_id: None,
             extra: Default::default(),
         };
         let caption_para = vocument_flow::model::ParagraphBlock::new(

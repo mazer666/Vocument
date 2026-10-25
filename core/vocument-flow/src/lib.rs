@@ -25,6 +25,7 @@
 pub mod error;
 pub mod metadata;
 pub mod model;
+pub mod review;
 pub mod schema;
 pub mod serde_flow;
 pub mod styles;
@@ -36,6 +37,7 @@ pub use model::{
     ListBlock, ListItem, ListKind, PageOrientation, ParagraphBlock, Section, SectionGeometry,
     TableBlock, TableCell, TableRow, ThematicBreakBlock,
 };
+pub use review::{ChangeType, FlowComment, FlowCommentReply, FlowReviewData, TrackedChange};
 pub use schema::{FLOW_SCHEMA_VERSION, MAX_HEADING_LEVEL, MIN_HEADING_LEVEL, validate_document};
 pub use serde_flow::{from_json_bytes, from_json_str, to_json_canonical, to_json_pretty};
 pub use styles::{

@@ -124,4 +124,60 @@ extension DocumentCoreClient {
     public func editorMeasureTypingLatencyMicros(editorId: String, sampleText: String) throws -> UInt64 {
         try documentCoreEditorMeasureTypingLatencyMicros(editorId: editorId, sampleText: sampleText)
     }
+
+    /// Enables change tracking under the given author name (`TRACK-001`).
+    public func editorEnableTracking(editorId: String, author: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorEnableTracking(editorId: editorId, author: author)
+    }
+
+    /// Disables change tracking for subsequent edits (`TRACK-001`).
+    public func editorDisableTracking(editorId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorDisableTracking(editorId: editorId)
+    }
+
+    /// Adds a margin comment anchored to the active block and optional character range (`TRACK-005`).
+    public func editorAddComment(editorId: String, anchorStart: UInt32?, anchorEnd: UInt32?, content: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorAddComment(editorId: editorId, anchorStart: anchorStart, anchorEnd: anchorEnd, content: content)
+    }
+
+    /// Appends a reply to an existing comment thread (`TRACK-005`).
+    public func editorReplyComment(editorId: String, commentId: String, content: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorReplyComment(editorId: editorId, commentId: commentId, content: content)
+    }
+
+    /// Sets the resolved status of a comment thread (`TRACK-005`).
+    public func editorResolveComment(editorId: String, commentId: String, resolved: Bool) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorResolveComment(editorId: editorId, commentId: commentId, resolved: resolved)
+    }
+
+    /// Deletes a comment thread completely (`TRACK-005`).
+    public func editorDeleteComment(editorId: String, commentId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorDeleteComment(editorId: editorId, commentId: commentId)
+    }
+
+    /// Accepts an individual tracked change by ID (`TRACK-003`).
+    public func editorAcceptChange(editorId: String, changeId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorAcceptChange(editorId: editorId, changeId: changeId)
+    }
+
+    /// Rejects an individual tracked change by ID (`TRACK-003`).
+    public func editorRejectChange(editorId: String, changeId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorRejectChange(editorId: editorId, changeId: changeId)
+    }
+
+    /// Accepts all pending tracked changes across the document (`TRACK-003`).
+    public func editorAcceptAllChanges(editorId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorAcceptAllChanges(editorId: editorId)
+    }
+
+    /// Rejects all pending tracked changes across the document (`TRACK-003`).
+    public func editorRejectAllChanges(editorId: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorRejectAllChanges(editorId: editorId)
+    }
+
+    /// Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
+    public func editorExportPdf(editorId: String, includeComments: Bool, includeTrackedChanges: Bool) throws -> Data {
+        try documentCoreEditorExportPdf(editorId: editorId, includeComments: includeComments, includeTrackedChanges: includeTrackedChanges)
+    }
 }
+

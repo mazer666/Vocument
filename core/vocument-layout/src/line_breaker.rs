@@ -292,6 +292,9 @@ fn assemble_line(
         let run_width_pt = run.advance_pt();
         let bounds = Rect::new(current_x, line_top_y, run_width_pt, line_height_pt);
 
+        let glyph_advances = run.glyphs.iter().map(|g| g.x_advance.to_f32()).collect();
+        let is_rtl = run.direction == crate::shaper::Direction::RightToLeft;
+
         positioned_runs.push(PositionedRun {
             text: run.text.clone(),
             bounds,
@@ -301,6 +304,8 @@ fn assemble_line(
             color: run.color,
             link_url: run.link_url.clone(),
             footnote_ref: run.footnote_ref.clone(),
+            glyph_advances,
+            is_rtl,
         });
 
         current_x += run_width_pt;

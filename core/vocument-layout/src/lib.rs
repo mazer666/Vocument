@@ -1,6 +1,8 @@
 //! Deterministic cross-platform layout engine for FlowDocument (`ADR-0020`, `ROADMAP.md` M4.1).
 
 pub mod editor;
+pub mod editor_review;
+pub mod editor_spans;
 pub mod error;
 pub mod font;
 pub mod footnote;
@@ -10,6 +12,7 @@ pub mod incremental;
 pub mod line_breaker;
 pub mod paginator;
 pub mod paragraph;
+pub mod pdf_export;
 pub mod shaper;
 pub mod table;
 pub mod tree;
@@ -29,6 +32,7 @@ pub use paragraph::{
     PositionedParagraph, TypesettingContext, layout_heading, layout_list, layout_paragraph,
     resolve_paragraph_style, shape_spans,
 };
+pub use pdf_export::{PdfExportOptions, export_flow_document_to_pdf, export_layout_to_pdf};
 pub use shaper::{Direction, ShapedGlyph, ShapedRun, shape_span};
 pub use table::{
     PositionedTable, PositionedTableCell, PositionedTableRow, TableSlice, layout_table, slice_table,

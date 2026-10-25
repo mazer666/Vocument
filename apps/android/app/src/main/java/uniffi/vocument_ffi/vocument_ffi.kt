@@ -985,6 +985,28 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1060,11 +1082,25 @@ fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_accept_all_changes(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_accept_change(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_add_comment(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_delete_comment(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_disable_tracking(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test(
 ): Short
@@ -1083,6 +1119,14 @@ fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_text(
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_redo(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_reject_all_changes(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_resolve_comment(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc(
 ): Short
@@ -1379,11 +1423,25 @@ fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page(`sessionId`: RustBu
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_accept_all_changes(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_accept_change(`editorId`: RustBuffer.ByValue,`changeId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_add_comment(`editorId`: RustBuffer.ByValue,`anchorStart`: RustBuffer.ByValue,`anchorEnd`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_clear_selection(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_delete_backward(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_delete_comment(`editorId`: RustBuffer.ByValue,`commentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_disable_tracking(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_enable_tracking(`editorId`: RustBuffer.ByValue,`author`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_export_pdf(`editorId`: RustBuffer.ByValue,`includeComments`: Byte,`includeTrackedChanges`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_hit_test(`editorId`: RustBuffer.ByValue,`pageIndex`: Int,`xPt`: Float,`yPt`: Float,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1402,6 +1460,14 @@ fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_text(`editorId`: Rus
 fun uniffi_vocument_ffi_fn_func_document_core_editor_measure_typing_latency_micros(`editorId`: RustBuffer.ByValue,`sampleText`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 fun uniffi_vocument_ffi_fn_func_document_core_editor_redo(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_reject_all_changes(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_reject_change(`editorId`: RustBuffer.ByValue,`changeId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_reply_comment(`editorId`: RustBuffer.ByValue,`commentId`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_resolve_comment(`editorId`: RustBuffer.ByValue,`commentId`: RustBuffer.ByValue,`resolved`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(`editorId`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1809,13 +1875,34 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_accept_all_changes() != 61772.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_accept_change() != 55298.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_add_comment() != 52818.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection() != 25431.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward() != 44549.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_delete_comment() != 14348.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward() != 65137.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_disable_tracking() != 8654.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking() != 44052.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf() != 53605.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test() != 44237.toShort()) {
@@ -1843,6 +1930,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_reject_all_changes() != 24520.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change() != 371.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment() != 31768.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_resolve_comment() != 60305.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424.toShort()) {
@@ -3372,6 +3471,9 @@ data class FfiEditorSessionSnapshot (
     var `selectionRects`: List<FfiEditorSelectionRect>, 
     var `canUndo`: kotlin.Boolean, 
     var `canRedo`: kotlin.Boolean, 
+    var `isTracking`: kotlin.Boolean, 
+    var `comments`: List<FfiFlowComment>, 
+    var `trackedChanges`: List<FfiTrackedChange>, 
     var `plainText`: kotlin.String, 
     var `pages`: List<FfiEditorPageSnapshot>
 ) {
@@ -3396,6 +3498,9 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiEditorSelectionRect.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeFfiFlowComment.read(buf),
+            FfiConverterSequenceTypeFfiTrackedChange.read(buf),
             FfiConverterString.read(buf),
             FfiConverterSequenceTypeFfiEditorPageSnapshot.read(buf),
         )
@@ -3413,6 +3518,9 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiEditorSelectionRect.allocationSize(value.`selectionRects`) +
             FfiConverterBoolean.allocationSize(value.`canUndo`) +
             FfiConverterBoolean.allocationSize(value.`canRedo`) +
+            FfiConverterBoolean.allocationSize(value.`isTracking`) +
+            FfiConverterSequenceTypeFfiFlowComment.allocationSize(value.`comments`) +
+            FfiConverterSequenceTypeFfiTrackedChange.allocationSize(value.`trackedChanges`) +
             FfiConverterString.allocationSize(value.`plainText`) +
             FfiConverterSequenceTypeFfiEditorPageSnapshot.allocationSize(value.`pages`)
     )
@@ -3429,6 +3537,9 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiEditorSelectionRect.write(value.`selectionRects`, buf)
             FfiConverterBoolean.write(value.`canUndo`, buf)
             FfiConverterBoolean.write(value.`canRedo`, buf)
+            FfiConverterBoolean.write(value.`isTracking`, buf)
+            FfiConverterSequenceTypeFfiFlowComment.write(value.`comments`, buf)
+            FfiConverterSequenceTypeFfiTrackedChange.write(value.`trackedChanges`, buf)
             FfiConverterString.write(value.`plainText`, buf)
             FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.`pages`, buf)
     }
@@ -3635,6 +3746,116 @@ public object FfiConverterTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIde
             FfiConverterULong.write(value.`sizeBytes`, buf)
             FfiConverterOptionalLong.write(value.`modifiedUnixMs`, buf)
             FfiConverterString.write(value.`sha256Hex`, buf)
+    }
+}
+
+
+
+/**
+ * Margin comment representation for native platform UI.
+ */
+data class FfiFlowComment (
+    var `commentId`: kotlin.String, 
+    var `author`: kotlin.String, 
+    var `timestamp`: kotlin.String, 
+    var `content`: kotlin.String, 
+    var `anchorBlockId`: kotlin.String?, 
+    var `anchorCharStart`: kotlin.UInt?, 
+    var `anchorCharEnd`: kotlin.UInt?, 
+    var `anchorText`: kotlin.String?, 
+    var `resolved`: kotlin.Boolean, 
+    var `replies`: List<FfiFlowCommentReply>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFlowComment: FfiConverterRustBuffer<FfiFlowComment> {
+    override fun read(buf: ByteBuffer): FfiFlowComment {
+        return FfiFlowComment(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeFfiFlowCommentReply.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiFlowComment) = (
+            FfiConverterString.allocationSize(value.`commentId`) +
+            FfiConverterString.allocationSize(value.`author`) +
+            FfiConverterString.allocationSize(value.`timestamp`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterOptionalString.allocationSize(value.`anchorBlockId`) +
+            FfiConverterOptionalUInt.allocationSize(value.`anchorCharStart`) +
+            FfiConverterOptionalUInt.allocationSize(value.`anchorCharEnd`) +
+            FfiConverterOptionalString.allocationSize(value.`anchorText`) +
+            FfiConverterBoolean.allocationSize(value.`resolved`) +
+            FfiConverterSequenceTypeFfiFlowCommentReply.allocationSize(value.`replies`)
+    )
+
+    override fun write(value: FfiFlowComment, buf: ByteBuffer) {
+            FfiConverterString.write(value.`commentId`, buf)
+            FfiConverterString.write(value.`author`, buf)
+            FfiConverterString.write(value.`timestamp`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterOptionalString.write(value.`anchorBlockId`, buf)
+            FfiConverterOptionalUInt.write(value.`anchorCharStart`, buf)
+            FfiConverterOptionalUInt.write(value.`anchorCharEnd`, buf)
+            FfiConverterOptionalString.write(value.`anchorText`, buf)
+            FfiConverterBoolean.write(value.`resolved`, buf)
+            FfiConverterSequenceTypeFfiFlowCommentReply.write(value.`replies`, buf)
+    }
+}
+
+
+
+/**
+ * Margin comment reply representation.
+ */
+data class FfiFlowCommentReply (
+    var `replyId`: kotlin.String, 
+    var `author`: kotlin.String, 
+    var `timestamp`: kotlin.String, 
+    var `content`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFlowCommentReply: FfiConverterRustBuffer<FfiFlowCommentReply> {
+    override fun read(buf: ByteBuffer): FfiFlowCommentReply {
+        return FfiFlowCommentReply(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiFlowCommentReply) = (
+            FfiConverterString.allocationSize(value.`replyId`) +
+            FfiConverterString.allocationSize(value.`author`) +
+            FfiConverterString.allocationSize(value.`timestamp`) +
+            FfiConverterString.allocationSize(value.`content`)
+    )
+
+    override fun write(value: FfiFlowCommentReply, buf: ByteBuffer) {
+            FfiConverterString.write(value.`replyId`, buf)
+            FfiConverterString.write(value.`author`, buf)
+            FfiConverterString.write(value.`timestamp`, buf)
+            FfiConverterString.write(value.`content`, buf)
     }
 }
 
@@ -6431,6 +6652,61 @@ public object FfiConverterTypeFfiTileRenderRequest: FfiConverterRustBuffer<FfiTi
 
 
 /**
+ * Tracked change representation for native platform UI.
+ */
+data class FfiTrackedChange (
+    var `changeId`: kotlin.String, 
+    var `changeType`: kotlin.String, 
+    var `author`: kotlin.String, 
+    var `timestamp`: kotlin.String, 
+    var `targetBlockId`: kotlin.String?, 
+    var `textSnippet`: kotlin.String?, 
+    var `details`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTrackedChange: FfiConverterRustBuffer<FfiTrackedChange> {
+    override fun read(buf: ByteBuffer): FfiTrackedChange {
+        return FfiTrackedChange(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTrackedChange) = (
+            FfiConverterString.allocationSize(value.`changeId`) +
+            FfiConverterString.allocationSize(value.`changeType`) +
+            FfiConverterString.allocationSize(value.`author`) +
+            FfiConverterString.allocationSize(value.`timestamp`) +
+            FfiConverterOptionalString.allocationSize(value.`targetBlockId`) +
+            FfiConverterOptionalString.allocationSize(value.`textSnippet`) +
+            FfiConverterOptionalString.allocationSize(value.`details`)
+    )
+
+    override fun write(value: FfiTrackedChange, buf: ByteBuffer) {
+            FfiConverterString.write(value.`changeId`, buf)
+            FfiConverterString.write(value.`changeType`, buf)
+            FfiConverterString.write(value.`author`, buf)
+            FfiConverterString.write(value.`timestamp`, buf)
+            FfiConverterOptionalString.write(value.`targetBlockId`, buf)
+            FfiConverterOptionalString.write(value.`textSnippet`, buf)
+            FfiConverterOptionalString.write(value.`details`, buf)
+    }
+}
+
+
+
+/**
  * Live Undo/Redo and transaction history state snapshot exposed across UniFFI (`UNDO-001`, `UNDO-002`, `UNDO-004`, `ROADMAP.md` M0.4).
  */
 data class FfiTransactionHistorySnapshot (
@@ -8463,6 +8739,62 @@ public object FfiConverterSequenceTypeFfiExtractedImageInfo: FfiConverterRustBuf
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiFlowComment: FfiConverterRustBuffer<List<FfiFlowComment>> {
+    override fun read(buf: ByteBuffer): List<FfiFlowComment> {
+        val len = buf.getInt()
+        return List<FfiFlowComment>(len) {
+            FfiConverterTypeFfiFlowComment.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiFlowComment>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiFlowComment.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiFlowComment>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiFlowComment.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiFlowCommentReply: FfiConverterRustBuffer<List<FfiFlowCommentReply>> {
+    override fun read(buf: ByteBuffer): List<FfiFlowCommentReply> {
+        val len = buf.getInt()
+        return List<FfiFlowCommentReply>(len) {
+            FfiConverterTypeFfiFlowCommentReply.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiFlowCommentReply>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiFlowCommentReply.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiFlowCommentReply>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiFlowCommentReply.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiHighlightAnnotation: FfiConverterRustBuffer<List<FfiHighlightAnnotation>> {
     override fun read(buf: ByteBuffer): List<FfiHighlightAnnotation> {
         val len = buf.getInt()
@@ -8939,6 +9271,34 @@ public object FfiConverterSequenceTypeFfiSearchHit: FfiConverterRustBuffer<List<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiTrackedChange: FfiConverterRustBuffer<List<FfiTrackedChange>> {
+    override fun read(buf: ByteBuffer): List<FfiTrackedChange> {
+        val len = buf.getInt()
+        return List<FfiTrackedChange>(len) {
+            FfiConverterTypeFfiTrackedChange.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiTrackedChange>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiTrackedChange.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiTrackedChange>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiTrackedChange.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiTransactionRecord: FfiConverterRustBuffer<List<FfiTransactionRecord>> {
     override fun read(buf: ByteBuffer): List<FfiTransactionRecord> {
         val len = buf.getInt()
@@ -9388,6 +9748,45 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Accepts all pending tracked changes across the document (`TRACK-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorAcceptAllChanges`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_accept_all_changes(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Accepts an individual tracked change by ID (`TRACK-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorAcceptChange`(`editorId`: kotlin.String, `changeId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_accept_change(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`changeId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Adds a margin comment anchored to the active block and optional character range (`TRACK-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorAddComment`(`editorId`: kotlin.String, `anchorStart`: kotlin.UInt?, `anchorEnd`: kotlin.UInt?, `content`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_add_comment(
+        FfiConverterString.lower(`editorId`),FfiConverterOptionalUInt.lower(`anchorStart`),FfiConverterOptionalUInt.lower(`anchorEnd`),FfiConverterString.lower(`content`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Clears the active selection, collapsing to cursor position.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreEditorClearSelection`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
@@ -9414,6 +9813,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Deletes a comment thread completely (`TRACK-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorDeleteComment`(`editorId`: kotlin.String, `commentId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_delete_comment(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`commentId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Deletes the character or selection immediately following the cursor (Forward Delete).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreEditorDeleteForward`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
@@ -9421,6 +9833,45 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(
         FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Disables change tracking for subsequent edits (`TRACK-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorDisableTracking`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_disable_tracking(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Enables change tracking under the given author name (`TRACK-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorEnableTracking`(`editorId`: kotlin.String, `author`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_enable_tracking(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`author`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorExportPdf`(`editorId`: kotlin.String, `includeComments`: kotlin.Boolean, `includeTrackedChanges`: kotlin.Boolean): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_export_pdf(
+        FfiConverterString.lower(`editorId`),FfiConverterBoolean.lower(`includeComments`),FfiConverterBoolean.lower(`includeTrackedChanges`),_status)
 }
     )
     }
@@ -9538,6 +9989,58 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_redo(
         FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rejects all pending tracked changes across the document (`TRACK-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorRejectAllChanges`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_reject_all_changes(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rejects an individual tracked change by ID (`TRACK-003`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorRejectChange`(`editorId`: kotlin.String, `changeId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_reject_change(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`changeId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Appends a reply to an existing margin comment thread (`TRACK-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorReplyComment`(`editorId`: kotlin.String, `commentId`: kotlin.String, `content`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_reply_comment(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`commentId`),FfiConverterString.lower(`content`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sets the resolved status of a comment thread (`TRACK-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorResolveComment`(`editorId`: kotlin.String, `commentId`: kotlin.String, `resolved`: kotlin.Boolean): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_resolve_comment(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`commentId`),FfiConverterBoolean.lower(`resolved`),_status)
 }
     )
     }

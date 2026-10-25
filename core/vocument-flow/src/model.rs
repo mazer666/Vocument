@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::error::FlowError;
 use crate::metadata::DocumentMetadata;
+use crate::review::FlowReviewData;
 use crate::styles::{Alignment, ColorRgba, Stylesheet, TextSpan};
 
 /// Page orientation for a section geometry.
@@ -550,6 +551,10 @@ pub struct FlowDocument {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub footnotes: BTreeMap<String, FootnoteDefinition>,
 
+    /// Reviewing data (comments, replies, and tracked changes).
+    #[serde(default, skip_serializing_if = "FlowReviewData::is_empty")]
+    pub review: FlowReviewData,
+
     /// Unknown / forward-compatible attributes preserved intact during roundtrips.
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -563,6 +568,7 @@ impl FlowDocument {
             stylesheet: Stylesheet::standard_legal(),
             sections: Vec::new(),
             footnotes: BTreeMap::new(),
+            review: FlowReviewData::default(),
             extra: BTreeMap::new(),
         }
     }

@@ -152,6 +152,7 @@ fn test_pdoc_lossless_roundtrip_with_assets_and_review() {
         anchor_block_id: Some("p_r1c2".to_string()),
         anchor_char_start: Some(0),
         anchor_char_end: Some(7),
+        anchor_text: Some("5 years".to_string()),
         resolved: false,
         replies: vec![reply],
         extra: BTreeMap::new(),
@@ -162,6 +163,7 @@ fn test_pdoc_lossless_roundtrip_with_assets_and_review() {
         author: "Counsel Alice".to_string(),
         timestamp: "unix:1700000010".to_string(),
         target_block_id: Some("p_01".to_string()),
+        text_snippet: Some("strict confidentiality".to_string()),
         details: Some("Inserted 'strict confidentiality'".to_string()),
         extra: BTreeMap::new(),
     };

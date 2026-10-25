@@ -501,6 +501,7 @@ impl<'a> SectionPaginator<'a> {
                 background_color: None,
                 link_url: None,
                 footnote_ref: None,
+                tracked_change_id: None,
                 extra: Default::default(),
             };
             let title_p = ParagraphBlock::new(format!("{}:title", callout.id), vec![title_span]);

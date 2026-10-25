@@ -160,6 +160,7 @@ fn prepend_footnote_marker(para: &mut ParagraphBlock, number: u32) {
         background_color: None,
         link_url: None,
         footnote_ref: None,
+        tracked_change_id: None,
         extra: Default::default(),
     };
     para.spans.insert(0, marker_span);

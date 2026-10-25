@@ -109,6 +109,7 @@ pub fn layout_heading(heading: &HeadingBlock, ctx: &TypesettingContext) -> Posit
             background_color: None,
             link_url: None,
             footnote_ref: None,
+            tracked_change_id: None,
             extra: Default::default(),
         });
     }
@@ -178,6 +179,7 @@ pub fn layout_list(
             background_color: None,
             link_url: None,
             footnote_ref: None,
+            tracked_change_id: None,
             extra: Default::default(),
         });
         item_spans.extend(item.spans.clone());

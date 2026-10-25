@@ -98,3 +98,48 @@ fun DocumentCoreBridge.editorSavePdoc(editorId: String, targetPath: String?): St
 fun DocumentCoreBridge.editorMeasureTypingLatencyMicros(editorId: String, sampleText: String): ULong {
     return documentCoreEditorMeasureTypingLatencyMicros(editorId, sampleText)
 }
+
+fun DocumentCoreBridge.editorEnableTracking(editorId: String, author: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorEnableTracking(editorId, author)
+}
+
+fun DocumentCoreBridge.editorDisableTracking(editorId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorDisableTracking(editorId)
+}
+
+fun DocumentCoreBridge.editorAddComment(editorId: String, anchorStart: UInt?, anchorEnd: UInt?, content: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorAddComment(editorId, anchorStart, anchorEnd, content)
+}
+
+fun DocumentCoreBridge.editorReplyComment(editorId: String, commentId: String, content: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorReplyComment(editorId, commentId, content)
+}
+
+fun DocumentCoreBridge.editorResolveComment(editorId: String, commentId: String, resolved: Boolean): FfiEditorSessionSnapshot {
+    return documentCoreEditorResolveComment(editorId, commentId, resolved)
+}
+
+fun DocumentCoreBridge.editorDeleteComment(editorId: String, commentId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorDeleteComment(editorId, commentId)
+}
+
+fun DocumentCoreBridge.editorAcceptChange(editorId: String, changeId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorAcceptChange(editorId, changeId)
+}
+
+fun DocumentCoreBridge.editorRejectChange(editorId: String, changeId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorRejectChange(editorId, changeId)
+}
+
+fun DocumentCoreBridge.editorAcceptAllChanges(editorId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorAcceptAllChanges(editorId)
+}
+
+fun DocumentCoreBridge.editorRejectAllChanges(editorId: String): FfiEditorSessionSnapshot {
+    return documentCoreEditorRejectAllChanges(editorId)
+}
+
+fun DocumentCoreBridge.editorExportPdf(editorId: String, includeComments: Boolean, includeTrackedChanges: Boolean): ByteArray {
+    return documentCoreEditorExportPdf(editorId, includeComments, includeTrackedChanges)
+}
+

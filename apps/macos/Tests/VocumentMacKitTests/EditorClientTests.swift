@@ -79,4 +79,47 @@ struct EditorClientTests {
         try client.closeEditorSession(editorId: reopened.editorId)
         try? FileManager.default.removeItem(atPath: tmpPath)
     }
+
+    @Test("Reviewing system: tracked changes, margin comments, and PDF/A export")
+    func verifyReviewingTrackedChangesAndPdfExport() throws {
+        let client = DocumentCoreClient()
+        let session = try client.createEditorSession(title: "Vertragsentwurf 2026")
+        let id = session.editorId
+
+        _ = try client.editorInsertText(editorId: id, text: "Vertragsklausel 1: Gewährleistung beträgt ein Jahr.")
+
+        // 1. Enable Tracking
+        let sTrack = try client.editorEnableTracking(editorId: id, author: "Dr. Rechtsanwalt")
+        #expect(sTrack.isTracking == true)
+
+        // 2. Insert tracked text
+        let sIns = try client.editorInsertText(editorId: id, text: " Verlängerung auf drei Jahre.")
+        #expect(sIns.trackedChanges.count == 1)
+        #expect(sIns.trackedChanges[0].author == "Dr. Rechtsanwalt")
+
+        // 3. Add Margin Comment
+        let sComm = try client.editorAddComment(editorId: id, anchorStart: 0, anchorEnd: 16, content: "Klausel an BGB anpassen.")
+        #expect(sComm.comments.count == 1)
+        let commentId = sComm.comments[0].commentId
+
+        // 4. Reply to Comment
+        let sRep = try client.editorReplyComment(editorId: id, commentId: commentId, content: "Wurde bereits mit Mandant abgestimmt.")
+        #expect(sRep.comments[0].replies.count == 1)
+
+        // 5. Resolve Comment
+        let sRes = try client.editorResolveComment(editorId: id, commentId: commentId, resolved: true)
+        #expect(sRes.comments[0].resolved == true)
+
+        // 6. Accept change
+        let sAcc = try client.editorAcceptChange(editorId: id, changeId: sIns.trackedChanges[0].changeId)
+        #expect(sAcc.trackedChanges.isEmpty)
+
+        // 7. Export Tagged PDF/A & PDF/UA
+        let pdfData = try client.editorExportPdf(editorId: id, includeComments: true, includeTrackedChanges: true)
+        #expect(pdfData.count > 500)
+        let prefix = String(data: pdfData.prefix(8), encoding: .utf8)
+        #expect(prefix == "%PDF-1.7")
+
+        try client.closeEditorSession(editorId: id)
+    }
 }

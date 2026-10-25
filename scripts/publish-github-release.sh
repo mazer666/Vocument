@@ -38,6 +38,7 @@ NOTES_FILE=""
 STAGE_ONLY=1
 PUBLISH_REQUESTED=0
 CLEARANCE_FILE="$REPOSITORY_ROOT/docs/releasing/PROJECT_OWNER_CLEARANCE.md"
+OWNER_CLEARANCE_VERIFIED=0
 SKIP_BUILD=0
 ALLOW_DIRTY=0
 REQUIRE_ALL_PLATFORMS=0
@@ -187,6 +188,7 @@ if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
         exit 1
     fi
     echo "==> Cryptographically verified Project Owner clearance confirmed for $TAG ($SHORT_REV)."
+    OWNER_CLEARANCE_VERIFIED=1
 fi
 
 if [[ -z "$TITLE" ]]; then
@@ -483,13 +485,14 @@ echo "==> Release candidate report generated: $REPORT_FILE"
 
 # 8. BINDING PUBLICATION LOCK ENFORCEMENT
 if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
-    if [[ "$OWNER_APPROVAL_CONFIRMED" -eq 0 && "${PROJECT_OWNER_RELEASE_APPROVAL:-}" != "APPROVED_BY_PROJECT_OWNER" ]]; then
+    if [[ "${OWNER_CLEARANCE_VERIFIED:-0}" -ne 1 ]]; then
         echo "" >&2
         echo "================================================================================" >&2
         echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
-        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no agent or automated script may" >&2
-        echo "publish public GitHub releases or release binaries without explicit Project" >&2
-        echo "Owner approval (--confirm-owner-approval)." >&2
+        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no automated flag, environment" >&2
+        echo "variable, or agent may authorize release publication." >&2
+        echo "A cryptographically signed clearance anchored in the Project Owner root of trust" >&2
+        echo "($ROOT_OF_TRUST) is mandatory." >&2
         echo "" >&2
         echo "Artifacts were safely prepared and verified in:" >&2
         echo "  $STAGE_DIR" >&2

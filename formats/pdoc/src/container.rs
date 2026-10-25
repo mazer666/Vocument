@@ -84,17 +84,25 @@ impl PdocPackage {
             document.metadata.id.clone(),
             format!("Vocument {}", env!("CARGO_PKG_VERSION")),
         );
+        let review = if document.review.is_empty() {
+            None
+        } else {
+            Some(document.review.clone())
+        };
         Self {
             manifest,
             document,
             assets: PdocAssetStore::new(),
-            review: None,
+            review,
             unmapped_entries: BTreeMap::new(),
         }
     }
 
     /// Converts package into underlying `FlowDocument`.
-    pub fn into_flow_document(self) -> FlowDocument {
+    pub fn into_flow_document(mut self) -> FlowDocument {
+        if let Some(rev) = self.review {
+            self.document.review = rev;
+        }
         self.document
     }
 
@@ -386,6 +394,7 @@ impl PdocContainer {
                     stylesheet,
                     sections: content.sections,
                     footnotes: content.footnotes,
+                    review: vocument_flow::review::FlowReviewData::default(),
                     extra: content.extra,
                 }
             } else {
@@ -415,13 +424,16 @@ impl PdocContainer {
             }
         }
 
-        let package = PdocPackage {
+        let mut package = PdocPackage {
             manifest,
             document: flow_doc,
             assets: asset_store,
             review,
             unmapped_entries: unmapped,
         };
+        if let Some(rev) = &package.review {
+            package.document.review = rev.clone();
+        }
 
         // 7. Full validation of package invariants and cross-references
         package.validate()?;

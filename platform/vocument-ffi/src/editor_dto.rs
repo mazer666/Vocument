@@ -66,6 +66,42 @@ pub struct FfiEditorPageSnapshot {
     pub lines: Vec<FfiEditorLineSnapshot>,
 }
 
+/// Margin comment reply representation.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct FfiFlowCommentReply {
+    pub reply_id: String,
+    pub author: String,
+    pub timestamp: String,
+    pub content: String,
+}
+
+/// Margin comment representation for native platform UI.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct FfiFlowComment {
+    pub comment_id: String,
+    pub author: String,
+    pub timestamp: String,
+    pub content: String,
+    pub anchor_block_id: Option<String>,
+    pub anchor_char_start: Option<u32>,
+    pub anchor_char_end: Option<u32>,
+    pub anchor_text: Option<String>,
+    pub resolved: bool,
+    pub replies: Vec<FfiFlowCommentReply>,
+}
+
+/// Tracked change representation for native platform UI.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct FfiTrackedChange {
+    pub change_id: String,
+    pub change_type: String,
+    pub author: String,
+    pub timestamp: String,
+    pub target_block_id: Option<String>,
+    pub text_snippet: Option<String>,
+    pub details: Option<String>,
+}
+
 /// Comprehensive immutable snapshot of the native platform editor state.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct FfiEditorSessionSnapshot {
@@ -80,6 +116,9 @@ pub struct FfiEditorSessionSnapshot {
     pub selection_rects: Vec<FfiEditorSelectionRect>,
     pub can_undo: bool,
     pub can_redo: bool,
+    pub is_tracking: bool,
+    pub comments: Vec<FfiFlowComment>,
+    pub tracked_changes: Vec<FfiTrackedChange>,
     pub plain_text: String,
     pub pages: Vec<FfiEditorPageSnapshot>,
 }
@@ -168,6 +207,56 @@ fn make_snapshot(session: &FlowEditorSession) -> FfiEditorSessionSnapshot {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let comments = session
+        .state
+        .document
+        .review
+        .comments
+        .iter()
+        .map(|c| FfiFlowComment {
+            comment_id: c.comment_id.clone(),
+            author: c.author.clone(),
+            timestamp: c.timestamp.clone(),
+            content: c.content.clone(),
+            anchor_block_id: c.anchor_block_id.clone(),
+            anchor_char_start: c.anchor_char_start.map(|v| v as u32),
+            anchor_char_end: c.anchor_char_end.map(|v| v as u32),
+            anchor_text: c.anchor_text.clone(),
+            resolved: c.resolved,
+            replies: c
+                .replies
+                .iter()
+                .map(|r| FfiFlowCommentReply {
+                    reply_id: r.reply_id.clone(),
+                    author: r.author.clone(),
+                    timestamp: r.timestamp.clone(),
+                    content: r.content.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+
+    let tracked_changes = session
+        .state
+        .document
+        .review
+        .tracked_changes
+        .iter()
+        .map(|tc| FfiTrackedChange {
+            change_id: tc.change_id.clone(),
+            change_type: match tc.change_type {
+                vocument_flow::review::ChangeType::Insert => "insert".to_string(),
+                vocument_flow::review::ChangeType::Delete => "delete".to_string(),
+                vocument_flow::review::ChangeType::FormatChange => "format_change".to_string(),
+            },
+            author: tc.author.clone(),
+            timestamp: tc.timestamp.clone(),
+            target_block_id: tc.target_block_id.clone(),
+            text_snippet: tc.text_snippet.clone(),
+            details: tc.details.clone(),
+        })
+        .collect();
+
     FfiEditorSessionSnapshot {
         editor_id: session.id.clone(),
         title: session.title.clone(),
@@ -180,6 +269,9 @@ fn make_snapshot(session: &FlowEditorSession) -> FfiEditorSessionSnapshot {
         selection_rects,
         can_undo: session.state.can_undo(),
         can_redo: session.state.can_redo(),
+        is_tracking: session.state.is_tracking(),
+        comments,
+        tracked_changes,
         plain_text,
         pages,
     }
@@ -538,5 +630,154 @@ pub fn document_core_editor_measure_typing_latency_micros(
     with_session(&editor_id, |s| {
         let micros = s.state.measure_typing_latency_micros(&sample_text);
         Ok(micros)
+    })
+}
+
+/// Enables change tracking under the given author name (`TRACK-001`).
+#[uniffi::export]
+pub fn document_core_editor_enable_tracking(
+    editor_id: String,
+    author: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.enable_tracking(author);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Disables change tracking for subsequent edits (`TRACK-001`).
+#[uniffi::export]
+pub fn document_core_editor_disable_tracking(
+    editor_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.disable_tracking();
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Adds a margin comment anchored to the active block and optional character range (`TRACK-005`).
+#[uniffi::export]
+pub fn document_core_editor_add_comment(
+    editor_id: String,
+    anchor_start: Option<u32>,
+    anchor_end: Option<u32>,
+    content: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        let range = match (anchor_start, anchor_end) {
+            (Some(st), Some(en)) => Some((st as usize, en as usize)),
+            _ => None,
+        };
+        s.state.add_comment(range, content);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Appends a reply to an existing margin comment thread (`TRACK-005`).
+#[uniffi::export]
+pub fn document_core_editor_reply_comment(
+    editor_id: String,
+    comment_id: String,
+    content: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.reply_to_comment(&comment_id, content);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Sets the resolved status of a comment thread (`TRACK-005`).
+#[uniffi::export]
+pub fn document_core_editor_resolve_comment(
+    editor_id: String,
+    comment_id: String,
+    resolved: bool,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.resolve_comment(&comment_id, resolved);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Deletes a comment thread completely (`TRACK-005`).
+#[uniffi::export]
+pub fn document_core_editor_delete_comment(
+    editor_id: String,
+    comment_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.delete_comment(&comment_id);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Accepts an individual tracked change by ID (`TRACK-003`).
+#[uniffi::export]
+pub fn document_core_editor_accept_change(
+    editor_id: String,
+    change_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.accept_change(&change_id);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Rejects an individual tracked change by ID (`TRACK-003`).
+#[uniffi::export]
+pub fn document_core_editor_reject_change(
+    editor_id: String,
+    change_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.reject_change(&change_id);
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Accepts all pending tracked changes across the document (`TRACK-003`).
+#[uniffi::export]
+pub fn document_core_editor_accept_all_changes(
+    editor_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.accept_all_changes();
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Rejects all pending tracked changes across the document (`TRACK-003`).
+#[uniffi::export]
+pub fn document_core_editor_reject_all_changes(
+    editor_id: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state.reject_all_changes();
+        Ok(make_snapshot(s))
+    })
+}
+
+/// Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
+#[uniffi::export]
+pub fn document_core_editor_export_pdf(
+    editor_id: String,
+    include_comments: bool,
+    include_tracked_changes: bool,
+) -> Result<Vec<u8>, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        let options = vocument_layout::pdf_export::PdfExportOptions {
+            include_comments,
+            include_tracked_changes,
+            pdfa_conformance: true,
+            pdfua_conformance: true,
+            language: "de-DE".to_string(),
+        };
+        let pdf = vocument_layout::pdf_export::export_flow_document_to_pdf(
+            &s.state.document,
+            &s.state.font_registry,
+            &options,
+        );
+        Ok(pdf)
     })
 }

@@ -8,6 +8,9 @@ struct PdocAuthoringCanvasView: View {
     @ObservedObject var coordinator: MacDocumentSessionCoordinator
     @State private var showFootnotePrompt = false
     @State private var footnoteInput = ""
+    @State private var showCommentPrompt = false
+    @State private var commentInput = ""
+    @State private var showReviewDrawer = false
     @State private var lastMeasuredLatencyMs: Double = 1.4
 
     var body: some View {
@@ -97,6 +100,54 @@ struct PdocAuthoringCanvasView: View {
                 }
                 .help("Juristische Fußnote einfügen")
 
+                Divider().frame(height: 18)
+
+                // Track Changes Toggle (`TRACK-001`)
+                let isTracking = coordinator.activeEditorSession?.isTracking ?? false
+                Button(action: {
+                    if isTracking {
+                        coordinator.editorDisableTracking()
+                    } else {
+                        coordinator.editorEnableTracking(author: "Anwalt")
+                    }
+                }) {
+                    Label(
+                        isTracking ? "Aufzeichnung aktiv" : "Änderungen verfolgen",
+                        systemImage: isTracking ? "record.circle.fill" : "record.circle"
+                    )
+                    .foregroundStyle(isTracking ? Color.red : Color.primary)
+                }
+                .help("Änderungsverfolgung umschalten")
+
+                // Add Comment (`TRACK-005`)
+                Button(action: { showCommentPrompt = true }) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                }
+                .help("Randkommentar anheften")
+
+                // Review Drawer Toggle
+                let commentCount = coordinator.activeEditorSession?.comments.count ?? 0
+                let changeCount = coordinator.activeEditorSession?.trackedChanges.count ?? 0
+                Button(action: { showReviewDrawer.toggle() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sidebar.trailing")
+                        if commentCount + changeCount > 0 {
+                            Text("\(commentCount + changeCount)")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .background(Color.accentColor.opacity(0.2))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+                .help("Prüfungsleiste für Kommentare und Änderungen")
+
+                // PDF/A & PDF/UA Export (`EXPORT-001`)
+                Button(action: { promptPdfExport() }) {
+                    Label("PDF/A", systemImage: "arrow.down.doc")
+                }
+                .help("Barrierefreies PDF/A-2b und PDF/UA-1 exportieren")
+
                 Spacer()
 
                 // Latency Badge (< 16ms budget)
@@ -119,30 +170,137 @@ struct PdocAuthoringCanvasView: View {
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider(), alignment: .bottom)
 
-            // Scrollable canvas
-            ScrollView([.horizontal, .vertical]) {
-                NativeTextCanvasRepresentable(
-                    snapshot: coordinator.activeEditorSession,
-                    onInsertText: { text in
-                        let start = DispatchTime.now().uptimeNanoseconds
-                        coordinator.editorInsertText(text)
-                        let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000.0
-                        lastMeasuredLatencyMs = elapsedMs
-                    },
-                    onInsertParagraphBreak: { coordinator.editorInsertParagraphBreak() },
-                    onDeleteBackward: { coordinator.editorDeleteBackward() },
-                    onDeleteForward: { coordinator.editorDeleteForward() },
-                    onHitTest: { page, x, y in coordinator.editorHitTest(pageIndex: page, x: x, y: y) },
-                    onToggleBold: { coordinator.editorToggleBold() },
-                    onToggleItalic: { coordinator.editorToggleItalic() },
-                    onUndo: { coordinator.editorUndo() },
-                    onRedo: { coordinator.editorRedo() },
-                    onSave: { coordinator.editorSavePdoc() }
-                )
-                .frame(
-                    minWidth: 800,
-                    minHeight: calculateCanvasHeight()
-                )
+            // Main content area: canvas and review sidebar
+            HStack(spacing: 0) {
+                // Scrollable canvas
+                ScrollView([.horizontal, .vertical]) {
+                    NativeTextCanvasRepresentable(
+                        snapshot: coordinator.activeEditorSession,
+                        onInsertText: { text in
+                            let start = DispatchTime.now().uptimeNanoseconds
+                            coordinator.editorInsertText(text)
+                            let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000.0
+                            lastMeasuredLatencyMs = elapsedMs
+                        },
+                        onInsertParagraphBreak: { coordinator.editorInsertParagraphBreak() },
+                        onDeleteBackward: { coordinator.editorDeleteBackward() },
+                        onDeleteForward: { coordinator.editorDeleteForward() },
+                        onHitTest: { page, x, y in coordinator.editorHitTest(pageIndex: page, x: x, y: y) },
+                        onToggleBold: { coordinator.editorToggleBold() },
+                        onToggleItalic: { coordinator.editorToggleItalic() },
+                        onUndo: { coordinator.editorUndo() },
+                        onRedo: { coordinator.editorRedo() },
+                        onSave: { coordinator.editorSavePdoc() }
+                    )
+                    .frame(
+                        minWidth: 800,
+                        minHeight: calculateCanvasHeight()
+                    )
+                }
+
+                // Collapsible Review Side Panel
+                if showReviewDrawer {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Prüfung & Überarbeitung")
+                                .font(.headline)
+                            Spacer()
+                            Button(action: { showReviewDrawer = false }) {
+                                Image(systemName: "xmark")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 12)
+
+                        // Tracked Changes Section
+                        if let changes = coordinator.activeEditorSession?.trackedChanges, !changes.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("Änderungen (\(changes.count))")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Spacer()
+                                    Button("Alle annehmen") { coordinator.editorAcceptAllChanges() }
+                                        .font(.caption)
+                                    Button("Alle ablehnen") { coordinator.editorRejectAllChanges() }
+                                        .font(.caption)
+                                }
+                                ForEach(changes, id: \.changeId) { chg in
+                                    HStack(alignment: .top, spacing: 6) {
+                                        Image(systemName: chg.changeType == "insert" ? "plus.circle.fill" : "minus.circle.fill")
+                                            .foregroundStyle(chg.changeType == "insert" ? Color.green : Color.red)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("\(chg.author): \(chg.textSnippet ?? "")")
+                                                .font(.caption)
+                                                .lineLimit(2)
+                                            HStack {
+                                                Button("Annehmen") { coordinator.editorAcceptChange(changeId: chg.changeId) }
+                                                    .font(.caption2)
+                                                Button("Ablehnen") { coordinator.editorRejectChange(changeId: chg.changeId) }
+                                                    .font(.caption2)
+                                            }
+                                        }
+                                    }
+                                    .padding(6)
+                                    .background(Color.secondary.opacity(0.08))
+                                    .cornerRadius(4)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                        }
+
+                        // Comments Section
+                        if let comments = coordinator.activeEditorSession?.comments, !comments.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Kommentare (\(comments.count))")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                ForEach(comments, id: \.commentId) { comm in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Text(comm.author)
+                                                .font(.caption)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Button(action: {
+                                                coordinator.editorResolveComment(commentId: comm.commentId, resolved: !comm.resolved)
+                                            }) {
+                                                Image(systemName: comm.resolved ? "checkmark.circle.fill" : "circle")
+                                                    .foregroundStyle(comm.resolved ? Color.green : Color.secondary)
+                                            }
+                                            .buttonStyle(.plain)
+                                            Button(action: {
+                                                coordinator.editorDeleteComment(commentId: comm.commentId)
+                                            }) {
+                                                Image(systemName: "trash")
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                        if let anchor = comm.anchorText {
+                                            Text("„\(anchor)“")
+                                                .font(.caption2)
+                                                .italic()
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Text(comm.content)
+                                            .font(.caption)
+                                    }
+                                    .padding(8)
+                                    .background(comm.resolved ? Color.secondary.opacity(0.04) : Color.accentColor.opacity(0.08))
+                                    .cornerRadius(6)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                        }
+
+                        Spacer()
+                    }
+                    .frame(width: 280)
+                    .background(Color(NSColor.controlBackgroundColor))
+                }
             }
         }
         .sheet(isPresented: $showFootnotePrompt) {
@@ -169,6 +327,42 @@ struct PdocAuthoringCanvasView: View {
                 }
             }
             .padding(20)
+        }
+        .sheet(isPresented: $showCommentPrompt) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Kommentar verfassen")
+                    .font(.headline)
+                TextField("Kommentartext...", text: $commentInput)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: 350)
+                HStack {
+                    Spacer()
+                    Button("Abbrechen") {
+                        showCommentPrompt = false
+                        commentInput = ""
+                    }
+                    Button("Anheften") {
+                        if !commentInput.isEmpty {
+                            coordinator.editorAddComment(anchorStart: nil, anchorEnd: nil, content: commentInput)
+                            commentInput = ""
+                        }
+                        showCommentPrompt = false
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private func promptPdfExport() {
+        guard let session = coordinator.activeEditorSession else { return }
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.pdf]
+        savePanel.nameFieldStringValue = "\(session.title).pdf"
+        savePanel.begin { response in
+            guard response == .OK, let target = savePanel.url else { return }
+            coordinator.editorExportPdf(to: target, includeComments: true, includeTrackedChanges: true)
         }
     }
 

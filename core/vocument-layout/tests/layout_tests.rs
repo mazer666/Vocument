@@ -22,6 +22,7 @@ fn sample_text_spans(text: &str) -> Vec<TextSpan> {
         background_color: None,
         link_url: None,
         footnote_ref: None,
+        tracked_change_id: None,
         extra: Default::default(),
     }]
 }
@@ -59,6 +60,7 @@ fn test_greedy_vs_knuth_plass_line_breaking() {
         background_color: None,
         link_url: None,
         footnote_ref: None,
+        tracked_change_id: None,
         extra: Default::default(),
     };
 
@@ -110,6 +112,7 @@ fn test_text_alignments() {
         background_color: None,
         link_url: None,
         footnote_ref: None,
+        tracked_change_id: None,
         extra: Default::default(),
     };
     let runs = shape_span(&span, font, 14.0, 1.2);
