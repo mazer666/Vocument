@@ -118,17 +118,54 @@ echo "==> Assembling the bundle..."
 rm -rf "$BUILD_DIRECTORY"
 mkdir -p "$MACOS_DIRECTORY" "$RESOURCES_DIRECTORY"
 
+FRAMEWORKS_DIRECTORY="$CONTENTS/Frameworks"
+
 if [[ -n "$BUILT_EXECUTABLE" && -f "$BUILT_EXECUTABLE" ]]; then
+    mkdir -p "$FRAMEWORKS_DIRECTORY"
     cp "$BUILT_EXECUTABLE" "$MACOS_DIRECTORY/$APP_NAME"
     chmod 0755 "$MACOS_DIRECTORY/$APP_NAME"
-    # The dynamic libraries of the build (the FFI library and MuPDF) travel
-    # with the bundle, so that the app does not depend on the paths of the
-    # build machine.
-    for library in "$SWIFT_BIN"/libvocument_ffi.dylib "$SWIFT_BIN"/libmupdf.dylib; do
-        if [[ -f "$library" ]]; then
-            cp "$library" "$MACOS_DIRECTORY/"
-            echo "    with $(basename "$library")"
+    
+    # Locate native libraries for self-contained bundle
+    FFI_LIB=""
+    for candidate in "$REPOSITORY_ROOT/target/release/libvocument_ffi.dylib" \
+                     "$SWIFT_BIN/libvocument_ffi.dylib" \
+                     "$REPOSITORY_ROOT/target/debug/deps/libvocument_ffi.dylib"; do
+        if [[ -f "$candidate" ]]; then
+            FFI_LIB="$candidate"
+            break
         fi
+    done
+
+    MUPDF_LIB=""
+    for candidate in "/opt/homebrew/opt/mupdf/lib/libmupdf.dylib" \
+                     "${MUPDF_DIR:-}/lib/libmupdf.dylib" \
+                     "/usr/local/lib/libmupdf.dylib" \
+                     "$SWIFT_BIN/libmupdf.dylib"; do
+        if [[ -f "$candidate" ]]; then
+            MUPDF_LIB="$candidate"
+            break
+        fi
+    done
+
+    if [[ -n "$FFI_LIB" && -f "$FFI_LIB" ]]; then
+        cp "$FFI_LIB" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib"
+        chmod 0755 "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib"
+        install_name_tool -id "@rpath/libvocument_ffi.dylib" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null || true
+        install_name_tool -add_rpath "@loader_path" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null || true
+        echo "    with Frameworks/libvocument_ffi.dylib"
+    fi
+
+    if [[ -n "$MUPDF_LIB" && -f "$MUPDF_LIB" ]]; then
+        cp "$MUPDF_LIB" "$FRAMEWORKS_DIRECTORY/libmupdf.dylib"
+        chmod 0755 "$FRAMEWORKS_DIRECTORY/libmupdf.dylib"
+        install_name_tool -id "@rpath/libmupdf.dylib" "$FRAMEWORKS_DIRECTORY/libmupdf.dylib" 2>/dev/null || true
+        echo "    with Frameworks/libmupdf.dylib"
+    fi
+
+    # Fixup dynamic linker rpath and dependencies on main executable
+    install_name_tool -add_rpath "@executable_path/../Frameworks" "$MACOS_DIRECTORY/$APP_NAME" 2>/dev/null || true
+    for lib in $(otool -L "$MACOS_DIRECTORY/$APP_NAME" 2>/dev/null | awk '{print $1}' | grep -E 'libvocument_ffi\.dylib|libmupdf\.dylib'); do
+        install_name_tool -change "$lib" "@rpath/$(basename "$lib")" "$MACOS_DIRECTORY/$APP_NAME" 2>/dev/null || true
     done
 else
     echo "    (no executable — the bundle is only a layout in this run)"
@@ -182,11 +219,25 @@ EOF
 # --- The signature ------------------------------------------------------
 ENTITLEMENTS="$REPOSITORY_ROOT/apps/macos/Resources/VocumentMac.entitlements"
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "==> The dry run does not sign, notarise or staple."
+    echo "==> The dry run applies ad-hoc signature for internal test execution."
+    if [[ -d "$FRAMEWORKS_DIRECTORY" ]]; then
+        for dylib in "$FRAMEWORKS_DIRECTORY"/*.dylib; do
+            [[ -f "$dylib" ]] && codesign --force -s - "$dylib" 2>/dev/null || true
+        done
+    fi
+    codesign --force --deep -s - "$BUNDLE" 2>/dev/null || true
 else
     if [[ -z "$SIGN_IDENTITY" ]]; then
         echo "ERROR: no signing identity. Use --sign \"Developer ID Application: ...\"." >&2
         exit 1
+    fi
+    echo "==> Signing native frameworks with $SIGN_IDENTITY..."
+    if [[ -d "$FRAMEWORKS_DIRECTORY" ]]; then
+        for dylib in "$FRAMEWORKS_DIRECTORY"/*.dylib; do
+            if [[ -f "$dylib" ]]; then
+                codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$dylib"
+            fi
+        done
     fi
     echo "==> Signing the bundle with $SIGN_IDENTITY..."
     codesign \
