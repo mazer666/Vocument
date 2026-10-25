@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "core/vocument-core",
+    "core/vocument-flow",
     "engines/pdf-mupdf",
     "engines/ocr",
     "engines/imaging",

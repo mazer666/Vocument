@@ -1,4 +1,27 @@
 //! Persistent transaction journal representation (`ARCHITECTURE.md` §§11–12, `UNDO-001`, `ROADMAP.md` M0.4).
+//!
+//! # Threat Model & Integrity Scope (ROLE-09 Security, ROLE-10 Privacy)
+//!
+//! - **Integrity & Crash Recovery:** The journal employs a deterministic unkeyed SHA-256
+//!   digest chain covering the schema version, document identity, base PDF digest, revision
+//!   counters, individual transaction records, and serialized commands. This provides robust
+//!   integrity verification against accidental file corruption, bitrot, power-loss/interrupted
+//!   writes, and schema mismatches during crash recovery.
+//! - **Threat Model Boundary:** Unkeyed SHA-256 is a cryptographic hash, NOT an HMAC or digital
+//!   signature. It does not use a secret key and therefore does not provide tamper-resistance
+//!   against an active, privileged attacker with write access to the local storage, who could
+//!   modify the journal contents and recompute valid checksums.
+//! - **Confidentiality & Access Control:** Journal confidentiality rests strictly on operating
+//!   system security perimeters: App Sandbox (macOS), private application directory / Storage
+//!   Access Framework (Android), POSIX permissions, and OS-level full-disk encryption (FileVault /
+//!   LUKS / Android FBE).
+//! - **Key Management & Cryptography:** As an offline-first tool without central accounts,
+//!   Vocument avoids proprietary key management. For document-level cryptographic access control,
+//!   standard PDF encryption (ISO 32000 AES-256 with user/owner passwords) or platform key stores
+//!   (macOS Keychain, Android KeyStore) are used.
+//! - **Privacy & Storage Minimization:** Persistent journals strip raw binary document dumps
+//!   from inverse commands prior to serialization, preventing unneeded plaintext duplication
+//!   on disk.
 
 use crate::identity::compute_sha256_hex as sha256_hex;
 use crate::transactions::{

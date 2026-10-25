@@ -7,6 +7,7 @@ repository.workspace = true
 
 [dependencies]
 vocument-core = { path = "../../core/vocument-core" }
+vocument-flow = { path = "../../core/vocument-flow" }
 serde.workspace = true
 
 [lints]

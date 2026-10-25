@@ -37,31 +37,33 @@ Evaluation focuses on four key dimensions:
 
 ## 3. Large-Document Performance Benchmark ($\ge 500$ Pages)
 
-Measurements performed on Apple Silicon M-series hardware running macOS 15 Sonoma under native `vocument-ffi` and UI bindings.
+Measurements performed on Apple Silicon M-series hardware running macOS 15 under native `vocument-ffi` and UI bindings with live memory profiling via `libc::getrusage` (POSIX `RUSAGE_SELF`).
 
-| Benchmark Metric | Vocument Page Workbench | Adobe Acrobat Pro | PDFCraft | Target Budget | Result |
-|---|---|---|---|---|---|
-| **500-Page Open & Page Tree Parse** | **0.18s** | 1.85s | 0.42s | $\le 1.0\text{s}$ | **Pass (10x faster than Acrobat)** |
-| **Middle Page Duplication (Page 250)** | **0.04s** | 0.62s | 0.15s | $\le 2.0\text{s}$ | **Pass** |
-| **Page Rotation (Page 250)** | **0.02s** | 0.35s | 0.08s | $\le 2.0\text{s}$ | **Pass** |
-| **Single Page Thumbnail Render (256px)** | **0.012s** | 0.085s | 0.025s | $\le 1.0\text{s}$ | **Pass** |
-| **Batch Bates Numbering (10 Pages)** | **0.06s** | 1.20s | 0.31s | $\le 2.0\text{s}$ | **Pass** |
-| **Resident Memory Footprint (500 Pages)** | **64 MB** | 480 MB | 145 MB | $\le 150\text{MB}$ | **Pass (7.5x lower than Acrobat)** |
+| Benchmark Operation | Vocument Page Workbench (Measured) | Target Budget | Result | Verification Harness |
+|---|---|---|---|---|
+| **500-Page Document Synthesis** | **< 0.01s** | $\le 1.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **500-Page Batch Bates Numbering (all 500 pages)** | **0.073s** | $\le 4.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **500-Page Optimization (Deduplication + ObjStm)** | **0.115s** | $\le 4.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **Middle Page Duplication (Page 250)** | **0.038s** | $\le 2.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **Page Rotation (Page 250)** | **0.018s** | $\le 2.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **Single Page Thumbnail Render (256px)** | **0.012s** | $\le 1.0\text{s}$ | **Pass** | `workbench_m3_6_acceptance_tests.rs` |
+| **Resident Memory Footprint (500 Pages, Peak RSS)** | **27 MB** (initial 8 MB) | $\le 150\text{MB}$ | **Pass** | `libc::getrusage` (`ru_maxrss`) |
+| **Independent Multi-Viewer Validation** | **Apple Quartz (`sips`) + MuPDF (`mutool clean -s`)** | Mandatory | **Pass** | Verifiable exit status & PNG rasterization |
 
-*Observation (`ROLE-14`):* Vocument leverages MuPDF's lightweight C display lists and memory-mapped page structures combined with Rust's zero-cost transaction representations. Pages are manipulated by adjusting dictionary references without deep-copying untouched content streams.
+*Scientific Benchmark Note (`ROLE-14`, `ROLE-19`):* In accordance with `AGENTS.md` rules (`QA-003`, `CODE-001`), unverified third-party estimates (such as speculative competitor timing numbers) are strictly excluded from this report because they were not measured under identical, verifiable test conditions on the same host. Vocument's architecture leverages MuPDF's lightweight C display lists and memory-mapped structures combined with Rust's zero-cost transaction representations: operations manipulate PDF dictionary pointers without deep-copying untouched content streams.
 
 ---
 
 ## 4. Privacy, Security & Architectural Guarantees
 
-| Architecture Feature | Vocument | Adobe Acrobat Pro | PDFCraft |
-|---|---|---|---|
-| **Zero Cloud Requirement (`PRIV-001`)** | **100% Offline Default** (No network calls) | Mandatory Adobe ID login; periodic cloud syncing | Local with optional cloud integrations |
-| **Telemetry & Usage Tracking** | **Zero Telemetry** (No analytics beacons) | Extensive Adobe Analytics / Experience Cloud beacons | Minimal / Opt-out analytics |
-| **Digital Signature Safeguard** | **Fail-Closed by Default** (`allow_signature_invalidation`) | Often silently strips or invalidates signatures | Silent invalidation or warning |
-| **Sanitization vs Compaction Separation** | **Strictly Separated** (compaction never alters content) | Mixed (PDF Optimizer strips data without clear boundaries) | Mixed |
-| **Transaction Journal Integrity** | **Cryptographic SHA-256 HMAC** verified journal | Proprietary in-memory undo; corrupts file on sudden crash | In-memory undo stack |
-| **Atomic File Operations** | **Two-phase atomic replacement via `FileBroker`** | Temporary scratch file with frequent file-lock issues | In-place file writing |
+| Architecture Feature | Vocument | Standard PDF Utility Expectations |
+|---|---|---|
+| **Zero Cloud Requirement (`PRIV-001`)** | **100% Offline Default** (No network calls) | Often requires cloud syncing or account sign-in |
+| **Telemetry & Usage Tracking** | **Zero Telemetry** (No analytics beacons) | Frequent background analytics beacons |
+| **Digital Signature Safeguard** | **Fail-Closed by Default** (`allow_signature_invalidation`) | Often silently strips or invalidates signatures |
+| **Sanitization vs Compaction Separation** | **Strictly Separated** (compaction never alters content) | Mixed (optimizers often strip data without clear boundaries) |
+| **Transaction Journal Integrity** | **Deterministic SHA-256 integrity digest chain** (crash recovery & corruption detection; not an HMAC against active local attacker; confidentiality secured via OS sandbox & filesystem encryption) | In-memory undo stack; corrupts file on sudden crash |
+| **Atomic File Operations** | **Two-phase atomic replacement via `FileBroker`** | In-place file writing or temporary files with lock issues |
 
 ---
 
@@ -82,7 +84,7 @@ Measurements performed on Apple Silicon M-series hardware running macOS 15 Sonom
 
 The Vocument Page Workbench achieves best-in-class performance and usability:
 - **Streamlined User Experience:** Eliminates nested modal dialogs in favor of focused, non-modal sheets with real-time feedback.
-- **Superior Speed & Lightweight Footprint:** Sub-100ms response times on 500-page enterprise documents with less than 70 MB resident memory.
-- **Absolute Privacy & Zero Trust:** Fully offline, tamper-evident, and failsafe.
+- **Superior Speed & Lightweight Footprint:** Sub-120ms response times on 500-page enterprise documents with less than 30 MB resident memory.
+- **Absolute Privacy & Zero Trust:** Fully offline, deterministic recovery integrity, and failsafe signature guards.
 
 **Verdict:** M3.6 Page Workbench meets and exceeds all competitive usability criteria for production readiness.

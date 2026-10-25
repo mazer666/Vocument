@@ -221,41 +221,121 @@ fn test_m3_6_full_workbench_lifecycle_and_multiviewer_validation() {
         .expect("extract document pages");
     fs::write(&output_pdf_path, &final_bytes).expect("write output pdf to disk");
 
-    // A. Validate with `mutool` if present
-    if let Ok(output) = Command::new("mutool")
-        .arg("clean")
-        .arg("-s")
-        .arg(&output_pdf_path)
-        .arg(temp_dir.join("mutool_cleaned.pdf"))
-        .output()
-        && output.status.success()
-    {
-        println!("✓ mutool clean -s succeeded without xref or content errors");
+    let mut executed_viewers: Vec<String> = Vec::new();
+
+    // A. Validate with `mutool` CLI (if present in PATH, Homebrew, custom prefix, or build tree)
+    let mut mutool_candidates = vec![
+        std::path::PathBuf::from("mutool"),
+        std::path::PathBuf::from("/opt/homebrew/bin/mutool"),
+        std::path::PathBuf::from("/usr/local/bin/mutool"),
+        std::path::PathBuf::from("/usr/bin/mutool"),
+    ];
+    if let Ok(mupdf_dir) = std::env::var("MUPDF_DIR") {
+        mutool_candidates.insert(0, std::path::PathBuf::from(mupdf_dir).join("bin/mutool"));
+    }
+    mutool_candidates.push(std::path::PathBuf::from(
+        "../../target/mupdf-host/bin/mutool",
+    ));
+    mutool_candidates.push(std::path::PathBuf::from("target/mupdf-host/bin/mutool"));
+
+    for candidate in &mutool_candidates {
+        let cleaned_out = temp_dir.join("mutool_cleaned.pdf");
+        if let Ok(clean_output) = Command::new(candidate)
+            .arg("clean")
+            .arg("-s")
+            .arg(&output_pdf_path)
+            .arg(&cleaned_out)
+            .output()
+            && clean_output.status.success()
+        {
+            assert!(
+                cleaned_out.exists()
+                    && fs::metadata(&cleaned_out).map(|m| m.len()).unwrap_or(0) > 0,
+                "mutool cleaned output must be non-empty"
+            );
+
+            let info_output = Command::new(candidate)
+                .arg("info")
+                .arg(&output_pdf_path)
+                .output()
+                .expect("mutool info must execute when mutool is present");
+            assert!(
+                info_output.status.success(),
+                "mutool info must parse exported PDF successfully"
+            );
+            executed_viewers.push(format!("MuPDF CLI ({})", candidate.display()));
+            println!(
+                "✓ mutool clean -s and info validated PDF structure via {}",
+                candidate.display()
+            );
+            break;
+        }
     }
 
     // B. Validate with macOS CoreGraphics / Quartz via `sips` (native macOS preview renderer)
     #[cfg(target_os = "macos")]
     {
-        let sips_res = Command::new("sips")
+        let sips_bin = if std::path::Path::new("/usr/bin/sips").exists() {
+            std::path::Path::new("/usr/bin/sips")
+        } else {
+            std::path::Path::new("sips")
+        };
+        let sips_dim = Command::new(sips_bin)
             .arg("-g")
             .arg("pixelWidth")
             .arg("-g")
             .arg("pixelHeight")
             .arg(&output_pdf_path)
-            .output();
+            .output()
+            .expect("sips must execute on macOS host");
 
-        if let Ok(output) = sips_res {
-            assert!(
-                output.status.success(),
-                "Apple CoreGraphics Quartz must parse and read the generated PDF successfully"
-            );
-            let sips_out = String::from_utf8_lossy(&output.stdout);
-            assert!(
-                sips_out.contains("pixelWidth"),
-                "Apple Quartz must retrieve page dimensions: {sips_out}"
-            );
-        }
+        assert!(
+            sips_dim.status.success(),
+            "Apple Quartz (sips) must parse and read the generated PDF successfully"
+        );
+        let sips_out = String::from_utf8_lossy(&sips_dim.stdout);
+        assert!(
+            sips_out.contains("pixelWidth: ") && sips_out.contains("pixelHeight: "),
+            "Apple Quartz must retrieve page dimensions: {sips_out}"
+        );
+
+        // Also render first page to PNG via Quartz to confirm image rasterization pipeline
+        let sips_png = temp_dir.join("quartz_render.png");
+        let sips_render = Command::new(sips_bin)
+            .arg("-s")
+            .arg("format")
+            .arg("png")
+            .arg(&output_pdf_path)
+            .arg("--out")
+            .arg(&sips_png)
+            .output()
+            .expect("sips must render PDF to PNG on macOS");
+        assert!(
+            sips_render.status.success(),
+            "Apple Quartz must render PDF page to PNG successfully"
+        );
+        assert!(
+            sips_png.exists() && fs::metadata(&sips_png).map(|m| m.len()).unwrap_or(0) > 0,
+            "Apple Quartz rendered PNG must be non-empty"
+        );
+        executed_viewers.push("Apple CoreGraphics/Quartz (sips)".to_string());
+        println!(
+            "✓ Apple CoreGraphics/Quartz (sips) successfully validated and rasterized exported PDF"
+        );
     }
+
+    // Mandatory assertion: Missing tools must NOT produce silent passes!
+    assert!(
+        !executed_viewers.is_empty(),
+        "FATAL: Interoperability verification failed — no independent PDF viewer/validator was found or executed! Checked sips and mutool."
+    );
+    #[cfg(target_os = "macos")]
+    assert!(
+        executed_viewers
+            .iter()
+            .any(|v| v.contains("Apple CoreGraphics/Quartz")),
+        "macOS gate strictly requires Apple Quartz (sips) validation"
+    );
 
     // 10. Undo stack rollback verification
     let undo_1 = document_core_undo(session_id.clone()).expect("undo optimize");
@@ -272,14 +352,39 @@ fn test_m3_6_full_workbench_lifecycle_and_multiviewer_validation() {
     let _ = document_core_close_session(session_id);
 }
 
+fn get_resident_set_size_kb() -> usize {
+    #[cfg(unix)]
+    unsafe {
+        let mut usage = std::mem::zeroed::<libc::rusage>();
+        if libc::getrusage(libc::RUSAGE_SELF, &mut usage) == 0 {
+            #[cfg(target_os = "macos")]
+            {
+                (usage.ru_maxrss / 1024) as usize
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                usage.ru_maxrss as usize
+            }
+        } else {
+            0
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        0
+    }
+}
+
 #[test]
 fn test_m3_6_large_document_performance_and_stability_500_pages() {
+    let rss_initial_kb = get_resident_set_size_kb();
     let t_gen_start = Instant::now();
     let large_pdf_bytes = generate_multipage_pdf(500);
+    let gen_duration = t_gen_start.elapsed().as_secs_f64();
     println!(
         "Synthesized 500-page PDF ({} KB) in {:.2}s",
         large_pdf_bytes.len() / 1024,
-        t_gen_start.elapsed().as_secs_f64()
+        gen_duration
     );
 
     let session_id = open_session_with_bytes(large_pdf_bytes, "large_500_pages");
@@ -331,6 +436,17 @@ fn test_m3_6_large_document_performance_and_stability_500_pages() {
     assert!(
         opt_duration < 4.0,
         "500-page optimization must execute in under 4.0s (was {opt_duration:.3}s)"
+    );
+
+    let rss_peak_kb = get_resident_set_size_kb();
+    println!(
+        "500-page stress test memory: initial={} MB, peak={} MB",
+        rss_initial_kb / 1024,
+        rss_peak_kb / 1024
+    );
+    assert!(
+        rss_peak_kb < 1_500_000,
+        "Peak resident set size ({rss_peak_kb} KB) must remain strictly within reasonable bounds"
     );
 
     // Verify boundary pages render accurately

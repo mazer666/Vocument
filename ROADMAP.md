@@ -765,17 +765,17 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Dual-mode image extraction: Raw lossless stream extraction for embedded DCTDecode (JPEG) and JPXDecode (JP2) streams (`pdf_open_raw_stream`), preserving original color profiles and quantization; lossless PNG pixmap rendering for FlateDecode/uncompressed streams.
   - [x] Compaction & Object Streams: ISO 32000-1 object stream compression (`opts.do_use_objstms = 1`) and xref streams; legacy `do_linearize` parameter completely excised; non-destructive write options strictly isolated (`opts.do_clean = 0`, `opts.do_sanitize = 0`).
   - [x] Restricted PDF/X Structural Preflight ("Eingeschränkte Vorprüfung"): Automated audit of PDF/X catalog keys, OutputIntents, page geometry boxes, font embedding verification across all page font dictionaries (`/FontDescriptor`), and transparency detection (`/ExtGState`) with explicit legal disclaimer.
-  - [x] Transaction & Journal Integrity: Extended cryptographic SHA-256 HMAC checksums over serialized forward and inverse commands in transaction records.
+  - [x] Transaction & Journal Integrity: Extended deterministic SHA-256 digest chain over serialized forward and inverse commands in transaction records for crash recovery integrity (honest threat model: accidental corruption & bitrot protection; OS sandbox confidentiality).
   - [x] Native macOS sheets (`OptimizeSheetView`, `ImageExtractionSheetView`, `PreflightPdfxSheetView`) and Android bridge (`DocumentCoreBridgeWorkbench.kt`).
 
-- **M3.6 — Platform Integration, Usability & Overall M3 Acceptance *(Status: **COMPLETE & ACCEPTED** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md))***:
+- **M3.6 — Platform Integration, Usability & Overall M3 Acceptance *(Status: **IMPLEMENTIERT, AUTOMATISIERT GETESTET, PRAKTISCH VALIDIERT — DEM PROJECT OWNER ZUR FORMALEN FREIGABE VORGELEGT** — see [M3 Acceptance Record](docs/acceptance/M3-ACCEPTANCE.md))***:
   - [x] Complete native macOS AppKit/SwiftUI and Android Compose workbench interfaces with VoiceOver/TalkBack accessibility.
-  - [x] Independent multi-viewer validation matrix (MuPDF `mutool clean -s`, Apple CoreGraphics Quartz `sips`, PDFium).
-  - [x] Large-document performance & stability: 500-page document synthesis benchmark passing under strict sub-second/sub-2s budgets (`ROLE-14`).
+  - [x] Independent multi-viewer validation matrix (MuPDF `mutool clean -s` and Apple CoreGraphics Quartz `sips` mandatory execution and PNG rasterization).
+  - [x] Large-document performance & stability: 500-page document synthesis benchmark passing under strict budgets with empirical POSIX `getrusage` RSS memory profiling.
   - [x] Fail-closed invariant safeguards (last-page protection, permutation validation, digital signature preflight).
-  - [x] Usability benchmark against reference tools Adobe Acrobat Pro and PDFCraft (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`).
-  - [x] Offline-first bundled user documentation (`docs/manual/PAGE_WORKBENCH_MANUAL.md`) and online documentation sync (`HELP-001`, `HELP-002`).
-  - [x] Formal M3 Acceptance Record completed and signed off (`docs/acceptance/M3-ACCEPTANCE.md`).
+  - [x] Usability benchmark report with empirical metrics, click efficiency, and zero cloud requirement (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`).
+  - [x] Offline-first bundled user documentation (`docs/manual/PAGE_WORKBENCH_MANUAL.md`) and macOS app Help menu/sheet integration with accessible labels (`HELP-001`, `HELP-002`).
+  - [x] Formal M3 Acceptance Record completed and submitted to Project Owner for formal sign-off (`docs/acceptance/M3-ACCEPTANCE.md`).
 
 - **M3.7 Track — Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`):**
   - Formal track established under approved `CR-0005` Option A following M3 visual workbench infrastructure.
@@ -798,9 +798,12 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
 
 ## Sub-Milestones
 
-- **M4.0 — FlowDocument Core Model & Schema (`core/vocument-flow`):**
-  - Pure Rust semantic document tree: Sections, paragraphs, spans, heading hierarchies, nested lists, tables, images, callouts, footnotes, and Dublin Core metadata.
-  - Complete schema validation and JSON serialization.
+- **M4.0 — FlowDocument Core Model & Schema (`core/vocument-flow`, `formats/pdoc`) *(Status: **COMPLETE & VERIFIED** — see [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md), [M3–M7 Plan](docs/project/M3-M7-DEVELOPMENT-PLAN.md))***:
+  - [x] Pure Rust semantic document tree: Sections, paragraphs, spans, heading hierarchies (H1–H6), nested lists (ordered, unordered, task), tables (rowspan, colspan, repeated headers), images (asset ref, dimensions, alt-text), callouts (note, tip, warning, caution, legal alert), footnotes, and Dublin Core metadata (`core/vocument-flow`).
+  - [x] Stylesheet catalog with standard legal presets, paragraph styles, character styles, table styles, and list styles.
+  - [x] Invariant schema validation (`validate_document`), unique ID verification, and typed `FlowError` with `thiserror`.
+  - [x] Deterministic canonical UTF-8 JSON serialization and deserialization (`to_json_canonical`, `from_json_str`) with forward-compatible unknown-field preservation.
+  - [x] Integration with `formats/pdoc` container format and comprehensive positive/negative/stress test suites.
 
 - **M4.1 — Deterministic Rust Layout Engine (`core/vocument-layout`):**
   - OpenType glyph shaping via `rustybuzz` (memory-safe HarfBuzz in Rust).

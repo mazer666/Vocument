@@ -484,6 +484,15 @@ pub struct TransactionRecord {
 }
 
 impl TransactionRecord {
+    /// Computes a deterministic SHA-256 integrity checksum over the record fields and serialized commands.
+    ///
+    /// # Threat Model & Integrity Scope
+    ///
+    /// This checksum protects against accidental journal corruption, partial writes on crash,
+    /// bitrot, and schema desynchronization. It is an unkeyed cryptographic digest, not an HMAC:
+    /// it does not protect against an active attacker who has write access to the local storage
+    /// and can recalculate checksums. Confidentiality and access control are provided by the OS
+    /// sandbox and filesystem encryption.
     pub fn compute_checksum(&self) -> String {
         let cmd_json = serde_json::to_string(&self.forward_command).unwrap_or_default();
         let inv_json = serde_json::to_string(&self.inverse_command).unwrap_or_default();

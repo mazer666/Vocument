@@ -72,3 +72,25 @@ func verifyMacPlatformWorkbenchOperationsAndUndoRedo() throws {
 
     try client.closeSession(sessionId: session.sessionId)
 }
+
+@Test
+func verifyOfflineHelpManualAvailabilityAndIntegrity() throws {
+    let manualURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("docs/manual/PAGE_WORKBENCH_MANUAL.md")
+
+    #expect(FileManager.default.fileExists(atPath: manualURL.path) == true)
+    let manualContent = try String(contentsOf: manualURL, encoding: .utf8)
+    #expect(manualContent.contains("HELP-001"))
+    #expect(manualContent.contains("HELP-002"))
+    #expect(manualContent.contains("Bates"))
+    #expect(manualContent.contains("Stamps"))
+    #expect(manualContent.contains("Optimization"))
+    #expect(manualContent.contains("Preflight"))
+    #expect(manualContent.contains("Tastaturkürzel"))
+    #expect(manualContent.contains("Bedrohungsmodell"))
+}

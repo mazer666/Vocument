@@ -21,6 +21,9 @@ vocument-ocr = { path = "../../engines/ocr" }
 uniffi.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+libc.workspace = true
+
 [lints.rust]
 unsafe_code = "allow"
 missing_debug_implementations = "warn"

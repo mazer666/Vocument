@@ -14,7 +14,7 @@ The Vocument **Page Workbench** provides a high-performance, strictly non-destru
 1. **Zero Cloud & Absolute Privacy (`PRIV-001`):** All operations run locally on device. No telemetry, no remote processing, and no cloud fallbacks.
 2. **Strict Non-Destructive Operation (`PAGE-001`):** Structural modifications preserve existing interactive form fields, metadata, and appearances (`do_clean = 0`, `do_sanitize = 0`).
 3. **Digital Signature Protection:** Operations that would break or invalidate digital signatures are blocked by default and require explicit user opt-in (`allow_signature_invalidation: true`).
-4. **Tamper-Evident Journaling (`UNDO-001`, `UNDO-004`):** Every mutation is recorded in a cryptographically verified SHA-256 transaction journal with unlimited forward and backward navigation.
+4. **Integrität & Crash Recovery (`UNDO-001`, `UNDO-004`):** Jede Mutation wird in einer deterministischen SHA-256-Prüfsummenkette im Transaktionsjournal erfasst. Dies sichert die Wiederherstellung nach Abstürzen und schützt gegen versehentliche Dateikorruption und Bitrot (ehrliches Bedrohungsmodell: kein HMAC gegen aktive Angreifer mit Schreibzugriff; Vertraulichkeit über OS-Sandbox).
 5. **No Synthetic Shortcuts (`QA-003`, `CR-0002`):** All features use genuine native/embedded implementations via MuPDF and Apple Quartz / Android graphics pipelines.
 
 ---
@@ -146,13 +146,14 @@ Reduce PDF file size safely while guaranteeing document integrity and standard c
 
 ---
 
-## 9. Keyboard Shortcuts & Accessibility
+## 9. Keyboard Shortcuts & Accessibility (Tastaturkürzel)
 
 Vocument provides full keyboard navigation and VoiceOver / TalkBack compatibility.
 
-### macOS Keyboard Shortcuts
+### macOS Keyboard Shortcuts (Tastaturkürzel)
 | Command | Shortcut | Description |
 |---|---|---|
+| Open Offline Help | `⌘?` | Opens the bundled Offline Manual (`HELP-002`) |
 | Duplicate Page | `⌘D` | Clones selected page |
 | Delete Pages | `⌫` (Delete) | Removes selected page (subject to last-page guard) |
 | Rotate Clockwise | `⌘R` | Rotates selected page 90° clockwise |
@@ -167,9 +168,10 @@ Vocument provides full keyboard navigation and VoiceOver / TalkBack compatibilit
 
 ---
 
-## 10. Crash Resilience & Tamper-Evident History
+## 10. Crash Resilience & Bedrohungsmodell (Threat Model)
 
 Every operation conducted in the Page Workbench is managed by the `TransactionManager`:
-- **Cryptographic SHA-256 Checksums:** Every journal entry records the hash of its forward command, inverse command, and resultant document state.
-- **Tamper Evidence:** If an external process or storage glitch modifies the session journal on disk, `verify_integrity()` refuses to replay and alerts the user fail-closed.
-- **Session Recovery:** In the event of application termination, unsaved states are restored with fidelity from the verified journal.
+- **Deterministische SHA-256-Prüfsummen:** Every journal entry records the unkeyed SHA-256 digest of its forward command, inverse command, and resultant document state.
+- **Integrität & Recovery:** Protects against accidental corruption, crash interruption, and bitrot during recovery replay.
+- **Ehrliches Bedrohungsmodell:** Unkeyed SHA-256 is NOT an HMAC and does not protect against an active attacker who has write permissions on the local filesystem. Confidentiality and access control are guaranteed by operating system sandbox perimeters (macOS App Sandbox, Android SAF / private internal storage) and disk encryption (FileVault / LUKS / Android FBE).
+- **Keine unnötigen Klartextkopien:** Persistent transaction journals purge duplicate raw PDF byte snapshots from inverse commands prior to serialization, preventing unneeded plaintext retention on disk.

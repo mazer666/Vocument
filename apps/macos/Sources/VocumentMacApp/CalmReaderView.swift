@@ -13,6 +13,14 @@ struct VocumentMacApp: App {
             CalmReaderSessionView(coordinator: coordinator)
                 .frame(minWidth: 1080, minHeight: 720)
         }
+        .commands {
+            CommandGroup(replacing: .help) {
+                Button("Vocument Offline-Hilfe") {
+                    coordinator.openHelp()
+                }
+                .keyboardShortcut("?", modifiers: [.command])
+            }
+        }
     }
 }
 
@@ -46,6 +54,17 @@ struct CalmReaderSessionView: View {
                     .frame(width: 320)
                     .help("Switch between Comfort Reader, Professional Review, and Page Workbench modes (ROADMAP M3.1)")
                 }
+                Button(action: {
+                    coordinator.openHelp()
+                }) {
+                    Image(systemName: "questionmark.circle")
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+                .help("Offline-Dokumentation und Tastaturkürzel anzeigen (HELP-002)")
+                .accessibilityLabel("Vocument Hilfe")
+                .accessibilityIdentifier("toolbar_help_button")
+
                 Button("Open PDF…") {
                     coordinator.openDocumentViaPanel()
                 }
@@ -84,6 +103,9 @@ struct CalmReaderSessionView: View {
             }
         }
         .padding(20)
+        .sheet(isPresented: $coordinator.showHelpSheet) {
+            HelpSheetView(isPresented: $coordinator.showHelpSheet)
+        }
         .onOpenURL { url in
             coordinator.openDocument(at: url)
         }

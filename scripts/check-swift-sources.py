@@ -174,6 +174,7 @@ SYSTEM_NAMES = {
     "CGSize",
     "Circle",
     "Color",
+    "CommandGroup",
     "Data",
     "Divider",
     "DragGesture",

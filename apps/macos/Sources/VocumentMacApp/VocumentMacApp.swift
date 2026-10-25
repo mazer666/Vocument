@@ -121,10 +121,15 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var showOptimizeSheet: Bool = false
     @Published var showImageExtractionSheet: Bool = false
     @Published var showPreflightPdfxSheet: Bool = false
+    @Published var showHelpSheet: Bool = false
     @Published var workbenchNotificationMessage: String?
     @Published var isWorkbenchProcessing: Bool = false
     @Published var workbenchProcessingStatus: String?
     var pendingWorkbenchAction: WorkbenchAction?
+
+    func openHelp() {
+        showHelpSheet = true
+    }
 
     init() {
         buildInfo = coreClient.buildInfo()

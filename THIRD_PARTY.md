@@ -150,6 +150,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `version_check` | 0.9.5 | MIT/Apache-2.0 |
 | `vocument-core` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-ffi` | 0.1.0 | AGPL-3.0-or-later |
+| `vocument-flow` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-imaging` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-ocr` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-pdf-mupdf` | 0.1.0 | AGPL-3.0-or-later |

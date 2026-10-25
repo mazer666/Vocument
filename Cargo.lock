@@ -896,12 +896,22 @@ dependencies = [
 name = "vocument-ffi"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "thiserror",
  "uniffi",
  "vocument-core",
  "vocument-imaging",
  "vocument-ocr",
  "vocument-pdf-mupdf",
+]
+
+[[package]]
+name = "vocument-flow"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -944,6 +954,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "vocument-core",
+ "vocument-flow",
 ]
 
 [[package]]
