@@ -60,6 +60,26 @@ jobs:
           rustup toolchain install stable --profile minimal --component rustfmt --no-self-update
           rustup default stable
 
+      - name: Restore the cache of Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('Cargo.toml', '*/Cargo.toml', '*/*/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-${{ runner.os }}-
+
+      - name: Fetch the crates of the workspace
+        run: cargo fetch --locked
+
+      - name: Prepare MuPDF source for licence audit
+        run: ./scripts/prepare-host-mupdf.sh --source-only
+
       - name: Validate repository baseline & format
         run: |
           cargo fmt --all -- --check

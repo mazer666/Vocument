@@ -91,8 +91,10 @@ lines+=("|---|---|---|")
 
 rust_table="$(python3 - "$REPOSITORY_ROOT" <<'PYTHON'
 import glob
+import json
 import os
 import re
+import subprocess
 import sys
 
 repository_root = sys.argv[1]
@@ -118,6 +120,28 @@ for root in registry_roots:
     for manifest in glob.glob(os.path.join(root, "*", "Cargo.toml")):
         manifests[os.path.basename(os.path.dirname(manifest))] = manifest
 
+metadata_licenses = {}
+try:
+    proc = subprocess.run(
+        ["cargo", "metadata", "--format-version", "1", "--offline"],
+        cwd=repository_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if proc.returncode == 0:
+        meta_data = json.loads(proc.stdout)
+        for pkg in meta_data.get("packages", []):
+            p_name = pkg.get("name")
+            p_ver = pkg.get("version")
+            p_lic = pkg.get("license")
+            if p_name and p_ver and p_lic:
+                metadata_licenses[f"{p_name}-{p_ver}"] = p_lic
+                metadata_licenses[p_name] = p_lic
+except Exception:
+    pass
+
 lock = open(os.path.join(repository_root, "Cargo.lock"), encoding="utf-8").read()
 packages = re.findall(
     r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"(?:\nsource = "([^"]*)")?',
@@ -131,9 +155,7 @@ for name, version, source in packages:
         licence = "AGPL-3.0-or-later"
     else:
         manifest_path = manifests.get(f"{name}-{version}") or manifests.get(name)
-        if not manifest_path:
-            licence = "UNKNOWN (the manifest of the crate was not found)"
-        else:
+        if manifest_path:
             text = open(manifest_path, encoding="utf-8", errors="replace").read()
             match = re.search(r'^license\s*=\s*"([^"]+)"', text, re.M)
             file_match = re.search(r'^license-file\s*=\s*"([^"]+)"', text, re.M)
@@ -143,6 +165,12 @@ for name, version, source in packages:
                 licence = "FILE:" + file_match.group(1)
             else:
                 licence = "UNKNOWN (the manifest names no licence)"
+        elif f"{name}-{version}" in metadata_licenses:
+            licence = metadata_licenses[f"{name}-{version}"]
+        elif name in metadata_licenses:
+            licence = metadata_licenses[name]
+        else:
+            licence = "UNKNOWN (the manifest of the crate was not found)"
     rows.append(f"| `{name}` | {version} | {licence} |")
     if licence not in allowed:
         problems.append(f"{name} {version}: {licence}")

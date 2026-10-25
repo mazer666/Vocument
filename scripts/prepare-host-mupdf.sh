@@ -32,6 +32,24 @@ cd "$REPO_ROOT"
 MUPDF_VERSION="1.28.5"
 MUPDF_ARCHIVE="mupdf-${MUPDF_VERSION}-source.tar.gz"
 MUPDF_URL="https://mupdf.com/downloads/archive/${MUPDF_ARCHIVE}"
+
+SOURCE_ONLY=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --source-only)
+      SOURCE_ONLY=1
+      shift
+      ;;
+    --help | -h)
+      echo "Usage: $0 [--source-only]"
+      exit 0
+      ;;
+    *)
+      echo "ERROR: Unknown option '$1'" >&2
+      exit 1
+      ;;
+  esac
+done
 # The SHA-256 of the official source archive. The same value is pinned in
 # `scripts/prepare-android-mupdf.sh`; it is confirmed by two independent
 # distributions (the Homebrew formula `mupdf-tools` and the FreeBSD ports
@@ -148,6 +166,11 @@ if [[ -f "$XREF_C" ]]; then
     exit 1
   fi
   echo "    Verified security patch CVE-2026-112036 active in ${XREF_C}"
+fi
+
+if [[ "$SOURCE_ONLY" -eq 1 || "${MUPDF_SOURCE_ONLY:-0}" -eq 1 ]]; then
+  echo "==> MuPDF ${MUPDF_VERSION} source prepared and verified in ${SOURCE_DIR} (--source-only)."
+  exit 0
 fi
 
 # The recipe is the one of `docs/releasing/BUILD-FROM-SOURCE.md`: the shared

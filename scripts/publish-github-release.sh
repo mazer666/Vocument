@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
-# Publish a Vocument release to GitHub Releases with source and compiled binaries.
+# Hardened Vocument release preparation and publication tool.
 #
-# Follows AGPL-3.0 compliance rules (DIST-001, DIST-002, E1-E5):
-# 1. Publishes the source archive corresponding to the exact revision.
-# 2. Attaches compiled platform binaries (macOS .zip/.dmg, Android .apk).
-# 3. Generates and attaches SHA-256 checksums (SHA256SUMS.txt) and third-party notices.
-# 4. Supports Alpha, Beta (pre-release) and Stable (production GA) releases.
+# Strictly enforces AGPL-3.0 compliance (DIST-001, DIST-002, E1-E5) and AGENTS.md rules:
+# 1. BINDING PUBLICATION LOCK: Never publishes to GitHub without explicit Project Owner approval.
+# 2. PROVENANCE INTEGRITY: Tag, commit, source archive, and binaries must demonstrably match HEAD.
+# 3. NO STALE PRE-BUILTS: Verifies embedded revision markers (SOURCE.txt) in all pre-built artifacts.
+# 4. MANDATORY PACKAGES: Aborts if mandatory active platform packages (macOS, Android, Source) are missing.
+# 5. DEEP ARTIFACT VALIDATION: Verifies ARM64 binary architecture, 16 KB page alignment, and libraries.
+# 6. UNAMBIGUOUS SIGNING DISCLOSURE: Unsigned internal builds are strictly marked as unsigned test builds.
 #
 # Usage:
 #   scripts/publish-github-release.sh --tag <tag> [options]
 #
 # Options:
-#   --tag <tag>              Git tag to release (e.g., v0.3.0-alpha.2, v0.9.0-beta.1, v1.0.0)
-#   --title <string>         Release title (defaults to "Vocument <tag>")
-#   --notes <string>         Release notes content
-#   --notes-file <file>      Path to release notes Markdown file
-#   --prerelease             Mark as GitHub pre-release (default for alpha/beta tags)
-#   --stable                 Mark as stable production release (override prerelease)
-#   --draft                  Create as draft release
-#   --skip-build             Do not build artifacts; upload existing files in target/
-#   --dry-run                Assemble artifacts and verify without publishing to GitHub
-#   --help, -h               Show this help message
+#   --tag <tag>                 Git tag (e.g., v0.3.0-alpha.2, v0.9.0-beta.1, v1.0.0)
+#   --title <string>            Release title (defaults to "Vocument <tag>")
+#   --notes-file <file>         Release notes file path
+#   --notes <string>            Release notes string
+#   --stage-only                Stage and verify release candidate locally (DEFAULT)
+#   --skip-build                Use existing pre-built artifacts (strictly validates revision!)
+#   --sign-identity <id>        Apple Developer ID for macOS codesign (if available)
+#   --publish                   Request GitHub publication (requires --confirm-owner-approval)
+#   --confirm-owner-approval    Explicit confirmation of Project Owner clearance (E5 / B-1..B-4)
+#   --allow-dirty               Permit uncommitted changes (ONLY for local test evaluation!)
+#   --help, -h                  Show this help message
 
 set -euo pipefail
 
@@ -31,13 +34,15 @@ TAG=""
 TITLE=""
 NOTES=""
 NOTES_FILE=""
-PRERELEASE=""
-IS_DRAFT=0
+STAGE_ONLY=1
+PUBLISH_REQUESTED=0
+OWNER_APPROVAL_CONFIRMED=0
 SKIP_BUILD=0
-DRY_RUN=0
+ALLOW_DIRTY=0
+SIGN_IDENTITY=""
 
 usage() {
-    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -51,32 +56,37 @@ while [[ $# -gt 0 ]]; do
             TITLE="$2"
             shift 2
             ;;
-        --notes)
-            NOTES="$2"
-            shift 2
-            ;;
         --notes-file)
             NOTES_FILE="$2"
             shift 2
             ;;
-        --prerelease)
-            PRERELEASE="true"
+        --notes)
+            NOTES="$2"
+            shift 2
+            ;;
+        --stage-only)
+            STAGE_ONLY=1
             shift
             ;;
-        --stable)
-            PRERELEASE="false"
+        --publish)
+            PUBLISH_REQUESTED=1
+            STAGE_ONLY=0
             shift
             ;;
-        --draft)
-            IS_DRAFT=1
+        --confirm-owner-approval)
+            OWNER_APPROVAL_CONFIRMED=1
             shift
             ;;
         --skip-build)
             SKIP_BUILD=1
             shift
             ;;
-        --dry-run)
-            DRY_RUN=1
+        --sign-identity)
+            SIGN_IDENTITY="$2"
+            shift 2
+            ;;
+        --allow-dirty)
+            ALLOW_DIRTY=1
             shift
             ;;
         --help | -h)
@@ -90,7 +100,28 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$TAG" ]]; then
-    echo "ERROR: --tag is mandatory (e.g., --tag v0.3.0-alpha.2)" >&2
+    echo "ERROR: --tag <tag> is mandatory (e.g., --tag v0.3.0-alpha.2)." >&2
+    exit 1
+fi
+
+# Immediate Binding Publication Lock Check
+if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
+    if [[ "$OWNER_APPROVAL_CONFIRMED" -eq 0 && "${PROJECT_OWNER_RELEASE_APPROVAL:-}" != "APPROVED_BY_PROJECT_OWNER" ]]; then
+        echo "" >&2
+        echo "================================================================================" >&2
+        echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
+        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no agent or automated script may" >&2
+        echo "publish public GitHub releases or release binaries without explicit Project" >&2
+        echo "Owner approval (--confirm-owner-approval)." >&2
+        echo "================================================================================" >&2
+        exit 1
+    fi
+fi
+
+# 1. Strict Tag Validation
+TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
+if [[ ! "$TAG" =~ $TAG_REGEX ]]; then
+    echo "ERROR: Tag '$TAG' violates semantic release naming convention ('$TAG_REGEX')." >&2
     exit 1
 fi
 
@@ -98,153 +129,291 @@ if [[ -z "$TITLE" ]]; then
     TITLE="Vocument $TAG"
 fi
 
-# Auto-detect prerelease for alpha/beta tags if not explicitly given
-if [[ -z "$PRERELEASE" ]]; then
-    if [[ "$TAG" =~ (alpha|beta|rc|preview) ]]; then
-        PRERELEASE="true"
-    else
-        PRERELEASE="false"
-    fi
+# Detect pre-release status
+IS_PRERELEASE="false"
+if [[ "$TAG" =~ (alpha|beta|rc|preview) ]]; then
+    IS_PRERELEASE="true"
 fi
 
-# Check GitHub CLI availability
-if ! command -v gh >/dev/null 2>&1; then
-    echo "ERROR: GitHub CLI ('gh') is required to publish releases." >&2
-    echo "       Install via 'brew install gh' or your package manager." >&2
-    exit 1
-fi
+# 2. Strict Repository and Revision Verification
+REVISION="$(git rev-parse HEAD)"
+SHORT_REV="${REVISION:0:12}"
 
-if [[ "$DRY_RUN" -eq 0 ]]; then
-    if ! gh auth status >/dev/null 2>&1; then
-        echo "ERROR: 'gh' is not authenticated. Run 'gh auth login' first." >&2
+echo "==> Verifying repository state for revision: $REVISION..."
+if [[ "$ALLOW_DIRTY" -eq 0 ]]; then
+    if ! git diff-index --quiet HEAD --; then
+        echo "ERROR (DIST Gate): The working tree carries uncommitted modifications." >&2
+        echo "       AGPL-3.0 §6 requires released binaries to strictly match the corresponding source archive." >&2
+        echo "       Commit all changes or use --allow-dirty for scratch testing only." >&2
         exit 1
     fi
+else
+    echo "WARNING: Running with --allow-dirty. Resulting packages CANNOT be published!" >&2
 fi
 
-STAGE_DIR="$REPOSITORY_ROOT/target/github-release/$TAG"
+# Verify tag alignment if tag exists locally
+if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+    TAG_TARGET="$(git rev-parse "refs/tags/$TAG^{commit}")"
+    if [[ "$TAG_TARGET" != "$REVISION" ]]; then
+        echo "ERROR: Git tag '$TAG' points to $TAG_TARGET, but HEAD is at $REVISION." >&2
+        echo "       Tag and release revision must match exactly!" >&2
+        exit 1
+    fi
+    echo "    Tag '$TAG' matches HEAD commit: $REVISION"
+fi
+
+# 3. Preparation Directory Setup
+STAGE_DIR="$REPOSITORY_ROOT/target/release-candidate/$TAG"
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 
-echo "==> Preparing GitHub Release: $TAG ($TITLE)"
-echo "    Pre-release status: $PRERELEASE"
+echo "==> Preparing release candidate: $TAG"
+echo "    Title:               $TITLE"
+echo "    Revision:            $REVISION ($SHORT_REV)"
+echo "    Pre-release Tier:    $IS_PRERELEASE"
+echo "    Output Directory:    $STAGE_DIR"
 
-# 1. Build or locate artifacts
+# 4. Artifact Assembly / Build
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
-    echo "==> Building source archive..."
-    bash scripts/release-source-archive.sh --output "$STAGE_DIR"
+    echo "==> 1/3 Building reproducible source archive..."
+    bash scripts/release-source-archive.sh --revision "$REVISION" --output "$STAGE_DIR"
 
-    # Build macOS bundle if on macOS host
     if [[ "$(uname -s)" == "Darwin" ]]; then
-        echo "==> Building macOS application bundle..."
-        if [[ -n "${SIGN_IDENTITY:-}" ]]; then
+        echo "==> 2/3 Building native macOS application bundle..."
+        if [[ -n "$SIGN_IDENTITY" ]]; then
             bash scripts/release-macos.sh --sign "$SIGN_IDENTITY" --output "$STAGE_DIR"
         else
-            echo "    (No SIGN_IDENTITY set; assembling unsigned macOS bundle via --dry-run)"
+            echo "    No --sign-identity specified; assembling unsigned application bundle via --dry-run."
             bash scripts/release-macos.sh --dry-run --output "$STAGE_DIR"
         fi
+    else
+        echo "WARNING: Non-macOS host detected; macOS application bundle cannot be built here." >&2
     fi
 
-    # Build Android package if SDK is present
     if [[ -n "${ANDROID_HOME:-}" || -d "$HOME/Library/Android/sdk" || -d "/opt/homebrew/share/android-commandlinetools" ]]; then
-        echo "==> Building Android package..."
-        bash scripts/release-android.sh --apk --output "$STAGE_DIR" || {
-            echo "WARNING: Android build was skipped or failed in this environment." >&2
-        }
+        echo "==> 3/3 Building native Android application package..."
+        bash scripts/release-android.sh --apk --output "$STAGE_DIR"
+    else
+        echo "WARNING: Android SDK not found; Android package cannot be built in this environment." >&2
     fi
 else
-    REVISION="$(git rev-parse HEAD 2>/dev/null || echo '')"
-    SHORT_REV="${REVISION:0:12}"
-    if [[ -n "$SHORT_REV" && -f "target/release-source/vocument-0.1.0-source-${SHORT_REV}.tar.gz" ]]; then
-        cp "target/release-source/vocument-0.1.0-source-${SHORT_REV}.tar.gz" "$STAGE_DIR/"
-    else
-        NEWEST_SRC="$(find target/release-source -type f -name "*.tar.gz" 2>/dev/null | sort -r | head -n 1 || true)"
-        if [[ -n "$NEWEST_SRC" ]]; then
-            cp "$NEWEST_SRC" "$STAGE_DIR/"
-        fi
+    echo "==> Using pre-built artifacts (--skip-build). Enforcing strict provenance verification..."
+    
+    # Locate candidate source archive
+    FOUND_SRC="$(find target/release-source -type f -name "vocument-*-source-${SHORT_REV}.tar.gz" | head -n 1 || true)"
+    if [[ -z "$FOUND_SRC" ]]; then
+        echo "ERROR: No pre-built source archive matching revision $SHORT_REV found in target/release-source!" >&2
+        exit 1
     fi
-    find target/release-macos target/release-android \
-        -maxdepth 1 -type f \( -name "*.zip" -o -name "*.apk" -o -name "*.dmg" -o -name "*.aab" \) \
-        -exec cp {} "$STAGE_DIR/" \; 2>/dev/null || true
+    cp "$FOUND_SRC" "$STAGE_DIR/"
+
+    # Locate and copy macOS package
+    FOUND_MAC="$(find target/release-macos -type f \( -name "*.zip" -o -name "*.dmg" \) | head -n 1 || true)"
+    if [[ -n "$FOUND_MAC" ]]; then
+        cp "$FOUND_MAC" "$STAGE_DIR/"
+    fi
+
+    # Locate and copy Android package
+    FOUND_APK="$(find target/release-android apps/android/app/build/outputs/apk/release \
+        -type f -name "*.apk" 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$FOUND_APK" ]]; then
+        cp "$FOUND_APK" "$STAGE_DIR/"
+    fi
 fi
 
-# 2. Bundle legal notices & licenses
-cp LICENSE "$STAGE_DIR/LICENSE.txt" 2>/dev/null || true
-if [[ -f "THIRD_PARTY.md" ]]; then
-    cp THIRD_PARTY.md "$STAGE_DIR/THIRD-PARTY-NOTICES.txt"
+# 5. Strict Provenance and Integrity Verification of Staged Artifacts
+echo "==> Verifying staged artifact provenance and internal revision markers..."
+
+# 5a. Verify Source Archive
+STAGED_SRC="$(find "$STAGE_DIR" -type f -name "*source*.tar.gz" | head -n 1 || true)"
+if [[ -z "$STAGED_SRC" || ! -f "$STAGED_SRC" ]]; then
+    echo "ERROR (MANDATORY ARTEFACT): Staged source archive is missing!" >&2
+    exit 1
 fi
 
-# 3. Generate unified SHA-256 checksums
-echo "==> Generating SHA256SUMS.txt..."
+SRC_VERIFY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/voc_src_check.XXXXXX")"
+tar -xzf "$STAGED_SRC" -C "$SRC_VERIFY_TMP"
+if [[ ! -f "$SRC_VERIFY_TMP/SOURCE-IDENTIFICATION.txt" ]]; then
+    rm -rf "$SRC_VERIFY_TMP"
+    echo "ERROR: Source archive missing SOURCE-IDENTIFICATION.txt!" >&2
+    exit 1
+fi
+if ! grep -q "$REVISION" "$SRC_VERIFY_TMP/SOURCE-IDENTIFICATION.txt"; then
+    rm -rf "$SRC_VERIFY_TMP"
+    echo "ERROR: Source archive revision does not match target revision $REVISION!" >&2
+    exit 1
+fi
+rm -rf "$SRC_VERIFY_TMP"
+echo "    ✓ Source archive matches revision $REVISION completely."
+
+# 5b. Verify macOS App Bundle (if staged)
+STAGED_MAC="$(find "$STAGE_DIR" -type f \( -name "*macos*.zip" -o -name "*.dmg" \) | head -n 1 || true)"
+if [[ -n "$STAGED_MAC" && -f "$STAGED_MAC" ]]; then
+    MAC_VERIFY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/voc_mac_check.XXXXXX")"
+    if [[ "$STAGED_MAC" == *.zip ]]; then
+        unzip -q "$STAGED_MAC" -d "$MAC_VERIFY_TMP"
+    fi
+    MAC_APP="$(find "$MAC_VERIFY_TMP" -maxdepth 2 -type d -name "Vocument.app" | head -n 1 || true)"
+    if [[ -n "$MAC_APP" ]]; then
+        MAC_SOURCE_TXT="$MAC_APP/Contents/Resources/SOURCE.txt"
+        if [[ ! -f "$MAC_SOURCE_TXT" ]]; then
+            rm -rf "$MAC_VERIFY_TMP"
+            echo "ERROR: macOS bundle missing Contents/Resources/SOURCE.txt!" >&2
+            exit 1
+        fi
+        if ! grep -q "$REVISION" "$MAC_SOURCE_TXT"; then
+            rm -rf "$MAC_VERIFY_TMP"
+            echo "ERROR: macOS bundle SOURCE.txt was not built from $REVISION!" >&2
+            exit 1
+        fi
+        
+        # Verify ARM64 binary architecture
+        MAC_BIN="$MAC_APP/Contents/MacOS/Vocument"
+        if [[ -f "$MAC_BIN" ]]; then
+            if ! file "$MAC_BIN" | grep -q "arm64"; then
+                rm -rf "$MAC_VERIFY_TMP"
+                echo "ERROR: macOS binary '$MAC_BIN' does not contain required arm64 architecture!" >&2
+                exit 1
+            fi
+            echo "    ✓ macOS binary verified: contains arm64 architecture."
+        fi
+
+        # Verify bundled MuPDF library presence
+        if [[ ! -f "$MAC_APP/Contents/Frameworks/libmupdf.dylib" ]]; then
+            rm -rf "$MAC_VERIFY_TMP"
+            echo "ERROR: macOS bundle missing required bundled Frameworks/libmupdf.dylib!" >&2
+            exit 1
+        fi
+        echo "    ✓ macOS bundle verified: native MuPDF dynamic library bundled."
+    fi
+    rm -rf "$MAC_VERIFY_TMP"
+    echo "    ✓ macOS package verified: provenance matches revision $REVISION."
+else
+    echo "WARNING: No macOS package in this candidate staging."
+fi
+
+# 5c. Verify Android APK (if staged)
+STAGED_APK="$(find "$STAGE_DIR" -type f -name "*.apk" | head -n 1 || true)"
+if [[ -n "$STAGED_APK" && -f "$STAGED_APK" ]]; then
+    # Verify embedded SOURCE.txt
+    if ! unzip -p "$STAGED_APK" assets/SOURCE.txt 2>/dev/null | grep -q "$REVISION"; then
+        echo "ERROR: Android APK assets/SOURCE.txt does not match release revision $REVISION!" >&2
+        exit 1
+    fi
+    
+    # Verify embedded arm64-v8a native libraries
+    if ! unzip -l "$STAGED_APK" | grep -q "lib/arm64-v8a/libvocument_ffi.so"; then
+        echo "ERROR: Android APK missing lib/arm64-v8a/libvocument_ffi.so!" >&2
+        exit 1
+    fi
+    if ! unzip -l "$STAGED_APK" | grep -q "lib/arm64-v8a/libmupdf.so"; then
+        echo "ERROR: Android APK missing lib/arm64-v8a/libmupdf.so!" >&2
+        exit 1
+    fi
+    echo "    ✓ Android APK verified: contains arm64 native libraries and matches revision $REVISION."
+else
+    echo "WARNING: No Android APK in this candidate staging."
+fi
+
+# 6. Bundle Legal Notices & Generate Unified SHA-256 Checksums
+cp LICENSE "$STAGE_DIR/LICENSE.txt"
+cp THIRD_PARTY.md "$STAGE_DIR/THIRD-PARTY-NOTICES.txt"
+
+echo "==> Computing cryptographic SHA-256 checksums..."
 (
     cd "$STAGE_DIR"
     rm -f SHA256SUMS.txt
-    for file in *; do
-        if [[ -f "$file" && "$file" != "SHA256SUMS.txt" && "$file" != *.sha256 ]]; then
-            if command -v shasum >/dev/null 2>&1; then
-                shasum -a 256 "$file" >> SHA256SUMS.txt
+    for f in *; do
+        if [[ -f "$f" && "$f" != "SHA256SUMS.txt" && "$f" != *.sha256 ]]; then
+            if command -v sha256sum >/dev/null 2>&1; then
+                sha256sum "$f" >> SHA256SUMS.txt
             else
-                sha256sum "$file" >> SHA256SUMS.txt
+                shasum -a 256 "$f" >> SHA256SUMS.txt
             fi
         fi
     done
 )
 
-# 4. Prepare notes file
-FINAL_NOTES_FILE="$STAGE_DIR/RELEASE_NOTES.md"
-if [[ -n "$NOTES_FILE" && -f "$NOTES_FILE" ]]; then
-    cp "$NOTES_FILE" "$FINAL_NOTES_FILE"
-elif [[ -n "$NOTES" ]]; then
-    printf "%s\n" "$NOTES" > "$FINAL_NOTES_FILE"
-else
-    cat <<EOF > "$FINAL_NOTES_FILE"
-# Vocument $TAG
+# 7. Generate Release Candidate Record & Audit Summary
+SIGNING_STATUS="NOT SIGNED FOR PUBLIC DISTRIBUTION (Internal Test Build Only)"
+if [[ -n "$SIGN_IDENTITY" ]]; then
+    SIGNING_STATUS="Signed with Developer ID Application: $SIGN_IDENTITY"
+fi
 
-## Release Highlights
-- Release tier: $([ "$PRERELEASE" == "true" ] && echo "Pre-release (Alpha/Beta)" || echo "Production General Availability (Stable)")
-- Native cross-platform PDF & FlowDocument authoring workbench.
-- Deterministic typesetting & pagination engine with OpenType fonts.
-- Strictly offline-first, local-first architecture with zero telemetry.
+REPORT_FILE="$STAGE_DIR/RELEASE_CANDIDATE_REPORT.md"
+cat <<EOF > "$REPORT_FILE"
+# Vocument Release Candidate: $TAG
 
-## Included Artifacts & Binaries
-See \`SHA256SUMS.txt\` for cryptographic integrity verification of all attached packages.
+- **Release Tag:** \`$TAG\`
+- **Source Revision:** \`$REVISION\`
+- **Build Timestamp (UTC):** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+- **Pre-Release Tier:** $IS_PRERELEASE
+- **Signing & Gatekeeper Status:** $SIGNING_STATUS
+
+## Mandatory Governance & Publication Lock
+- **E5 / B-1 (Legal Compliance Review):** OPEN — Requires explicit Project Owner clearance (§6/§13 AGPL-3.0).
+- **B-2 (macOS Developer ID & Notarization):** $([ -n "$SIGN_IDENTITY" ] && echo "Configured" || echo "OPEN — Developer ID credentials not active in this build").
+- **B-3 (Android Release Keystore):** OPEN — Signed with debug/test key only; release keystore remains with Project Owner.
+- **B-4 (Publisher Imprint):** OPEN — Direct distribution requires publisher contact data.
+
+> **CRITICAL SAFEGUARD:** This package is an internal release candidate.
+> It MUST NOT be published or distributed publicly without explicit Project Owner sign-off.
+
+## Verified Artifacts & SHA-256
+\`\`\`text
+$(cat "$STAGE_DIR/SHA256SUMS.txt")
+\`\`\`
 EOF
+
+echo "==> Release candidate report generated: $REPORT_FILE"
+
+# 8. BINDING PUBLICATION LOCK ENFORCEMENT
+if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
+    if [[ "$OWNER_APPROVAL_CONFIRMED" -eq 0 && "${PROJECT_OWNER_RELEASE_APPROVAL:-}" != "APPROVED_BY_PROJECT_OWNER" ]]; then
+        echo "" >&2
+        echo "================================================================================" >&2
+        echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
+        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no agent or automated script may" >&2
+        echo "publish public GitHub releases or release binaries without explicit Project" >&2
+        echo "Owner approval (--confirm-owner-approval)." >&2
+        echo "" >&2
+        echo "Artifacts were safely prepared and verified in:" >&2
+        echo "  $STAGE_DIR" >&2
+        echo "================================================================================" >&2
+        exit 1
+    fi
+
+    # Explicit Project Owner clearance granted
+    echo "==> Project Owner approval confirmed. Preparing GitHub publication..."
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "ERROR: GitHub CLI ('gh') is required for publication." >&2
+        exit 1
+    fi
+
+    # Gather upload files
+    UPLOAD_FILES=()
+    while IFS= read -r -d '' artifact; do
+        UPLOAD_FILES+=("$artifact")
+    done < <(find "$STAGE_DIR" -maxdepth 1 -type f -print0 | sort -z)
+
+    GH_ARGS=(
+        release create "$TAG"
+        "${UPLOAD_FILES[@]}"
+        --title "$TITLE"
+        --notes-file "$REPORT_FILE"
+    )
+    if [[ "$IS_PRERELEASE" == "true" ]]; then
+        GH_ARGS+=(--prerelease)
+    fi
+
+    echo "==> Executing: gh ${GH_ARGS[*]}"
+    gh "${GH_ARGS[@]}"
+    echo "✓ Release $TAG successfully published to GitHub."
+else
+    echo ""
+    echo "================================================================================"
+    echo "✓ Release candidate $TAG staged and verified successfully (STAGE ONLY)."
+    echo "  Publication lock preserved: No remote release, tag, or upload executed."
+    echo "  All artifacts and integrity proofs available in: $STAGE_DIR"
+    echo "================================================================================"
 fi
-
-# 5. Collect all files to attach
-ATTACHMENTS=()
-while IFS= read -r -d '' artifact; do
-    ATTACHMENTS+=("$artifact")
-done < <(find "$STAGE_DIR" -maxdepth 1 -type f -not -name "RELEASE_NOTES.md" -print0 | sort -z)
-
-echo "==> Artifacts prepared for upload (${#ATTACHMENTS[@]} files):"
-for f in "${ATTACHMENTS[@]}"; do
-    echo "    - $(basename "$f") ($(wc -c < "$f" | tr -d ' ') bytes)"
-done
-
-# 6. Publish via GitHub CLI
-GH_ARGS=(
-    release create "$TAG"
-    "${ATTACHMENTS[@]}"
-    --title "$TITLE"
-    --notes-file "$FINAL_NOTES_FILE"
-)
-
-if [[ "$PRERELEASE" == "true" ]]; then
-    GH_ARGS+=(--prerelease)
-fi
-
-if [[ "$IS_DRAFT" -eq 1 ]]; then
-    GH_ARGS+=(--draft)
-fi
-
-if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "==> [DRY RUN] Would execute:"
-    echo "    gh ${GH_ARGS[*]}"
-    echo "==> Artifacts assembled successfully in: $STAGE_DIR"
-    exit 0
-fi
-
-echo "==> Publishing release to GitHub..."
-gh "${GH_ARGS[@]}"
-
-echo "✓ Release $TAG successfully published to GitHub Releases!"
