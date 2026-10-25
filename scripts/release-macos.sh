@@ -152,6 +152,9 @@ if [[ -n "$BUILT_EXECUTABLE" && -f "$BUILT_EXECUTABLE" ]]; then
         chmod 0755 "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib"
         install_name_tool -id "@rpath/libvocument_ffi.dylib" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null || true
         install_name_tool -add_rpath "@loader_path" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null || true
+        for mupdf_ref in $(otool -L "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null | awk '{print $1}' | grep 'libmupdf\.dylib'); do
+            install_name_tool -change "$mupdf_ref" "@rpath/libmupdf.dylib" "$FRAMEWORKS_DIRECTORY/libvocument_ffi.dylib" 2>/dev/null || true
+        done
         echo "    with Frameworks/libvocument_ffi.dylib"
     fi
 
