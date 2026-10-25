@@ -169,7 +169,7 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
 fi
 
 # 3. Preparation Directory Setup
-STAGE_DIR="$REPOSITORY_ROOT/target/release-candidate/$TAG"
+STAGE_DIR="$REPOSITORY_ROOT/target/release-staging/$TAG"
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 
