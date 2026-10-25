@@ -239,12 +239,13 @@ fi
 
 SRC_VERIFY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/voc_src_check.XXXXXX")"
 tar -xzf "$STAGED_SRC" -C "$SRC_VERIFY_TMP"
-if [[ ! -f "$SRC_VERIFY_TMP/SOURCE-IDENTIFICATION.txt" ]]; then
+SRC_ID_FILE="$(find "$SRC_VERIFY_TMP" -name "SOURCE-IDENTIFICATION.txt" | head -n 1 || true)"
+if [[ -z "$SRC_ID_FILE" || ! -f "$SRC_ID_FILE" ]]; then
     rm -rf "$SRC_VERIFY_TMP"
     echo "ERROR: Source archive missing SOURCE-IDENTIFICATION.txt!" >&2
     exit 1
 fi
-if ! grep -q "$REVISION" "$SRC_VERIFY_TMP/SOURCE-IDENTIFICATION.txt"; then
+if ! grep -q "$REVISION" "$SRC_ID_FILE"; then
     rm -rf "$SRC_VERIFY_TMP"
     echo "ERROR: Source archive revision does not match target revision $REVISION!" >&2
     exit 1
