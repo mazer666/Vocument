@@ -358,12 +358,87 @@ impl FlowEditorState {
         self.selection_anchor = None;
     }
 
+    /// Replaces characters in [start_offset, end_offset) with `text` in the specified block.
+    pub fn replace_range(
+        &mut self,
+        block_id: &str,
+        start_offset: usize,
+        end_offset: usize,
+        text: &str,
+    ) {
+        self.push_undo_snapshot();
+        self.active_batch = None;
+        let start = start_offset.min(end_offset);
+        let end = start_offset.max(end_offset);
+        let delete_count = end - start;
+
+        self.active_block_id = block_id.to_string();
+        self.cursor_offset = start;
+
+        if delete_count > 0 {
+            if let Some(para) = self.find_paragraph_mut(block_id) {
+                for _ in 0..delete_count {
+                    delete_char_at_in_spans(&mut para.spans, start);
+                }
+                self.adjust_comment_anchors_on_delete(block_id, start, delete_count);
+            } else if let Some(heading) = self.find_heading_mut(block_id) {
+                for _ in 0..delete_count {
+                    delete_char_at_in_spans(&mut heading.spans, start);
+                }
+                self.adjust_comment_anchors_on_delete(block_id, start, delete_count);
+            }
+        }
+
+        if !text.is_empty() {
+            let char_count = text.chars().count();
+            if let Some(para) = self.find_paragraph_mut(block_id) {
+                insert_into_spans(&mut para.spans, start, text);
+                self.cursor_offset = start + char_count;
+                self.adjust_comment_anchors_on_insert(block_id, start, char_count);
+            } else if let Some(heading) = self.find_heading_mut(block_id) {
+                insert_into_spans(&mut heading.spans, start, text);
+                self.cursor_offset = start + char_count;
+                self.adjust_comment_anchors_on_insert(block_id, start, char_count);
+            }
+        }
+
+        self.update_active_paragraph_fast();
+    }
+
+    /// Deletes characters in [start_offset, end_offset) in the specified block.
+    pub fn delete_range(&mut self, block_id: &str, start_offset: usize, end_offset: usize) {
+        self.replace_range(block_id, start_offset, end_offset, "");
+    }
+
     /// Toggles bold styling on active paragraph or selection.
     pub fn toggle_bold(&mut self) {
         self.push_undo_snapshot();
         let block_id = self.active_block_id.clone();
+        let change_id = if self.tracking_enabled {
+            let cid = format!("chg_{}", uuid_fast());
+            let author = self.active_author.clone();
+            let mut chg = vocument_flow::review::TrackedChange::new(
+                &cid,
+                vocument_flow::review::ChangeType::FormatChange,
+                author,
+                "unix:now",
+            );
+            chg.target_block_id = Some(block_id.clone());
+            chg.details = Some("Toggle bold".to_string());
+            self.document.review.tracked_changes.push(chg);
+            Some(cid)
+        } else {
+            None
+        };
+
         if let Some(para) = self.find_paragraph_mut(&block_id) {
             for span in &mut para.spans {
+                if let Some(ref cid) = change_id {
+                    if span.original_style.is_none() {
+                        span.original_style = Some(span.style);
+                    }
+                    span.tracked_change_id = Some(cid.clone());
+                }
                 span.style.bold = !span.style.bold;
             }
             self.update_active_paragraph_fast();
@@ -374,9 +449,67 @@ impl FlowEditorState {
     pub fn toggle_italic(&mut self) {
         self.push_undo_snapshot();
         let block_id = self.active_block_id.clone();
+        let change_id = if self.tracking_enabled {
+            let cid = format!("chg_{}", uuid_fast());
+            let author = self.active_author.clone();
+            let mut chg = vocument_flow::review::TrackedChange::new(
+                &cid,
+                vocument_flow::review::ChangeType::FormatChange,
+                author,
+                "unix:now",
+            );
+            chg.target_block_id = Some(block_id.clone());
+            chg.details = Some("Toggle italic".to_string());
+            self.document.review.tracked_changes.push(chg);
+            Some(cid)
+        } else {
+            None
+        };
+
         if let Some(para) = self.find_paragraph_mut(&block_id) {
             for span in &mut para.spans {
+                if let Some(ref cid) = change_id {
+                    if span.original_style.is_none() {
+                        span.original_style = Some(span.style);
+                    }
+                    span.tracked_change_id = Some(cid.clone());
+                }
                 span.style.italic = !span.style.italic;
+            }
+            self.update_active_paragraph_fast();
+        }
+    }
+
+    /// Toggles underline styling on active paragraph or selection.
+    pub fn toggle_underline(&mut self) {
+        self.push_undo_snapshot();
+        let block_id = self.active_block_id.clone();
+        let change_id = if self.tracking_enabled {
+            let cid = format!("chg_{}", uuid_fast());
+            let author = self.active_author.clone();
+            let mut chg = vocument_flow::review::TrackedChange::new(
+                &cid,
+                vocument_flow::review::ChangeType::FormatChange,
+                author,
+                "unix:now",
+            );
+            chg.target_block_id = Some(block_id.clone());
+            chg.details = Some("Toggle underline".to_string());
+            self.document.review.tracked_changes.push(chg);
+            Some(cid)
+        } else {
+            None
+        };
+
+        if let Some(para) = self.find_paragraph_mut(&block_id) {
+            for span in &mut para.spans {
+                if let Some(ref cid) = change_id {
+                    if span.original_style.is_none() {
+                        span.original_style = Some(span.style);
+                    }
+                    span.tracked_change_id = Some(cid.clone());
+                }
+                span.style.underline = !span.style.underline;
             }
             self.update_active_paragraph_fast();
         }

@@ -19,12 +19,15 @@ pub struct PdfExportOptions {
     pub include_comments: bool,
     /// When true, renders tracked insertions and deletions visually. When false, exports clean text.
     pub include_tracked_changes: bool,
-    /// Embed PDF/A-2b metadata and conformance indicators.
+    /// Embed draft PDF/A-2b metadata and conformance indicators.
     pub pdfa_conformance: bool,
-    /// Embed PDF/UA-1 metadata, /MarkInfo, and semantic tags.
+    /// Embed draft PDF/UA-1 metadata, /MarkInfo, and semantic tags.
     pub pdfua_conformance: bool,
     /// Natural language code (e.g. "en-US", "de-DE").
     pub language: String,
+    /// Declares whether this export has been independently certified by external tooling (veraPDF / PAC).
+    /// Defaults to false (experimental draft profile; official certification pending).
+    pub certified_by_external_tooling: bool,
 }
 
 impl Default for PdfExportOptions {
@@ -35,11 +38,12 @@ impl Default for PdfExportOptions {
             pdfa_conformance: true,
             pdfua_conformance: true,
             language: "de-DE".to_string(),
+            certified_by_external_tooling: false,
         }
     }
 }
 
-/// Exports a `FlowDocument` to a fully compliant PDF byte stream.
+/// Exports a `FlowDocument` to a PDF byte stream using an experimental Tagged PDF/A & PDF/UA draft profile.
 pub fn export_flow_document_to_pdf(
     doc: &FlowDocument,
     font_registry: &FontRegistry,
@@ -423,10 +427,11 @@ impl PdfWriter {
 
     fn write_font(&mut self, font_id: usize, descriptor_id: usize, to_unicode_id: usize) {
         self.begin_obj(font_id);
+        let widths = (32..=126).map(|_| "600 ").collect::<String>();
         let _ = writeln!(
             self.buffer,
-            "<< /Type /Font /Subtype /TrueType /BaseFont /Helvetica /Encoding /WinAnsiEncoding /FontDescriptor {} 0 R /ToUnicode {} 0 R >>",
-            descriptor_id, to_unicode_id
+            "<< /Type /Font /Subtype /TrueType /BaseFont /Helvetica /Encoding /WinAnsiEncoding /FirstChar 32 /LastChar 126 /Widths [ {}] /FontDescriptor {} 0 R /ToUnicode {} 0 R >>",
+            widths, descriptor_id, to_unicode_id
         );
         self.end_obj();
 
@@ -483,6 +488,9 @@ impl PdfWriter {
             "  <dc:date><rdf:Seq><rdf:li>{}</rdf:li></rdf:Seq></dc:date>",
             now
         );
+        if !options.certified_by_external_tooling {
+            xmp.push_str("  <dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">Experimental Tagged PDF/A-2b and PDF/UA-1 draft profile. Independent external validation certification pending.</rdf:li></rdf:Alt></dc:description>\n");
+        }
         xmp.push_str("</rdf:Description>\n</rdf:RDF>\n</x:xmpmeta>\n<?xpacket end=\"w\"?>");
 
         self.begin_obj(id);

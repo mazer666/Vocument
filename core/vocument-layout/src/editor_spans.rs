@@ -216,3 +216,98 @@ pub(crate) fn split_spans_at(spans: &mut Vec<TextSpan>, target_offset: usize) ->
 
     tail
 }
+
+pub(crate) fn for_each_span_in_block_mut<F: FnMut(&mut TextSpan)>(block: &mut Block, f: &mut F) {
+    match block {
+        Block::Paragraph(p) => {
+            for span in &mut p.spans {
+                f(span);
+            }
+        }
+        Block::Heading(h) => {
+            for span in &mut h.spans {
+                f(span);
+            }
+        }
+        Block::List(l) => {
+            fn walk_list<F: FnMut(&mut TextSpan)>(
+                list: &mut vocument_flow::model::ListBlock,
+                f: &mut F,
+            ) {
+                for item in &mut list.items {
+                    for span in &mut item.spans {
+                        f(span);
+                    }
+                    if let Some(nested) = &mut item.nested_list {
+                        walk_list(nested, f);
+                    }
+                }
+            }
+            walk_list(l, f);
+        }
+        Block::Table(t) => {
+            for row in &mut t.rows {
+                for cell in &mut row.cells {
+                    for b in &mut cell.blocks {
+                        for_each_span_in_block_mut(b, f);
+                    }
+                }
+            }
+        }
+        Block::Callout(c) => {
+            for b in &mut c.blocks {
+                for_each_span_in_block_mut(b, f);
+            }
+        }
+        Block::Image(_) | Block::ThematicBreak(_) => {}
+    }
+}
+
+pub(crate) fn retain_spans_in_block<F: FnMut(&TextSpan) -> bool>(block: &mut Block, f: &mut F) {
+    match block {
+        Block::Paragraph(p) => {
+            p.spans.retain(|s| f(s));
+            if p.spans.is_empty() {
+                p.spans.push(TextSpan::plain(""));
+            }
+        }
+        Block::Heading(h) => {
+            h.spans.retain(|s| f(s));
+            if h.spans.is_empty() {
+                h.spans.push(TextSpan::plain(""));
+            }
+        }
+        Block::List(l) => {
+            fn walk_list<F: FnMut(&TextSpan) -> bool>(
+                list: &mut vocument_flow::model::ListBlock,
+                f: &mut F,
+            ) {
+                for item in &mut list.items {
+                    item.spans.retain(|s| f(s));
+                    if item.spans.is_empty() {
+                        item.spans.push(TextSpan::plain(""));
+                    }
+                    if let Some(nested) = &mut item.nested_list {
+                        walk_list(nested, f);
+                    }
+                }
+            }
+            walk_list(l, f);
+        }
+        Block::Table(t) => {
+            for row in &mut t.rows {
+                for cell in &mut row.cells {
+                    for b in &mut cell.blocks {
+                        retain_spans_in_block(b, f);
+                    }
+                }
+            }
+        }
+        Block::Callout(c) => {
+            for b in &mut c.blocks {
+                retain_spans_in_block(b, f);
+            }
+        }
+        Block::Image(_) | Block::ThematicBreak(_) => {}
+    }
+}

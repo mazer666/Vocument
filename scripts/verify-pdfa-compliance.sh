@@ -49,11 +49,16 @@ fi
 
 # 5. Check with veraPDF if available
 if command -v verapdf >/dev/null 2>&1; then
-    echo "==> Running veraPDF validation..."
+    echo "==> Running independent veraPDF validation..."
     verapdf --flavour 2b "$PDF_INPUT"
     verapdf --flavour ua1 "$PDF_INPUT"
+    echo "==> Independent veraPDF ISO conformance check completed."
 else
-    echo "==> veraPDF not installed in PATH; structural Tagged PDF/A-2b and PDF/UA-1 checks succeeded."
+    echo "NOT RUN: veraPDF CLI is not installed on this system."
+    echo "         Under QA-003 and AGENTS.md, missing validators and unexecuted checks"
+    echo "         must NEVER be claimed or counted as successful conformance."
+    echo "         Formal ISO 19005-2 (PDF/A-2b) and ISO 14289-1 (PDF/UA-1) conformance"
+    echo "         remains UNCERTIFIED on this machine; output is marked EXPERIMENTAL."
 fi
 
-echo "==> PDF/A & PDF/UA Validation Successful!"
+echo "==> Structural Tagged PDF generation verified. (Official ISO certification: PENDING/EXPERIMENTAL)"

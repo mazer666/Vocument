@@ -772,6 +772,7 @@ pub fn document_core_editor_export_pdf(
             pdfa_conformance: true,
             pdfua_conformance: true,
             language: "de-DE".to_string(),
+            certified_by_external_tooling: false,
         };
         let pdf = vocument_layout::pdf_export::export_flow_document_to_pdf(
             &s.state.document,
@@ -779,5 +780,21 @@ pub fn document_core_editor_export_pdf(
             &options,
         );
         Ok(pdf)
+    })
+}
+
+/// Replaces characters in [start_offset, end_offset) with `text` in the specified block.
+#[uniffi::export]
+pub fn document_core_editor_replace_range(
+    editor_id: String,
+    block_id: String,
+    start_offset: u32,
+    end_offset: u32,
+    text: String,
+) -> Result<FfiEditorSessionSnapshot, DocumentCoreError> {
+    with_session(&editor_id, |s| {
+        s.state
+            .replace_range(&block_id, start_offset as usize, end_offset as usize, &text);
+        Ok(make_snapshot(s))
     })
 }

@@ -360,3 +360,99 @@ fn test_accept_and_reject_all_tracked_changes() {
     let doc_text = block_text(&editor.document.sections[0].blocks[0]);
     assert_eq!(doc_text, "Original text.");
 }
+
+#[test]
+fn test_tracked_format_change_accept_and_reject() {
+    let mut editor = FlowEditorState::new_empty("Format Review");
+    editor.insert_text("Legal confidentiality clause.");
+
+    editor.enable_tracking("Senior Associate");
+    editor.toggle_bold();
+
+    assert_eq!(editor.document.review.tracked_changes.len(), 1);
+    let change = &editor.document.review.tracked_changes[0];
+    assert_eq!(
+        change.change_type,
+        vocument_flow::review::ChangeType::FormatChange
+    );
+    assert_eq!(change.author, "Senior Associate");
+
+    // Paragraph is now bold
+    if let vocument_flow::model::Block::Paragraph(ref p) = editor.document.sections[0].blocks[0] {
+        assert!(p.spans[0].style.bold);
+    } else {
+        panic!("Expected paragraph");
+    }
+
+    // Reject formatting change
+    let change_id = change.change_id.clone();
+    assert!(editor.reject_change(&change_id));
+    assert_eq!(editor.document.review.tracked_changes.len(), 0);
+
+    // Verify bold style was reverted
+    if let vocument_flow::model::Block::Paragraph(ref p) = editor.document.sections[0].blocks[0] {
+        assert!(!p.spans[0].style.bold, "Bold must be reverted on reject");
+    }
+
+    // Toggle bold again and accept
+    editor.toggle_bold();
+    assert_eq!(editor.document.review.tracked_changes.len(), 1);
+    let change_id_2 = editor.document.review.tracked_changes[0].change_id.clone();
+    assert!(editor.accept_change(&change_id_2));
+    assert_eq!(editor.document.review.tracked_changes.len(), 0);
+
+    // Verify bold style remains after acceptance
+    if let vocument_flow::model::Block::Paragraph(ref p) = editor.document.sections[0].blocks[0] {
+        assert!(p.spans[0].style.bold, "Bold must remain after accept");
+        assert!(p.spans[0].tracked_change_id.is_none());
+        assert!(p.spans[0].original_style.is_none());
+    }
+}
+
+#[test]
+fn test_replace_range_and_delete_range() {
+    let mut editor = FlowEditorState::new_empty("Range Test");
+    editor.insert_text("The quick brown fox jumps");
+    let block_id = editor.document.sections[0].blocks[0].id().to_string();
+
+    // Replace "quick" (offsets 4..9) with "slow"
+    editor.replace_range(&block_id, 4, 9, "slow");
+    let text = block_text(&editor.document.sections[0].blocks[0]);
+    assert_eq!(text, "The slow brown fox jumps");
+
+    // Delete "slow " (offsets 4..9)
+    editor.delete_range(&block_id, 4, 9);
+    let text_after_del = block_text(&editor.document.sections[0].blocks[0]);
+    assert_eq!(text_after_del, "The brown fox jumps");
+}
+
+#[test]
+fn test_resilient_comment_anchors_across_complex_deletions() {
+    let mut editor = FlowEditorState::new_empty("Resilient Comments");
+    editor.insert_text("Alpha Beta Gamma Delta");
+    let block_id = editor.document.sections[0].blocks[0].id().to_string();
+
+    // Anchor comment on "Beta" (offsets 6..10)
+    let comment_id = editor.add_comment(Some((6, 10)), "Check definition");
+    assert!(!comment_id.is_empty());
+
+    // Delete "Alpha " (offsets 0..6)
+    editor.delete_range(&block_id, 0, 6);
+    let c = &editor.document.review.comments[0];
+    assert_eq!(c.anchor_char_start, Some(0), "Anchor start must shift to 0");
+    assert_eq!(
+        c.anchor_char_end,
+        Some(4),
+        "Anchor end must shift to 4 (Beta)"
+    );
+
+    // Delete 1 character inside "Beta" (offset 1..2)
+    editor.delete_range(&block_id, 1, 2);
+    let c2 = &editor.document.review.comments[0];
+    assert_eq!(c2.anchor_char_start, Some(0));
+    assert_eq!(
+        c2.anchor_char_end,
+        Some(3),
+        "Anchor end must shrink from 4 to 3"
+    );
+}

@@ -356,5 +356,21 @@ extension MacDocumentSessionCoordinator {
             self.errorMessage = "Fehler beim PDF-Export: \(error.localizedDescription)"
         }
     }
+
+    public func editorReplaceRange(blockId: String, startOffset: UInt32, endOffset: UInt32, text: String) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let updated = try coreClient.editorReplaceRange(
+                editorId: session.editorId,
+                blockId: blockId,
+                startOffset: startOffset,
+                endOffset: endOffset,
+                text: text
+            )
+            self.activeEditorSession = updated
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
 }
 

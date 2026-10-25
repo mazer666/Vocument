@@ -11,6 +11,11 @@ struct PdocAuthoringCanvasView: View {
     @State private var showCommentPrompt = false
     @State private var commentInput = ""
     @State private var showReviewDrawer = false
+    @State private var replyingCommentId: String? = nil
+    @State private var replyInput = ""
+    @State private var showExportSheet = false
+    @State private var exportIncludeComments = true
+    @State private var exportIncludeTrackedChanges = true
     @State private var lastMeasuredLatencyMs: Double = 1.4
 
     var body: some View {
@@ -143,8 +148,8 @@ struct PdocAuthoringCanvasView: View {
                 .help("Prüfungsleiste für Kommentare und Änderungen")
 
                 // PDF/A & PDF/UA Export (`EXPORT-001`)
-                Button(action: { promptPdfExport() }) {
-                    Label("PDF/A", systemImage: "arrow.down.doc")
+                Button(action: { showExportSheet = true }) {
+                    Label("PDF/A & PDF/UA", systemImage: "arrow.down.doc")
                 }
                 .help("Barrierefreies PDF/A-2b und PDF/UA-1 exportieren")
 
@@ -190,7 +195,13 @@ struct PdocAuthoringCanvasView: View {
                         onToggleItalic: { coordinator.editorToggleItalic() },
                         onUndo: { coordinator.editorUndo() },
                         onRedo: { coordinator.editorRedo() },
-                        onSave: { coordinator.editorSavePdoc() }
+                        onSave: { coordinator.editorSavePdoc() },
+                        onReplaceRange: { blockId, startOffset, endOffset, text in
+                            let start = DispatchTime.now().uptimeNanoseconds
+                            coordinator.editorReplaceRange(blockId: blockId, startOffset: startOffset, endOffset: endOffset, text: text)
+                            let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000.0
+                            lastMeasuredLatencyMs = elapsedMs
+                        }
                     )
                     .frame(
                         minWidth: 800,
@@ -287,6 +298,58 @@ struct PdocAuthoringCanvasView: View {
                                         }
                                         Text(comm.content)
                                             .font(.caption)
+
+                                        if !comm.replies.isEmpty {
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                ForEach(comm.replies, id: \.replyId) { rep in
+                                                    HStack(alignment: .top, spacing: 4) {
+                                                        Image(systemName: "arrow.turn.down.right")
+                                                            .font(.caption2)
+                                                            .foregroundStyle(.secondary)
+                                                        VStack(alignment: .leading, spacing: 1) {
+                                                            Text(rep.author)
+                                                                .font(.caption2)
+                                                                .fontWeight(.semibold)
+                                                            Text(rep.content)
+                                                                .font(.caption2)
+                                                        }
+                                                    }
+                                                    .padding(.leading, 8)
+                                                }
+                                            }
+                                        }
+
+                                        if replyingCommentId == comm.commentId {
+                                            HStack(spacing: 4) {
+                                                TextField("Antwort verfassen...", text: $replyInput)
+                                                    .textFieldStyle(.roundedBorder)
+                                                    .font(.caption)
+                                                Button("Senden") {
+                                                    if !replyInput.isEmpty {
+                                                        coordinator.editorReplyComment(commentId: comm.commentId, content: replyInput)
+                                                        replyInput = ""
+                                                        replyingCommentId = nil
+                                                    }
+                                                }
+                                                .font(.caption2)
+                                                Button(action: {
+                                                    replyingCommentId = nil
+                                                    replyInput = ""
+                                                }) {
+                                                    Image(systemName: "xmark")
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                            .padding(.top, 4)
+                                        } else {
+                                            Button("Antworten") {
+                                                replyingCommentId = comm.commentId
+                                                replyInput = ""
+                                            }
+                                            .font(.caption2)
+                                            .buttonStyle(.plain)
+                                            .foregroundStyle(Color.accentColor)
+                                        }
                                     }
                                     .padding(8)
                                     .background(comm.resolved ? Color.secondary.opacity(0.04) : Color.accentColor.opacity(0.08))
@@ -353,16 +416,60 @@ struct PdocAuthoringCanvasView: View {
             }
             .padding(20)
         }
+        .sheet(isPresented: $showExportSheet) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title2)
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PDF/A-2b & PDF/UA-1 Export")
+                            .font(.headline)
+                        Text("Strukturierte, barrierefreie Langzeitarchivierung")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Divider()
+
+                Toggle("Randkommentare als Annotationen einbinden", isOn: $exportIncludeComments)
+                    .font(.subheadline)
+                Toggle("Änderungsverfolgung visuell darstellen", isOn: $exportIncludeTrackedChanges)
+                    .font(.subheadline)
+
+                HStack {
+                    Spacer()
+                    Button("Abbrechen") {
+                        showExportSheet = false
+                    }
+                    Button("Exportieren...") {
+                        showExportSheet = false
+                        promptPdfExport(
+                            includeComments: exportIncludeComments,
+                            includeTrackedChanges: exportIncludeTrackedChanges
+                        )
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(20)
+            .frame(width: 420)
+        }
     }
 
-    private func promptPdfExport() {
+    private func promptPdfExport(includeComments: Bool = true, includeTrackedChanges: Bool = true) {
         guard let session = coordinator.activeEditorSession else { return }
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.pdf]
         savePanel.nameFieldStringValue = "\(session.title).pdf"
         savePanel.begin { response in
             guard response == .OK, let target = savePanel.url else { return }
-            coordinator.editorExportPdf(to: target, includeComments: true, includeTrackedChanges: true)
+            coordinator.editorExportPdf(
+                to: target,
+                includeComments: includeComments,
+                includeTrackedChanges: includeTrackedChanges
+            )
         }
     }
 
@@ -385,6 +492,7 @@ struct NativeTextCanvasRepresentable: NSViewRepresentable {
     let onUndo: () -> Void
     let onRedo: () -> Void
     let onSave: () -> Void
+    let onReplaceRange: (String, UInt32, UInt32, String) -> Void
 
     func makeNSView(context: Context) -> VocumentNativeTextCanvasView {
         let view = VocumentNativeTextCanvasView(frame: .zero)
@@ -408,5 +516,6 @@ struct NativeTextCanvasRepresentable: NSViewRepresentable {
         view.onUndo = onUndo
         view.onRedo = onRedo
         view.onSave = onSave
+        view.onReplaceRange = onReplaceRange
     }
 }

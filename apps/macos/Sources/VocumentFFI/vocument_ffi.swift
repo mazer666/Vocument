@@ -12596,6 +12596,20 @@ public func documentCoreEditorRejectChange(editorId: String, changeId: String)th
 })
 }
 /**
+ * Replaces characters in [start_offset, end_offset) with `text` in the specified block.
+ */
+public func documentCoreEditorReplaceRange(editorId: String, blockId: String, startOffset: UInt32, endOffset: UInt32, text: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_replace_range(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(blockId),
+        FfiConverterUInt32.lower(startOffset),
+        FfiConverterUInt32.lower(endOffset),
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
  * Appends a reply to an existing margin comment thread (`TRACK-005`).
  */
 public func documentCoreEditorReplyComment(editorId: String, commentId: String, content: String)throws  -> FfiEditorSessionSnapshot  {
@@ -13869,6 +13883,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change() != 371) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_replace_range() != 38342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment() != 31768) {

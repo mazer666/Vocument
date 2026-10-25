@@ -20,6 +20,7 @@ fn span(text: &str) -> TextSpan {
         link_url: None,
         footnote_ref: None,
         tracked_change_id: None,
+        original_style: None,
         extra: Default::default(),
     }
 }
@@ -36,6 +37,7 @@ fn bold_span(text: &str) -> TextSpan {
         link_url: None,
         footnote_ref: None,
         tracked_change_id: None,
+        original_style: None,
         extra: Default::default(),
     }
 }
@@ -52,6 +54,7 @@ fn span_with_footnote(text: &str, fn_id: &str) -> TextSpan {
         link_url: None,
         footnote_ref: Some(fn_id.to_string()),
         tracked_change_id: None,
+        original_style: None,
         extra: Default::default(),
     }
 }
@@ -358,6 +361,7 @@ fn test_complex_legal_brief_pagination() {
         link_url: None,
         footnote_ref: None,
         tracked_change_id: None,
+        original_style: None,
         extra: Default::default(),
     };
     section
@@ -379,6 +383,7 @@ fn test_complex_legal_brief_pagination() {
         link_url: None,
         footnote_ref: None,
         tracked_change_id: None,
+        original_style: None,
         extra: Default::default(),
     };
     section

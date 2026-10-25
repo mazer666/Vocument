@@ -143,3 +143,13 @@ fun DocumentCoreBridge.editorExportPdf(editorId: String, includeComments: Boolea
     return documentCoreEditorExportPdf(editorId, includeComments, includeTrackedChanges)
 }
 
+fun DocumentCoreBridge.editorReplaceRange(
+    editorId: String,
+    blockId: String,
+    startOffset: UInt,
+    endOffset: UInt,
+    text: String
+): FfiEditorSessionSnapshot {
+    return documentCoreEditorReplaceRange(editorId, blockId, startOffset, endOffset, text)
+}
+

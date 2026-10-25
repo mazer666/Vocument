@@ -51,6 +51,11 @@ fun PdocEditorScreen(
     var showCommentDialog by remember { mutableStateOf(false) }
     var commentText by remember { mutableStateOf("") }
     var showReviewDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportIncludeComments by remember { mutableStateOf(true) }
+    var exportIncludeTrackedChanges by remember { mutableStateOf(true) }
+    var replyingCommentId by remember { mutableStateOf<String?>(null) }
+    var replyText by remember { mutableStateOf("") }
     var exportStatusMessage by remember { mutableStateOf<String?>(null) }
 
     val focusRequester = remember { FocusRequester() }
@@ -149,17 +154,8 @@ fun PdocEditorScreen(
                     }
 
                     // PDF/A Export (`EXPORT-001`)
-                    IconButton(onClick = {
-                        runCatching {
-                            val pdfBytes = coreBridge.editorExportPdf(session.editorId, true, true)
-                            val dest = File("/sdcard/Download/${session.title}.pdf")
-                            dest.writeBytes(pdfBytes)
-                            exportStatusMessage = "PDF/A exportiert nach: ${dest.name}"
-                        }.onFailure {
-                            exportStatusMessage = "Export-Fehler: ${it.message}"
-                        }
-                    }) {
-                        Text("PDF", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    IconButton(onClick = { showExportDialog = true }) {
+                        Text("PDF/A", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
 
                     // Footnote
@@ -187,7 +183,26 @@ fun PdocEditorScreen(
                 val newText = newVal.text
                 if (newText != oldText) {
                     val start = System.nanoTime()
-                    if (newText.length > oldText.length) {
+                    val oldSel = textFieldValue.selection
+                    if (!oldSel.collapsed && oldSel.min < oldText.length) {
+                        val replacedStart = oldSel.min.toUInt()
+                        val replacedEnd = minOf(oldSel.max, oldText.length).toUInt()
+                        val insertLen = newText.length - (oldText.length - (oldSel.max - oldSel.min))
+                        val replacementText = if (insertLen > 0 && newVal.selection.start >= insertLen) {
+                            newText.substring(newVal.selection.start - insertLen, newVal.selection.start)
+                        } else {
+                            ""
+                        }
+                        runCatching {
+                            session = coreBridge.editorReplaceRange(
+                                session.editorId,
+                                session.activeBlockId,
+                                replacedStart,
+                                replacedEnd,
+                                replacementText
+                            )
+                        }
+                    } else if (newText.length > oldText.length) {
                         val insertLen = newText.length - oldText.length
                         val insertPos = newVal.selection.start
                         val added = if (insertPos >= insertLen) {
@@ -199,8 +214,11 @@ fun PdocEditorScreen(
                             session = coreBridge.editorInsertText(session.editorId, added)
                         }
                     } else {
+                        val deleteLen = maxOf(1, oldText.length - newText.length)
                         runCatching {
-                            session = coreBridge.editorDeleteBackward(session.editorId)
+                            for (i in 0 until deleteLen) {
+                                session = coreBridge.editorDeleteBackward(session.editorId)
+                            }
                         }
                     }
                     measuredLatencyMs = (System.nanoTime() - start) / 1_000_000.0
@@ -435,17 +453,65 @@ fun PdocEditorScreen(
                     if (session.comments.isNotEmpty()) {
                         Text("Randkommentare:", fontWeight = FontWeight.Bold)
                         session.comments.forEach { comm ->
-                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(comm.author, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
-                                    TextButton(onClick = {
-                                        runCatching { session = coreBridge.editorResolveComment(session.editorId, comm.commentId, !comm.resolved) }
-                                    }) { Text(if (comm.resolved) "Gelöst" else "Offen") }
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = if (comm.resolved) Color(0xFFF5F5F5) else Color(0xFFE3F2FD))
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(comm.author, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                                        Row {
+                                            TextButton(onClick = {
+                                                runCatching { session = coreBridge.editorResolveComment(session.editorId, comm.commentId, !comm.resolved) }
+                                            }) { Text(if (comm.resolved) "Gelöst" else "Offen", fontSize = 11.sp) }
+                                            TextButton(onClick = {
+                                                runCatching { session = coreBridge.editorDeleteComment(session.editorId, comm.commentId) }
+                                            }) { Text("🗑", fontSize = 11.sp) }
+                                        }
+                                    }
+                                    if (comm.anchorText != null) {
+                                        Text("„${comm.anchorText}“", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                    Text(comm.content, style = MaterialTheme.typography.bodySmall)
+
+                                    // Display replies
+                                    comm.replies.forEach { rep ->
+                                        Row(modifier = Modifier.padding(start = 12.dp, top = 2.dp)) {
+                                            Text("↳ ${rep.author}: ${rep.content}", style = MaterialTheme.typography.bodySmall, color = Color.DarkGray)
+                                        }
+                                    }
+
+                                    // Reply composer
+                                    if (replyingCommentId == comm.commentId) {
+                                        Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            OutlinedTextField(
+                                                value = replyText,
+                                                onValueChange = { replyText = it },
+                                                placeholder = { Text("Antwort...", fontSize = 12.sp) },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true
+                                            )
+                                            IconButton(onClick = {
+                                                if (replyText.isNotBlank()) {
+                                                    runCatching {
+                                                        session = coreBridge.editorReplyComment(session.editorId, comm.commentId, replyText)
+                                                    }
+                                                    replyText = ""
+                                                    replyingCommentId = null
+                                                }
+                                            }) { Text("Senden", fontSize = 11.sp) }
+                                        }
+                                    } else {
+                                        TextButton(onClick = {
+                                            replyingCommentId = comm.commentId
+                                            replyText = ""
+                                        }) { Text("Antworten", fontSize = 11.sp) }
+                                    }
                                 }
-                                Text(comm.content, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -458,6 +524,61 @@ fun PdocEditorScreen(
             confirmButton = {
                 Button(onClick = { showReviewDialog = false }) {
                     Text("Schließen")
+                }
+            }
+        )
+    }
+
+    // PDF/A & PDF/UA Export Dialog (`EXPORT-001`, `EXPORT-002`)
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("PDF/A-2b & PDF/UA-1 Export") },
+            text = {
+                Column {
+                    Text(
+                        "Erzeugt ein standardkonformes, strukturiertes Langzeitarchivdokument.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = exportIncludeComments,
+                            onCheckedChange = { exportIncludeComments = it }
+                        )
+                        Text("Randkommentare einbinden", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = exportIncludeTrackedChanges,
+                            onCheckedChange = { exportIncludeTrackedChanges = it }
+                        )
+                        Text("Änderungsverfolgung visuell darstellen", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showExportDialog = false
+                    runCatching {
+                        val pdfBytes = coreBridge.editorExportPdf(
+                            session.editorId,
+                            exportIncludeComments,
+                            exportIncludeTrackedChanges
+                        )
+                        val dest = File("/sdcard/Download/${session.title}.pdf")
+                        dest.writeBytes(pdfBytes)
+                        exportStatusMessage = "PDF/A exportiert nach: ${dest.name}"
+                    }.onFailure {
+                        exportStatusMessage = "Export-Fehler: ${it.message}"
+                    }
+                }) {
+                    Text("Exportieren")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showExportDialog = false }) {
+                    Text("Abbrechen")
                 }
             }
         )

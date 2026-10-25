@@ -23,6 +23,7 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
     var onUndo: (() -> Void)?
     var onRedo: (() -> Void)?
     var onSave: (() -> Void)?
+    var onReplaceRange: ((String, UInt32, UInt32, String) -> Void)?
 
     private var markedString: NSMutableAttributedString = NSMutableAttributedString()
     private var markedSelectedRange: NSRange = NSRange(location: NSNotFound, length: 0)
@@ -258,8 +259,18 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
         markedSelectedRange = NSRange(location: NSNotFound, length: 0)
 
         if replacementRange.location != NSNotFound && replacementRange.length > 0 {
-            for _ in 0..<replacementRange.length {
-                self.onDeleteBackward?()
+            if let snap = self.snapshot, self.onReplaceRange != nil {
+                self.onReplaceRange?(
+                    snap.activeBlockId,
+                    UInt32(replacementRange.location),
+                    UInt32(replacementRange.location + replacementRange.length),
+                    text
+                )
+                return
+            } else {
+                for _ in 0..<replacementRange.length {
+                    self.onDeleteBackward?()
+                }
             }
         }
 
@@ -270,8 +281,17 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         if replacementRange.location != NSNotFound && replacementRange.length > 0 {
-            for _ in 0..<replacementRange.length {
-                self.onDeleteBackward?()
+            if let snap = self.snapshot, self.onReplaceRange != nil {
+                self.onReplaceRange?(
+                    snap.activeBlockId,
+                    UInt32(replacementRange.location),
+                    UInt32(replacementRange.location + replacementRange.length),
+                    ""
+                )
+            } else {
+                for _ in 0..<replacementRange.length {
+                    self.onDeleteBackward?()
+                }
             }
         }
         if let str = string as? String {

@@ -1007,6 +1007,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1123,6 +1125,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_editor_redo(
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_reject_all_changes(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_replace_range(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment(
 ): Short
@@ -1464,6 +1468,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_editor_redo(`editorId`: RustBuffer
 fun uniffi_vocument_ffi_fn_func_document_core_editor_reject_all_changes(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_reject_change(`editorId`: RustBuffer.ByValue,`changeId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_replace_range(`editorId`: RustBuffer.ByValue,`blockId`: RustBuffer.ByValue,`startOffset`: Int,`endOffset`: Int,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_reply_comment(`editorId`: RustBuffer.ByValue,`commentId`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1936,6 +1942,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_reject_change() != 371.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_replace_range() != 38342.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment() != 31768.toShort()) {
@@ -10015,6 +10024,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_reject_change(
         FfiConverterString.lower(`editorId`),FfiConverterString.lower(`changeId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Replaces characters in [start_offset, end_offset) with `text` in the specified block.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorReplaceRange`(`editorId`: kotlin.String, `blockId`: kotlin.String, `startOffset`: kotlin.UInt, `endOffset`: kotlin.UInt, `text`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_replace_range(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`blockId`),FfiConverterUInt.lower(`startOffset`),FfiConverterUInt.lower(`endOffset`),FfiConverterString.lower(`text`),_status)
 }
     )
     }

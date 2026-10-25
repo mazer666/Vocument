@@ -4,10 +4,9 @@
 //! thread comments with resilient text anchoring, replies, and resolution.
 
 use vocument_flow::review::{ChangeType, FlowComment, FlowCommentReply};
-use vocument_flow::styles::TextSpan;
 
 use crate::editor::FlowEditorState;
-use crate::editor_spans::{block_id, uuid_fast};
+use crate::editor_spans::{block_id, for_each_span_in_block_mut, retain_spans_in_block, uuid_fast};
 
 impl FlowEditorState {
     /// Enables change tracking under the given author attribution.
@@ -180,7 +179,7 @@ impl FlowEditorState {
                 self.restore_deleted_spans_by_tracked_change_id(change_id);
             }
             ChangeType::FormatChange => {
-                self.clear_tracked_change_id_on_spans(change_id);
+                self.revert_format_change_by_tracked_change_id(change_id);
             }
         }
 
@@ -224,7 +223,7 @@ impl FlowEditorState {
                     self.restore_deleted_spans_by_tracked_change_id(&change.change_id);
                 }
                 ChangeType::FormatChange => {
-                    self.clear_tracked_change_id_on_spans(&change.change_id);
+                    self.revert_format_change_by_tracked_change_id(&change.change_id);
                 }
             }
         }
@@ -334,23 +333,27 @@ impl FlowEditorState {
     fn clear_tracked_change_id_on_spans(&mut self, change_id: &str) {
         for section in &mut self.document.sections {
             for block in &mut section.blocks {
-                match block {
-                    vocument_flow::model::Block::Paragraph(p) => {
-                        for span in &mut p.spans {
-                            if span.tracked_change_id.as_deref() == Some(change_id) {
-                                span.tracked_change_id = None;
-                            }
-                        }
+                for_each_span_in_block_mut(block, &mut |span| {
+                    if span.tracked_change_id.as_deref() == Some(change_id) {
+                        span.original_style = None;
+                        span.tracked_change_id = None;
                     }
-                    vocument_flow::model::Block::Heading(h) => {
-                        for span in &mut h.spans {
-                            if span.tracked_change_id.as_deref() == Some(change_id) {
-                                span.tracked_change_id = None;
-                            }
+                });
+            }
+        }
+    }
+
+    fn revert_format_change_by_tracked_change_id(&mut self, change_id: &str) {
+        for section in &mut self.document.sections {
+            for block in &mut section.blocks {
+                for_each_span_in_block_mut(block, &mut |span| {
+                    if span.tracked_change_id.as_deref() == Some(change_id) {
+                        if let Some(orig) = span.original_style.take() {
+                            span.style = orig;
                         }
+                        span.tracked_change_id = None;
                     }
-                    _ => {}
-                }
+                });
             }
         }
     }
@@ -358,23 +361,9 @@ impl FlowEditorState {
     fn remove_spans_by_tracked_change_id(&mut self, change_id: &str) {
         for section in &mut self.document.sections {
             for block in &mut section.blocks {
-                match block {
-                    vocument_flow::model::Block::Paragraph(p) => {
-                        p.spans
-                            .retain(|s| s.tracked_change_id.as_deref() != Some(change_id));
-                        if p.spans.is_empty() {
-                            p.spans.push(TextSpan::plain(""));
-                        }
-                    }
-                    vocument_flow::model::Block::Heading(h) => {
-                        h.spans
-                            .retain(|s| s.tracked_change_id.as_deref() != Some(change_id));
-                        if h.spans.is_empty() {
-                            h.spans.push(TextSpan::plain(""));
-                        }
-                    }
-                    _ => {}
-                }
+                retain_spans_in_block(block, &mut |s| {
+                    s.tracked_change_id.as_deref() != Some(change_id)
+                });
             }
         }
     }
@@ -382,25 +371,12 @@ impl FlowEditorState {
     fn restore_deleted_spans_by_tracked_change_id(&mut self, change_id: &str) {
         for section in &mut self.document.sections {
             for block in &mut section.blocks {
-                match block {
-                    vocument_flow::model::Block::Paragraph(p) => {
-                        for span in &mut p.spans {
-                            if span.tracked_change_id.as_deref() == Some(change_id) {
-                                span.style.strikethrough = false;
-                                span.tracked_change_id = None;
-                            }
-                        }
+                for_each_span_in_block_mut(block, &mut |span| {
+                    if span.tracked_change_id.as_deref() == Some(change_id) {
+                        span.style.strikethrough = false;
+                        span.tracked_change_id = None;
                     }
-                    vocument_flow::model::Block::Heading(h) => {
-                        for span in &mut h.spans {
-                            if span.tracked_change_id.as_deref() == Some(change_id) {
-                                span.style.strikethrough = false;
-                                span.tracked_change_id = None;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+                });
             }
         }
     }

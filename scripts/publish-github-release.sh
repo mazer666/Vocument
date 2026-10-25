@@ -81,8 +81,10 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --confirm-owner-approval)
-            # Retained for backward CLI compatibility, but NOT sufficient alone
-            shift
+            echo "ERROR: Flag '--confirm-owner-approval' is rejected. Release publication cannot be conferred by CLI flags." >&2
+            echo "       Cryptographic clearance signature anchored in Project Owner root of trust is mandatory." >&2
+            echo "       See: docs/releasing/PROJECT_OWNER_CLEARANCE.md.sig" >&2
+            exit 1
             ;;
         --skip-build)
             SKIP_BUILD=1

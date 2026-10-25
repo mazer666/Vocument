@@ -160,6 +160,10 @@ pub struct TextSpan {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tracked_change_id: Option<String>,
 
+    /// Original style prior to a tracked format revision, if applicable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_style: Option<FontStyle>,
+
     /// Unknown / forward-compatible span attributes.
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -182,10 +186,19 @@ impl TextSpan {
             link_url: None,
             footnote_ref: None,
             tracked_change_id: None,
+            original_style: None,
             extra: BTreeMap::new(),
         }
     }
+}
 
+impl Default for TextSpan {
+    fn default() -> Self {
+        Self::plain("")
+    }
+}
+
+impl TextSpan {
     pub fn bold(text: impl Into<String>) -> Self {
         Self {
             style: FontStyle::bold(),

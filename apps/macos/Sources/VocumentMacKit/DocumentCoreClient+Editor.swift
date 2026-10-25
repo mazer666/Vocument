@@ -179,5 +179,10 @@ extension DocumentCoreClient {
     public func editorExportPdf(editorId: String, includeComments: Bool, includeTrackedChanges: Bool) throws -> Data {
         try documentCoreEditorExportPdf(editorId: editorId, includeComments: includeComments, includeTrackedChanges: includeTrackedChanges)
     }
+
+    /// Replaces characters in range with text in the specified block (`ADR-0020`).
+    public func editorReplaceRange(editorId: String, blockId: String, startOffset: UInt32, endOffset: UInt32, text: String) throws -> FfiEditorSessionSnapshot {
+        try documentCoreEditorReplaceRange(editorId: editorId, blockId: blockId, startOffset: startOffset, endOffset: endOffset, text: text)
+    }
 }
 
