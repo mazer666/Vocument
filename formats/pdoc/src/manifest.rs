@@ -73,6 +73,52 @@ impl PdocManifest {
     pub fn register_asset(&mut self, entry: PdocAssetEntry) {
         self.assets.insert(entry.path.clone(), entry);
     }
+
+    /// Validates manifest schema constraints and version compatibility.
+    pub fn validate(&self) -> Result<(), crate::error::PdocError> {
+        if self.document_id.trim().is_empty() {
+            return Err(crate::error::PdocError::CorruptContainer {
+                details: "manifest document_id cannot be empty".to_string(),
+            });
+        }
+
+        // Check format version compatibility: major version must match CURRENT_FORMAT_VERSION major
+        let current_major = CURRENT_FORMAT_VERSION
+            .split('.')
+            .next()
+            .unwrap_or(CURRENT_FORMAT_VERSION);
+        let manifest_major = self
+            .format_version
+            .split('.')
+            .next()
+            .unwrap_or(&self.format_version);
+
+        if manifest_major != current_major {
+            return Err(crate::error::PdocError::IncompatibleMajorVersion {
+                version: self.format_version.clone(),
+                supported_major: current_major.to_string(),
+            });
+        }
+
+        for (path, asset) in &self.assets {
+            if !path.starts_with("assets/") && !path.starts_with("assets\\") {
+                return Err(crate::error::PdocError::InvalidAssetPath {
+                    path: path.clone(),
+                    reason: "manifest asset entry must reside in 'assets/' directory".to_string(),
+                });
+            }
+            if asset.sha256.len() != 64 || !asset.sha256.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(crate::error::PdocError::CorruptContainer {
+                    details: format!(
+                        "asset '{path}' has invalid SHA-256 hex digest: '{}'",
+                        asset.sha256
+                    ),
+                });
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn chrono_or_fallback_timestamp() -> String {

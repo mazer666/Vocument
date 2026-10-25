@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.2  
-**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], and M4.2 [.pdoc Container & Specification] are **COMPLETE & VERIFIED**; M4.3 Native Platform Editing Canvas in progress). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], and M4.3 [Native Platform Editing Canvas & Input] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export in progress). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -814,15 +814,18 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
 
 - **M4.2 — The `.pdoc` Format Specification & Container:**
   - [x] Standard ZIP64 container (`manifest.json`, `document.json`, `styles.json`, `metadata.json`, `assets/`, `review.json`).
-  - [x] Schema versioning with unknown-field preservation for forward compatibility.
-  - [x] Safe extraction with zip-slip and decompression bomb protection (`PackageLimitsConfig`).
-  - [x] Cryptographic SHA-256 asset integrity verification and content-addressing.
+  - [x] Hardened archive extraction with streaming decompressed ratio bounds, duplicate/ambiguous path collision detection, and zip-slip prevention.
+  - [x] Full schema, manifest, asset SHA-256, and cross-reference validation upon opening and saving.
+  - [x] Crash-safe atomic saving (`fsync`, parent directory sync, `expected_prior_fingerprint` external conflict detection, automatic conflict copy preservation).
+  - [x] Schema versioning with forward compatibility (unknown extra field preservation) and strict major version rejection.
+  - [x] Cryptographic Project Owner root of trust clearance gate (`docs/releasing/project_owner_root_of_trust.pub`, signature required).
   - [x] Lossless roundtrips verified across complex legal documents with tables, callouts, styling, and review data.
 
 - **M4.3 — Native Platform Editing Canvas & Input:**
-  - macOS AppKit/SwiftUI view conforming to `NSTextInputClient` (CJK IME, accents, dictation, VoiceOver).
-  - Android Jetpack Compose custom editor supporting touch, stylus, and Gboard IME.
-  - Sub-16ms typing latency (60 FPS).
+  - [x] macOS AppKit/SwiftUI view conforming to `NSTextInputClient` (CJK IME, accents, keyboard shortcuts, VoiceOver).
+  - [x] Android Jetpack Compose custom editor supporting touch, stylus, and Gboard IME with TalkBack semantics.
+  - [x] Sub-16ms typing and reflow latency budget (< 16ms, measured and verified in Rust, Swift, and Kotlin).
+  - [x] Full undo/redo transaction stack, atomic fsync saving, and conflict preservation.
 
 - **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation:**
   - Tracked Changes: Inline insertions, deletions, format changes with author attribution.

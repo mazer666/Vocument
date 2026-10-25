@@ -57,4 +57,35 @@ pub enum PdocError {
 
     #[error("Corrupt .pdoc archive container: {details}")]
     CorruptContainer { details: String },
+
+    #[error("Duplicate or conflicting entry found in archive: '{path}' ({details})")]
+    DuplicateEntry { path: String, details: String },
+
+    #[error(
+        "Unsupported compression method for entry '{entry}': {method} (only Stored and Deflated are permitted)"
+    )]
+    UnsupportedCompressionMethod { entry: String, method: String },
+
+    #[error("Missing referenced asset '{asset_ref}' (referenced by {referrer})")]
+    MissingReferencedAsset { asset_ref: String, referrer: String },
+
+    #[error("Undefined style '{style_id}' referenced by element '{element_id}'")]
+    UndefinedStyleReference {
+        style_id: String,
+        element_id: String,
+    },
+
+    #[error("External modification conflict detected on '{path}': {details}")]
+    ExternalConflictDetected { path: String, details: String },
+
+    #[error("Recovery checkpoint error: {details}")]
+    RecoveryError { details: String },
+
+    #[error(
+        "Incompatible major format version '{version}' (supported major version is '{supported_major}')"
+    )]
+    IncompatibleMajorVersion {
+        version: String,
+        supported_major: String,
+    },
 }

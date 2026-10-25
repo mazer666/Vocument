@@ -941,6 +941,50 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -982,6 +1026,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_check_document_recovery(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_check_external_changes(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_close_editor_session(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
@@ -989,6 +1035,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
 fun uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_create_editor_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette(
 ): Short
@@ -1011,6 +1059,44 @@ fun uniffi_vocument_ffi_checksum_func_document_core_detect_text_language(
 fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_bullet_list(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_footnote(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_numbered_list(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_paragraph_break(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_table(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_text(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_redo(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_set_heading_level(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_set_selection(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_bold(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_italic(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_undo(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame(
 ): Short
@@ -1085,6 +1171,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_ocr_scan_session_page(
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options(
 ): Short
@@ -1257,6 +1345,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_check_document_recovery(`sourceTok
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_check_external_changes(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_close_editor_session(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1265,6 +1355,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_configure_data_directory(`path`: R
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_create_editor_session(`title`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_default_jurist_palette(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_delete_pages(`sessionId`: RustBuffer.ByValue,`pageIndices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1286,6 +1378,44 @@ fun uniffi_vocument_ffi_fn_func_document_core_detect_text_language(`text`: RustB
 fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(`sessionId`: RustBuffer.ByValue,`pageIndex`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_clear_selection(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_delete_backward(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_hit_test(`editorId`: RustBuffer.ByValue,`pageIndex`: Int,`xPt`: Float,`yPt`: Float,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_bullet_list(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_footnote(`editorId`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_numbered_list(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_paragraph_break(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_table(`editorId`: RustBuffer.ByValue,`rows`: Int,`cols`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_text(`editorId`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_measure_typing_latency_micros(`editorId`: RustBuffer.ByValue,`sampleText`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+fun uniffi_vocument_ffi_fn_func_document_core_editor_redo(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(`editorId`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_set_cursor(`editorId`: RustBuffer.ByValue,`blockId`: RustBuffer.ByValue,`offset`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_set_heading_level(`editorId`: RustBuffer.ByValue,`level`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_set_selection(`editorId`: RustBuffer.ByValue,`anchorBlockId`: RustBuffer.ByValue,`anchorOffset`: Int,`focusBlockId`: RustBuffer.ByValue,`focusOffset`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_toggle_bold(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_toggle_italic(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_undo(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_enhance_scan_frame(`frame`: RustBuffer.ByValue,`profile`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1360,6 +1490,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_ocr_scan_session_page(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_open_pdoc_editor_session(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_optimize_document_with_options(`sessionId`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`workbenchOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1626,6 +1758,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_editor_session() != 40015.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1636,6 +1771,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_create_editor_session() != 31570.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217.toShort()) {
@@ -1669,6 +1807,63 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection() != 25431.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward() != 44549.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward() != 65137.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test() != 44237.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_bullet_list() != 33181.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_footnote() != 47494.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_numbered_list() != 24108.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_paragraph_break() != 13388.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_table() != 13881.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_insert_text() != 12157.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros() != 22325.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor() != 39705.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_set_heading_level() != 39722.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_set_selection() != 29242.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_bold() != 48746.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_italic() != 58533.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_undo() != 57062.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838.toShort()) {
@@ -1780,6 +1975,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session() != 64345.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options() != 44244.toShort()) {
@@ -2939,6 +3137,300 @@ public object FfiConverterTypeFfiDocumentSessionSnapshot: FfiConverterRustBuffer
             FfiConverterTypeFfiFileAccessOrigin.write(value.`accessOrigin`, buf)
             FfiConverterTypeFfiFileIdentity.write(value.`fileIdentity`, buf)
             FfiConverterTypeFfiPdfDocumentSummary.write(value.`pdfSummary`, buf)
+    }
+}
+
+
+
+/**
+ * Formatted text line on an editor page.
+ */
+data class FfiEditorLineSnapshot (
+    var `rect`: FfiEditorRect, 
+    var `baselineY`: kotlin.Float, 
+    var `runs`: List<FfiEditorRunSnapshot>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorLineSnapshot: FfiConverterRustBuffer<FfiEditorLineSnapshot> {
+    override fun read(buf: ByteBuffer): FfiEditorLineSnapshot {
+        return FfiEditorLineSnapshot(
+            FfiConverterTypeFfiEditorRect.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterSequenceTypeFfiEditorRunSnapshot.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorLineSnapshot) = (
+            FfiConverterTypeFfiEditorRect.allocationSize(value.`rect`) +
+            FfiConverterFloat.allocationSize(value.`baselineY`) +
+            FfiConverterSequenceTypeFfiEditorRunSnapshot.allocationSize(value.`runs`)
+    )
+
+    override fun write(value: FfiEditorLineSnapshot, buf: ByteBuffer) {
+            FfiConverterTypeFfiEditorRect.write(value.`rect`, buf)
+            FfiConverterFloat.write(value.`baselineY`, buf)
+            FfiConverterSequenceTypeFfiEditorRunSnapshot.write(value.`runs`, buf)
+    }
+}
+
+
+
+/**
+ * Single page visual layout snapshot ready for native canvas rendering.
+ */
+data class FfiEditorPageSnapshot (
+    var `pageIndex`: kotlin.UInt, 
+    var `widthPt`: kotlin.Float, 
+    var `heightPt`: kotlin.Float, 
+    var `lines`: List<FfiEditorLineSnapshot>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorPageSnapshot: FfiConverterRustBuffer<FfiEditorPageSnapshot> {
+    override fun read(buf: ByteBuffer): FfiEditorPageSnapshot {
+        return FfiEditorPageSnapshot(
+            FfiConverterUInt.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterSequenceTypeFfiEditorLineSnapshot.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorPageSnapshot) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterFloat.allocationSize(value.`widthPt`) +
+            FfiConverterFloat.allocationSize(value.`heightPt`) +
+            FfiConverterSequenceTypeFfiEditorLineSnapshot.allocationSize(value.`lines`)
+    )
+
+    override fun write(value: FfiEditorPageSnapshot, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterFloat.write(value.`widthPt`, buf)
+            FfiConverterFloat.write(value.`heightPt`, buf)
+            FfiConverterSequenceTypeFfiEditorLineSnapshot.write(value.`lines`, buf)
+    }
+}
+
+
+
+/**
+ * Rectangle in document point coordinates.
+ */
+data class FfiEditorRect (
+    var `x`: kotlin.Float, 
+    var `y`: kotlin.Float, 
+    var `width`: kotlin.Float, 
+    var `height`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorRect: FfiConverterRustBuffer<FfiEditorRect> {
+    override fun read(buf: ByteBuffer): FfiEditorRect {
+        return FfiEditorRect(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorRect) = (
+            FfiConverterFloat.allocationSize(value.`x`) +
+            FfiConverterFloat.allocationSize(value.`y`) +
+            FfiConverterFloat.allocationSize(value.`width`) +
+            FfiConverterFloat.allocationSize(value.`height`)
+    )
+
+    override fun write(value: FfiEditorRect, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`x`, buf)
+            FfiConverterFloat.write(value.`y`, buf)
+            FfiConverterFloat.write(value.`width`, buf)
+            FfiConverterFloat.write(value.`height`, buf)
+    }
+}
+
+
+
+/**
+ * Positioned text run within a layout line.
+ */
+data class FfiEditorRunSnapshot (
+    var `text`: kotlin.String, 
+    var `rect`: FfiEditorRect, 
+    var `fontFamily`: kotlin.String, 
+    var `fontSizePt`: kotlin.Float, 
+    var `isBold`: kotlin.Boolean, 
+    var `isItalic`: kotlin.Boolean, 
+    var `colorHex`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorRunSnapshot: FfiConverterRustBuffer<FfiEditorRunSnapshot> {
+    override fun read(buf: ByteBuffer): FfiEditorRunSnapshot {
+        return FfiEditorRunSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiEditorRect.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorRunSnapshot) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeFfiEditorRect.allocationSize(value.`rect`) +
+            FfiConverterString.allocationSize(value.`fontFamily`) +
+            FfiConverterFloat.allocationSize(value.`fontSizePt`) +
+            FfiConverterBoolean.allocationSize(value.`isBold`) +
+            FfiConverterBoolean.allocationSize(value.`isItalic`) +
+            FfiConverterString.allocationSize(value.`colorHex`)
+    )
+
+    override fun write(value: FfiEditorRunSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeFfiEditorRect.write(value.`rect`, buf)
+            FfiConverterString.write(value.`fontFamily`, buf)
+            FfiConverterFloat.write(value.`fontSizePt`, buf)
+            FfiConverterBoolean.write(value.`isBold`, buf)
+            FfiConverterBoolean.write(value.`isItalic`, buf)
+            FfiConverterString.write(value.`colorHex`, buf)
+    }
+}
+
+
+
+/**
+ * Selection highlight rectangle positioned on a specific page.
+ */
+data class FfiEditorSelectionRect (
+    var `pageIndex`: kotlin.UInt, 
+    var `rect`: FfiEditorRect
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorSelectionRect: FfiConverterRustBuffer<FfiEditorSelectionRect> {
+    override fun read(buf: ByteBuffer): FfiEditorSelectionRect {
+        return FfiEditorSelectionRect(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiEditorRect.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorSelectionRect) = (
+            FfiConverterUInt.allocationSize(value.`pageIndex`) +
+            FfiConverterTypeFfiEditorRect.allocationSize(value.`rect`)
+    )
+
+    override fun write(value: FfiEditorSelectionRect, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageIndex`, buf)
+            FfiConverterTypeFfiEditorRect.write(value.`rect`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive immutable snapshot of the native platform editor state.
+ */
+data class FfiEditorSessionSnapshot (
+    var `editorId`: kotlin.String, 
+    var `title`: kotlin.String, 
+    var `filePath`: kotlin.String?, 
+    var `totalPages`: kotlin.UInt, 
+    var `activeBlockId`: kotlin.String, 
+    var `cursorOffset`: kotlin.UInt, 
+    var `cursorPageIndex`: kotlin.UInt, 
+    var `cursorRect`: FfiEditorRect?, 
+    var `selectionRects`: List<FfiEditorSelectionRect>, 
+    var `canUndo`: kotlin.Boolean, 
+    var `canRedo`: kotlin.Boolean, 
+    var `plainText`: kotlin.String, 
+    var `pages`: List<FfiEditorPageSnapshot>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<FfiEditorSessionSnapshot> {
+    override fun read(buf: ByteBuffer): FfiEditorSessionSnapshot {
+        return FfiEditorSessionSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeFfiEditorRect.read(buf),
+            FfiConverterSequenceTypeFfiEditorSelectionRect.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiEditorPageSnapshot.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiEditorSessionSnapshot) = (
+            FfiConverterString.allocationSize(value.`editorId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`filePath`) +
+            FfiConverterUInt.allocationSize(value.`totalPages`) +
+            FfiConverterString.allocationSize(value.`activeBlockId`) +
+            FfiConverterUInt.allocationSize(value.`cursorOffset`) +
+            FfiConverterUInt.allocationSize(value.`cursorPageIndex`) +
+            FfiConverterOptionalTypeFfiEditorRect.allocationSize(value.`cursorRect`) +
+            FfiConverterSequenceTypeFfiEditorSelectionRect.allocationSize(value.`selectionRects`) +
+            FfiConverterBoolean.allocationSize(value.`canUndo`) +
+            FfiConverterBoolean.allocationSize(value.`canRedo`) +
+            FfiConverterString.allocationSize(value.`plainText`) +
+            FfiConverterSequenceTypeFfiEditorPageSnapshot.allocationSize(value.`pages`)
+    )
+
+    override fun write(value: FfiEditorSessionSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`editorId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`filePath`, buf)
+            FfiConverterUInt.write(value.`totalPages`, buf)
+            FfiConverterString.write(value.`activeBlockId`, buf)
+            FfiConverterUInt.write(value.`cursorOffset`, buf)
+            FfiConverterUInt.write(value.`cursorPageIndex`, buf)
+            FfiConverterOptionalTypeFfiEditorRect.write(value.`cursorRect`, buf)
+            FfiConverterSequenceTypeFfiEditorSelectionRect.write(value.`selectionRects`, buf)
+            FfiConverterBoolean.write(value.`canUndo`, buf)
+            FfiConverterBoolean.write(value.`canRedo`, buf)
+            FfiConverterString.write(value.`plainText`, buf)
+            FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.`pages`, buf)
     }
 }
 
@@ -6276,6 +6768,14 @@ sealed class DocumentCoreException: kotlin.Exception() {
             get() = "details=${ `details` }"
     }
     
+    class EditorFailure(
+        
+        val `details`: kotlin.String
+        ) : DocumentCoreException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
     class InternalFailure(
         
         val `details`: kotlin.String
@@ -6347,7 +6847,10 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
             16 -> DocumentCoreException.ImagingFailure(
                 FfiConverterString.read(buf),
                 )
-            17 -> DocumentCoreException.InternalFailure(
+            17 -> DocumentCoreException.EditorFailure(
+                FfiConverterString.read(buf),
+                )
+            18 -> DocumentCoreException.InternalFailure(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -6432,6 +6935,11 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 + FfiConverterString.allocationSize(value.`details`)
             )
             is DocumentCoreException.ImagingFailure -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is DocumentCoreException.EditorFailure -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`details`)
@@ -6526,8 +7034,13 @@ public object FfiConverterTypeDocumentCoreError : FfiConverterRustBuffer<Documen
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
-            is DocumentCoreException.InternalFailure -> {
+            is DocumentCoreException.EditorFailure -> {
                 buf.putInt(17)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is DocumentCoreException.InternalFailure -> {
+                buf.putInt(18)
                 FfiConverterString.write(value.`details`, buf)
                 Unit
             }
@@ -7418,6 +7931,38 @@ public object FfiConverterOptionalTypeFfiDocumentSessionSnapshot: FfiConverterRu
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiEditorRect: FfiConverterRustBuffer<FfiEditorRect?> {
+    override fun read(buf: ByteBuffer): FfiEditorRect? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiEditorRect.read(buf)
+    }
+
+    override fun allocationSize(value: FfiEditorRect?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiEditorRect.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiEditorRect?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiEditorRect.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIdentity?> {
     override fun read(buf: ByteBuffer): FfiFileIdentity? {
         if (buf.get().toInt() == 0) {
@@ -7768,6 +8313,118 @@ public object FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiCommentAnnotation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiEditorLineSnapshot: FfiConverterRustBuffer<List<FfiEditorLineSnapshot>> {
+    override fun read(buf: ByteBuffer): List<FfiEditorLineSnapshot> {
+        val len = buf.getInt()
+        return List<FfiEditorLineSnapshot>(len) {
+            FfiConverterTypeFfiEditorLineSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiEditorLineSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiEditorLineSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiEditorLineSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiEditorLineSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiEditorPageSnapshot: FfiConverterRustBuffer<List<FfiEditorPageSnapshot>> {
+    override fun read(buf: ByteBuffer): List<FfiEditorPageSnapshot> {
+        val len = buf.getInt()
+        return List<FfiEditorPageSnapshot>(len) {
+            FfiConverterTypeFfiEditorPageSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiEditorPageSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiEditorPageSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiEditorPageSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiEditorPageSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiEditorRunSnapshot: FfiConverterRustBuffer<List<FfiEditorRunSnapshot>> {
+    override fun read(buf: ByteBuffer): List<FfiEditorRunSnapshot> {
+        val len = buf.getInt()
+        return List<FfiEditorRunSnapshot>(len) {
+            FfiConverterTypeFfiEditorRunSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiEditorRunSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiEditorRunSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiEditorRunSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiEditorRunSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiEditorSelectionRect: FfiConverterRustBuffer<List<FfiEditorSelectionRect>> {
+    override fun read(buf: ByteBuffer): List<FfiEditorSelectionRect> {
+        val len = buf.getInt()
+        return List<FfiEditorSelectionRect>(len) {
+            FfiConverterTypeFfiEditorSelectionRect.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiEditorSelectionRect>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiEditorSelectionRect.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiEditorSelectionRect>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiEditorSelectionRect.write(it, buf)
         }
     }
 }
@@ -8504,6 +9161,18 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Closes an active editor session and releases its resources.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCloseEditorSession`(`editorId`: kotlin.String)
+        = 
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_close_editor_session(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    
+    
+
+        /**
          * Closes and releases an active scanning session.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreCloseScanSession`(`sessionId`: kotlin.String)
@@ -8558,6 +9227,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
         FfiConverterString.lower(`path`),_status)
 }
     
+    
+
+        /**
+         * Creates a new in-memory `.pdoc` flow editor session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCreateEditorSession`(`title`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_create_editor_session(
+        FfiConverterString.lower(`title`),_status)
+}
+    )
+    }
     
 
         /**
@@ -8700,6 +9382,253 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_duplicate_page_with_options(
         FfiConverterString.lower(`sessionId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterTypeFfiPageWorkbenchOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Clears the active selection, collapsing to cursor position.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorClearSelection`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_clear_selection(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Deletes the character or selection immediately preceding the cursor (Backspace).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorDeleteBackward`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_delete_backward(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Deletes the character or selection immediately following the cursor (Forward Delete).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorDeleteForward`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Hit-tests a coordinate click/touch on a page and sets cursor position.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorHitTest`(`editorId`: kotlin.String, `pageIndex`: kotlin.UInt, `xPt`: kotlin.Float, `yPt`: kotlin.Float): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_hit_test(
+        FfiConverterString.lower(`editorId`),FfiConverterUInt.lower(`pageIndex`),FfiConverterFloat.lower(`xPt`),FfiConverterFloat.lower(`yPt`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inserts an unordered bullet list block at cursor.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertBulletList`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_bullet_list(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inserts a legal footnote reference and definition at cursor.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertFootnote`(`editorId`: kotlin.String, `text`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_footnote(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inserts an ordered numbered list block at cursor.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertNumberedList`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_numbered_list(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Splits the current block with a paragraph break (Enter key).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertParagraphBreak`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_paragraph_break(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inserts an editable table with specified rows and columns at cursor.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertTable`(`editorId`: kotlin.String, `rows`: kotlin.UInt, `cols`: kotlin.UInt): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_table(
+        FfiConverterString.lower(`editorId`),FfiConverterUInt.lower(`rows`),FfiConverterUInt.lower(`cols`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Inserts text at the current cursor position with sub-16ms incremental layout reflow.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorInsertText`(`editorId`: kotlin.String, `text`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_insert_text(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Measures real-time typing and incremental layout latency in microseconds (`PERF-001`, `< 16ms budget`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorMeasureTypingLatencyMicros`(`editorId`: kotlin.String, `sampleText`: kotlin.String): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_measure_typing_latency_micros(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`sampleText`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Redoes the previously undone editing transaction.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorRedo`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_redo(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Saves the flow document to disk as a hardened `.pdoc` package with atomic fsync and conflict detection.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorSavePdoc`(`editorId`: kotlin.String, `targetPath`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(
+        FfiConverterString.lower(`editorId`),FfiConverterOptionalString.lower(`targetPath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Explicitly positions the cursor within a block.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorSetCursor`(`editorId`: kotlin.String, `blockId`: kotlin.String, `offset`: kotlin.UInt): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_set_cursor(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`blockId`),FfiConverterUInt.lower(`offset`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sets the heading level (1..6) or 0 for body paragraph.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorSetHeadingLevel`(`editorId`: kotlin.String, `level`: kotlin.UByte): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_set_heading_level(
+        FfiConverterString.lower(`editorId`),FfiConverterUByte.lower(`level`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sets an active text selection range across blocks.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorSetSelection`(`editorId`: kotlin.String, `anchorBlockId`: kotlin.String, `anchorOffset`: kotlin.UInt, `focusBlockId`: kotlin.String, `focusOffset`: kotlin.UInt): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_set_selection(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`anchorBlockId`),FfiConverterUInt.lower(`anchorOffset`),FfiConverterString.lower(`focusBlockId`),FfiConverterUInt.lower(`focusOffset`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Toggles bold typography on active selection or for subsequent typing.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorToggleBold`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_toggle_bold(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Toggles italic typography on active selection or for subsequent typing.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorToggleItalic`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_toggle_italic(
+        FfiConverterString.lower(`editorId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Undoes the last editing transaction.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorUndo`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_undo(
+        FfiConverterString.lower(`editorId`),_status)
 }
     )
     }
@@ -9217,6 +10146,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(`scopedPathOrUrl`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Opens an existing `.pdoc` file into the native platform flow editor.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOpenPdocEditorSession`(`filePath`: kotlin.String): FfiEditorSessionSnapshot {
+            return FfiConverterTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_pdoc_editor_session(
+        FfiConverterString.lower(`filePath`),_status)
 }
     )
     }

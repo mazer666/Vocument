@@ -11,6 +11,7 @@ enum MacAppViewMode: String, CaseIterable, Identifiable {
     case reader = "Reader"
     case review = "Review"
     case workbench = "Page Workbench"
+    case authoring = "Authoring"
 
     var id: String { rawValue }
 }
@@ -26,6 +27,7 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     private var memoryPressureSource: DispatchSourceMemoryPressure?
 
     @Published var activeSession: FfiDocumentSessionSnapshot?
+    @Published var activeEditorSession: FfiEditorSessionSnapshot?
     @Published var currentPageIndex: UInt32 = 0
     @Published var scaleMilli: UInt32 = 1000
     @Published var renderedPageImage: CGImage?

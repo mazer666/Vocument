@@ -18,6 +18,9 @@ vocument-core = { path = "../../core/vocument-core" }
 vocument-pdf-mupdf = { path = "../../engines/pdf-mupdf" }
 vocument-imaging = { path = "../../engines/imaging" }
 vocument-ocr = { path = "../../engines/ocr" }
+vocument-flow = { path = "../../core/vocument-flow" }
+vocument-layout = { path = "../../core/vocument-layout" }
+vocument-pdoc = { path = "../../formats/pdoc" }
 uniffi.workspace = true
 thiserror.workspace = true
 

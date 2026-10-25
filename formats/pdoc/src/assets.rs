@@ -133,6 +133,16 @@ impl PdocAssetStore {
         self.assets.is_empty()
     }
 
+    /// Checks whether an asset exists in the store.
+    pub fn contains(&self, path: &str) -> bool {
+        self.assets.contains_key(path)
+    }
+
+    /// Iterates over all stored asset paths.
+    pub fn keys(&self) -> impl Iterator<Item = &String> {
+        self.assets.keys()
+    }
+
     /// Iterates over all stored assets.
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<u8>)> {
         self.assets.iter()

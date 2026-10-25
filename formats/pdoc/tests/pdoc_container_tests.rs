@@ -347,7 +347,7 @@ fn test_archive_too_large_rejected() {
 fn test_corrupt_asset_sha256_mismatch_detected() {
     let limits = test_limits();
     let doc = create_sample_flow_document();
-    let mut package = PdocPackage::from_flow_document(doc);
+    let mut package = PdocPackage::from_flow_document(doc.clone());
     package
         .add_asset(
             "assets/evidence.pdf",
@@ -364,14 +364,74 @@ fn test_corrupt_asset_sha256_mismatch_detected() {
         .expect("asset entry exists");
     entry.sha256 = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
 
-    let bytes = PdocContainer::write_to_bytes(&package).expect("write package");
-    let result = PdocContainer::read_from_bytes(&bytes, &limits);
-
-    match result {
+    // 1. Verify that attempting to serialize a tampered package fails validation
+    let write_result = PdocContainer::write_to_bytes(&package);
+    match write_result {
         Err(PdocError::AssetCorrupted { asset_path, .. }) => {
             assert_eq!(asset_path, "assets/evidence.pdf");
         }
-        other => panic!("Expected AssetCorrupted, got: {other:?}"),
+        other => panic!("Expected AssetCorrupted on write, got: {other:?}"),
+    }
+
+    // 2. Build a raw ZIP container with a mismatched manifest hash to test read rejection
+    use zip::write::SimpleFileOptions;
+    let mut raw_zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let opts = SimpleFileOptions::default().large_file(true);
+
+    let mut tampered_manifest = package.manifest.clone();
+    tampered_manifest
+        .assets
+        .get_mut("assets/evidence.pdf")
+        .expect("asset entry")
+        .sha256 = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+
+    raw_zip
+        .start_file("manifest.json", opts)
+        .expect("start manifest");
+    raw_zip
+        .write_all(&serde_json::to_vec(&tampered_manifest).expect("json"))
+        .expect("write manifest");
+
+    raw_zip
+        .start_file("metadata.json", opts)
+        .expect("start metadata");
+    raw_zip
+        .write_all(&serde_json::to_vec(&doc.metadata).expect("json"))
+        .expect("write metadata");
+
+    raw_zip
+        .start_file("styles.json", opts)
+        .expect("start styles");
+    raw_zip
+        .write_all(&serde_json::to_vec(&doc.stylesheet).expect("json"))
+        .expect("write styles");
+
+    raw_zip
+        .start_file("document.json", opts)
+        .expect("start doc");
+    let content = vocument_pdoc::PdocDocumentContent {
+        schema_version: doc.schema_version.clone(),
+        sections: doc.sections.clone(),
+        footnotes: doc.footnotes.clone(),
+        extra: doc.extra.clone(),
+    };
+    raw_zip
+        .write_all(&serde_json::to_vec(&content).expect("json"))
+        .expect("write doc");
+
+    raw_zip
+        .start_file("assets/evidence.pdf", opts)
+        .expect("start asset");
+    raw_zip.write_all(b"%PDF-valid-data").expect("write asset");
+
+    let tampered_bytes = raw_zip.finish().expect("finish zip").into_inner();
+
+    let read_result = PdocContainer::read_from_bytes(&tampered_bytes, &limits);
+    match read_result {
+        Err(PdocError::AssetCorrupted { asset_path, .. }) => {
+            assert_eq!(asset_path, "assets/evidence.pdf");
+        }
+        other => panic!("Expected AssetCorrupted on read of tampered archive, got: {other:?}"),
     }
 }
 

@@ -979,9 +979,12 @@ dependencies = [
  "thiserror",
  "uniffi",
  "vocument-core",
+ "vocument-flow",
  "vocument-imaging",
+ "vocument-layout",
  "vocument-ocr",
  "vocument-pdf-mupdf",
+ "vocument-pdoc",
 ]
 
 [[package]]

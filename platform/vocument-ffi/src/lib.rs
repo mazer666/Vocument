@@ -5,6 +5,7 @@
 
 pub mod annotation_dto;
 pub mod build_info_dto;
+pub mod editor_dto;
 pub mod inspection_dto;
 pub mod interop_dto;
 pub mod job_dto;
@@ -32,6 +33,7 @@ use vocument_core::pdf_engine::PdfEngineError;
 use vocument_core::session::{SessionError, SessionRegistry};
 use vocument_pdf_mupdf::MuPdfEngineAdapter;
 
+pub use editor_dto::*;
 pub use inspection_dto::{
     FfiDocumentInspection, FfiPdfActionInfo, FfiPdfActionKind, document_core_inspect_document,
 };
@@ -246,6 +248,8 @@ pub enum DocumentCoreError {
     OperationBlockedBySignature { details: String },
     #[error("imaging error: {details}")]
     ImagingFailure { details: String },
+    #[error("editor failure: {details}")]
+    EditorFailure { details: String },
     #[error("internal core failure: {details}")]
     InternalFailure { details: String },
 }

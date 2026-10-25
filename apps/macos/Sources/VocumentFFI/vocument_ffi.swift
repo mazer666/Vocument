@@ -2001,6 +2001,612 @@ public func FfiConverterTypeFfiDocumentSessionSnapshot_lower(_ value: FfiDocumen
 
 
 /**
+ * Formatted text line on an editor page.
+ */
+public struct FfiEditorLineSnapshot {
+    public var rect: FfiEditorRect
+    public var baselineY: Float
+    public var runs: [FfiEditorRunSnapshot]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(rect: FfiEditorRect, baselineY: Float, runs: [FfiEditorRunSnapshot]) {
+        self.rect = rect
+        self.baselineY = baselineY
+        self.runs = runs
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorLineSnapshot: Sendable {}
+#endif
+
+
+extension FfiEditorLineSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorLineSnapshot, rhs: FfiEditorLineSnapshot) -> Bool {
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        if lhs.baselineY != rhs.baselineY {
+            return false
+        }
+        if lhs.runs != rhs.runs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rect)
+        hasher.combine(baselineY)
+        hasher.combine(runs)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorLineSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorLineSnapshot {
+        return
+            try FfiEditorLineSnapshot(
+                rect: FfiConverterTypeFfiEditorRect.read(from: &buf), 
+                baselineY: FfiConverterFloat.read(from: &buf), 
+                runs: FfiConverterSequenceTypeFfiEditorRunSnapshot.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorLineSnapshot, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiEditorRect.write(value.rect, into: &buf)
+        FfiConverterFloat.write(value.baselineY, into: &buf)
+        FfiConverterSequenceTypeFfiEditorRunSnapshot.write(value.runs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorLineSnapshot_lift(_ buf: RustBuffer) throws -> FfiEditorLineSnapshot {
+    return try FfiConverterTypeFfiEditorLineSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorLineSnapshot_lower(_ value: FfiEditorLineSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiEditorLineSnapshot.lower(value)
+}
+
+
+/**
+ * Single page visual layout snapshot ready for native canvas rendering.
+ */
+public struct FfiEditorPageSnapshot {
+    public var pageIndex: UInt32
+    public var widthPt: Float
+    public var heightPt: Float
+    public var lines: [FfiEditorLineSnapshot]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, widthPt: Float, heightPt: Float, lines: [FfiEditorLineSnapshot]) {
+        self.pageIndex = pageIndex
+        self.widthPt = widthPt
+        self.heightPt = heightPt
+        self.lines = lines
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorPageSnapshot: Sendable {}
+#endif
+
+
+extension FfiEditorPageSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorPageSnapshot, rhs: FfiEditorPageSnapshot) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.widthPt != rhs.widthPt {
+            return false
+        }
+        if lhs.heightPt != rhs.heightPt {
+            return false
+        }
+        if lhs.lines != rhs.lines {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(widthPt)
+        hasher.combine(heightPt)
+        hasher.combine(lines)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorPageSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorPageSnapshot {
+        return
+            try FfiEditorPageSnapshot(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                widthPt: FfiConverterFloat.read(from: &buf), 
+                heightPt: FfiConverterFloat.read(from: &buf), 
+                lines: FfiConverterSequenceTypeFfiEditorLineSnapshot.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorPageSnapshot, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterFloat.write(value.widthPt, into: &buf)
+        FfiConverterFloat.write(value.heightPt, into: &buf)
+        FfiConverterSequenceTypeFfiEditorLineSnapshot.write(value.lines, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorPageSnapshot_lift(_ buf: RustBuffer) throws -> FfiEditorPageSnapshot {
+    return try FfiConverterTypeFfiEditorPageSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorPageSnapshot_lower(_ value: FfiEditorPageSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiEditorPageSnapshot.lower(value)
+}
+
+
+/**
+ * Rectangle in document point coordinates.
+ */
+public struct FfiEditorRect {
+    public var x: Float
+    public var y: Float
+    public var width: Float
+    public var height: Float
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(x: Float, y: Float, width: Float, height: Float) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorRect: Sendable {}
+#endif
+
+
+extension FfiEditorRect: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorRect, rhs: FfiEditorRect) -> Bool {
+        if lhs.x != rhs.x {
+            return false
+        }
+        if lhs.y != rhs.y {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+        hasher.combine(width)
+        hasher.combine(height)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorRect: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorRect {
+        return
+            try FfiEditorRect(
+                x: FfiConverterFloat.read(from: &buf), 
+                y: FfiConverterFloat.read(from: &buf), 
+                width: FfiConverterFloat.read(from: &buf), 
+                height: FfiConverterFloat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorRect, into buf: inout [UInt8]) {
+        FfiConverterFloat.write(value.x, into: &buf)
+        FfiConverterFloat.write(value.y, into: &buf)
+        FfiConverterFloat.write(value.width, into: &buf)
+        FfiConverterFloat.write(value.height, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorRect_lift(_ buf: RustBuffer) throws -> FfiEditorRect {
+    return try FfiConverterTypeFfiEditorRect.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorRect_lower(_ value: FfiEditorRect) -> RustBuffer {
+    return FfiConverterTypeFfiEditorRect.lower(value)
+}
+
+
+/**
+ * Positioned text run within a layout line.
+ */
+public struct FfiEditorRunSnapshot {
+    public var text: String
+    public var rect: FfiEditorRect
+    public var fontFamily: String
+    public var fontSizePt: Float
+    public var isBold: Bool
+    public var isItalic: Bool
+    public var colorHex: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, rect: FfiEditorRect, fontFamily: String, fontSizePt: Float, isBold: Bool, isItalic: Bool, colorHex: String) {
+        self.text = text
+        self.rect = rect
+        self.fontFamily = fontFamily
+        self.fontSizePt = fontSizePt
+        self.isBold = isBold
+        self.isItalic = isItalic
+        self.colorHex = colorHex
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorRunSnapshot: Sendable {}
+#endif
+
+
+extension FfiEditorRunSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorRunSnapshot, rhs: FfiEditorRunSnapshot) -> Bool {
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        if lhs.fontFamily != rhs.fontFamily {
+            return false
+        }
+        if lhs.fontSizePt != rhs.fontSizePt {
+            return false
+        }
+        if lhs.isBold != rhs.isBold {
+            return false
+        }
+        if lhs.isItalic != rhs.isItalic {
+            return false
+        }
+        if lhs.colorHex != rhs.colorHex {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(text)
+        hasher.combine(rect)
+        hasher.combine(fontFamily)
+        hasher.combine(fontSizePt)
+        hasher.combine(isBold)
+        hasher.combine(isItalic)
+        hasher.combine(colorHex)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorRunSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorRunSnapshot {
+        return
+            try FfiEditorRunSnapshot(
+                text: FfiConverterString.read(from: &buf), 
+                rect: FfiConverterTypeFfiEditorRect.read(from: &buf), 
+                fontFamily: FfiConverterString.read(from: &buf), 
+                fontSizePt: FfiConverterFloat.read(from: &buf), 
+                isBold: FfiConverterBool.read(from: &buf), 
+                isItalic: FfiConverterBool.read(from: &buf), 
+                colorHex: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorRunSnapshot, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeFfiEditorRect.write(value.rect, into: &buf)
+        FfiConverterString.write(value.fontFamily, into: &buf)
+        FfiConverterFloat.write(value.fontSizePt, into: &buf)
+        FfiConverterBool.write(value.isBold, into: &buf)
+        FfiConverterBool.write(value.isItalic, into: &buf)
+        FfiConverterString.write(value.colorHex, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorRunSnapshot_lift(_ buf: RustBuffer) throws -> FfiEditorRunSnapshot {
+    return try FfiConverterTypeFfiEditorRunSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorRunSnapshot_lower(_ value: FfiEditorRunSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiEditorRunSnapshot.lower(value)
+}
+
+
+/**
+ * Selection highlight rectangle positioned on a specific page.
+ */
+public struct FfiEditorSelectionRect {
+    public var pageIndex: UInt32
+    public var rect: FfiEditorRect
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageIndex: UInt32, rect: FfiEditorRect) {
+        self.pageIndex = pageIndex
+        self.rect = rect
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorSelectionRect: Sendable {}
+#endif
+
+
+extension FfiEditorSelectionRect: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorSelectionRect, rhs: FfiEditorSelectionRect) -> Bool {
+        if lhs.pageIndex != rhs.pageIndex {
+            return false
+        }
+        if lhs.rect != rhs.rect {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageIndex)
+        hasher.combine(rect)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorSelectionRect: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorSelectionRect {
+        return
+            try FfiEditorSelectionRect(
+                pageIndex: FfiConverterUInt32.read(from: &buf), 
+                rect: FfiConverterTypeFfiEditorRect.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorSelectionRect, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageIndex, into: &buf)
+        FfiConverterTypeFfiEditorRect.write(value.rect, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorSelectionRect_lift(_ buf: RustBuffer) throws -> FfiEditorSelectionRect {
+    return try FfiConverterTypeFfiEditorSelectionRect.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorSelectionRect_lower(_ value: FfiEditorSelectionRect) -> RustBuffer {
+    return FfiConverterTypeFfiEditorSelectionRect.lower(value)
+}
+
+
+/**
+ * Comprehensive immutable snapshot of the native platform editor state.
+ */
+public struct FfiEditorSessionSnapshot {
+    public var editorId: String
+    public var title: String
+    public var filePath: String?
+    public var totalPages: UInt32
+    public var activeBlockId: String
+    public var cursorOffset: UInt32
+    public var cursorPageIndex: UInt32
+    public var cursorRect: FfiEditorRect?
+    public var selectionRects: [FfiEditorSelectionRect]
+    public var canUndo: Bool
+    public var canRedo: Bool
+    public var plainText: String
+    public var pages: [FfiEditorPageSnapshot]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(editorId: String, title: String, filePath: String?, totalPages: UInt32, activeBlockId: String, cursorOffset: UInt32, cursorPageIndex: UInt32, cursorRect: FfiEditorRect?, selectionRects: [FfiEditorSelectionRect], canUndo: Bool, canRedo: Bool, plainText: String, pages: [FfiEditorPageSnapshot]) {
+        self.editorId = editorId
+        self.title = title
+        self.filePath = filePath
+        self.totalPages = totalPages
+        self.activeBlockId = activeBlockId
+        self.cursorOffset = cursorOffset
+        self.cursorPageIndex = cursorPageIndex
+        self.cursorRect = cursorRect
+        self.selectionRects = selectionRects
+        self.canUndo = canUndo
+        self.canRedo = canRedo
+        self.plainText = plainText
+        self.pages = pages
+    }
+}
+
+#if compiler(>=6)
+extension FfiEditorSessionSnapshot: Sendable {}
+#endif
+
+
+extension FfiEditorSessionSnapshot: Equatable, Hashable {
+    public static func ==(lhs: FfiEditorSessionSnapshot, rhs: FfiEditorSessionSnapshot) -> Bool {
+        if lhs.editorId != rhs.editorId {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.filePath != rhs.filePath {
+            return false
+        }
+        if lhs.totalPages != rhs.totalPages {
+            return false
+        }
+        if lhs.activeBlockId != rhs.activeBlockId {
+            return false
+        }
+        if lhs.cursorOffset != rhs.cursorOffset {
+            return false
+        }
+        if lhs.cursorPageIndex != rhs.cursorPageIndex {
+            return false
+        }
+        if lhs.cursorRect != rhs.cursorRect {
+            return false
+        }
+        if lhs.selectionRects != rhs.selectionRects {
+            return false
+        }
+        if lhs.canUndo != rhs.canUndo {
+            return false
+        }
+        if lhs.canRedo != rhs.canRedo {
+            return false
+        }
+        if lhs.plainText != rhs.plainText {
+            return false
+        }
+        if lhs.pages != rhs.pages {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(editorId)
+        hasher.combine(title)
+        hasher.combine(filePath)
+        hasher.combine(totalPages)
+        hasher.combine(activeBlockId)
+        hasher.combine(cursorOffset)
+        hasher.combine(cursorPageIndex)
+        hasher.combine(cursorRect)
+        hasher.combine(selectionRects)
+        hasher.combine(canUndo)
+        hasher.combine(canRedo)
+        hasher.combine(plainText)
+        hasher.combine(pages)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiEditorSessionSnapshot {
+        return
+            try FfiEditorSessionSnapshot(
+                editorId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                filePath: FfiConverterOptionString.read(from: &buf), 
+                totalPages: FfiConverterUInt32.read(from: &buf), 
+                activeBlockId: FfiConverterString.read(from: &buf), 
+                cursorOffset: FfiConverterUInt32.read(from: &buf), 
+                cursorPageIndex: FfiConverterUInt32.read(from: &buf), 
+                cursorRect: FfiConverterOptionTypeFfiEditorRect.read(from: &buf), 
+                selectionRects: FfiConverterSequenceTypeFfiEditorSelectionRect.read(from: &buf), 
+                canUndo: FfiConverterBool.read(from: &buf), 
+                canRedo: FfiConverterBool.read(from: &buf), 
+                plainText: FfiConverterString.read(from: &buf), 
+                pages: FfiConverterSequenceTypeFfiEditorPageSnapshot.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiEditorSessionSnapshot, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.editorId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.filePath, into: &buf)
+        FfiConverterUInt32.write(value.totalPages, into: &buf)
+        FfiConverterString.write(value.activeBlockId, into: &buf)
+        FfiConverterUInt32.write(value.cursorOffset, into: &buf)
+        FfiConverterUInt32.write(value.cursorPageIndex, into: &buf)
+        FfiConverterOptionTypeFfiEditorRect.write(value.cursorRect, into: &buf)
+        FfiConverterSequenceTypeFfiEditorSelectionRect.write(value.selectionRects, into: &buf)
+        FfiConverterBool.write(value.canUndo, into: &buf)
+        FfiConverterBool.write(value.canRedo, into: &buf)
+        FfiConverterString.write(value.plainText, into: &buf)
+        FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.pages, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorSessionSnapshot_lift(_ buf: RustBuffer) throws -> FfiEditorSessionSnapshot {
+    return try FfiConverterTypeFfiEditorSessionSnapshot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiEditorSessionSnapshot_lower(_ value: FfiEditorSessionSnapshot) -> RustBuffer {
+    return FfiConverterTypeFfiEditorSessionSnapshot.lower(value)
+}
+
+
+/**
  * External change inspection result crossing UniFFI (`FILELOCK-002`).
  */
 public struct FfiExternalChangeCheckResult {
@@ -8556,6 +9162,8 @@ public enum DocumentCoreError: Swift.Error {
     )
     case ImagingFailure(details: String
     )
+    case EditorFailure(details: String
+    )
     case InternalFailure(details: String
     )
 }
@@ -8621,7 +9229,10 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
         case 16: return .ImagingFailure(
             details: try FfiConverterString.read(from: &buf)
             )
-        case 17: return .InternalFailure(
+        case 17: return .EditorFailure(
+            details: try FfiConverterString.read(from: &buf)
+            )
+        case 18: return .InternalFailure(
             details: try FfiConverterString.read(from: &buf)
             )
 
@@ -8716,8 +9327,13 @@ public struct FfiConverterTypeDocumentCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(details, into: &buf)
             
         
-        case let .InternalFailure(details):
+        case let .EditorFailure(details):
             writeInt(&buf, Int32(17))
+            FfiConverterString.write(details, into: &buf)
+            
+        
+        case let .InternalFailure(details):
+            writeInt(&buf, Int32(18))
             FfiConverterString.write(details, into: &buf)
             
         }
@@ -10051,6 +10667,30 @@ fileprivate struct FfiConverterOptionTypeFfiDocumentSessionSnapshot: FfiConverte
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiEditorRect: FfiConverterRustBuffer {
+    typealias SwiftType = FfiEditorRect?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiEditorRect.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiEditorRect.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiFileIdentity: FfiConverterRustBuffer {
     typealias SwiftType = FfiFileIdentity?
 
@@ -10337,6 +10977,106 @@ fileprivate struct FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRus
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiCommentAnnotation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiEditorLineSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiEditorLineSnapshot]
+
+    public static func write(_ value: [FfiEditorLineSnapshot], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiEditorLineSnapshot.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiEditorLineSnapshot] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiEditorLineSnapshot]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiEditorLineSnapshot.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiEditorPageSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiEditorPageSnapshot]
+
+    public static func write(_ value: [FfiEditorPageSnapshot], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiEditorPageSnapshot.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiEditorPageSnapshot] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiEditorPageSnapshot]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiEditorPageSnapshot.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiEditorRunSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiEditorRunSnapshot]
+
+    public static func write(_ value: [FfiEditorRunSnapshot], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiEditorRunSnapshot.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiEditorRunSnapshot] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiEditorRunSnapshot]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiEditorRunSnapshot.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiEditorSelectionRect: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiEditorSelectionRect]
+
+    public static func write(_ value: [FfiEditorSelectionRect], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiEditorSelectionRect.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiEditorSelectionRect] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiEditorSelectionRect]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiEditorSelectionRect.read(from: &buf))
         }
         return seq
     }
@@ -11001,6 +11741,15 @@ public func documentCoreCheckExternalChanges(sessionId: String)throws  -> FfiExt
 })
 }
 /**
+ * Closes an active editor session and releases its resources.
+ */
+public func documentCoreCloseEditorSession(editorId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_close_editor_session(
+        FfiConverterString.lower(editorId),$0
+    )
+}
+}
+/**
  * Closes and releases an active scanning session.
  */
 public func documentCoreCloseScanSession(sessionId: String)throws   {try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
@@ -11045,6 +11794,16 @@ public func documentCoreConfigureTessdataPath(path: String)  {try! rustCall() {
         FfiConverterString.lower(path),$0
     )
 }
+}
+/**
+ * Creates a new in-memory `.pdoc` flow editor session.
+ */
+public func documentCoreCreateEditorSession(title: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_create_editor_session(
+        FfiConverterString.lower(title),$0
+    )
+})
 }
 /**
  * The standard rail of the profession (`ANNOT-001`).
@@ -11168,6 +11927,212 @@ public func documentCoreDuplicatePageWithOptions(sessionId: String, pageIndex: U
         FfiConverterString.lower(sessionId),
         FfiConverterUInt32.lower(pageIndex),
         FfiConverterTypeFfiPageWorkbenchOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Clears the active selection, collapsing to cursor position.
+ */
+public func documentCoreEditorClearSelection(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_clear_selection(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Deletes the character or selection immediately preceding the cursor (Backspace).
+ */
+public func documentCoreEditorDeleteBackward(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_delete_backward(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Deletes the character or selection immediately following the cursor (Forward Delete).
+ */
+public func documentCoreEditorDeleteForward(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_delete_forward(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Hit-tests a coordinate click/touch on a page and sets cursor position.
+ */
+public func documentCoreEditorHitTest(editorId: String, pageIndex: UInt32, xPt: Float, yPt: Float)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_hit_test(
+        FfiConverterString.lower(editorId),
+        FfiConverterUInt32.lower(pageIndex),
+        FfiConverterFloat.lower(xPt),
+        FfiConverterFloat.lower(yPt),$0
+    )
+})
+}
+/**
+ * Inserts an unordered bullet list block at cursor.
+ */
+public func documentCoreEditorInsertBulletList(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_bullet_list(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Inserts a legal footnote reference and definition at cursor.
+ */
+public func documentCoreEditorInsertFootnote(editorId: String, text: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_footnote(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * Inserts an ordered numbered list block at cursor.
+ */
+public func documentCoreEditorInsertNumberedList(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_numbered_list(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Splits the current block with a paragraph break (Enter key).
+ */
+public func documentCoreEditorInsertParagraphBreak(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_paragraph_break(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Inserts an editable table with specified rows and columns at cursor.
+ */
+public func documentCoreEditorInsertTable(editorId: String, rows: UInt32, cols: UInt32)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_table(
+        FfiConverterString.lower(editorId),
+        FfiConverterUInt32.lower(rows),
+        FfiConverterUInt32.lower(cols),$0
+    )
+})
+}
+/**
+ * Inserts text at the current cursor position with sub-16ms incremental layout reflow.
+ */
+public func documentCoreEditorInsertText(editorId: String, text: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_insert_text(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * Measures real-time typing and incremental layout latency in microseconds (`PERF-001`, `< 16ms budget`).
+ */
+public func documentCoreEditorMeasureTypingLatencyMicros(editorId: String, sampleText: String)throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_measure_typing_latency_micros(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(sampleText),$0
+    )
+})
+}
+/**
+ * Redoes the previously undone editing transaction.
+ */
+public func documentCoreEditorRedo(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_redo(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Saves the flow document to disk as a hardened `.pdoc` package with atomic fsync and conflict detection.
+ */
+public func documentCoreEditorSavePdoc(editorId: String, targetPath: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(
+        FfiConverterString.lower(editorId),
+        FfiConverterOptionString.lower(targetPath),$0
+    )
+})
+}
+/**
+ * Explicitly positions the cursor within a block.
+ */
+public func documentCoreEditorSetCursor(editorId: String, blockId: String, offset: UInt32)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_set_cursor(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(blockId),
+        FfiConverterUInt32.lower(offset),$0
+    )
+})
+}
+/**
+ * Sets the heading level (1..6) or 0 for body paragraph.
+ */
+public func documentCoreEditorSetHeadingLevel(editorId: String, level: UInt8)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_set_heading_level(
+        FfiConverterString.lower(editorId),
+        FfiConverterUInt8.lower(level),$0
+    )
+})
+}
+/**
+ * Sets an active text selection range across blocks.
+ */
+public func documentCoreEditorSetSelection(editorId: String, anchorBlockId: String, anchorOffset: UInt32, focusBlockId: String, focusOffset: UInt32)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_set_selection(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(anchorBlockId),
+        FfiConverterUInt32.lower(anchorOffset),
+        FfiConverterString.lower(focusBlockId),
+        FfiConverterUInt32.lower(focusOffset),$0
+    )
+})
+}
+/**
+ * Toggles bold typography on active selection or for subsequent typing.
+ */
+public func documentCoreEditorToggleBold(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_toggle_bold(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Toggles italic typography on active selection or for subsequent typing.
+ */
+public func documentCoreEditorToggleItalic(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_toggle_italic(
+        FfiConverterString.lower(editorId),$0
+    )
+})
+}
+/**
+ * Undoes the last editing transaction.
+ */
+public func documentCoreEditorUndo(editorId: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_undo(
+        FfiConverterString.lower(editorId),$0
     )
 })
 }
@@ -11601,6 +12566,16 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
     return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(scopedPathOrUrl),$0
+    )
+})
+}
+/**
+ * Opens an existing `.pdoc` file into the native platform flow editor.
+ */
+public func documentCoreOpenPdocEditorSession(filePath: String)throws  -> FfiEditorSessionSnapshot  {
+    return try  FfiConverterTypeFfiEditorSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_open_pdoc_editor_session(
+        FfiConverterString.lower(filePath),$0
     )
 })
 }
@@ -12221,6 +13196,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_check_external_changes() != 29135) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_close_editor_session() != 40015) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_scan_session() != 12511) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -12231,6 +13209,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_configure_tessdata_path() != 856) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_create_editor_session() != 31570) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_default_jurist_palette() != 11217) {
@@ -12264,6 +13245,63 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_duplicate_page_with_options() != 64233) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_clear_selection() != 25431) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_delete_backward() != 44549) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_delete_forward() != 65137) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test() != 44237) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_bullet_list() != 33181) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_footnote() != 47494) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_numbered_list() != 24108) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_paragraph_break() != 13388) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_table() != 13881) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_insert_text() != 12157) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros() != 22325) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor() != 39705) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_set_heading_level() != 39722) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_set_selection() != 29242) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_bold() != 48746) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_toggle_italic() != 58533) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_undo() != 57062) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_enhance_scan_frame() != 44838) {
@@ -12375,6 +13413,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session() != 64345) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_optimize_document_with_options() != 44244) {

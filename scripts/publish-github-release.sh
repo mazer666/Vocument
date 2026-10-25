@@ -132,8 +132,15 @@ fi
 REVISION="$(git rev-parse HEAD)"
 SHORT_REV="${REVISION:0:12}"
 
-# Verifiable Project Owner Clearance Check for Publication
+# Verifiable Project Owner Cryptographic Clearance Check for Publication
+ROOT_OF_TRUST="$REPOSITORY_ROOT/docs/releasing/project_owner_root_of_trust.pub"
 if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
+    if [[ ! -f "$ROOT_OF_TRUST" ]]; then
+        echo "ERROR (SECURITY/DIST-GATE): Missing Project Owner root of trust: $ROOT_OF_TRUST" >&2
+        echo "       Public release publication requires an established cryptographic trust foundation." >&2
+        exit 1
+    fi
+
     if [[ ! -f "$CLEARANCE_FILE" ]]; then
         echo "" >&2
         echo "================================================================================" >&2
@@ -145,14 +152,41 @@ if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
         exit 1
     fi
 
+    # Cryptographic signature verification:
+    # Release publication requires an authentic cryptographic signature (.sig)
+    # anchored in the Project Owner's root of trust.
+    CLEARANCE_SIG_FILE="${CLEARANCE_FILE}.sig"
+    if [[ ! -f "$CLEARANCE_SIG_FILE" ]]; then
+        echo "" >&2
+        echo "================================================================================" >&2
+        echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
+        echo "Release publication may NEVER be conferred solely by editable plaintext fields," >&2
+        echo "command-line flags, or environment variables." >&2
+        echo "" >&2
+        echo "Missing Project Owner cryptographic signature:" >&2
+        echo "  Expected signature file: $CLEARANCE_SIG_FILE" >&2
+        echo "  Required Trust Anchor:   $ROOT_OF_TRUST" >&2
+        echo "" >&2
+        echo "Only the Project Owner can sign this clearance using their private key." >&2
+        echo "Publication is strictly and unconditionally BLOCKED." >&2
+        echo "================================================================================" >&2
+        exit 1
+    fi
+
+    # Verify cryptographic signature against Project Owner root of trust
+    if ! ssh-keygen -Y verify -f "$ROOT_OF_TRUST" -I "project-owner@vocument.local" -n "vocument-release" -s "$CLEARANCE_SIG_FILE" < "$CLEARANCE_FILE" >/dev/null 2>&1; then
+        echo "ERROR: Cryptographic signature verification failed for $CLEARANCE_FILE against Project Owner root of trust ($ROOT_OF_TRUST)!" >&2
+        exit 1
+    fi
+
     # Verify clearance file contents for this exact revision and tag
     if ! grep -q "^RELEASE_TAG: $TAG$" "$CLEARANCE_FILE" || \
        ! grep -q "^COMMIT_REVISION: $REVISION$" "$CLEARANCE_FILE" || \
        ! grep -q "^PROJECT_OWNER_STATUS: APPROVED_FOR_PUBLIC_RELEASE$" "$CLEARANCE_FILE"; then
-        echo "ERROR: Clearance file $CLEARANCE_FILE does not authorize tag '$TAG' at revision '$REVISION'!" >&2
+        echo "ERROR: Cryptographically signed clearance file $CLEARANCE_FILE does not authorize tag '$TAG' at revision '$REVISION'!" >&2
         exit 1
     fi
-    echo "==> Verifiable Project Owner clearance confirmed for $TAG ($SHORT_REV)."
+    echo "==> Cryptographically verified Project Owner clearance confirmed for $TAG ($SHORT_REV)."
 fi
 
 if [[ -z "$TITLE" ]]; then

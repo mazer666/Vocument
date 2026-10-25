@@ -3,10 +3,16 @@ import AppKit
 import VocumentMacKit
 import VocumentFFI
 
-/// Native macOS 15+ application entry point (`ARCHITECTURE.md` §3, `VIEW-002` Comfort/Professional Reader preset).
+/// Native macOS 15+ application entry point (`ARCHITECTURE.md` §3, `VIEW-002` Comfort/Professional Reader preset, `ADR-0020`).
 @main
 struct VocumentMacApp: App {
     @ObservedObject private var coordinator = MacDocumentSessionCoordinator()
+
+    init() {
+        if CommandLine.arguments.contains("--verify-staged") {
+            VocumentStagedVerifier.runAndExit()
+        }
+    }
 
     var body: some Scene {
         WindowGroup("Vocument") {
@@ -36,6 +42,9 @@ struct CalmReaderSessionView: View {
                 if let session = coordinator.activeSession {
                     Text("• \(session.fileIdentity.displayName) (\(session.documentId))")
                         .foregroundStyle(.secondary)
+                } else if let editorSession = coordinator.activeEditorSession {
+                    Text("• \(editorSession.title) (.pdoc)")
+                        .foregroundStyle(.secondary)
                 }
                 Text(
                     "• \(coordinator.buildInfo.productName) \(coordinator.buildInfo.version)"
@@ -44,15 +53,15 @@ struct CalmReaderSessionView: View {
                 )
                 .foregroundStyle(.secondary)
                 Spacer()
-                if coordinator.activeSession != nil {
+                if coordinator.activeSession != nil || coordinator.activeEditorSession != nil {
                     Picker("Mode", selection: $coordinator.activeViewMode) {
                         ForEach(MacAppViewMode.allCases) { mode in
                             Text(mode.rawValue).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 320)
-                    .help("Switch between Comfort Reader, Professional Review, and Page Workbench modes (ROADMAP M3.1)")
+                    .frame(width: 400)
+                    .help("Switch between Comfort Reader, Professional Review, Page Workbench, and Authoring Canvas modes")
                 }
                 Button(action: {
                     coordinator.openHelp()
@@ -65,6 +74,15 @@ struct CalmReaderSessionView: View {
                 .accessibilityLabel("Vocument Hilfe")
                 .accessibilityIdentifier("toolbar_help_button")
 
+                Button("Neuer Schriftsatz") {
+                    coordinator.createNewAuthoringDocument()
+                }
+                .help("Neues .pdoc-Schriftsatzdokument im Flow-Editor erstellen")
+
+                Button("Open .pdoc…") {
+                    coordinator.openPdocViaPanel()
+                }
+
                 Button("Open PDF…") {
                     coordinator.openDocumentViaPanel()
                 }
@@ -75,12 +93,19 @@ struct CalmReaderSessionView: View {
                     .foregroundStyle(.red)
             }
 
+            if let saveNotification = coordinator.saveNotificationMessage {
+                Text(saveNotification)
+                    .foregroundStyle(.green)
+            }
+
             if let recoveryWarning = coordinator.recoveryWarning {
                 Text(recoveryWarning)
                     .foregroundStyle(.red)
             }
 
-            if coordinator.activeSession != nil {
+            if coordinator.activeEditorSession != nil && coordinator.activeViewMode == .authoring {
+                PdocAuthoringCanvasView(coordinator: coordinator)
+            } else if coordinator.activeSession != nil {
                 switch coordinator.activeViewMode {
                 case .reader:
                     HStack(alignment: .top, spacing: 16) {
@@ -95,9 +120,11 @@ struct CalmReaderSessionView: View {
                     }
                 case .workbench:
                     PageWorkbenchView(coordinator: coordinator)
+                case .authoring:
+                    PdocAuthoringCanvasView(coordinator: coordinator)
                 }
             } else {
-                Text("No document open. Choose 'Open PDF…' or open a file from Finder.")
+                Text("No document open. Choose 'Neuer Schriftsatz', 'Open .pdoc…', or 'Open PDF…'.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
@@ -107,7 +134,11 @@ struct CalmReaderSessionView: View {
             HelpSheetView(isPresented: $coordinator.showHelpSheet)
         }
         .onOpenURL { url in
-            coordinator.openDocument(at: url)
+            if url.pathExtension.lowercased() == "pdoc" {
+                coordinator.openPdocDocument(at: url)
+            } else {
+                coordinator.openDocument(at: url)
+            }
         }
     }
 }

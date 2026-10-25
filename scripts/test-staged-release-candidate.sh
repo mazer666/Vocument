@@ -108,12 +108,10 @@ else
     exit 1
 fi
 
-# 2f. Execute Full Native Handshake & Interoperability with Staged Frameworks
-echo "    * Executing full native handshake with staged dynamic libraries..."
-DYLD_LIBRARY_PATH="$MAC_APP/Contents/Frameworks" \
-DYLD_FRAMEWORK_PATH="$MAC_APP/Contents/Frameworks" \
-swift run --package-path "$REPOSITORY_ROOT/apps/macos" vocument-mac-handshake
-echo "    ✓ Staged macOS dynamic libraries successfully passed all M0.1–M3.3 tests."
+# 2f. Execute Authentic Staged App Self-Verification (No Developer Build Substitutes)
+echo "    * Executing authentic self-verification of staged, unmodified application binary..."
+"$MAC_BIN" --verify-staged
+echo "    ✓ Staged macOS application binary successfully passed all native M0.1–M4.3 self-tests."
 
 REPORT_CONTENT+="### 2. macOS Package Verification (\`$(basename "$STAGED_MAC_ZIP")\`)\n\n"
 REPORT_CONTENT+="- [x] Archive extraction and structural integrity verified.\n"
@@ -122,7 +120,7 @@ REPORT_CONTENT+="- [x] ARM64 native architecture verified.\n"
 REPORT_CONTENT+="- [x] Bundled frameworks present: \`libvocument_ffi.dylib\`, \`libmupdf.dylib\`.\n"
 REPORT_CONTENT+="- [x] Zero host developer path contamination (\`otool -L\` clean, relocatable \`@rpath\`).\n"
 REPORT_CONTENT+="- [x] Binary launch and process execution verified.\n"
-REPORT_CONTENT+="- [x] Native handshake and PDF open/render/workbench verified via staged dynamic libraries.\n\n"
+REPORT_CONTENT+="- [x] Unmodified staged application binary execution verified directly (\`--verify-staged\` passed M0.1–M4.3 tests).\n\n"
 
 # 3. Android Staged Package Verification
 echo "==> 3. Verifying Android Release Package..."
@@ -150,10 +148,10 @@ if [[ -n "$CONNECTED_DEVICE" ]]; then
     echo "    * Installing staged APK on $CONNECTED_DEVICE..."
     adb -s "$CONNECTED_DEVICE" install -r "$STAGED_APK"
 
-    echo "    * Launching org.vocument.app on $CONNECTED_DEVICE..."
+    echo "    * Launching org.vocument.app on $CONNECTED_DEVICE for OCR and Native Editor verification..."
     adb -s "$CONNECTED_DEVICE" shell am force-stop org.vocument.app || true
     adb -s "$CONNECTED_DEVICE" logcat -c
-    adb -s "$CONNECTED_DEVICE" shell am start -n org.vocument.app/.MainActivity --es action verify-ocr
+    adb -s "$CONNECTED_DEVICE" shell am start -n org.vocument.app/.MainActivity --es action verify-all
     sleep 3
 
     ANDROID_PID="$(adb -s "$CONNECTED_DEVICE" shell pidof org.vocument.app || true)"
@@ -165,22 +163,35 @@ if [[ -n "$CONNECTED_DEVICE" ]]; then
     echo "    ✓ Android app running on device with PID $ANDROID_PID."
 
     # Verify native OCR runtime gate in logcat
+    OCR_PASSED=false
     if adb -s "$CONNECTED_DEVICE" logcat -d | grep -q "VocumentOcrGate: SUCCESS: Result: passed=true"; then
         echo "    ✓ Authentic on-device OCR verified (Tesseract + native Rust FFI)."
-        REPORT_CONTENT+="### 3. Android Package Verification (\`$(basename "$STAGED_APK")\`)\n\n"
-        REPORT_CONTENT+="- [x] APK zip archive integrity verified.\n"
-        REPORT_CONTENT+="- [x] Bundled \`lib/arm64-v8a/libvocument_ffi.so\` (16 KB page-aligned).\n"
-        REPORT_CONTENT+="- [x] Installation on \`$CONNECTED_DEVICE\` verified.\n"
-        REPORT_CONTENT+="- [x] Process launch and Compose activity initialization verified (PID $ANDROID_PID).\n"
-        REPORT_CONTENT+="- [x] Authentic on-device OCR execution gate verified (CER < 4%, accuracy > 96%).\n"
-        REPORT_CONTENT+="- [ ] **NOT RUN:** Physical camera hardware capture (evaluated on emulator; physical hardware requires manual validation).\n\n"
-    else
-        echo "WARNING: VocumentOcrGate log line not found in logcat."
-        REPORT_CONTENT+="### 3. Android Package Verification (\`$(basename "$STAGED_APK")\`)\n\n"
-        REPORT_CONTENT+="- [x] APK zip archive integrity verified.\n"
-        REPORT_CONTENT+="- [x] Installation on \`$CONNECTED_DEVICE\` verified.\n"
-        REPORT_CONTENT+="- [ ] **NOT RUN:** OCR runtime gate confirmation timed out.\n\n"
+        OCR_PASSED=true
     fi
+
+    # Verify native FlowDocument editor runtime gate in logcat
+    EDITOR_PASSED=false
+    if adb -s "$CONNECTED_DEVICE" logcat -d | grep -q "VocumentEditorGate: SUCCESS: Result: passed=true"; then
+        echo "    ✓ Authentic on-device M4.3 Native Flow Editor verified (latency < 16ms, atomic .pdoc save)."
+        EDITOR_PASSED=true
+    fi
+
+    REPORT_CONTENT+="### 3. Android Package Verification (\`$(basename "$STAGED_APK")\`)\n\n"
+    REPORT_CONTENT+="- [x] APK zip archive integrity verified.\n"
+    REPORT_CONTENT+="- [x] Bundled \`lib/arm64-v8a/libvocument_ffi.so\` (16 KB page-aligned).\n"
+    REPORT_CONTENT+="- [x] Installation on \`$CONNECTED_DEVICE\` verified.\n"
+    REPORT_CONTENT+="- [x] Process launch and Compose activity initialization verified (PID $ANDROID_PID).\n"
+    if [[ "$OCR_PASSED" == "true" ]]; then
+        REPORT_CONTENT+="- [x] Authentic on-device OCR execution gate verified (CER < 4%, accuracy > 96%).\n"
+    else
+        REPORT_CONTENT+="- [ ] **NOT RUN:** OCR runtime gate confirmation timed out.\n"
+    fi
+    if [[ "$EDITOR_PASSED" == "true" ]]; then
+        REPORT_CONTENT+="- [x] Authentic on-device M4.3 Native Editor verified (latency < 16ms, atomic .pdoc save/reload).\n"
+    else
+        REPORT_CONTENT+="- [ ] **NOT RUN:** Native Editor gate confirmation timed out.\n"
+    fi
+    REPORT_CONTENT+="- [ ] **NOT RUN:** Physical camera hardware capture (evaluated on emulator; physical hardware requires manual validation).\n\n"
 else
     echo "    NOTE: No connected Android device or emulator detected."
     REPORT_CONTENT+="### 3. Android Package Verification (\`$(basename "$STAGED_APK")\`)\n\n"

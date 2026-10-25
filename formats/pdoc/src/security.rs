@@ -110,3 +110,84 @@ pub fn validate_entry_limits(
 
     Ok(())
 }
+
+/// Normalizes an archive entry path to a canonical, case-folded string for collision detection.
+///
+/// Prevents ambiguous entries in zip archives where attackers include multiple files
+/// differing only by case, redundant `./`, or forward/backward slashes.
+pub fn normalize_for_collision_check(raw_path: &str) -> String {
+    let clean = raw_path.replace('\\', "/").trim_matches('/').to_string();
+
+    let parts: Vec<&str> = clean
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect();
+
+    parts.join("/").to_ascii_lowercase()
+}
+
+/// Validates that an archive entry uses an approved compression algorithm.
+///
+/// Under AGENTS.md and ADR-0020, only standard Stored and Deflated methods are allowed
+/// to ensure deterministic cross-platform decoding and prevent complex algorithmic attacks.
+pub fn validate_compression_method(
+    entry_name: &str,
+    method: zip::CompressionMethod,
+) -> Result<(), PdocError> {
+    match method {
+        zip::CompressionMethod::Stored | zip::CompressionMethod::Deflated => Ok(()),
+        other => Err(PdocError::UnsupportedCompressionMethod {
+            entry: entry_name.to_string(),
+            method: format!("{:?}", other),
+        }),
+    }
+}
+
+/// Reads uncompressed bytes from an archive entry stream with strict streaming bounds.
+///
+/// Defends against malicious archives with forged local headers claiming small uncompressed
+/// sizes while streaming out massive decompression bombs.
+pub fn read_entry_bounded<R: std::io::Read>(
+    mut reader: R,
+    entry_name: &str,
+    compressed_size: u64,
+    declared_uncompressed_size: u64,
+    remaining_archive_quota: u64,
+    limits: &PackageLimitsConfig,
+) -> Result<Vec<u8>, PdocError> {
+    let max_entry_bytes = remaining_archive_quota;
+    let mut buffer = Vec::with_capacity(declared_uncompressed_size.min(1024 * 1024) as usize);
+    let mut chunk = [0u8; 8192];
+    let mut total_read: u64 = 0;
+
+    loop {
+        let n = reader.read(&mut chunk)?;
+        if n == 0 {
+            break;
+        }
+        total_read = total_read.saturating_add(n as u64);
+        if total_read > max_entry_bytes {
+            return Err(PdocError::ArchiveTooLarge {
+                bytes: total_read,
+                max_bytes: limits.max_pdoc_archive_size_mb.saturating_mul(1024 * 1024),
+            });
+        }
+
+        // Dynamic streaming decompression bomb ratio check
+        if compressed_size > 1024 {
+            let ratio = total_read / compressed_size;
+            if ratio > limits.max_zip_compression_ratio as u64 {
+                return Err(PdocError::DecompressionBomb {
+                    details: format!(
+                        "entry '{}' streaming decompression ratio {} exceeds maximum policy threshold {}",
+                        entry_name, ratio, limits.max_zip_compression_ratio
+                    ),
+                });
+            }
+        }
+
+        buffer.extend_from_slice(&chunk[..n]);
+    }
+
+    Ok(buffer)
+}

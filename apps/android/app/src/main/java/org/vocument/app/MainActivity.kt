@@ -89,9 +89,17 @@ class MainActivity : ComponentActivity() {
         coreBridge.configureTessdataPath(tessdataDir.absolutePath)
 
         val runOcr = intent?.getStringExtra("action") == "verify-ocr" ||
+            intent?.getStringExtra("action") == "verify-all" ||
             intent?.getBooleanExtra("run_ocr_verification", false) == true
         if (runOcr) {
             AndroidOcrRuntimeGate.runVerification(this, coreBridge)
+        }
+
+        val runEditor = intent?.getStringExtra("action") == "verify-editor" ||
+            intent?.getStringExtra("action") == "verify-all" ||
+            intent?.getBooleanExtra("run_editor_verification", false) == true
+        if (runEditor) {
+            AndroidEditorRuntimeGate.runVerification(this, coreBridge)
         }
 
         setContent {

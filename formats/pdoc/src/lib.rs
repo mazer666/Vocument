@@ -4,13 +4,15 @@ pub mod assets;
 pub mod container;
 pub mod error;
 pub mod manifest;
+pub mod recovery;
 pub mod review;
 pub mod security;
 
 pub use assets::PdocAssetStore;
-pub use container::{PdocContainer, PdocDocumentContent, PdocPackage};
+pub use container::{PdocContainer, PdocDocumentContent, PdocFileFingerprint, PdocPackage};
 pub use error::PdocError;
 pub use manifest::{CURRENT_FORMAT_VERSION, PdocAssetEntry, PdocManifest};
+pub use recovery::PdocRecoveryStore;
 pub use review::{
     PdocChangeType, PdocFlowComment, PdocFlowCommentReply, PdocReviewData, PdocTrackedChange,
 };

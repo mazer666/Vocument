@@ -1,0 +1,208 @@
+//! Tests for native platform FlowDocument editor engine (`ADR-0020`, `AUTHOR-002`, `UI-009`).
+
+use vocument_layout::editor::FlowEditorState;
+
+#[test]
+fn test_editor_typing_and_cursor_movement() {
+    let mut editor = FlowEditorState::new_empty("Briefing Document");
+
+    // Initial state: empty document, cursor at 0
+    assert_eq!(editor.cursor_offset, 0);
+
+    // Type regular text
+    editor.insert_text("In accordance with § 242 BGB, ");
+    assert_eq!(editor.cursor_offset, 30);
+
+    // Type German and Unicode characters
+    editor.insert_text("Treu und Glauben müssen gewahrt bleiben.");
+    assert!(editor.cursor_offset > 30);
+
+    let cursor_pos = editor.cursor_rect().expect("cursor rect must exist");
+    assert_eq!(cursor_pos.0, 0); // Page index 0
+    assert!(cursor_pos.1.x > 0.0);
+    assert!(cursor_pos.1.y > 0.0);
+    assert!(cursor_pos.1.height > 0.0);
+
+    // Test backspace
+    let prev_offset = editor.cursor_offset;
+    editor.delete_backward();
+    assert_eq!(editor.cursor_offset, prev_offset - 1);
+}
+
+#[test]
+fn test_editor_cjk_and_unicode_input() {
+    let mut editor = FlowEditorState::new_empty("Multilingual Brief");
+
+    // Type Japanese CJK characters (simulating IME input)
+    editor.insert_text("契約書第1条：秘密保持義務。");
+    assert!(editor.cursor_offset > 0);
+
+    let cursor_pos = editor.cursor_rect().expect("cursor rect for CJK");
+    assert!(cursor_pos.1.x > 0.0);
+
+    // Delete character
+    let offset_before = editor.cursor_offset;
+    editor.delete_backward();
+    assert_eq!(editor.cursor_offset, offset_before - 1);
+}
+
+fn block_text(block: &vocument_flow::model::Block) -> String {
+    match block {
+        vocument_flow::model::Block::Paragraph(p) => {
+            p.spans.iter().map(|s| s.text.as_str()).collect()
+        }
+        vocument_flow::model::Block::Heading(h) => {
+            h.spans.iter().map(|s| s.text.as_str()).collect()
+        }
+        _ => String::new(),
+    }
+}
+
+#[test]
+fn test_editor_undo_redo_transactions() {
+    let mut editor = FlowEditorState::new_empty("Undo Test");
+    assert!(!editor.can_undo());
+    assert!(!editor.can_redo());
+
+    editor.insert_text("Initial clause.");
+    assert!(editor.can_undo());
+
+    editor.insert_text(" Second clause.");
+    let text_before_undo = block_text(&editor.document.sections[0].blocks[0]);
+    assert!(text_before_undo.contains("Second clause"));
+
+    // Undo second typing
+    assert!(editor.undo());
+    let text_after_first_undo = block_text(&editor.document.sections[0].blocks[0]);
+    assert!(!text_after_first_undo.contains("Second clause"));
+    assert!(text_after_first_undo.contains("Initial clause"));
+    assert!(editor.can_redo());
+
+    // Redo second typing
+    assert!(editor.redo());
+    let text_after_redo = block_text(&editor.document.sections[0].blocks[0]);
+    assert!(text_after_redo.contains("Second clause"));
+}
+
+#[test]
+fn test_editor_paragraph_break_split() {
+    let mut editor = FlowEditorState::new_empty("Split Test");
+    editor.insert_text("First sentence. Second sentence.");
+
+    // Move cursor between sentences (offset 16)
+    editor.cursor_offset = 16;
+    editor.insert_paragraph_break();
+
+    // Must now have 2 paragraph blocks
+    assert_eq!(editor.document.sections[0].blocks.len(), 2);
+    let p1 = block_text(&editor.document.sections[0].blocks[0]);
+    let p2 = block_text(&editor.document.sections[0].blocks[1]);
+
+    assert_eq!(p1.trim(), "First sentence.");
+    assert_eq!(p2.trim(), "Second sentence.");
+    assert_eq!(editor.cursor_offset, 0);
+}
+
+#[test]
+fn test_editor_formatting_and_headings() {
+    let mut editor = FlowEditorState::new_empty("Format Test");
+    editor.insert_text("Legal Heading");
+
+    // Convert paragraph to Heading Level 1
+    editor.set_heading_level(1);
+    match &editor.document.sections[0].blocks[0] {
+        vocument_flow::model::Block::Heading(h) => {
+            assert_eq!(h.level, 1);
+            let text: String = h.spans.iter().map(|s| s.text.as_str()).collect();
+            assert_eq!(text, "Legal Heading");
+        }
+        other => panic!("Expected HeadingBlock, got: {other:?}"),
+    }
+
+    // Toggle Bold
+    editor.toggle_bold();
+
+    // Convert back to paragraph
+    editor.set_heading_level(0);
+    match &editor.document.sections[0].blocks[0] {
+        vocument_flow::model::Block::Paragraph(p) => {
+            let text: String = p.spans.iter().map(|s| s.text.as_str()).collect();
+            assert_eq!(text, "Legal Heading");
+        }
+        other => panic!("Expected ParagraphBlock, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_editor_lists_tables_and_footnotes() {
+    let mut editor = FlowEditorState::new_empty("Complex Structs");
+
+    // Insert bullet list
+    editor.insert_bullet_list();
+    assert!(
+        editor.document.sections[0]
+            .blocks
+            .iter()
+            .any(|b| matches!(b, vocument_flow::model::Block::List(_)))
+    );
+
+    // Insert numbered list
+    editor.insert_numbered_list();
+
+    // Insert 3x2 Table
+    editor.insert_table(3, 2);
+    let has_table = editor.document.sections[0].blocks.iter().any(|b| {
+        if let vocument_flow::model::Block::Table(tbl) = b {
+            tbl.rows.len() == 3 && tbl.rows[0].cells.len() == 2
+        } else {
+            false
+        }
+    });
+    assert!(has_table);
+
+    // Insert Footnote
+    editor.insert_footnote("See Federal Supreme Court ruling BGHZ 123, 45.");
+    assert_eq!(editor.document.footnotes.len(), 1);
+}
+
+#[test]
+fn test_editor_hit_test_and_selection() {
+    let mut editor = FlowEditorState::new_empty("Selection Test");
+    editor.insert_text("Clickable and selectable legal text run.");
+
+    // Hit test at point within page content
+    let hit = editor.hit_test_and_set_cursor(0, 100.0, 85.0);
+    assert!(hit.is_some());
+
+    // Selection range: select characters 0 to 15
+    let block_id = editor.active_block_id.clone();
+    editor.set_selection(&block_id, 0, &block_id, 15);
+    let sel_rects = editor.selection_rects();
+    assert!(!sel_rects.is_empty());
+    assert!(sel_rects[0].1.width > 0.0);
+}
+
+#[test]
+fn test_editor_sub_16ms_typing_latency() {
+    let mut editor = FlowEditorState::new_empty("Performance Test");
+    // Pre-populate with 1,000 words
+    let mut text = String::new();
+    for i in 0..100 {
+        text.push_str(&format!(
+            "Clause {} stipulates standard confidentiality. ",
+            i
+        ));
+    }
+    editor.insert_text(&text);
+
+    // Measure typing latency for 50 keystrokes
+    let avg_per_char_micros =
+        editor.measure_typing_latency_micros("Quick legal addendum with § symbols and notes.");
+
+    // Sub-16ms budget per keystroke: 16,000 microseconds
+    assert!(
+        avg_per_char_micros < 16_000,
+        "Average typing latency {} µs exceeds 16ms budget!",
+        avg_per_char_micros
+    );
+}
