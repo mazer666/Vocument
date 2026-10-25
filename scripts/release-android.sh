@@ -29,6 +29,30 @@ set -euo pipefail
 REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPOSITORY_ROOT"
 
+if [[ -z "${JAVA_HOME:-}" ]]; then
+    if [[ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+        export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+    elif [[ -d "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home" ]]; then
+        export JAVA_HOME="/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"
+    elif [[ -d "/opt/homebrew/opt/openjdk" ]]; then
+        export JAVA_HOME="/opt/homebrew/opt/openjdk"
+    fi
+fi
+if [[ -n "${JAVA_HOME:-}" ]]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+if [[ -z "${ANDROID_HOME:-}" ]]; then
+    if [[ -d "$HOME/Library/Android/sdk" ]]; then
+        export ANDROID_HOME="$HOME/Library/Android/sdk"
+    elif [[ -d "/opt/homebrew/share/android-commandlinetools" ]]; then
+        export ANDROID_HOME="/opt/homebrew/share/android-commandlinetools"
+    fi
+fi
+if [[ -n "${ANDROID_HOME:-}" ]]; then
+    export PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:$PATH"
+fi
+
 DRY_RUN=0
 BUILD_TARGET="bundle"
 OUTPUT_DIRECTORY="$REPOSITORY_ROOT/target/release-android"
@@ -135,9 +159,12 @@ fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     VARIANT="Debug"
-    echo "==> The dry run builds the package without signing it."
-else
+    echo "==> The dry run builds the package with the environment debug key for testing."
+elif grep -q "KEYSTORE" ~/.gradle/gradle.properties 2>/dev/null; then
     VARIANT="Release"
+else
+    VARIANT="Debug"
+    echo "==> No release keystore configured; assembling test-signed package with debug key."
 fi
 
 ./gradlew --no-daemon ":app:${GRADLE_TASK_PREFIX}${VARIANT}"
