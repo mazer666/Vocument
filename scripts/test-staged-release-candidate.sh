@@ -135,7 +135,7 @@ unzip -tq "$STAGED_APK"
 echo "    ✓ Android APK zip integrity verified."
 
 # 3b. Native Libraries Presence & Page Alignment
-if ! zipinfo -1 "$STAGED_APK" | grep -q "lib/arm64-v8a/libvocument_ffi.so"; then
+if ! zipinfo -1 "$STAGED_APK" | grep "^lib/arm64-v8a/libvocument_ffi\.so$" >/dev/null; then
     echo "ERROR: Staged APK missing lib/arm64-v8a/libvocument_ffi.so!" >&2
     exit 1
 fi
