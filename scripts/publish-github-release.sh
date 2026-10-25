@@ -303,18 +303,17 @@ fi
 STAGED_APK="$(find "$STAGE_DIR" -type f -name "*.apk" | head -n 1 || true)"
 if [[ -n "$STAGED_APK" && -f "$STAGED_APK" ]]; then
     # Verify embedded SOURCE.txt
-    if ! unzip -p "$STAGED_APK" assets/licence/SOURCE.txt 2>/dev/null | grep -q "$REVISION" && \
-       ! unzip -p "$STAGED_APK" assets/SOURCE.txt 2>/dev/null | grep -q "$REVISION"; then
+    if ! (unzip -p "$STAGED_APK" assets/licence/SOURCE.txt 2>/dev/null || unzip -p "$STAGED_APK" assets/SOURCE.txt 2>/dev/null) | grep "$REVISION" >/dev/null; then
         echo "ERROR: Android APK embedded SOURCE.txt does not match release revision $REVISION!" >&2
         exit 1
     fi
     
     # Verify embedded arm64-v8a native libraries
-    if ! unzip -l "$STAGED_APK" | grep -q "lib/arm64-v8a/libvocument_ffi.so"; then
+    if ! zipinfo -1 "$STAGED_APK" | grep "^lib/arm64-v8a/libvocument_ffi\.so$" >/dev/null; then
         echo "ERROR: Android APK missing lib/arm64-v8a/libvocument_ffi.so!" >&2
         exit 1
     fi
-    if ! unzip -l "$STAGED_APK" | grep -q "lib/arm64-v8a/libmupdf.so"; then
+    if ! zipinfo -1 "$STAGED_APK" | grep "^lib/arm64-v8a/libmupdf\.so$" >/dev/null; then
         echo "ERROR: Android APK missing lib/arm64-v8a/libmupdf.so!" >&2
         exit 1
     fi
