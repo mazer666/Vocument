@@ -9,6 +9,10 @@ repository.workspace = true
 vocument-core = { path = "../../core/vocument-core" }
 vocument-flow = { path = "../../core/vocument-flow" }
 serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sha2.workspace = true
+zip = { version = "2.2.2", default-features = false, features = ["deflate-miniz"] }
 
 [lints]
 workspace = true

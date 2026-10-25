@@ -1,6 +1,6 @@
 //! Typed configuration models synchronized with `/config/*.toml` (`ADR-0002`).
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 const EMBEDDED_APP_DEFAULTS: &str = include_str!("../../../config/app-defaults.toml");
@@ -225,11 +225,21 @@ pub struct DocumentSecurityConfig {
     pub require_reopen_redaction_verification: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageLimitsConfig {
     pub max_pdoc_archive_size_mb: u64,
     pub max_zip_compression_ratio: u32,
     pub max_zip_entries: usize,
+}
+
+impl Default for PackageLimitsConfig {
+    fn default() -> Self {
+        Self {
+            max_pdoc_archive_size_mb: 1024,
+            max_zip_compression_ratio: 100,
+            max_zip_entries: 50_000,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

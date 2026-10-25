@@ -108,6 +108,8 @@ allowed = {
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",
     "BSD-3-Clause OR Apache-2.0 OR MIT",
+    "0BSD OR MIT OR Apache-2.0",
+    "MIT OR Zlib OR Apache-2.0",
     "Unlicense OR MIT",
     "(MIT OR Apache-2.0) AND Unicode-3.0",
     "MPL-2.0",

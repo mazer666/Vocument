@@ -21,8 +21,8 @@
 #   --skip-build                Use existing pre-built artifacts (strictly validates revision!)
 #   --require-all-platforms     Require both macOS and Android packages to be staged
 #   --sign-identity <id>        Apple Developer ID for macOS codesign (if available)
-#   --publish                   Request GitHub publication (requires --confirm-owner-approval)
-#   --confirm-owner-approval    Explicit confirmation of Project Owner clearance (E5 / B-1..B-4)
+#   --publish                   Request GitHub publication (requires verifiable Project Owner clearance)
+#   --clearance-file <file>     Path to Project Owner clearance document (REQUIRED for --publish)
 #   --allow-dirty               Permit uncommitted changes (ONLY for local test evaluation!)
 #   --help, -h                  Show this help message
 
@@ -37,7 +37,7 @@ NOTES=""
 NOTES_FILE=""
 STAGE_ONLY=1
 PUBLISH_REQUESTED=0
-OWNER_APPROVAL_CONFIRMED=0
+CLEARANCE_FILE="$REPOSITORY_ROOT/docs/releasing/PROJECT_OWNER_CLEARANCE.md"
 SKIP_BUILD=0
 ALLOW_DIRTY=0
 REQUIRE_ALL_PLATFORMS=0
@@ -75,8 +75,12 @@ while [[ $# -gt 0 ]]; do
             STAGE_ONLY=0
             shift
             ;;
+        --clearance-file)
+            CLEARANCE_FILE="$2"
+            shift 2
+            ;;
         --confirm-owner-approval)
-            OWNER_APPROVAL_CONFIRMED=1
+            # Retained for backward CLI compatibility, but NOT sufficient alone
             shift
             ;;
         --skip-build)
@@ -110,18 +114,11 @@ if [[ -z "$TAG" ]]; then
     exit 1
 fi
 
-# Immediate Binding Publication Lock Check
-if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
-    if [[ "$OWNER_APPROVAL_CONFIRMED" -eq 0 && "${PROJECT_OWNER_RELEASE_APPROVAL:-}" != "APPROVED_BY_PROJECT_OWNER" ]]; then
-        echo "" >&2
-        echo "================================================================================" >&2
-        echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
-        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no agent or automated script may" >&2
-        echo "publish public GitHub releases or release binaries without explicit Project" >&2
-        echo "Owner approval (--confirm-owner-approval)." >&2
-        echo "================================================================================" >&2
-        exit 1
-    fi
+# Immediate Absolute Prohibition: --allow-dirty may NEVER be published
+if [[ "$PUBLISH_REQUESTED" -eq 1 && "$ALLOW_DIRTY" -eq 1 ]]; then
+    echo "ERROR (SECURITY/DIST-GATE): --allow-dirty is strictly prohibited when publishing releases!" >&2
+    echo "       AGPL-3.0 §6 requires all released binaries to provably originate from a clean, committed revision." >&2
+    exit 1
 fi
 
 # 1. Strict Tag Validation
@@ -129,6 +126,33 @@ TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
 if [[ ! "$TAG" =~ $TAG_REGEX ]]; then
     echo "ERROR: Tag '$TAG' violates semantic release naming convention ('$TAG_REGEX')." >&2
     exit 1
+fi
+
+# 2. Strict Repository and Revision Verification
+REVISION="$(git rev-parse HEAD)"
+SHORT_REV="${REVISION:0:12}"
+
+# Verifiable Project Owner Clearance Check for Publication
+if [[ "$PUBLISH_REQUESTED" -eq 1 ]]; then
+    if [[ ! -f "$CLEARANCE_FILE" ]]; then
+        echo "" >&2
+        echo "================================================================================" >&2
+        echo "BLOCKED: BINDING PUBLICATION LOCK ACTIVE!" >&2
+        echo "Under AGENTS.md, E5, and RELEASE-BLOCKERS.md, no automated flag or environment" >&2
+        echo "variable may authorize a release. A verifiable clearance document is mandatory:" >&2
+        echo "  Missing clearance file: $CLEARANCE_FILE" >&2
+        echo "================================================================================" >&2
+        exit 1
+    fi
+
+    # Verify clearance file contents for this exact revision and tag
+    if ! grep -q "^RELEASE_TAG: $TAG$" "$CLEARANCE_FILE" || \
+       ! grep -q "^COMMIT_REVISION: $REVISION$" "$CLEARANCE_FILE" || \
+       ! grep -q "^PROJECT_OWNER_STATUS: APPROVED_FOR_PUBLIC_RELEASE$" "$CLEARANCE_FILE"; then
+        echo "ERROR: Clearance file $CLEARANCE_FILE does not authorize tag '$TAG' at revision '$REVISION'!" >&2
+        exit 1
+    fi
+    echo "==> Verifiable Project Owner clearance confirmed for $TAG ($SHORT_REV)."
 fi
 
 if [[ -z "$TITLE" ]]; then
@@ -256,43 +280,80 @@ echo "    ✓ Source archive matches revision $REVISION completely."
 # 5b. Verify macOS App Bundle (if staged)
 STAGED_MAC="$(find "$STAGE_DIR" -type f \( -name "*macos*.zip" -o -name "*.dmg" \) | head -n 1 || true)"
 if [[ -n "$STAGED_MAC" && -f "$STAGED_MAC" ]]; then
+    if [[ "$STAGED_MAC" == *.zip ]]; then
+        if ! unzip -tq "$STAGED_MAC" >/dev/null 2>&1; then
+            echo "ERROR: Staged macOS package '$STAGED_MAC' is corrupted (zip test failed)!" >&2
+            exit 1
+        fi
+    fi
     MAC_VERIFY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/voc_mac_check.XXXXXX")"
     if [[ "$STAGED_MAC" == *.zip ]]; then
         unzip -q "$STAGED_MAC" -d "$MAC_VERIFY_TMP"
     fi
     MAC_APP="$(find "$MAC_VERIFY_TMP" -maxdepth 2 -type d -name "Vocument.app" | head -n 1 || true)"
-    if [[ -n "$MAC_APP" ]]; then
-        MAC_SOURCE_TXT="$MAC_APP/Contents/Resources/SOURCE.txt"
-        if [[ ! -f "$MAC_SOURCE_TXT" ]]; then
-            rm -rf "$MAC_VERIFY_TMP"
-            echo "ERROR: macOS bundle missing Contents/Resources/SOURCE.txt!" >&2
-            exit 1
-        fi
-        if ! grep -q "$REVISION" "$MAC_SOURCE_TXT"; then
-            rm -rf "$MAC_VERIFY_TMP"
-            echo "ERROR: macOS bundle SOURCE.txt was not built from $REVISION!" >&2
-            exit 1
-        fi
-        
-        # Verify ARM64 binary architecture
-        MAC_BIN="$MAC_APP/Contents/MacOS/Vocument"
-        if [[ -f "$MAC_BIN" ]]; then
-            if ! file "$MAC_BIN" | grep -q "arm64"; then
-                rm -rf "$MAC_VERIFY_TMP"
-                echo "ERROR: macOS binary '$MAC_BIN' does not contain required arm64 architecture!" >&2
-                exit 1
-            fi
-            echo "    ✓ macOS binary verified: contains arm64 architecture."
-        fi
-
-        # Verify bundled MuPDF library presence
-        if [[ ! -f "$MAC_APP/Contents/Frameworks/libmupdf.dylib" ]]; then
-            rm -rf "$MAC_VERIFY_TMP"
-            echo "ERROR: macOS bundle missing required bundled Frameworks/libmupdf.dylib!" >&2
-            exit 1
-        fi
-        echo "    ✓ macOS bundle verified: native MuPDF dynamic library bundled."
+    if [[ -z "$MAC_APP" || ! -d "$MAC_APP" ]]; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: Corrupted macOS archive: 'Vocument.app' not found in $STAGED_MAC!" >&2
+        exit 1
     fi
+
+    # Verify structural codesign integrity
+    if ! codesign --verify --deep --strict "$MAC_APP" >/dev/null 2>&1; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: Staged macOS app bundle failed codesign structural verification!" >&2
+        exit 1
+    fi
+    echo "    ✓ macOS bundle codesign structurally verified."
+
+    MAC_SOURCE_TXT="$MAC_APP/Contents/Resources/SOURCE.txt"
+    if [[ ! -f "$MAC_SOURCE_TXT" ]]; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: macOS bundle missing Contents/Resources/SOURCE.txt!" >&2
+        exit 1
+    fi
+    if ! grep -q "$REVISION" "$MAC_SOURCE_TXT"; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: macOS bundle SOURCE.txt was not built from $REVISION!" >&2
+        exit 1
+    fi
+    
+    # Verify ARM64 binary architecture
+    MAC_BIN="$MAC_APP/Contents/MacOS/Vocument"
+    if [[ ! -f "$MAC_BIN" || ! -x "$MAC_BIN" ]]; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: macOS bundle missing executable binary '$MAC_BIN'!" >&2
+        exit 1
+    fi
+    if ! file "$MAC_BIN" | grep -q "arm64"; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: macOS binary '$MAC_BIN' does not contain required arm64 architecture!" >&2
+        exit 1
+    fi
+    echo "    ✓ macOS binary verified: contains arm64 architecture."
+
+    # Verify bundled native dynamic libraries
+    for req_dylib in libvocument_ffi.dylib libmupdf.dylib; do
+        if [[ ! -f "$MAC_APP/Contents/Frameworks/$req_dylib" ]]; then
+            rm -rf "$MAC_VERIFY_TMP"
+            echo "ERROR: macOS bundle missing required Frameworks/$req_dylib!" >&2
+            exit 1
+        fi
+    done
+    echo "    ✓ macOS bundle verified: native Frameworks (FFI + MuPDF) present."
+
+    # Verify total independence from host developer paths
+    if otool -L "$MAC_BIN" | grep -E '/Users/|/home/|target/debug|target/release' >/dev/null; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: macOS binary '$MAC_BIN' contains hardcoded developer paths in dynamic linkage!" >&2
+        exit 1
+    fi
+    if otool -L "$MAC_APP/Contents/Frameworks/libvocument_ffi.dylib" | grep -E '/Users/|/home/|target/debug|target/release' >/dev/null; then
+        rm -rf "$MAC_VERIFY_TMP"
+        echo "ERROR: libvocument_ffi.dylib contains hardcoded developer paths in dynamic linkage!" >&2
+        exit 1
+    fi
+    echo "    ✓ macOS dynamic linkage verified: fully relocatable via @rpath."
+
     rm -rf "$MAC_VERIFY_TMP"
     echo "    ✓ macOS package verified: provenance matches revision $REVISION."
 else

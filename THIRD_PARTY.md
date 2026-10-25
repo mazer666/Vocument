@@ -52,9 +52,11 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 
 | Component | Version | Licence as declared in the manifest of the crate |
 |---|---|---|
+| `adler2` | 2.0.1 | 0BSD OR MIT OR Apache-2.0 |
 | `ahash` | 0.8.12 | MIT OR Apache-2.0 |
 | `anstyle` | 1.0.14 | MIT OR Apache-2.0 |
 | `anyhow` | 1.0.104 | MIT OR Apache-2.0 |
+| `arbitrary` | 1.5.0 | MIT OR Apache-2.0 |
 | `askama` | 0.13.1 | MIT OR Apache-2.0 |
 | `askama_derive` | 0.13.1 | MIT OR Apache-2.0 |
 | `askama_parser` | 0.13.0 | MIT OR Apache-2.0 |
@@ -62,6 +64,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `basic-toml` | 0.1.10 | MIT OR Apache-2.0 |
 | `bitflags` | 2.13.2 | MIT OR Apache-2.0 |
 | `block-buffer` | 0.10.4 | MIT OR Apache-2.0 |
+| `bumpalo` | 3.20.2 | MIT OR Apache-2.0 |
 | `bytes` | 1.12.1 | MIT |
 | `camino` | 1.2.6 | MIT OR Apache-2.0 |
 | `cargo-platform` | 0.1.9 | MIT OR Apache-2.0 |
@@ -73,7 +76,10 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `clap_derive` | 4.6.7 | MIT OR Apache-2.0 |
 | `clap_lex` | 1.1.1 | MIT OR Apache-2.0 |
 | `cpufeatures` | 0.2.17 | MIT OR Apache-2.0 |
+| `crc32fast` | 1.5.3 | MIT OR Apache-2.0 |
+| `crossbeam-utils` | 0.8.23 | MIT OR Apache-2.0 |
 | `crypto-common` | 0.1.7 | MIT OR Apache-2.0 |
+| `derive_arbitrary` | 1.5.0 | MIT OR Apache-2.0 |
 | `digest` | 0.10.7 | MIT OR Apache-2.0 |
 | `equivalent` | 1.0.3 | Apache-2.0 OR MIT |
 | `errno` | 0.3.14 | MIT OR Apache-2.0 |
@@ -81,6 +87,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `fallible-streaming-iterator` | 0.1.9 | MIT/Apache-2.0 |
 | `fastrand` | 2.5.0 | Apache-2.0 OR MIT |
 | `find-msvc-tools` | 0.1.14 | MIT OR Apache-2.0 |
+| `flate2` | 1.1.9 | MIT OR Apache-2.0 |
 | `fs-err` | 2.11.0 | MIT/Apache-2.0 |
 | `generic-array` | 0.14.7 | MIT |
 | `getrandom` | 0.4.3 | MIT OR Apache-2.0 |
@@ -98,6 +105,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `log` | 0.4.34 | MIT OR Apache-2.0 |
 | `memchr` | 2.8.3 | Unlicense OR MIT |
 | `minimal-lexical` | 0.2.1 | MIT/Apache-2.0 |
+| `miniz_oxide` | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 | `nom` | 7.1.3 | MIT |
 | `once_cell` | 1.21.4 | MIT OR Apache-2.0 |
 | `percent-encoding` | 2.3.2 | MIT OR Apache-2.0 |
@@ -119,6 +127,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `serde_spanned` | 0.6.9 | MIT OR Apache-2.0 |
 | `sha2` | 0.10.9 | MIT OR Apache-2.0 |
 | `shlex` | 2.0.1 | MIT OR Apache-2.0 |
+| `simd-adler32` | 0.3.9 | MIT |
 | `siphasher` | 0.3.11 | MIT/Apache-2.0 |
 | `smallvec` | 1.16.3 | MIT OR Apache-2.0 |
 | `smawk` | 0.3.3 | MIT |
@@ -163,7 +172,9 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `winnow` | 0.7.15 | MIT |
 | `zerocopy` | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | `zerocopy-derive` | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
+| `zip` | 2.6.1 | MIT |
 | `zmij` | 1.0.23 | MIT |
+| `zopfli` | 0.8.3 | Apache-2.0 |
 
 ### The native components that are built into the product
 
