@@ -19,6 +19,7 @@
 #   --notes <string>            Release notes string
 #   --stage-only                Stage and verify release candidate locally (DEFAULT)
 #   --skip-build                Use existing pre-built artifacts (strictly validates revision!)
+#   --require-all-platforms     Require both macOS and Android packages to be staged
 #   --sign-identity <id>        Apple Developer ID for macOS codesign (if available)
 #   --publish                   Request GitHub publication (requires --confirm-owner-approval)
 #   --confirm-owner-approval    Explicit confirmation of Project Owner clearance (E5 / B-1..B-4)
@@ -39,10 +40,11 @@ PUBLISH_REQUESTED=0
 OWNER_APPROVAL_CONFIRMED=0
 SKIP_BUILD=0
 ALLOW_DIRTY=0
+REQUIRE_ALL_PLATFORMS=0
 SIGN_IDENTITY=""
 
 usage() {
-    sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -79,6 +81,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-build)
             SKIP_BUILD=1
+            shift
+            ;;
+        --require-all-platforms)
+            REQUIRE_ALL_PLATFORMS=1
             shift
             ;;
         --sign-identity)
@@ -296,8 +302,9 @@ fi
 STAGED_APK="$(find "$STAGE_DIR" -type f -name "*.apk" | head -n 1 || true)"
 if [[ -n "$STAGED_APK" && -f "$STAGED_APK" ]]; then
     # Verify embedded SOURCE.txt
-    if ! unzip -p "$STAGED_APK" assets/SOURCE.txt 2>/dev/null | grep -q "$REVISION"; then
-        echo "ERROR: Android APK assets/SOURCE.txt does not match release revision $REVISION!" >&2
+    if ! unzip -p "$STAGED_APK" assets/licence/SOURCE.txt 2>/dev/null | grep -q "$REVISION" && \
+       ! unzip -p "$STAGED_APK" assets/SOURCE.txt 2>/dev/null | grep -q "$REVISION"; then
+        echo "ERROR: Android APK embedded SOURCE.txt does not match release revision $REVISION!" >&2
         exit 1
     fi
     
@@ -313,6 +320,18 @@ if [[ -n "$STAGED_APK" && -f "$STAGED_APK" ]]; then
     echo "    ✓ Android APK verified: contains arm64 native libraries and matches revision $REVISION."
 else
     echo "WARNING: No Android APK in this candidate staging."
+fi
+
+# 5d. Mandatory packages enforcement
+if [[ "$PUBLISH_REQUESTED" -eq 1 || "$REQUIRE_ALL_PLATFORMS" -eq 1 ]]; then
+    if [[ -z "$STAGED_MAC" || ! -f "$STAGED_MAC" ]]; then
+        echo "ERROR: Mandatory macOS package is missing from release candidate staging!" >&2
+        exit 1
+    fi
+    if [[ -z "$STAGED_APK" || ! -f "$STAGED_APK" ]]; then
+        echo "ERROR: Mandatory Android APK package is missing from release candidate staging!" >&2
+        exit 1
+    fi
 fi
 
 # 6. Bundle Legal Notices & Generate Unified SHA-256 Checksums

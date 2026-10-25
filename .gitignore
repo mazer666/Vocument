@@ -36,6 +36,7 @@ captures/
 *.dex
 *.so
 **/jniLibs/
+apps/android/app/src/main/assets/licence/
 
 # Temporary & Recovery test artifacts
 tmp/

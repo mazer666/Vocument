@@ -89,27 +89,14 @@ PYTHON
 
 echo "==> The revision of the source: $REVISION (version $VERSION)"
 
-# --- The build ----------------------------------------------------------
-cd "$REPOSITORY_ROOT/apps/android"
-
-if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "==> The dry run builds the package without signing it."
-    # Gradle needs the keys for the release variant. The dry run uses the
-    # debug key of the environment, so that the layout of the package can be
-    # checked without a secret.
-    ./gradlew --no-daemon :app:assemble${BUILD_TARGET^}Debug
-else
-    ./gradlew --no-daemon :app:assemble${BUILD_TARGET^}Release
-fi
-
 # --- The notices of the AGPL-3.0 ---------------------------------------
 # The notices travel into the package: the licence, the inventory of the
 # third-party components and the offer of the source.
 ASSET_DIRECTORY="$REPOSITORY_ROOT/apps/android/app/src/main/assets"
 mkdir -p "$ASSET_DIRECTORY/licence"
+trap 'rm -rf "$ASSET_DIRECTORY/licence"' EXIT INT TERM
 cp "$REPOSITORY_ROOT/LICENSE" "$ASSET_DIRECTORY/licence/Vocument-LICENSE.txt"
 cp "$REPOSITORY_ROOT/THIRD_PARTY.md" "$ASSET_DIRECTORY/licence/THIRD_PARTY.md"
-# The texts of the licences of everything that is inside the package.
 cp "$REPOSITORY_ROOT/LICENSES/THIRD-PARTY-NOTICES.txt" "$ASSET_DIRECTORY/licence/THIRD-PARTY-NOTICES.txt"
 cat > "$ASSET_DIRECTORY/licence/SOURCE.txt" <<EOF
 Vocument — the complete corresponding source of this build
@@ -137,6 +124,24 @@ The build instructions are in the file docs/releasing/BUILD-FROM-SOURCE.md of
 that source.
 EOF
 
+# --- The build ----------------------------------------------------------
+cd "$REPOSITORY_ROOT/apps/android"
+
+if [[ "$BUILD_TARGET" == "bundle" ]]; then
+    GRADLE_TASK_PREFIX="bundle"
+else
+    GRADLE_TASK_PREFIX="assemble"
+fi
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    VARIANT="Debug"
+    echo "==> The dry run builds the package without signing it."
+else
+    VARIANT="Release"
+fi
+
+./gradlew --no-daemon ":app:${GRADLE_TASK_PREFIX}${VARIANT}"
+
 cd "$REPOSITORY_ROOT"
 
 # --- The archive and its checksum ---------------------------------------
@@ -146,7 +151,7 @@ case "$BUILD_TARGET" in
         BUILT="$(find apps/android/app/build/outputs/bundle -name '*.aab' 2>/dev/null | head -1)"
         ;;
     apk)
-        BUILT="$(find apps/android/app/build/outputs/apk -name '*Release*.apk' 2>/dev/null | head -1)"
+        BUILT="$(find apps/android/app/build/outputs/apk -name "*${VARIANT}*.apk" 2>/dev/null | head -1)"
         ;;
 esac
 
