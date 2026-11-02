@@ -567,7 +567,7 @@ impl ImportContext<'_> {
                     }
                 }
                 let mut cell_items = Vec::new();
-                for child in tc.child_elements() {
+                for child in tc.child_elements().filter(|el| !is_w(el, "tcPr")) {
                     self.convert_block_element(child, &mut cell_items)?;
                 }
                 let blocks = self.flush_block_items(cell_items);

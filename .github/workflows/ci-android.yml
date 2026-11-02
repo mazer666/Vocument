@@ -75,7 +75,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4
 
-      - name: Install the JDK 17 and the system packages
+      - name: Install the system packages for the cross-build and the host OCR engine
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -88,24 +88,30 @@ jobs:
             libtesseract-dev \
             libleptonica-dev \
             m4 \
-            openjdk-17-jdk-headless \
             pkg-config \
             python3 \
             unzip \
             zip
-          JDK17_HOME=""
-          for jdk in /usr/lib/jvm/java-17-openjdk-* /usr/lib/jvm/temurin-17-jdk-*; do
-            if [[ -x "$jdk/bin/javac" ]]; then
-              JDK17_HOME="$jdk"
-              break
-            fi
-          done
-          if [[ -z "$JDK17_HOME" ]]; then
-            JDK17_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+
+      - name: Set up Temurin JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Verify Java 17 and Gradle JVM configuration
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          echo "which java:  $(command -v java)"
+          echo "which javac: $(command -v javac)"
+          java -version
+          javac -version
+          if ! java -version 2>&1 | grep -q 'version "17\.'; then
+            echo "::error::Active java is not JDK 17 (JAVA_HOME=$JAVA_HOME)"
+            exit 1
           fi
-          echo "JAVA_HOME=$JDK17_HOME" >> "$GITHUB_ENV"
-          echo "$JDK17_HOME/bin" >> "$GITHUB_PATH"
-          "$JDK17_HOME/bin/java" -version
+          cd apps/android
+          ./gradlew --no-daemon -Dorg.gradle.java.home="$JAVA_HOME" --version
 
       - name: Install the Android SDK
         run: |
@@ -200,7 +206,7 @@ jobs:
         run: |
           set -o pipefail
           cd apps/android
-          ./gradlew --no-daemon assembleDebug assembleRelease 2>&1 | tee "$RUNNER_TEMP/packages.log"
+          ./gradlew --no-daemon -Dorg.gradle.java.home="$JAVA_HOME" assembleDebug assembleRelease lintVitalAnalyzeRelease 2>&1 | tee "$RUNNER_TEMP/packages.log"
           ls -la app/build/outputs/apk/debug/ app/build/outputs/apk/release/
 
       - name: The diagnostics of the build of the packages
@@ -254,7 +260,7 @@ jobs:
         run: |
           set -o pipefail
           cd apps/android
-          ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/unit-tests.log"
+          ./gradlew --no-daemon -Dorg.gradle.java.home="$JAVA_HOME" testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/unit-tests.log"
 
       - name: The diagnostics of the unit tests
         if: steps.unit-tests.outcome == 'failure'

@@ -115,6 +115,8 @@ fn main() {
 
     let limits = OfficeLimits::default();
     let mut records: Vec<DocEvalRecord> = Vec::with_capacity(all_files.len());
+    let mut report_code_stats: BTreeMap<String, (vocument_office::Severity, usize, usize, String)> =
+        BTreeMap::new();
 
     let verify_lo_dir = work_dir.join("lo_verify");
     fs::create_dir_all(&verify_lo_dir).expect("create lo_verify dir");
@@ -134,6 +136,16 @@ fn main() {
 
         match import_document(&bytes, format, &limits) {
             Ok(imported) => {
+                for entry in &imported.report.entries {
+                    let stat = report_code_stats.entry(entry.code.clone()).or_insert((
+                        entry.severity,
+                        0,
+                        0,
+                        entry.message.clone(),
+                    ));
+                    stat.1 += entry.occurrences as usize;
+                    stat.2 += 1;
+                }
                 if let Err(e) = validate_document(&imported.document) {
                     records.push(DocEvalRecord {
                         name,
@@ -350,6 +362,10 @@ fn main() {
         lo_ok_count,
         lo_checked.len()
     );
+    println!("\n## ConversionReport Breakdown by Code (Initial Import)");
+    for (code, (sev, occ, docs, msg)) in &report_code_stats {
+        println!("- `{code}` ({sev:?}): {occ} occurrences across {docs} docs — {msg}");
+    }
 
     for r in records.iter().filter(|r| !r.passed_gate) {
         println!(
