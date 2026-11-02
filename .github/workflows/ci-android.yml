@@ -93,8 +93,19 @@ jobs:
             python3 \
             unzip \
             zip
-          echo "JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" >> "$GITHUB_ENV"
-          java -version
+          JDK17_HOME=""
+          for jdk in /usr/lib/jvm/java-17-openjdk-* /usr/lib/jvm/temurin-17-jdk-*; do
+            if [[ -x "$jdk/bin/javac" ]]; then
+              JDK17_HOME="$jdk"
+              break
+            fi
+          done
+          if [[ -z "$JDK17_HOME" ]]; then
+            JDK17_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          fi
+          echo "JAVA_HOME=$JDK17_HOME" >> "$GITHUB_ENV"
+          echo "$JDK17_HOME/bin" >> "$GITHUB_PATH"
+          "$JDK17_HOME/bin/java" -version
 
       - name: Install the Android SDK
         run: |
