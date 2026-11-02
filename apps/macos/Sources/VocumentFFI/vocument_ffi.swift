@@ -1644,6 +1644,216 @@ public func FfiConverterTypeFfiCommentAnnotation_lower(_ value: FfiCommentAnnota
 
 
 /**
+ * Individual conversion report entry surfaced to the native UI (`OFFICE-004`).
+ */
+public struct FfiConversionEntry {
+    public var severity: FfiConversionSeverity
+    public var code: String
+    public var message: String
+    public var count: UInt32
+    public var sampleLocation: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(severity: FfiConversionSeverity, code: String, message: String, count: UInt32, sampleLocation: String?) {
+        self.severity = severity
+        self.code = code
+        self.message = message
+        self.count = count
+        self.sampleLocation = sampleLocation
+    }
+}
+
+#if compiler(>=6)
+extension FfiConversionEntry: Sendable {}
+#endif
+
+
+extension FfiConversionEntry: Equatable, Hashable {
+    public static func ==(lhs: FfiConversionEntry, rhs: FfiConversionEntry) -> Bool {
+        if lhs.severity != rhs.severity {
+            return false
+        }
+        if lhs.code != rhs.code {
+            return false
+        }
+        if lhs.message != rhs.message {
+            return false
+        }
+        if lhs.count != rhs.count {
+            return false
+        }
+        if lhs.sampleLocation != rhs.sampleLocation {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(severity)
+        hasher.combine(code)
+        hasher.combine(message)
+        hasher.combine(count)
+        hasher.combine(sampleLocation)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiConversionEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiConversionEntry {
+        return
+            try FfiConversionEntry(
+                severity: FfiConverterTypeFfiConversionSeverity.read(from: &buf), 
+                code: FfiConverterString.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf), 
+                count: FfiConverterUInt32.read(from: &buf), 
+                sampleLocation: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiConversionEntry, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiConversionSeverity.write(value.severity, into: &buf)
+        FfiConverterString.write(value.code, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+        FfiConverterUInt32.write(value.count, into: &buf)
+        FfiConverterOptionString.write(value.sampleLocation, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionEntry_lift(_ buf: RustBuffer) throws -> FfiConversionEntry {
+    return try FfiConverterTypeFfiConversionEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionEntry_lower(_ value: FfiConversionEntry) -> RustBuffer {
+    return FfiConverterTypeFfiConversionEntry.lower(value)
+}
+
+
+/**
+ * Aggregated conversion report returned by DOCX/ODT import and export (`OFFICE-004`).
+ */
+public struct FfiConversionReport {
+    public var entries: [FfiConversionEntry]
+    public var hasLosses: Bool
+    public var hasSecurityFindings: Bool
+    public var lossCount: UInt32
+    public var approximationCount: UInt32
+    public var passthroughCount: UInt32
+    public var summaryText: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(entries: [FfiConversionEntry], hasLosses: Bool, hasSecurityFindings: Bool, lossCount: UInt32, approximationCount: UInt32, passthroughCount: UInt32, summaryText: String) {
+        self.entries = entries
+        self.hasLosses = hasLosses
+        self.hasSecurityFindings = hasSecurityFindings
+        self.lossCount = lossCount
+        self.approximationCount = approximationCount
+        self.passthroughCount = passthroughCount
+        self.summaryText = summaryText
+    }
+}
+
+#if compiler(>=6)
+extension FfiConversionReport: Sendable {}
+#endif
+
+
+extension FfiConversionReport: Equatable, Hashable {
+    public static func ==(lhs: FfiConversionReport, rhs: FfiConversionReport) -> Bool {
+        if lhs.entries != rhs.entries {
+            return false
+        }
+        if lhs.hasLosses != rhs.hasLosses {
+            return false
+        }
+        if lhs.hasSecurityFindings != rhs.hasSecurityFindings {
+            return false
+        }
+        if lhs.lossCount != rhs.lossCount {
+            return false
+        }
+        if lhs.approximationCount != rhs.approximationCount {
+            return false
+        }
+        if lhs.passthroughCount != rhs.passthroughCount {
+            return false
+        }
+        if lhs.summaryText != rhs.summaryText {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(entries)
+        hasher.combine(hasLosses)
+        hasher.combine(hasSecurityFindings)
+        hasher.combine(lossCount)
+        hasher.combine(approximationCount)
+        hasher.combine(passthroughCount)
+        hasher.combine(summaryText)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiConversionReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiConversionReport {
+        return
+            try FfiConversionReport(
+                entries: FfiConverterSequenceTypeFfiConversionEntry.read(from: &buf), 
+                hasLosses: FfiConverterBool.read(from: &buf), 
+                hasSecurityFindings: FfiConverterBool.read(from: &buf), 
+                lossCount: FfiConverterUInt32.read(from: &buf), 
+                approximationCount: FfiConverterUInt32.read(from: &buf), 
+                passthroughCount: FfiConverterUInt32.read(from: &buf), 
+                summaryText: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiConversionReport, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeFfiConversionEntry.write(value.entries, into: &buf)
+        FfiConverterBool.write(value.hasLosses, into: &buf)
+        FfiConverterBool.write(value.hasSecurityFindings, into: &buf)
+        FfiConverterUInt32.write(value.lossCount, into: &buf)
+        FfiConverterUInt32.write(value.approximationCount, into: &buf)
+        FfiConverterUInt32.write(value.passthroughCount, into: &buf)
+        FfiConverterString.write(value.summaryText, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionReport_lift(_ buf: RustBuffer) throws -> FfiConversionReport {
+    return try FfiConverterTypeFfiConversionReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionReport_lower(_ value: FfiConversionReport) -> RustBuffer {
+    return FfiConverterTypeFfiConversionReport.lower(value)
+}
+
+
+/**
  * Result of deskewing and orientation correction crossing UniFFI boundary.
  */
 public struct FfiDeskewResult {
@@ -2464,11 +2674,12 @@ public struct FfiEditorSessionSnapshot {
     public var comments: [FfiFlowComment]
     public var trackedChanges: [FfiTrackedChange]
     public var plainText: String
+    public var activeBlockText: String
     public var pages: [FfiEditorPageSnapshot]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(editorId: String, title: String, filePath: String?, totalPages: UInt32, activeBlockId: String, cursorOffset: UInt32, cursorPageIndex: UInt32, cursorRect: FfiEditorRect?, selectionRects: [FfiEditorSelectionRect], canUndo: Bool, canRedo: Bool, isTracking: Bool, comments: [FfiFlowComment], trackedChanges: [FfiTrackedChange], plainText: String, pages: [FfiEditorPageSnapshot]) {
+    public init(editorId: String, title: String, filePath: String?, totalPages: UInt32, activeBlockId: String, cursorOffset: UInt32, cursorPageIndex: UInt32, cursorRect: FfiEditorRect?, selectionRects: [FfiEditorSelectionRect], canUndo: Bool, canRedo: Bool, isTracking: Bool, comments: [FfiFlowComment], trackedChanges: [FfiTrackedChange], plainText: String, activeBlockText: String, pages: [FfiEditorPageSnapshot]) {
         self.editorId = editorId
         self.title = title
         self.filePath = filePath
@@ -2484,6 +2695,7 @@ public struct FfiEditorSessionSnapshot {
         self.comments = comments
         self.trackedChanges = trackedChanges
         self.plainText = plainText
+        self.activeBlockText = activeBlockText
         self.pages = pages
     }
 }
@@ -2540,6 +2752,9 @@ extension FfiEditorSessionSnapshot: Equatable, Hashable {
         if lhs.plainText != rhs.plainText {
             return false
         }
+        if lhs.activeBlockText != rhs.activeBlockText {
+            return false
+        }
         if lhs.pages != rhs.pages {
             return false
         }
@@ -2562,6 +2777,7 @@ extension FfiEditorSessionSnapshot: Equatable, Hashable {
         hasher.combine(comments)
         hasher.combine(trackedChanges)
         hasher.combine(plainText)
+        hasher.combine(activeBlockText)
         hasher.combine(pages)
     }
 }
@@ -2590,6 +2806,7 @@ public struct FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
                 comments: FfiConverterSequenceTypeFfiFlowComment.read(from: &buf), 
                 trackedChanges: FfiConverterSequenceTypeFfiTrackedChange.read(from: &buf), 
                 plainText: FfiConverterString.read(from: &buf), 
+                activeBlockText: FfiConverterString.read(from: &buf), 
                 pages: FfiConverterSequenceTypeFfiEditorPageSnapshot.read(from: &buf)
         )
     }
@@ -2610,6 +2827,7 @@ public struct FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
         FfiConverterSequenceTypeFfiFlowComment.write(value.comments, into: &buf)
         FfiConverterSequenceTypeFfiTrackedChange.write(value.trackedChanges, into: &buf)
         FfiConverterString.write(value.plainText, into: &buf)
+        FfiConverterString.write(value.activeBlockText, into: &buf)
         FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.pages, into: &buf)
     }
 }
@@ -4362,6 +4580,87 @@ public func FfiConverterTypeFfiOcrWord_lift(_ buf: RustBuffer) throws -> FfiOcrW
 #endif
 public func FfiConverterTypeFfiOcrWord_lower(_ value: FfiOcrWord) -> RustBuffer {
     return FfiConverterTypeFfiOcrWord.lower(value)
+}
+
+
+/**
+ * Result of importing a `.docx` or `.odt` document into the native flow editor (`OFFICE-001`, `OFFICE-002`).
+ */
+public struct FfiOfficeImportResult {
+    public var snapshot: FfiEditorSessionSnapshot
+    public var report: FfiConversionReport
+    public var detectedFormat: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(snapshot: FfiEditorSessionSnapshot, report: FfiConversionReport, detectedFormat: String) {
+        self.snapshot = snapshot
+        self.report = report
+        self.detectedFormat = detectedFormat
+    }
+}
+
+#if compiler(>=6)
+extension FfiOfficeImportResult: Sendable {}
+#endif
+
+
+extension FfiOfficeImportResult: Equatable, Hashable {
+    public static func ==(lhs: FfiOfficeImportResult, rhs: FfiOfficeImportResult) -> Bool {
+        if lhs.snapshot != rhs.snapshot {
+            return false
+        }
+        if lhs.report != rhs.report {
+            return false
+        }
+        if lhs.detectedFormat != rhs.detectedFormat {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(snapshot)
+        hasher.combine(report)
+        hasher.combine(detectedFormat)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiOfficeImportResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiOfficeImportResult {
+        return
+            try FfiOfficeImportResult(
+                snapshot: FfiConverterTypeFfiEditorSessionSnapshot.read(from: &buf), 
+                report: FfiConverterTypeFfiConversionReport.read(from: &buf), 
+                detectedFormat: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiOfficeImportResult, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiEditorSessionSnapshot.write(value.snapshot, into: &buf)
+        FfiConverterTypeFfiConversionReport.write(value.report, into: &buf)
+        FfiConverterString.write(value.detectedFormat, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOfficeImportResult_lift(_ buf: RustBuffer) throws -> FfiOfficeImportResult {
+    return try FfiConverterTypeFfiOfficeImportResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiOfficeImportResult_lower(_ value: FfiOfficeImportResult) -> RustBuffer {
+    return FfiConverterTypeFfiOfficeImportResult.lower(value)
 }
 
 
@@ -9837,6 +10136,100 @@ extension FfiBatesPosition: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Severity classification of an Office conversion finding (`OFFICE-004`).
+ */
+
+public enum FfiConversionSeverity {
+    
+    case info
+    case preservedUnrendered
+    case approximated
+    case loss
+    case security
+}
+
+
+#if compiler(>=6)
+extension FfiConversionSeverity: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiConversionSeverity: FfiConverterRustBuffer {
+    typealias SwiftType = FfiConversionSeverity
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiConversionSeverity {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .info
+        
+        case 2: return .preservedUnrendered
+        
+        case 3: return .approximated
+        
+        case 4: return .loss
+        
+        case 5: return .security
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiConversionSeverity, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .info:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .preservedUnrendered:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .approximated:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .loss:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .security:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionSeverity_lift(_ buf: RustBuffer) throws -> FfiConversionSeverity {
+    return try FfiConverterTypeFfiConversionSeverity.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiConversionSeverity_lower(_ value: FfiConversionSeverity) -> RustBuffer {
+    return FfiConverterTypeFfiConversionSeverity.lower(value)
+}
+
+
+extension FfiConversionSeverity: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
  */
 
@@ -11054,6 +11447,30 @@ fileprivate struct FfiConverterOptionTypeFfiEditorRect: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = FfiEditorSessionSnapshot?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiEditorSessionSnapshot.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiEditorSessionSnapshot.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiFileIdentity: FfiConverterRustBuffer {
     typealias SwiftType = FfiFileIdentity?
 
@@ -11340,6 +11757,31 @@ fileprivate struct FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRus
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiCommentAnnotation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiConversionEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiConversionEntry]
+
+    public static func write(_ value: [FfiConversionEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiConversionEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiConversionEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiConversionEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiConversionEntry.read(from: &buf))
         }
         return seq
     }
@@ -12465,6 +12907,28 @@ public func documentCoreEditorEnableTracking(editorId: String, author: String)th
 })
 }
 /**
+ * Exports the active flow editor session to an OOXML `.docx` file (`OFFICE-001`, `OFFICE-004`).
+ */
+public func documentCoreEditorExportDocx(editorId: String, targetPath: String)throws  -> FfiConversionReport  {
+    return try  FfiConverterTypeFfiConversionReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_export_docx(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(targetPath),$0
+    )
+})
+}
+/**
+ * Exports the active flow editor session to an ODF Text `.odt` file (`OFFICE-002`, `OFFICE-004`).
+ */
+public func documentCoreEditorExportOdt(editorId: String, targetPath: String)throws  -> FfiConversionReport  {
+    return try  FfiConverterTypeFfiConversionReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_export_odt(
+        FfiConverterString.lower(editorId),
+        FfiConverterString.lower(targetPath),$0
+    )
+})
+}
+/**
  * Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
  */
 public func documentCoreEditorExportPdf(editorId: String, includeComments: Bool, includeTrackedChanges: Bool)throws  -> Data  {
@@ -12565,6 +13029,16 @@ public func documentCoreEditorMeasureTypingLatencyMicros(editorId: String, sampl
 })
 }
 /**
+ * Restores a flow editor session from a `.pdoc` crash-recovery checkpoint by document ID.
+ */
+public func documentCoreEditorRecoverSession(documentId: String)throws  -> FfiEditorSessionSnapshot?  {
+    return try  FfiConverterOptionTypeFfiEditorSessionSnapshot.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_recover_session(
+        FfiConverterString.lower(documentId),$0
+    )
+})
+}
+/**
  * Redoes the previously undone editing transaction.
  */
 public func documentCoreEditorRedo(editorId: String)throws  -> FfiEditorSessionSnapshot  {
@@ -12641,6 +13115,16 @@ public func documentCoreEditorSavePdoc(editorId: String, targetPath: String?)thr
     uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(
         FfiConverterString.lower(editorId),
         FfiConverterOptionString.lower(targetPath),$0
+    )
+})
+}
+/**
+ * Explicitly saves an atomic `.pdoc` crash-recovery checkpoint for an active editor session.
+ */
+public func documentCoreEditorSaveRecoveryCheckpoint(editorId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_editor_save_recovery_checkpoint(
+        FfiConverterString.lower(editorId),$0
     )
 })
 }
@@ -13141,6 +13625,16 @@ public func documentCoreOpenMacosScopedFile(scopedPathOrUrl: String)throws  -> F
     return try  FfiConverterTypeFfiDocumentSessionSnapshot_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
     uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(scopedPathOrUrl),$0
+    )
+})
+}
+/**
+ * Imports a `.docx` or `.odt` file into a native flow editor session (`OFFICE-001`, `OFFICE-002`, `OFFICE-004`, `OFFICE-005`).
+ */
+public func documentCoreOpenOfficeEditorSession(filePath: String)throws  -> FfiOfficeImportResult  {
+    return try  FfiConverterTypeFfiOfficeImportResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_open_office_editor_session(
+        FfiConverterString.lower(filePath),$0
     )
 })
 }
@@ -13849,6 +14343,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking() != 44052) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_export_docx() != 11457) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_export_odt() != 25262) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf() != 53605) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13876,6 +14376,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros() != 22325) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_recover_session() != 20774) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13895,6 +14398,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_editor_save_recovery_checkpoint() != 56121) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor() != 39705) {
@@ -14024,6 +14530,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_open_office_editor_session() != 62136) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session() != 64345) {

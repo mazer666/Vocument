@@ -329,6 +329,40 @@ class DocumentCoreBridgeTest {
         val pdfHeader = String(pdfBytes.sliceArray(0..7))
         assertEquals("%PDF-1.7", pdfHeader)
 
+        // M4.5 Office DOCX & ODT export/import roundtrip + recovery checkpoint
+        val tmpDir = kotlin.io.path.createTempDirectory("vocument_android_office_test").toFile()
+        try {
+            val docxFile = File(tmpDir, "brief.docx")
+            val odtFile = File(tmpDir, "brief.odt")
+
+            val docxReport = bridge.editorExportDocx(id, docxFile.absolutePath)
+            assertFalse(docxReport.hasLosses)
+            assertTrue(docxFile.exists() && docxFile.length() > 500)
+
+            val odtReport = bridge.editorExportOdt(id, odtFile.absolutePath)
+            assertFalse(odtReport.hasLosses)
+            assertTrue(odtFile.exists() && odtFile.length() > 500)
+
+            val reopenedDocx = bridge.openOfficeEditorSession(docxFile.absolutePath)
+            assertTrue(reopenedDocx.snapshot.plainText.contains("Erster Schriftsatzparagraph."))
+            assertEquals(1, reopenedDocx.snapshot.comments.size)
+            assertTrue(reopenedDocx.snapshot.trackedChanges.isNotEmpty())
+            bridge.closeEditorSession(reopenedDocx.snapshot.editorId)
+
+            val reopenedOdt = bridge.openOfficeEditorSession(odtFile.absolutePath)
+            assertTrue(reopenedOdt.snapshot.plainText.contains("Erster Schriftsatzparagraph."))
+            assertEquals(1, reopenedOdt.snapshot.comments.size)
+            bridge.closeEditorSession(reopenedOdt.snapshot.editorId)
+        } finally {
+            tmpDir.deleteRecursively()
+        }
+
+        // UTF-16 <-> Unicode scalar offset conversion for IME / non-BMP characters
+        val emojiText = "A😀B漢字C"
+        val utf16For3 = scalarToUtf16Offset(emojiText, 3)
+        assertEquals(4, utf16For3)
+        assertEquals(3u, utf16ToScalarOffset(emojiText, utf16For3))
+
         bridge.closeEditorSession(id)
     }
 }

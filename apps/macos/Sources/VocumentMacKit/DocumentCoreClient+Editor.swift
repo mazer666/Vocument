@@ -184,5 +184,30 @@ extension DocumentCoreClient {
     public func editorReplaceRange(editorId: String, blockId: String, startOffset: UInt32, endOffset: UInt32, text: String) throws -> FfiEditorSessionSnapshot {
         try documentCoreEditorReplaceRange(editorId: editorId, blockId: blockId, startOffset: startOffset, endOffset: endOffset, text: text)
     }
+
+    /// Imports an OOXML `.docx` or ODF `.odt` document into a native flow editor session (`OFFICE-001`, `OFFICE-002`, `OFFICE-004`).
+    public func openOfficeEditorSession(at path: String) throws -> FfiOfficeImportResult {
+        try documentCoreOpenOfficeEditorSession(filePath: path)
+    }
+
+    /// Exports the active flow editor session to an OOXML `.docx` file (`OFFICE-001`, `OFFICE-004`).
+    public func editorExportDocx(editorId: String, targetPath: String) throws -> FfiConversionReport {
+        try documentCoreEditorExportDocx(editorId: editorId, targetPath: targetPath)
+    }
+
+    /// Exports the active flow editor session to an ODF Text `.odt` file (`OFFICE-002`, `OFFICE-004`).
+    public func editorExportOdt(editorId: String, targetPath: String) throws -> FfiConversionReport {
+        try documentCoreEditorExportOdt(editorId: editorId, targetPath: targetPath)
+    }
+
+    /// Saves an atomic `.pdoc` crash-recovery checkpoint for the active editor session (`RECOVERY-001`).
+    public func editorSaveRecoveryCheckpoint(editorId: String) throws -> String {
+        try documentCoreEditorSaveRecoveryCheckpoint(editorId: editorId)
+    }
+
+    /// Restores a flow editor session from a `.pdoc` crash-recovery checkpoint (`RECOVERY-001`).
+    public func editorRecoverSession(documentId: String) throws -> FfiEditorSessionSnapshot? {
+        try documentCoreEditorRecoverSession(documentId: documentId)
+    }
 }
 

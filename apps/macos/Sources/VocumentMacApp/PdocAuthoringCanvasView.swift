@@ -153,6 +153,17 @@ struct PdocAuthoringCanvasView: View {
                 }
                 .help("Barrierefreies PDF/A-2b und PDF/UA-1 exportieren")
 
+                // Office Interoperability (`OFFICE-001`–`005`)
+                Menu {
+                    Button("DOCX / ODT importieren...") { coordinator.openOfficeViaPanel() }
+                    Divider()
+                    Button("Als Word (.docx) exportieren...") { promptDocxExport() }
+                    Button("Als LibreOffice (.odt) exportieren...") { promptOdtExport() }
+                } label: {
+                    Label("DOCX / ODT", systemImage: "doc.richtext")
+                }
+                .help("Word (.docx) und LibreOffice (.odt) öffnen oder exportieren")
+
                 Spacer()
 
                 // Latency Badge (< 16ms budget)
@@ -470,6 +481,28 @@ struct PdocAuthoringCanvasView: View {
                 includeComments: includeComments,
                 includeTrackedChanges: includeTrackedChanges
             )
+        }
+    }
+
+    private func promptDocxExport() {
+        guard let session = coordinator.activeEditorSession else { return }
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.data]
+        savePanel.nameFieldStringValue = "\(session.title).docx"
+        savePanel.begin { response in
+            guard response == .OK, let target = savePanel.url else { return }
+            coordinator.editorExportDocx(to: target)
+        }
+    }
+
+    private func promptOdtExport() {
+        guard let session = coordinator.activeEditorSession else { return }
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.data]
+        savePanel.nameFieldStringValue = "\(session.title).odt"
+        savePanel.begin { response in
+            guard response == .OK, let target = savePanel.url else { return }
+            coordinator.editorExportOdt(to: target)
         }
     }
 

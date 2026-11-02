@@ -153,3 +153,23 @@ fun DocumentCoreBridge.editorReplaceRange(
     return documentCoreEditorReplaceRange(editorId, blockId, startOffset, endOffset, text)
 }
 
+fun DocumentCoreBridge.openOfficeEditorSession(filePath: String): FfiOfficeImportResult {
+    return documentCoreOpenOfficeEditorSession(filePath)
+}
+
+fun DocumentCoreBridge.editorExportDocx(editorId: String, targetPath: String): FfiConversionReport {
+    return documentCoreEditorExportDocx(editorId, targetPath)
+}
+
+fun DocumentCoreBridge.editorExportOdt(editorId: String, targetPath: String): FfiConversionReport {
+    return documentCoreEditorExportOdt(editorId, targetPath)
+}
+
+fun DocumentCoreBridge.editorSaveRecoveryCheckpoint(editorId: String): String {
+    return documentCoreEditorSaveRecoveryCheckpoint(editorId)
+}
+
+fun DocumentCoreBridge.editorRecoverSession(documentId: String): FfiEditorSessionSnapshot? {
+    return documentCoreEditorRecoverSession(documentId)
+}
+

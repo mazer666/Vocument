@@ -150,3 +150,46 @@ fn test_pdf_export_clean_vs_tracked_changes() {
     assert!(text_clean.contains("years"));
     assert!(!text_clean.contains("one"));
 }
+
+#[test]
+fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
+    let mut doc = FlowDocument::new(DocumentMetadata::new("doc_unicode", "Unicode Test"));
+    let section = Section::new(
+        "sec_1",
+        SectionGeometry::a4_portrait(),
+        vec![Block::Paragraph(ParagraphBlock::new(
+            "p_unicode",
+            vec![TextSpan::plain(
+                "Zażółć gęślą jaźń — αβγ — ДЖ — 漢字 — x ≤ y ≠ z",
+            )],
+        ))],
+    );
+    doc.sections.push(section);
+
+    let font_registry = FontRegistry::new();
+    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &PdfExportOptions::default());
+    let pdf_str = String::from_utf8_lossy(&pdf_bytes);
+    assert!(
+        pdf_str.contains("/ActualText <FEFF"),
+        "Non-WinAnsi runs must carry UTF-16BE /ActualText so zero Unicode scalars are lost"
+    );
+
+    if std::path::Path::new("/opt/homebrew/bin/mutool").exists() {
+        let tmp_pdf = std::env::temp_dir().join("vocument_unicode_actualtext_test.pdf");
+        std::fs::write(&tmp_pdf, &pdf_bytes).expect("write temp pdf");
+        let out = std::process::Command::new("/opt/homebrew/bin/mutool")
+            .args(["draw", "-F", "txt", tmp_pdf.to_str().unwrap_or("")])
+            .output()
+            .expect("mutool draw -F txt");
+        let _ = std::fs::remove_file(&tmp_pdf);
+        assert!(out.status.success());
+        let extracted = String::from_utf8_lossy(&out.stdout);
+        for token in ["Zażółć", "gęślą", "jaźń", "αβγ", "ДЖ", "漢字", "≤", "≠"]
+        {
+            assert!(
+                extracted.contains(token),
+                "Extracted text from PDF must preserve Unicode token '{token}', got: {extracted}"
+            );
+        }
+    }
+}

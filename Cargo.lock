@@ -983,6 +983,7 @@ dependencies = [
  "vocument-imaging",
  "vocument-layout",
  "vocument-ocr",
+ "vocument-office",
  "vocument-pdf-mupdf",
  "vocument-pdoc",
 ]
@@ -1028,6 +1029,18 @@ dependencies = [
  "vocument-core",
  "vocument-imaging",
  "vocument-pdf-mupdf",
+]
+
+[[package]]
+name = "vocument-office"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "vocument-flow",
+ "zip",
 ]
 
 [[package]]

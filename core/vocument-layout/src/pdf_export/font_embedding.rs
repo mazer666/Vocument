@@ -80,6 +80,21 @@ pub(super) fn char_to_win_ansi_code(character: char) -> Option<u8> {
     (0x80u8..=0x9F).find(|code| win_ansi_code_to_char(*code) == Some(character))
 }
 
+/// Returns `true` if `text` contains any Unicode scalar not directly representable in WinAnsi.
+pub(super) fn has_non_win_ansi(text: &str) -> bool {
+    text.chars().any(|c| char_to_win_ansi_code(c).is_none())
+}
+
+/// Encodes `text` as a UTF-16BE hexadecimal PDF string with BOM (`<FEFF...>`).
+pub(super) fn encode_utf16be_hex(text: &str) -> String {
+    let mut hex = String::from("<FEFF");
+    for unit in text.encode_utf16() {
+        let _ = write!(hex, "{:04X}", unit);
+    }
+    hex.push('>');
+    hex
+}
+
 /// Encodes text as a PDF literal string in WinAnsi. Characters WinAnsi cannot represent are
 /// replaced by `?` rather than silently dropped, so the length of the text stays visible.
 pub(super) fn encode_win_ansi_literal(text: &str) -> String {

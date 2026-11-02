@@ -6,7 +6,7 @@ use vocument_core::config::PackageLimitsConfig;
 use vocument_layout::editor::FlowEditorState;
 use vocument_layout::geometry::Rect;
 use vocument_layout::tree::{LayoutBoxKind, LayoutPage};
-use vocument_pdoc::container::{PdocContainer, PdocFileFingerprint, PdocPackage};
+use vocument_pdoc::container::{PdocContainer, PdocFileFingerprint};
 
 use crate::DocumentCoreError;
 
@@ -120,20 +120,22 @@ pub struct FfiEditorSessionSnapshot {
     pub comments: Vec<FfiFlowComment>,
     pub tracked_changes: Vec<FfiTrackedChange>,
     pub plain_text: String,
+    pub active_block_text: String,
     pub pages: Vec<FfiEditorPageSnapshot>,
 }
 
-struct FlowEditorSession {
-    id: String,
-    title: String,
-    file_path: Option<String>,
-    fingerprint: Option<PdocFileFingerprint>,
-    state: FlowEditorState,
+pub(crate) struct FlowEditorSession {
+    pub(crate) id: String,
+    pub(crate) title: String,
+    pub(crate) file_path: Option<String>,
+    pub(crate) fingerprint: Option<PdocFileFingerprint>,
+    pub(crate) assets: vocument_office::AssetMap,
+    pub(crate) state: FlowEditorState,
 }
 
 static EDITOR_REGISTRY: OnceLock<Mutex<HashMap<String, FlowEditorSession>>> = OnceLock::new();
 
-fn registry() -> &'static Mutex<HashMap<String, FlowEditorSession>> {
+pub(crate) fn registry() -> &'static Mutex<HashMap<String, FlowEditorSession>> {
     EDITOR_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -171,7 +173,7 @@ fn build_page_snapshot(page_index: u32, page: &LayoutPage) -> FfiEditorPageSnaps
     }
 }
 
-fn make_snapshot(session: &FlowEditorSession) -> FfiEditorSessionSnapshot {
+pub(crate) fn make_snapshot(session: &FlowEditorSession) -> FfiEditorSessionSnapshot {
     let (cursor_page, cursor_rect) = match session.state.cursor_rect() {
         Some((page_idx, rect)) => (page_idx as u32, Some(rect.into())),
         None => (0, None),
@@ -273,12 +275,13 @@ fn make_snapshot(session: &FlowEditorSession) -> FfiEditorSessionSnapshot {
         comments,
         tracked_changes,
         plain_text,
+        active_block_text: session.state.active_block_text(),
         pages,
     }
 }
 
 use std::sync::atomic::{AtomicU64, Ordering};
-static EDITOR_COUNTER: AtomicU64 = AtomicU64::new(1);
+pub(crate) static EDITOR_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Creates a new in-memory `.pdoc` flow editor session.
 #[uniffi::export]
@@ -295,6 +298,7 @@ pub fn document_core_create_editor_session(
         title: title.clone(),
         file_path: None,
         fingerprint: None,
+        assets: vocument_office::AssetMap::new(),
         state,
     };
     let snap = make_snapshot(&session);
@@ -319,6 +323,7 @@ pub fn document_core_open_pdoc_editor_session(
         })?;
     let fingerprint = PdocFileFingerprint::compute(&file_path).ok();
     let title = pkg.document.metadata.title.clone();
+    let assets = crate::office_dto::extract_assets_from_pdoc(&pkg);
     let state = FlowEditorState::from_document(pkg.into_flow_document());
     let id = format!(
         "editor_sess_{}",
@@ -329,6 +334,7 @@ pub fn document_core_open_pdoc_editor_session(
         title,
         file_path: Some(file_path),
         fingerprint,
+        assets,
         state,
     };
     let snap = make_snapshot(&session);
@@ -356,7 +362,7 @@ pub fn document_core_close_editor_session(editor_id: String) -> Result<(), Docum
     Ok(())
 }
 
-fn with_session<F, R>(editor_id: &str, f: F) -> Result<R, DocumentCoreError>
+pub(crate) fn with_session<F, R>(editor_id: &str, f: F) -> Result<R, DocumentCoreError>
 where
     F: FnOnce(&mut FlowEditorSession) -> Result<R, DocumentCoreError>,
 {
@@ -370,7 +376,9 @@ where
         .ok_or_else(|| DocumentCoreError::SessionNotFound {
             session_id: editor_id.to_string(),
         })?;
-    f(session)
+    let out = f(session)?;
+    let _ = crate::office_dto::save_editor_recovery_checkpoint(session);
+    Ok(out)
 }
 
 /// Inserts text at the current cursor position with sub-16ms incremental layout reflow.
@@ -593,7 +601,7 @@ pub fn document_core_editor_save_pdoc(
             }
         })?;
 
-        let package = PdocPackage::from_flow_document(s.state.document.clone());
+        let package = crate::office_dto::build_pdoc_package_from_session(s);
 
         match PdocContainer::save_with_conflict_check(&package, &save_path, s.fingerprint.as_ref())
         {

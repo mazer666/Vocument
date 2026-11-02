@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.2  
-**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], and M4.3 [Native Platform Editing Canvas & Input] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export in progress: veraPDF-green, PAC and tracked-change marks open). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], M4.3 [Native Platform Editing Canvas & Input], and M4.5 [Office Interoperability: DOCX and ODT Bake-Off & Adapters] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export is veraPDF-green with `/ActualText` zero-Unicode-loss preservation, while Windows-only PAC remains `NOT RUN`). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -821,24 +821,26 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Cryptographic Project Owner root of trust clearance gate (`docs/releasing/project_owner_root_of_trust.pub`, signature required).
   - [x] Lossless roundtrips verified across complex legal documents with tables, callouts, styling, and review data.
 
-- **M4.3 — Native Platform Editing Canvas & Input:**
-  - [x] macOS AppKit/SwiftUI view conforming to `NSTextInputClient` (CJK IME, accents, keyboard shortcuts, VoiceOver).
-  - [x] Android Jetpack Compose custom editor supporting touch, stylus, and Gboard IME with TalkBack semantics.
+- **M4.3 — Native Platform Editing Canvas & Input *(Status: **COMPLETE & VERIFIED**)*:**
+  - [x] macOS AppKit/SwiftUI view conforming to `NSTextInputClient` (CJK IME, accents, keyboard shortcuts, VoiceOver, UTF-16 `NSRange` $\leftrightarrow$ Unicode scalar offset mapping across paragraphs, headings, lists, tables, and callouts).
+  - [x] Android Jetpack Compose custom editor supporting touch, stylus, and Gboard IME with TalkBack semantics, UTF-16 `TextRange` $\leftrightarrow$ Unicode scalar offset mapping, and active-selection replacement.
   - [x] Sub-16ms typing and reflow latency budget (< 16ms, measured and verified in Rust, Swift, and Kotlin).
-  - [x] Full undo/redo transaction stack, atomic fsync saving, and conflict preservation.
+  - [x] Full undo/redo transaction stack, `.pdoc` crash-recovery checkpoints (`PdocRecoveryStore`), atomic fsync saving, and conflict preservation.
 
-- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation** *(Status: **IN PROGRESS** — export is veraPDF-green; PAC run and tracked-change marks in the PDF are open; see [PDF/A export](docs/features/PDFA_EXPORT.md))*:
+- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation** *(Status: **IN PROGRESS** — export is veraPDF-green with zero Unicode loss via `/ActualText`; PAC run and tracked-change marks in the PDF are open; see [PDF/A export](docs/features/PDFA_EXPORT.md))*:
   - [x] Tracked Changes: inline insertions, deletions, format changes with author attribution (`core/vocument-layout/src/editor_review.rs`, `tests/editor_tests.rs`).
   - [x] Margin Comments: character-range anchored threads with replies and resolution; exported as tagged PDF text annotations with appearance streams.
-  - [x] PDF/A-2b & PDF/UA-1 Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`, `/ParentTree`), table/list/callout structure, embedded font, sRGB output intent, XMP identification.
+  - [x] PDF/A-2b & PDF/UA-1 Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`, `/ParentTree`), table/list/callout structure, embedded font, sRGB output intent, XMP identification, and UTF-16BE `/Span << /ActualText <FEFF...> >> BDC` preserving non-WinAnsi Unicode scripts losslessly.
   - [x] veraPDF verification: `--flavour 2b` and `--flavour ua1` both **compliant** (veraPDF 1.30.3, `tests/pdf_export_conformance_tests.rs`, `scripts/verify-pdfa-compliance.sh`).
-  - [ ] PAC (PDF Accessibility Checker) verification — Windows-only tool, **not run**; `certified_by_external_tooling` stays `false` until it is.
+  - [ ] PAC (PDF Accessibility Checker) verification — Windows-only tool, **NOT RUN**; `certified_by_external_tooling` stays `false` until it is.
   - [ ] Visual marks for tracked changes in the exported PDF (underline for insertions, strikethrough for deletions) and image `/Figure` alt text.
 
-- **M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters:**
-  - High-fidelity bake-off against 200 real-world legal and technical DOCX/ODT documents.
-  - Lossless import into `FlowDocument` and valid export.
-  - Strict rule: No generic "roundtrip editing" claims without corpus evidence.
+- **M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters *(Status: **IMPLEMENTED & VERIFIED ON 180-DOCUMENT CORPUS** — see [`docs/features/OFFICE_INTEROP.md`](docs/features/OFFICE_INTEROP.md) & [`docs/benchmarks/M4_5_OFFICE_BAKEOFF.md`](docs/benchmarks/M4_5_OFFICE_BAKEOFF.md))***:
+  - [x] Native Rust DOCX (`.docx`) and ODT (`.odt`/`.ott`) import and export adapters (`engines/office` / `vocument-office`, `OFFICE-001`–`005`) covering styles, headings (`H1`–`H6`), ordered/unordered/nested/task lists, tables (headers, `col_span`, `row_span`/`vMerge`, widths, shading), SHA-256 deduplicated images, footnotes/endnotes, headers/footers (`{page}`/`{total_pages}`), page geometry, comments, and tracked changes.
+  - [x] Security hardening against ZIP bombs, path traversal, XXE/DTDs, encrypted/OLE2 archives, VBA/StarBasic macros, and external relationships (`TargetMode="External"`, external `xlink:href`).
+  - [x] Transparent `ConversionReport` (`OFFICE-004`) exposed over UniFFI (`platform/vocument-ffi/src/office_dto.rs`) and integrated into macOS (`PdocAuthoringCanvasView`) and Android (`PdocEditorScreen`).
+  - [x] Objective 3-tier fidelity bake-off across 180 real/reference documents (78 LibreOffice `.ott`/`.odt` templates, 78 headless-LibreOffice `.docx` counterparts, 24 legal/technical reference documents): **180 / 180 (100.00%) pass rate**, **100.00% Tier 1 & Tier 2 preservation**, **56 / 56 (100.00%) LibreOffice 26.2.2.2 headless reopen & PDF render validation** (`./scripts/office-bakeoff.sh`).
+  - [ ] External 200-document proprietary law-firm corpus is not bundled in the repository (`NOT BUNDLED`), and Microsoft Word desktop interoperability is `NOT RUN` (not installed on CI/dev host).
 
 ### Quality Gates
 

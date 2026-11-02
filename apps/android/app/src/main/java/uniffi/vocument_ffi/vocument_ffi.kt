@@ -1009,6 +1009,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1102,6 +1112,10 @@ fun uniffi_vocument_ffi_checksum_func_document_core_editor_disable_tracking(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_export_docx(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_export_odt(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_hit_test(
@@ -1120,6 +1134,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_editor_insert_text(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros(
 ): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_recover_session(
+): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_redo(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_reject_all_changes(
@@ -1133,6 +1149,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_editor_reply_comment(
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_resolve_comment(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_editor_save_recovery_checkpoint(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor(
 ): Short
@@ -1219,6 +1237,8 @@ fun uniffi_vocument_ffi_checksum_func_document_core_ocr_scan_session_page(
 fun uniffi_vocument_ffi_checksum_func_document_core_open_brokered_file(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_open_office_editor_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session(
 ): Short
@@ -1445,6 +1465,10 @@ fun uniffi_vocument_ffi_fn_func_document_core_editor_disable_tracking(`editorId`
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_enable_tracking(`editorId`: RustBuffer.ByValue,`author`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_export_docx(`editorId`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_export_odt(`editorId`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_export_pdf(`editorId`: RustBuffer.ByValue,`includeComments`: Byte,`includeTrackedChanges`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_hit_test(`editorId`: RustBuffer.ByValue,`pageIndex`: Int,`xPt`: Float,`yPt`: Float,uniffi_out_err: UniffiRustCallStatus, 
@@ -1463,6 +1487,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_editor_insert_text(`editorId`: Rus
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_measure_typing_latency_micros(`editorId`: RustBuffer.ByValue,`sampleText`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+fun uniffi_vocument_ffi_fn_func_document_core_editor_recover_session(`documentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_redo(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_reject_all_changes(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1476,6 +1502,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_editor_reply_comment(`editorId`: R
 fun uniffi_vocument_ffi_fn_func_document_core_editor_resolve_comment(`editorId`: RustBuffer.ByValue,`commentId`: RustBuffer.ByValue,`resolved`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(`editorId`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_editor_save_recovery_checkpoint(`editorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_editor_set_cursor(`editorId`: RustBuffer.ByValue,`blockId`: RustBuffer.ByValue,`offset`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1562,6 +1590,8 @@ fun uniffi_vocument_ffi_fn_func_document_core_ocr_scan_session_page(`sessionId`:
 fun uniffi_vocument_ffi_fn_func_document_core_open_brokered_file(`descriptor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(`scopedPathOrUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_open_office_editor_session(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_open_pdoc_editor_session(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1908,6 +1938,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_enable_tracking() != 44052.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_export_docx() != 11457.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_export_odt() != 25262.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_export_pdf() != 53605.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1935,6 +1971,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_measure_typing_latency_micros() != 22325.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_recover_session() != 20774.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_redo() != 30622.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1954,6 +1993,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_save_pdoc() != 58424.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_save_recovery_checkpoint() != 56121.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_editor_set_cursor() != 39705.toShort()) {
@@ -2083,6 +2125,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_macos_scoped_file() != 54001.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_office_editor_session() != 62136.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_open_pdoc_editor_session() != 64345.toShort()) {
@@ -3077,6 +3122,108 @@ public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCo
 
 
 /**
+ * Individual conversion report entry surfaced to the native UI (`OFFICE-004`).
+ */
+data class FfiConversionEntry (
+    var `severity`: FfiConversionSeverity, 
+    var `code`: kotlin.String, 
+    var `message`: kotlin.String, 
+    var `count`: kotlin.UInt, 
+    var `sampleLocation`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConversionEntry: FfiConverterRustBuffer<FfiConversionEntry> {
+    override fun read(buf: ByteBuffer): FfiConversionEntry {
+        return FfiConversionEntry(
+            FfiConverterTypeFfiConversionSeverity.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiConversionEntry) = (
+            FfiConverterTypeFfiConversionSeverity.allocationSize(value.`severity`) +
+            FfiConverterString.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`message`) +
+            FfiConverterUInt.allocationSize(value.`count`) +
+            FfiConverterOptionalString.allocationSize(value.`sampleLocation`)
+    )
+
+    override fun write(value: FfiConversionEntry, buf: ByteBuffer) {
+            FfiConverterTypeFfiConversionSeverity.write(value.`severity`, buf)
+            FfiConverterString.write(value.`code`, buf)
+            FfiConverterString.write(value.`message`, buf)
+            FfiConverterUInt.write(value.`count`, buf)
+            FfiConverterOptionalString.write(value.`sampleLocation`, buf)
+    }
+}
+
+
+
+/**
+ * Aggregated conversion report returned by DOCX/ODT import and export (`OFFICE-004`).
+ */
+data class FfiConversionReport (
+    var `entries`: List<FfiConversionEntry>, 
+    var `hasLosses`: kotlin.Boolean, 
+    var `hasSecurityFindings`: kotlin.Boolean, 
+    var `lossCount`: kotlin.UInt, 
+    var `approximationCount`: kotlin.UInt, 
+    var `passthroughCount`: kotlin.UInt, 
+    var `summaryText`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConversionReport: FfiConverterRustBuffer<FfiConversionReport> {
+    override fun read(buf: ByteBuffer): FfiConversionReport {
+        return FfiConversionReport(
+            FfiConverterSequenceTypeFfiConversionEntry.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiConversionReport) = (
+            FfiConverterSequenceTypeFfiConversionEntry.allocationSize(value.`entries`) +
+            FfiConverterBoolean.allocationSize(value.`hasLosses`) +
+            FfiConverterBoolean.allocationSize(value.`hasSecurityFindings`) +
+            FfiConverterUInt.allocationSize(value.`lossCount`) +
+            FfiConverterUInt.allocationSize(value.`approximationCount`) +
+            FfiConverterUInt.allocationSize(value.`passthroughCount`) +
+            FfiConverterString.allocationSize(value.`summaryText`)
+    )
+
+    override fun write(value: FfiConversionReport, buf: ByteBuffer) {
+            FfiConverterSequenceTypeFfiConversionEntry.write(value.`entries`, buf)
+            FfiConverterBoolean.write(value.`hasLosses`, buf)
+            FfiConverterBoolean.write(value.`hasSecurityFindings`, buf)
+            FfiConverterUInt.write(value.`lossCount`, buf)
+            FfiConverterUInt.write(value.`approximationCount`, buf)
+            FfiConverterUInt.write(value.`passthroughCount`, buf)
+            FfiConverterString.write(value.`summaryText`, buf)
+    }
+}
+
+
+
+/**
  * Result of deskewing and orientation correction crossing UniFFI boundary.
  */
 data class FfiDeskewResult (
@@ -3484,6 +3631,7 @@ data class FfiEditorSessionSnapshot (
     var `comments`: List<FfiFlowComment>, 
     var `trackedChanges`: List<FfiTrackedChange>, 
     var `plainText`: kotlin.String, 
+    var `activeBlockText`: kotlin.String, 
     var `pages`: List<FfiEditorPageSnapshot>
 ) {
     
@@ -3511,6 +3659,7 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiFlowComment.read(buf),
             FfiConverterSequenceTypeFfiTrackedChange.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterSequenceTypeFfiEditorPageSnapshot.read(buf),
         )
     }
@@ -3531,6 +3680,7 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiFlowComment.allocationSize(value.`comments`) +
             FfiConverterSequenceTypeFfiTrackedChange.allocationSize(value.`trackedChanges`) +
             FfiConverterString.allocationSize(value.`plainText`) +
+            FfiConverterString.allocationSize(value.`activeBlockText`) +
             FfiConverterSequenceTypeFfiEditorPageSnapshot.allocationSize(value.`pages`)
     )
 
@@ -3550,6 +3700,7 @@ public object FfiConverterTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<F
             FfiConverterSequenceTypeFfiFlowComment.write(value.`comments`, buf)
             FfiConverterSequenceTypeFfiTrackedChange.write(value.`trackedChanges`, buf)
             FfiConverterString.write(value.`plainText`, buf)
+            FfiConverterString.write(value.`activeBlockText`, buf)
             FfiConverterSequenceTypeFfiEditorPageSnapshot.write(value.`pages`, buf)
     }
 }
@@ -4396,6 +4547,45 @@ public object FfiConverterTypeFfiOcrWord: FfiConverterRustBuffer<FfiOcrWord> {
             FfiConverterUInt.write(value.`blockIndex`, buf)
             FfiConverterUInt.write(value.`lineIndex`, buf)
             FfiConverterUInt.write(value.`wordIndex`, buf)
+    }
+}
+
+
+
+/**
+ * Result of importing a `.docx` or `.odt` document into the native flow editor (`OFFICE-001`, `OFFICE-002`).
+ */
+data class FfiOfficeImportResult (
+    var `snapshot`: FfiEditorSessionSnapshot, 
+    var `report`: FfiConversionReport, 
+    var `detectedFormat`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOfficeImportResult: FfiConverterRustBuffer<FfiOfficeImportResult> {
+    override fun read(buf: ByteBuffer): FfiOfficeImportResult {
+        return FfiOfficeImportResult(
+            FfiConverterTypeFfiEditorSessionSnapshot.read(buf),
+            FfiConverterTypeFfiConversionReport.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOfficeImportResult) = (
+            FfiConverterTypeFfiEditorSessionSnapshot.allocationSize(value.`snapshot`) +
+            FfiConverterTypeFfiConversionReport.allocationSize(value.`report`) +
+            FfiConverterString.allocationSize(value.`detectedFormat`)
+    )
+
+    override fun write(value: FfiOfficeImportResult, buf: ByteBuffer) {
+            FfiConverterTypeFfiEditorSessionSnapshot.write(value.`snapshot`, buf)
+            FfiConverterTypeFfiConversionReport.write(value.`report`, buf)
+            FfiConverterString.write(value.`detectedFormat`, buf)
     }
 }
 
@@ -7374,6 +7564,42 @@ public object FfiConverterTypeFfiBatesPosition: FfiConverterRustBuffer<FfiBatesP
 
 
 /**
+ * Severity classification of an Office conversion finding (`OFFICE-004`).
+ */
+
+enum class FfiConversionSeverity {
+    
+    INFO,
+    PRESERVED_UNRENDERED,
+    APPROXIMATED,
+    LOSS,
+    SECURITY;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConversionSeverity: FfiConverterRustBuffer<FfiConversionSeverity> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiConversionSeverity.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiConversionSeverity) = 4UL
+
+    override fun write(value: FfiConversionSeverity, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
  */
 
@@ -8248,6 +8474,38 @@ public object FfiConverterOptionalTypeFfiEditorRect: FfiConverterRustBuffer<FfiE
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiEditorSessionSnapshot: FfiConverterRustBuffer<FfiEditorSessionSnapshot?> {
+    override fun read(buf: ByteBuffer): FfiEditorSessionSnapshot? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiEditorSessionSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: FfiEditorSessionSnapshot?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiEditorSessionSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiEditorSessionSnapshot?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiEditorSessionSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiFileIdentity: FfiConverterRustBuffer<FfiFileIdentity?> {
     override fun read(buf: ByteBuffer): FfiFileIdentity? {
         if (buf.get().toInt() == 0) {
@@ -8598,6 +8856,34 @@ public object FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiCommentAnnotation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiConversionEntry: FfiConverterRustBuffer<List<FfiConversionEntry>> {
+    override fun read(buf: ByteBuffer): List<FfiConversionEntry> {
+        val len = buf.getInt()
+        return List<FfiConversionEntry>(len) {
+            FfiConverterTypeFfiConversionEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiConversionEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiConversionEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiConversionEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiConversionEntry.write(it, buf)
         }
     }
 }
@@ -9874,6 +10160,32 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Exports the active flow editor session to an OOXML `.docx` file (`OFFICE-001`, `OFFICE-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorExportDocx`(`editorId`: kotlin.String, `targetPath`: kotlin.String): FfiConversionReport {
+            return FfiConverterTypeFfiConversionReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_export_docx(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`targetPath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Exports the active flow editor session to an ODF Text `.odt` file (`OFFICE-002`, `OFFICE-004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorExportOdt`(`editorId`: kotlin.String, `targetPath`: kotlin.String): FfiConversionReport {
+            return FfiConverterTypeFfiConversionReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_export_odt(
+        FfiConverterString.lower(`editorId`),FfiConverterString.lower(`targetPath`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Exports the flow document to a Tagged PDF/A-2b and PDF/UA-1 compliant stream (`EXPORT-001`).
          */
     @Throws(DocumentCoreException::class) fun `documentCoreEditorExportPdf`(`editorId`: kotlin.String, `includeComments`: kotlin.Boolean, `includeTrackedChanges`: kotlin.Boolean): kotlin.ByteArray {
@@ -9991,6 +10303,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     
 
         /**
+         * Restores a flow editor session from a `.pdoc` crash-recovery checkpoint by document ID.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorRecoverSession`(`documentId`: kotlin.String): FfiEditorSessionSnapshot? {
+            return FfiConverterOptionalTypeFfiEditorSessionSnapshot.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_recover_session(
+        FfiConverterString.lower(`documentId`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Redoes the previously undone editing transaction.
          */
     @Throws(DocumentCoreException::class) fun `documentCoreEditorRedo`(`editorId`: kotlin.String): FfiEditorSessionSnapshot {
@@ -10076,6 +10401,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_save_pdoc(
         FfiConverterString.lower(`editorId`),FfiConverterOptionalString.lower(`targetPath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Explicitly saves an atomic `.pdoc` crash-recovery checkpoint for an active editor session.
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreEditorSaveRecoveryCheckpoint`(`editorId`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_editor_save_recovery_checkpoint(
+        FfiConverterString.lower(`editorId`),_status)
 }
     )
     }
@@ -10671,6 +11009,19 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
     uniffiRustCallWithError(DocumentCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_macos_scoped_file(
         FfiConverterString.lower(`scopedPathOrUrl`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Imports a `.docx` or `.odt` file into a native flow editor session (`OFFICE-001`, `OFFICE-002`, `OFFICE-004`, `OFFICE-005`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreOpenOfficeEditorSession`(`filePath`: kotlin.String): FfiOfficeImportResult {
+            return FfiConverterTypeFfiOfficeImportResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_open_office_editor_session(
+        FfiConverterString.lower(`filePath`),_status)
 }
     )
     }

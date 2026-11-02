@@ -21,6 +21,7 @@ vocument-ocr = { path = "../../engines/ocr" }
 vocument-flow = { path = "../../core/vocument-flow" }
 vocument-layout = { path = "../../core/vocument-layout" }
 vocument-pdoc = { path = "../../formats/pdoc" }
+vocument-office = { path = "../../engines/office" }
 uniffi.workspace = true
 thiserror.workspace = true
 

@@ -154,6 +154,7 @@ fun MinimalReaderSessionScreen(
 ) {
     val context = LocalContext.current
     var activeSession by remember { mutableStateOf<FfiDocumentSessionSnapshot?>(null) }
+    var activeEditorSession by remember { mutableStateOf<uniffi.vocument_ffi.FfiEditorSessionSnapshot?>(null) }
     var currentPageIndex by remember { mutableStateOf(0u) }
     var scaleMilli by remember { mutableStateOf(1000u) }
     var viewportResult by remember { mutableStateOf<FfiViewportRenderResult?>(null) }
@@ -355,6 +356,45 @@ fun MinimalReaderSessionScreen(
         }
     }
 
+    val openOfficeLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("Unable to read Office/PDOC URI $uri")
+                val name = (uri.lastPathSegment ?: "document.docx").substringAfterLast('/')
+                val staged = java.io.File(context.cacheDir, name)
+                staged.writeBytes(bytes)
+                if (name.lowercase().endsWith(".pdoc")) {
+                    coreBridge.openPdocEditorSession(staged.absolutePath)
+                } else {
+                    val res = coreBridge.openOfficeEditorSession(staged.absolutePath)
+                    statusMessage = res.report.summaryText
+                    res.snapshot
+                }
+            }.onSuccess { editorSnap ->
+                activeEditorSession = editorSnap
+                errorMessage = null
+            }.onFailure { err ->
+                errorMessage = err.message
+            }
+        }
+    }
+
+    val currentEditor = activeEditorSession
+    if (currentEditor != null) {
+        PdocEditorScreen(
+            initialSession = currentEditor,
+            coreBridge = coreBridge,
+            onBack = {
+                runCatching { coreBridge.closeEditorSession(currentEditor.editorId) }
+                activeEditorSession = null
+            }
+        )
+        return
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -404,8 +444,13 @@ fun MinimalReaderSessionScreen(
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { openPdfLauncher.launch(arrayOf("application/pdf")) }) {
-                Text("Open PDF (SAF)…")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { openPdfLauncher.launch(arrayOf("application/pdf")) }) {
+                    Text("Open PDF (SAF)…")
+                }
+                OutlinedButton(onClick = { openOfficeLauncher.launch(arrayOf("*/*")) }) {
+                    Text("Open DOCX / ODT…")
+                }
             }
 
             // A scanned document must be savable. Without this action the

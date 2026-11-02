@@ -17,8 +17,13 @@ extension MacDocumentSessionCoordinator {
         }
     }
 
-    /// Opens an existing `.pdoc` file package into the flow editor.
+    /// Opens an existing `.pdoc`, `.docx`, or `.odt` file package into the flow editor.
     public func openPdocDocument(at url: URL) {
+        let ext = url.pathExtension.lowercased()
+        if ext == "docx" || ext == "odt" || ext == "ott" {
+            openOfficeDocument(at: url)
+            return
+        }
         do {
             let session = try coreClient.openPdocEditorSession(at: url.path)
             self.activeEditorSession = session
@@ -29,7 +34,20 @@ extension MacDocumentSessionCoordinator {
         }
     }
 
-    /// Displays an NSOpenPanel to choose and open a `.pdoc` file.
+    /// Opens an OOXML `.docx` or ODF `.odt` file into the flow editor (`OFFICE-001`, `OFFICE-002`, `OFFICE-004`).
+    public func openOfficeDocument(at url: URL) {
+        do {
+            let result = try coreClient.openOfficeEditorSession(at: url.path)
+            self.activeEditorSession = result.snapshot
+            self.activeViewMode = .authoring
+            self.errorMessage = nil
+            self.saveNotificationMessage = "\(url.lastPathComponent) (\(result.detectedFormat.uppercased())) importiert. \(result.report.summaryText)"
+        } catch {
+            self.errorMessage = "Fehler beim Office-Import: \(error.localizedDescription)"
+        }
+    }
+
+    /// Displays an NSOpenPanel to choose and open a `.pdoc`, `.docx`, or `.odt` file.
     public func openPdocViaPanel() {
         let openPanel = NSOpenPanel()
         openPanel.canChooseFiles = true
@@ -39,6 +57,19 @@ extension MacDocumentSessionCoordinator {
         openPanel.begin { [weak self] response in
             guard let self, response == .OK, let selectedUrl = openPanel.url else { return }
             self.openPdocDocument(at: selectedUrl)
+        }
+    }
+
+    /// Displays an NSOpenPanel specifically for importing `.docx` / `.odt` documents (`OFFICE-001`, `OFFICE-002`).
+    public func openOfficeViaPanel() {
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.allowedContentTypes = [.data]
+        openPanel.begin { [weak self] response in
+            guard let self, response == .OK, let selectedUrl = openPanel.url else { return }
+            self.openOfficeDocument(at: selectedUrl)
         }
     }
 
@@ -370,6 +401,26 @@ extension MacDocumentSessionCoordinator {
             self.activeEditorSession = updated
         } catch {
             self.errorMessage = error.localizedDescription
+        }
+    }
+
+    public func editorExportDocx(to url: URL) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let report = try coreClient.editorExportDocx(editorId: session.editorId, targetPath: url.path)
+            self.saveNotificationMessage = "DOCX exportiert (\(url.lastPathComponent)). \(report.summaryText)"
+        } catch {
+            self.errorMessage = "Fehler beim DOCX-Export: \(error.localizedDescription)"
+        }
+    }
+
+    public func editorExportOdt(to url: URL) {
+        guard let session = activeEditorSession else { return }
+        do {
+            let report = try coreClient.editorExportOdt(editorId: session.editorId, targetPath: url.path)
+            self.saveNotificationMessage = "ODT exportiert (\(url.lastPathComponent)). \(report.summaryText)"
+        } catch {
+            self.errorMessage = "Fehler beim ODT-Export: \(error.localizedDescription)"
         }
     }
 }

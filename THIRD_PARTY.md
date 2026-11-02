@@ -164,6 +164,7 @@ The table is written with `scripts/audit-licenses.sh --write` and checked with `
 | `vocument-imaging` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-layout` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-ocr` | 0.1.0 | AGPL-3.0-or-later |
+| `vocument-office` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-pdf-mupdf` | 0.1.0 | AGPL-3.0-or-later |
 | `vocument-pdoc` | 0.1.0 | AGPL-3.0-or-later |
 | `weedle2` | 5.0.0 | MIT |

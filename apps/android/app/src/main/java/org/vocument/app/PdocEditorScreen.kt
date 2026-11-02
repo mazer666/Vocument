@@ -59,11 +59,13 @@ fun PdocEditorScreen(
     var exportStatusMessage by remember { mutableStateOf<String?>(null) }
 
     val focusRequester = remember { FocusRequester() }
-    var textFieldValue by remember {
+    var textFieldValue by remember(session.activeBlockId, session.activeBlockText, session.cursorOffset) {
+        val activeText = session.activeBlockText
+        val utf16Cursor = scalarToUtf16Offset(activeText, session.cursorOffset.toInt())
         mutableStateOf(
             TextFieldValue(
-                text = session.plainText,
-                selection = TextRange(session.cursorOffset.toInt())
+                text = activeText,
+                selection = TextRange(utf16Cursor)
             )
         )
     }
@@ -183,47 +185,56 @@ fun PdocEditorScreen(
                 val newText = newVal.text
                 if (newText != oldText) {
                     val start = System.nanoTime()
-                    val oldSel = textFieldValue.selection
-                    if (!oldSel.collapsed && oldSel.min < oldText.length) {
-                        val replacedStart = oldSel.min.toUInt()
-                        val replacedEnd = minOf(oldSel.max, oldText.length).toUInt()
-                        val insertLen = newText.length - (oldText.length - (oldSel.max - oldSel.min))
-                        val replacementText = if (insertLen > 0 && newVal.selection.start >= insertLen) {
-                            newText.substring(newVal.selection.start - insertLen, newVal.selection.start)
+                    var prefixLen = 0
+                    val maxPrefix = minOf(oldText.length, newText.length, newVal.selection.min.coerceAtLeast(0))
+                    while (prefixLen < maxPrefix && oldText[prefixLen] == newText[prefixLen]) {
+                        prefixLen++
+                    }
+                    if (prefixLen > 0 && Character.isHighSurrogate(oldText[prefixLen - 1])) {
+                        prefixLen--
+                    }
+
+                    var suffixLen = 0
+                    val maxSuffix = minOf(oldText.length - prefixLen, newText.length - prefixLen)
+                    while (
+                        suffixLen < maxSuffix &&
+                        oldText[oldText.length - 1 - suffixLen] == newText[newText.length - 1 - suffixLen]
+                    ) {
+                        suffixLen++
+                    }
+                    if (suffixLen > 0 && Character.isLowSurrogate(oldText[oldText.length - suffixLen])) {
+                        suffixLen--
+                    }
+
+                    val oldReplaceStartUtf16 = prefixLen
+                    val oldReplaceEndUtf16 = oldText.length - suffixLen
+                    val replacementText = newText.substring(prefixLen, newText.length - suffixLen)
+
+                    val startScalar = utf16ToScalarOffset(oldText, oldReplaceStartUtf16)
+                    val endScalar = utf16ToScalarOffset(oldText, oldReplaceEndUtf16)
+
+                    runCatching {
+                        session = if (startScalar == endScalar && startScalar == session.cursorOffset && replacementText.length == 1 && replacementText != "\n") {
+                            coreBridge.editorInsertText(session.editorId, replacementText)
+                        } else if (replacementText == "\n" && startScalar == endScalar) {
+                            coreBridge.editorInsertParagraphBreak(session.editorId)
                         } else {
-                            ""
-                        }
-                        runCatching {
-                            session = coreBridge.editorReplaceRange(
+                            coreBridge.editorReplaceRange(
                                 session.editorId,
                                 session.activeBlockId,
-                                replacedStart,
-                                replacedEnd,
+                                startScalar,
+                                endScalar,
                                 replacementText
                             )
-                        }
-                    } else if (newText.length > oldText.length) {
-                        val insertLen = newText.length - oldText.length
-                        val insertPos = newVal.selection.start
-                        val added = if (insertPos >= insertLen) {
-                            newText.substring(insertPos - insertLen, insertPos)
-                        } else {
-                            newText
-                        }
-                        runCatching {
-                            session = coreBridge.editorInsertText(session.editorId, added)
-                        }
-                    } else {
-                        val deleteLen = maxOf(1, oldText.length - newText.length)
-                        runCatching {
-                            for (i in 0 until deleteLen) {
-                                session = coreBridge.editorDeleteBackward(session.editorId)
-                            }
                         }
                     }
                     measuredLatencyMs = (System.nanoTime() - start) / 1_000_000.0
                 }
-                textFieldValue = newVal
+                textFieldValue = TextFieldValue(
+                    text = session.activeBlockText,
+                    selection = TextRange(scalarToUtf16Offset(session.activeBlockText, session.cursorOffset.toInt())),
+                    composition = newVal.composition
+                )
             },
             modifier = Modifier
                 .fillMaxSize()
@@ -280,8 +291,8 @@ fun PdocEditorScreen(
                                                     tapOffset.y
                                                 )
                                                 textFieldValue = TextFieldValue(
-                                                    text = session.plainText,
-                                                    selection = TextRange(session.cursorOffset.toInt())
+                                                    text = session.activeBlockText,
+                                                    selection = TextRange(scalarToUtf16Offset(session.activeBlockText, session.cursorOffset.toInt()))
                                                 )
                                             }
                                             measuredLatencyMs = (System.nanoTime() - start) / 1_000_000.0
@@ -529,15 +540,15 @@ fun PdocEditorScreen(
         )
     }
 
-    // PDF/A & PDF/UA Export Dialog (`EXPORT-001`, `EXPORT-002`)
+    // PDF/A, PDF/UA & Office (DOCX/ODT) Export Dialog (`EXPORT-001`, `EXPORT-002`, `OFFICE-001`–`004`)
     if (showExportDialog) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("PDF/A-2b & PDF/UA-1 Export") },
+            title = { Text("Export (PDF/A, DOCX, ODT)") },
             text = {
                 Column {
                     Text(
-                        "Erzeugt ein standardkonformes, strukturiertes Langzeitarchivdokument.",
+                        "Exportiert das Dokument als PDF/A-2b & PDF/UA-1, Microsoft Word (.docx) oder LibreOffice (.odt).",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -554,6 +565,33 @@ fun PdocEditorScreen(
                             onCheckedChange = { exportIncludeTrackedChanges = it }
                         )
                         Text("Änderungsverfolgung visuell darstellen", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            showExportDialog = false
+                            runCatching {
+                                val dest = File("/sdcard/Download/${session.title}.docx")
+                                val report = coreBridge.editorExportDocx(session.editorId, dest.absolutePath)
+                                exportStatusMessage = "DOCX exportiert (${dest.name}). ${report.summaryText}"
+                            }.onFailure {
+                                exportStatusMessage = "DOCX-Export-Fehler: ${it.message}"
+                            }
+                        }) {
+                            Text("DOCX")
+                        }
+                        OutlinedButton(onClick = {
+                            showExportDialog = false
+                            runCatching {
+                                val dest = File("/sdcard/Download/${session.title}.odt")
+                                val report = coreBridge.editorExportOdt(session.editorId, dest.absolutePath)
+                                exportStatusMessage = "ODT exportiert (${dest.name}). ${report.summaryText}"
+                            }.onFailure {
+                                exportStatusMessage = "ODT-Export-Fehler: ${it.message}"
+                            }
+                        }) {
+                            Text("ODT")
+                        }
                     }
                 }
             },
@@ -573,7 +611,7 @@ fun PdocEditorScreen(
                         exportStatusMessage = "Export-Fehler: ${it.message}"
                     }
                 }) {
-                    Text("Exportieren")
+                    Text("PDF/A Exportieren")
                 }
             },
             dismissButton = {
@@ -583,4 +621,17 @@ fun PdocEditorScreen(
             }
         )
     }
+}
+
+internal fun scalarToUtf16Offset(text: String, scalarOffset: Int): Int {
+    if (text.isEmpty() || scalarOffset <= 0) return 0
+    val totalCodePoints = text.codePointCount(0, text.length)
+    val clamped = scalarOffset.coerceIn(0, totalCodePoints)
+    return runCatching { text.offsetByCodePoints(0, clamped) }.getOrDefault(text.length)
+}
+
+internal fun utf16ToScalarOffset(text: String, utf16Offset: Int): UInt {
+    if (text.isEmpty() || utf16Offset <= 0) return 0u
+    val clamped = utf16Offset.coerceIn(0, text.length)
+    return text.codePointCount(0, clamped).toUInt()
 }

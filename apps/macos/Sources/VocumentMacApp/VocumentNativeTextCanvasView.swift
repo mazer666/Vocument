@@ -245,6 +245,24 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
 
     // MARK: - NSTextInputClient Implementation (IME, VoiceOver, Accent Popups)
 
+    private func utf16Offset(forScalarOffset scalarOffset: UInt32, in text: String) -> Int {
+        let scalars = text.unicodeScalars
+        let clamped = min(Int(scalarOffset), scalars.count)
+        let idx = scalars.index(scalars.startIndex, offsetBy: clamped)
+        return text.utf16.distance(from: text.utf16.startIndex, to: idx.samePosition(in: text.utf16) ?? text.utf16.endIndex)
+    }
+
+    private func scalarOffset(forUtf16Offset utf16Offset: Int, in text: String) -> UInt32 {
+        let utf16 = text.utf16
+        let clamped = max(0, min(utf16Offset, utf16.count))
+        let idx = utf16.index(utf16.startIndex, offsetBy: clamped)
+        if let scalarIdx = idx.samePosition(in: text.unicodeScalars) {
+            return UInt32(text.unicodeScalars.distance(from: text.unicodeScalars.startIndex, to: scalarIdx))
+        }
+        let prefix = String(decoding: utf16.prefix(clamped), as: UTF16.self)
+        return UInt32(prefix.unicodeScalars.count)
+    }
+
     func insertText(_ string: Any, replacementRange: NSRange) {
         let text: String
         if let str = string as? String {
@@ -260,10 +278,12 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
 
         if replacementRange.location != NSNotFound && replacementRange.length > 0 {
             if let snap = self.snapshot, self.onReplaceRange != nil {
+                let startScalar = scalarOffset(forUtf16Offset: replacementRange.location, in: snap.activeBlockText)
+                let endScalar = scalarOffset(forUtf16Offset: replacementRange.location + replacementRange.length, in: snap.activeBlockText)
                 self.onReplaceRange?(
                     snap.activeBlockId,
-                    UInt32(replacementRange.location),
-                    UInt32(replacementRange.location + replacementRange.length),
+                    startScalar,
+                    endScalar,
                     text
                 )
                 return
@@ -282,10 +302,12 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         if replacementRange.location != NSNotFound && replacementRange.length > 0 {
             if let snap = self.snapshot, self.onReplaceRange != nil {
+                let startScalar = scalarOffset(forUtf16Offset: replacementRange.location, in: snap.activeBlockText)
+                let endScalar = scalarOffset(forUtf16Offset: replacementRange.location + replacementRange.length, in: snap.activeBlockText)
                 self.onReplaceRange?(
                     snap.activeBlockId,
-                    UInt32(replacementRange.location),
-                    UInt32(replacementRange.location + replacementRange.length),
+                    startScalar,
+                    endScalar,
                     ""
                 )
             } else {
@@ -304,19 +326,28 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
     }
 
     func unmarkText() {
+        let pending = markedString.string
         markedString = NSMutableAttributedString()
         markedSelectedRange = NSRange(location: NSNotFound, length: 0)
+        if !pending.isEmpty {
+            self.onInsertText?(pending)
+        }
         needsDisplay = true
     }
 
     func selectedRange() -> NSRange {
         guard let snap = snapshot else { return NSRange(location: 0, length: 0) }
-        return NSRange(location: Int(snap.cursorOffset), length: 0)
+        let baseUtf16 = utf16Offset(forScalarOffset: snap.cursorOffset, in: snap.activeBlockText)
+        if markedString.length > 0 && markedSelectedRange.location != NSNotFound {
+            return NSRange(location: baseUtf16 + markedSelectedRange.location, length: markedSelectedRange.length)
+        }
+        return NSRange(location: baseUtf16, length: 0)
     }
 
     func markedRange() -> NSRange {
-        if markedString.length > 0 {
-            return NSRange(location: 0, length: markedString.length)
+        if markedString.length > 0, let snap = snapshot {
+            let baseUtf16 = utf16Offset(forScalarOffset: snap.cursorOffset, in: snap.activeBlockText)
+            return NSRange(location: baseUtf16, length: markedString.length)
         }
         return NSRange(location: NSNotFound, length: 0)
     }
@@ -326,10 +357,10 @@ final class VocumentNativeTextCanvasView: NSView, @preconcurrency NSTextInputCli
     }
 
     func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
-        guard let snap = snapshot else { return nil }
-        let text = snap.plainText as NSString
-        guard range.location < text.length else { return nil }
-        let validLength = min(range.length, text.length - range.location)
+        guard let snap = snapshot, range.location != NSNotFound, range.location >= 0 else { return nil }
+        let text = snap.activeBlockText as NSString
+        guard range.location <= text.length else { return nil }
+        let validLength = max(0, min(range.length, text.length - range.location))
         let subRange = NSRange(location: range.location, length: validLength)
         actualRange?.pointee = subRange
         return NSAttributedString(string: text.substring(with: subRange))

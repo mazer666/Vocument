@@ -311,3 +311,112 @@ pub(crate) fn retain_spans_in_block<F: FnMut(&TextSpan) -> bool>(block: &mut Blo
         Block::Image(_) | Block::ThematicBreak(_) => {}
     }
 }
+
+pub(crate) fn find_spans_in_block_mut<'a>(
+    block: &'a mut Block,
+    target_id: &str,
+) -> Option<&'a mut Vec<TextSpan>> {
+    match block {
+        Block::Paragraph(p) if p.id == target_id => Some(&mut p.spans),
+        Block::Heading(h) if h.id == target_id => Some(&mut h.spans),
+        Block::List(l) => find_spans_in_list_mut(l, target_id),
+        Block::Table(t) => {
+            for row in &mut t.rows {
+                for cell in &mut row.cells {
+                    for b in &mut cell.blocks {
+                        if let Some(spans) = find_spans_in_block_mut(b, target_id) {
+                            return Some(spans);
+                        }
+                    }
+                }
+            }
+            None
+        }
+        Block::Callout(c) => {
+            for b in &mut c.blocks {
+                if let Some(spans) = find_spans_in_block_mut(b, target_id) {
+                    return Some(spans);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+fn find_spans_in_list_mut<'a>(
+    list: &'a mut vocument_flow::model::ListBlock,
+    target_id: &str,
+) -> Option<&'a mut Vec<TextSpan>> {
+    for item in &mut list.items {
+        if item.id == target_id {
+            return Some(&mut item.spans);
+        }
+        if let Some(nested) = &mut item.nested_list
+            && let Some(spans) = find_spans_in_list_mut(nested, target_id)
+        {
+            return Some(spans);
+        }
+    }
+    None
+}
+
+pub(crate) fn find_spans_in_block<'a>(block: &'a Block, target_id: &str) -> Option<&'a [TextSpan]> {
+    match block {
+        Block::Paragraph(p) if p.id == target_id => Some(&p.spans),
+        Block::Heading(h) if h.id == target_id => Some(&h.spans),
+        Block::List(l) => find_spans_in_list(l, target_id),
+        Block::Table(t) => {
+            for row in &t.rows {
+                for cell in &row.cells {
+                    for b in &cell.blocks {
+                        if let Some(spans) = find_spans_in_block(b, target_id) {
+                            return Some(spans);
+                        }
+                    }
+                }
+            }
+            None
+        }
+        Block::Callout(c) => {
+            for b in &c.blocks {
+                if let Some(spans) = find_spans_in_block(b, target_id) {
+                    return Some(spans);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+fn find_spans_in_list<'a>(
+    list: &'a vocument_flow::model::ListBlock,
+    target_id: &str,
+) -> Option<&'a [TextSpan]> {
+    for item in &list.items {
+        if item.id == target_id {
+            return Some(&item.spans);
+        }
+        if let Some(nested) = &item.nested_list
+            && let Some(spans) = find_spans_in_list(nested, target_id)
+        {
+            return Some(spans);
+        }
+    }
+    None
+}
+
+pub(crate) fn block_plain_text(
+    sections: &[vocument_flow::model::Section],
+    target_id: &str,
+) -> String {
+    for section in sections {
+        for block in &section.blocks {
+            if let Some(spans) = find_spans_in_block(block, target_id) {
+                return spans.iter().map(|s| s.text.as_str()).collect();
+            }
+        }
+    }
+    String::new()
+}

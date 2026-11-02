@@ -82,8 +82,26 @@ object AndroidEditorRuntimeGate {
             require(reopened.plainText.contains("§ 242 BGB")) { "Reopened document missing § 242 BGB" }
             require(reopened.plainText.contains("I. Klagebegründung")) { "Reopened document missing H1" }
 
+            // 11. Export to DOCX and ODT and verify M4.5 Office roundtrip
+            val docxFile = File(context.cacheDir, "android_test_${System.currentTimeMillis()}.docx")
+            val odtFile = File(context.cacheDir, "android_test_${System.currentTimeMillis()}.odt")
+            val docxReport = coreBridge.editorExportDocx(reopened.editorId, docxFile.absolutePath)
+            require(!docxReport.hasLosses && docxFile.exists()) { "DOCX export failed or reported unexpected losses" }
+            val odtReport = coreBridge.editorExportOdt(reopened.editorId, odtFile.absolutePath)
+            require(!odtReport.hasLosses && odtFile.exists()) { "ODT export failed or reported unexpected losses" }
+
+            val importedDocx = coreBridge.openOfficeEditorSession(docxFile.absolutePath)
+            require(importedDocx.snapshot.plainText.contains("§ 242 BGB")) { "Imported DOCX missing § 242 BGB" }
+            coreBridge.closeEditorSession(importedDocx.snapshot.editorId)
+
+            val importedOdt = coreBridge.openOfficeEditorSession(odtFile.absolutePath)
+            require(importedOdt.snapshot.plainText.contains("§ 242 BGB")) { "Imported ODT missing § 242 BGB" }
+            coreBridge.closeEditorSession(importedOdt.snapshot.editorId)
+
             coreBridge.closeEditorSession(reopened.editorId)
             targetFile.delete()
+            docxFile.delete()
+            odtFile.delete()
 
             Log.i(TAG, "SUCCESS: Result: passed=true, latencyMicros=$latency")
             return AndroidEditorVerificationResult(

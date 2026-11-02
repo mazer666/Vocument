@@ -117,9 +117,23 @@ impl FlowEditorState {
         });
     }
 
+    /// Returns the plain text of the currently active block.
+    pub fn active_block_text(&self) -> String {
+        block_plain_text(&self.document.sections, &self.active_block_id)
+    }
+
     /// Inserts text at the current cursor position (< 16ms budget).
     pub fn insert_text(&mut self, text: &str) {
         if text.is_empty() {
+            return;
+        }
+        if let Some((anchor_block, anchor_offset)) = self.selection_anchor.clone()
+            && anchor_block == self.active_block_id
+            && anchor_offset != self.cursor_offset
+        {
+            self.selection_anchor = None;
+            let current = self.cursor_offset;
+            self.replace_range(&anchor_block, anchor_offset, current, text);
             return;
         }
         self.clear_selection();
@@ -153,16 +167,11 @@ impl FlowEditorState {
             span.style.underline = true;
             span.color = Some(vocument_flow::styles::ColorRgba::rgb(0, 102, 204));
 
-            if let Some(para) = self.find_paragraph_mut(&block_id) {
-                insert_span_into_spans(&mut para.spans, offset, span);
+            if let Some(spans) = self.find_block_spans_mut(&block_id) {
+                insert_span_into_spans(spans, offset, span);
                 self.cursor_offset += char_count;
                 self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
                 self.update_active_paragraph_fast();
-            } else if let Some(heading) = self.find_heading_mut(&block_id) {
-                insert_span_into_spans(&mut heading.spans, offset, span);
-                self.cursor_offset += char_count;
-                self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
-                self.recompute_full_layout();
             }
             return;
         }
@@ -197,21 +206,26 @@ impl FlowEditorState {
             }
         }
 
-        if let Some(para) = self.find_paragraph_mut(&block_id) {
-            insert_into_spans(&mut para.spans, offset, text);
+        if let Some(spans) = self.find_block_spans_mut(&block_id) {
+            insert_into_spans(spans, offset, text);
             self.cursor_offset += char_count;
             self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
             self.update_active_paragraph_fast();
-        } else if let Some(heading) = self.find_heading_mut(&block_id) {
-            insert_into_spans(&mut heading.spans, offset, text);
-            self.cursor_offset += char_count;
-            self.adjust_comment_anchors_on_insert(&block_id, offset, char_count);
-            self.recompute_full_layout();
         }
     }
 
     /// Deletes the character before the cursor, or deletes the active selection.
     pub fn delete_backward(&mut self) {
+        if let Some((anchor_block, anchor_offset)) = self.selection_anchor.clone()
+            && anchor_block == self.active_block_id
+            && anchor_offset != self.cursor_offset
+        {
+            self.selection_anchor = None;
+            let current = self.cursor_offset;
+            self.delete_range(&anchor_block, anchor_offset, current);
+            return;
+        }
+
         let block_id = self.active_block_id.clone();
         let offset = self.cursor_offset;
 
@@ -238,16 +252,11 @@ impl FlowEditorState {
             change.target_block_id = Some(block_id.clone());
             self.document.review.tracked_changes.push(change);
 
-            if let Some(para) = self.find_paragraph_mut(&block_id) {
-                mark_char_before_deleted_in_spans(&mut para.spans, offset, &change_id);
+            if let Some(spans) = self.find_block_spans_mut(&block_id) {
+                mark_char_before_deleted_in_spans(spans, offset, &change_id);
                 self.cursor_offset = self.cursor_offset.saturating_sub(1);
                 self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
                 self.update_active_paragraph_fast();
-            } else if let Some(heading) = self.find_heading_mut(&block_id) {
-                mark_char_before_deleted_in_spans(&mut heading.spans, offset, &change_id);
-                self.cursor_offset = self.cursor_offset.saturating_sub(1);
-                self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
-                self.recompute_full_layout();
             }
             return;
         }
@@ -276,34 +285,35 @@ impl FlowEditorState {
             });
         }
 
-        if let Some(para) = self.find_paragraph_mut(&block_id) {
-            delete_char_before_in_spans(&mut para.spans, offset);
+        if let Some(spans) = self.find_block_spans_mut(&block_id) {
+            delete_char_before_in_spans(spans, offset);
             self.cursor_offset = self.cursor_offset.saturating_sub(1);
             self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
             self.update_active_paragraph_fast();
-        } else if let Some(heading) = self.find_heading_mut(&block_id) {
-            delete_char_before_in_spans(&mut heading.spans, offset);
-            self.cursor_offset = self.cursor_offset.saturating_sub(1);
-            self.adjust_comment_anchors_on_delete(&block_id, offset - 1, 1);
-            self.recompute_full_layout();
         }
     }
 
-    /// Deletes the character after the cursor.
+    /// Deletes the character after the cursor, or deletes the active selection.
     pub fn delete_forward(&mut self) {
+        if let Some((anchor_block, anchor_offset)) = self.selection_anchor.clone()
+            && anchor_block == self.active_block_id
+            && anchor_offset != self.cursor_offset
+        {
+            self.selection_anchor = None;
+            let current = self.cursor_offset;
+            self.delete_range(&anchor_block, anchor_offset, current);
+            return;
+        }
+
         self.push_undo_snapshot();
 
         let block_id = self.active_block_id.clone();
         let offset = self.cursor_offset;
 
-        if let Some(para) = self.find_paragraph_mut(&block_id) {
-            delete_char_at_in_spans(&mut para.spans, offset);
+        if let Some(spans) = self.find_block_spans_mut(&block_id) {
+            delete_char_at_in_spans(spans, offset);
             self.adjust_comment_anchors_on_delete(&block_id, offset, 1);
             self.update_active_paragraph_fast();
-        } else if let Some(heading) = self.find_heading_mut(&block_id) {
-            delete_char_at_in_spans(&mut heading.spans, offset);
-            self.adjust_comment_anchors_on_delete(&block_id, offset, 1);
-            self.recompute_full_layout();
         }
     }
 
@@ -368,6 +378,7 @@ impl FlowEditorState {
     ) {
         self.push_undo_snapshot();
         self.active_batch = None;
+        self.selection_anchor = None;
         let start = start_offset.min(end_offset);
         let end = start_offset.max(end_offset);
         let delete_count = end - start;
@@ -376,14 +387,25 @@ impl FlowEditorState {
         self.cursor_offset = start;
 
         if delete_count > 0 {
-            if let Some(para) = self.find_paragraph_mut(block_id) {
-                for _ in 0..delete_count {
-                    delete_char_at_in_spans(&mut para.spans, start);
+            if self.tracking_enabled {
+                let change_id = format!("chg_{}", uuid_fast());
+                let mut change = vocument_flow::review::TrackedChange::new(
+                    &change_id,
+                    vocument_flow::review::ChangeType::Delete,
+                    &self.active_author,
+                    "unix:now",
+                );
+                change.target_block_id = Some(block_id.to_string());
+                self.document.review.tracked_changes.push(change);
+                if let Some(spans) = self.find_block_spans_mut(block_id) {
+                    for idx in (start + 1..=end).rev() {
+                        mark_char_before_deleted_in_spans(spans, idx, &change_id);
+                    }
+                    self.adjust_comment_anchors_on_delete(block_id, start, delete_count);
                 }
-                self.adjust_comment_anchors_on_delete(block_id, start, delete_count);
-            } else if let Some(heading) = self.find_heading_mut(block_id) {
+            } else if let Some(spans) = self.find_block_spans_mut(block_id) {
                 for _ in 0..delete_count {
-                    delete_char_at_in_spans(&mut heading.spans, start);
+                    delete_char_at_in_spans(spans, start);
                 }
                 self.adjust_comment_anchors_on_delete(block_id, start, delete_count);
             }
@@ -391,12 +413,29 @@ impl FlowEditorState {
 
         if !text.is_empty() {
             let char_count = text.chars().count();
-            if let Some(para) = self.find_paragraph_mut(block_id) {
-                insert_into_spans(&mut para.spans, start, text);
-                self.cursor_offset = start + char_count;
-                self.adjust_comment_anchors_on_insert(block_id, start, char_count);
-            } else if let Some(heading) = self.find_heading_mut(block_id) {
-                insert_into_spans(&mut heading.spans, start, text);
+            if self.tracking_enabled {
+                let change_id = format!("chg_{}", uuid_fast());
+                let mut change = vocument_flow::review::TrackedChange::new(
+                    &change_id,
+                    vocument_flow::review::ChangeType::Insert,
+                    &self.active_author,
+                    "unix:now",
+                );
+                change.target_block_id = Some(block_id.to_string());
+                change.text_snippet = Some(text.to_string());
+                self.document.review.tracked_changes.push(change);
+
+                let mut span = TextSpan::plain(text);
+                span.tracked_change_id = Some(change_id);
+                span.style.underline = true;
+                span.color = Some(vocument_flow::styles::ColorRgba::rgb(0, 102, 204));
+                if let Some(spans) = self.find_block_spans_mut(block_id) {
+                    insert_span_into_spans(spans, start, span);
+                    self.cursor_offset = start + char_count;
+                    self.adjust_comment_anchors_on_insert(block_id, start, char_count);
+                }
+            } else if let Some(spans) = self.find_block_spans_mut(block_id) {
+                insert_into_spans(spans, start, text);
                 self.cursor_offset = start + char_count;
                 self.adjust_comment_anchors_on_insert(block_id, start, char_count);
             }
@@ -775,26 +814,24 @@ impl FlowEditorState {
         );
     }
 
-    fn find_paragraph_mut(&mut self, block_id: &str) -> Option<&mut ParagraphBlock> {
+    fn find_block_spans_mut(&mut self, block_id: &str) -> Option<&mut Vec<TextSpan>> {
         for section in &mut self.document.sections {
             for block in &mut section.blocks {
-                if let Block::Paragraph(p) = block {
-                    if p.id == block_id {
-                        return Some(p);
-                    }
+                if let Some(spans) = find_spans_in_block_mut(block, block_id) {
+                    return Some(spans);
                 }
             }
         }
         None
     }
 
-    fn find_heading_mut(&mut self, block_id: &str) -> Option<&mut HeadingBlock> {
+    fn find_paragraph_mut(&mut self, block_id: &str) -> Option<&mut ParagraphBlock> {
         for section in &mut self.document.sections {
             for block in &mut section.blocks {
-                if let Block::Heading(h) = block {
-                    if h.id == block_id {
-                        return Some(h);
-                    }
+                if let Block::Paragraph(p) = block
+                    && p.id == block_id
+                {
+                    return Some(p);
                 }
             }
         }

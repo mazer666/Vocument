@@ -7,16 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **M4.4 PDF/A-2b and PDF/UA-1 export validated by veraPDF.** The exporter embeds
+- **M4.5 Office Interoperability (`.docx` & `.odt` Adapters + 180-Document Bake-Off) (`engines/office`, `platform/vocument-ffi`, `apps/macos`, `apps/android`).**
+  Implemented native, offline-first import and export adapters for OOXML WordprocessingML (`.docx`) and OpenDocument Text (`.odt`/`.ott`) (`OFFICE-001`–`005`, `ADR-0020`). Preserves paragraph/character styles, headings (`H1`–`H6`), ordered/unordered/nested/task lists, tables (headers, `col_span`, `row_span`/`vMerge`, widths, shading), SHA-256 deduplicated images, footnotes/endnotes, headers/footers (`{page}`/`{total_pages}`), page geometry, hyperlinks, anchored comments, and tracked changes. Hardened against ZIP bombs, path traversal, XXE/DTDs, encrypted/OLE2 archives, VBA/StarBasic macros, and external relationships (`TargetMode="External"`). Added structured `ConversionReport` (`OFFICE-004`) and 3-tier objective fidelity evaluator (`engines/office/examples/bakeoff.rs`, `scripts/office-bakeoff.sh`): **180 / 180 (100.00%) pass rate**, **100.00% Tier 1 & Tier 2 preservation**, **56 / 56 (100.00%) LibreOffice 26.2.2.2 headless reopen & PDF render validation** (`docs/benchmarks/M4_5_OFFICE_BAKEOFF.md`, `docs/features/OFFICE_INTEROP.md`). Microsoft Word desktop is `NOT RUN` and the external 200-document proprietary corpus is not bundled.
+- **M4.4 PDF/A-2b and PDF/UA-1 export validated by veraPDF with zero Unicode loss.** The exporter embeds
   Lato Regular with `/Widths` read from the font program, writes an sRGB output
   intent with ICC profile, the `pdfuaid` XMP extension schema, a trailer `/ID`, a
   real logical structure tree (tables as `Table/TR/TH/TD`, lists as `L/LI/LBody`,
   callouts as `Sect`, one `/P` per paragraph, `/ParentTree`), artifact marking for
-  decoration, headers and footers, and tagged comment annotations with appearance
-  streams. veraPDF 1.30.3 reports the export **compliant** for `2b` and `ua1`.
+  decoration, headers and footers, tagged comment annotations with appearance
+  streams, and UTF-16BE `/Span << /ActualText <FEFF...> >> BDC` spans so non-WinAnsi
+  Unicode text (Polish, Greek, Cyrillic, CJK, math symbols) extracts losslessly via
+  `mutool draw -F txt`. veraPDF 1.30.3 reports the export **compliant** for `2b` and `ua1`.
   PAC was **not** run. See `docs/features/PDFA_EXPORT.md`.
 
 ### Fixed
+- **Native IME composition, UTF-16 cursor offsets, and selection replacement (`core/vocument-layout`, `apps/macos`, `apps/android`).**
+  Added `active_block_text` to `FfiEditorSessionSnapshot` and exact UTF-16 (`NSRange` / `TextRange`) $\leftrightarrow$ Unicode scalar (`char`) conversion on macOS and Android, fixing IME composition/replacement and non-BMP (emoji/CJK) cursor offsets. Extended `FlowEditorState` so headings, list items, table cells, and callouts are directly editable, active selections are replaced on `insert_text`/`delete_backward`/`delete_forward`, and `.pdoc` crash-recovery checkpoints (`PdocRecoveryStore`) preserve assets, comments, and tracked changes across Office roundtrips.
 - **PDF export positioned text without page margins and with paragraph-local
   y coordinates**, and dropped all text inside callouts. Text is now placed from
   the layout box that every placement layer shifts, and containers are walked.

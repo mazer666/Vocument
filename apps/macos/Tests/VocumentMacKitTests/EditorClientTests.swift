@@ -122,4 +122,67 @@ struct EditorClientTests {
 
         try client.closeEditorSession(editorId: id)
     }
+
+    @Test("M4.5 DOCX and ODT export, import, IME range replacement, and crash recovery")
+    func verifyOfficeDocxOdtInteropAndImeRangeReplacement() throws {
+        let client = DocumentCoreClient()
+        let session = try client.createEditorSession(title: "Klageerwiderung M4.5")
+        let id = session.editorId
+
+        let s1 = try client.editorInsertText(editorId: id, text: "§ 14 BGB Unternehmerbegriff — 😀 — 漢字")
+        #expect(s1.activeBlockText == "§ 14 BGB Unternehmerbegriff — 😀 — 漢字")
+
+        // Replace "Unternehmerbegriff" with "Verbraucherbegriff" via editorReplaceRange
+        let sReplaced = try client.editorReplaceRange(
+            editorId: id,
+            blockId: s1.activeBlockId,
+            startOffset: 9,
+            endOffset: 27,
+            text: "Verbraucherbegriff"
+        )
+        #expect(sReplaced.activeBlockText.contains("Verbraucherbegriff"))
+        #expect(sReplaced.activeBlockText.contains("😀 — 漢字"))
+
+        // Add comment and tracked change
+        _ = try client.editorAddComment(editorId: id, anchorStart: 0, anchorEnd: 8, content: "Normzitat prüfen.")
+        _ = try client.editorEnableTracking(editorId: id, author: "RAin Weber")
+        let sTracked = try client.editorInsertText(editorId: id, text: " (§ 13 BGB).")
+        #expect(sTracked.comments.count == 1)
+        #expect(sTracked.trackedChanges.count == 1)
+
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let docxPath = NSTemporaryDirectory() + "test_m4_5_\(pid).docx"
+        let odtPath = NSTemporaryDirectory() + "test_m4_5_\(pid).odt"
+
+        let docxReport = try client.editorExportDocx(editorId: id, targetPath: docxPath)
+        #expect(!docxReport.hasLosses)
+        #expect(FileManager.default.fileExists(atPath: docxPath))
+
+        let odtReport = try client.editorExportOdt(editorId: id, targetPath: odtPath)
+        #expect(!odtReport.hasLosses)
+        #expect(FileManager.default.fileExists(atPath: odtPath))
+
+        // Import DOCX and verify text, comments, tracked changes, and undo/redo
+        let importedDocx = try client.openOfficeEditorSession(at: docxPath)
+        #expect(importedDocx.detectedFormat == "docx")
+        #expect(importedDocx.snapshot.plainText.contains("Verbraucherbegriff"))
+        #expect(importedDocx.snapshot.comments.count == 1)
+        #expect(importedDocx.snapshot.trackedChanges.count == 1)
+
+        // Import ODT and verify text, comments, tracked changes
+        let importedOdt = try client.openOfficeEditorSession(at: odtPath)
+        #expect(importedOdt.detectedFormat == "odt")
+        #expect(importedOdt.snapshot.plainText.contains("Verbraucherbegriff"))
+        #expect(importedOdt.snapshot.comments.count == 1)
+        #expect(importedOdt.snapshot.trackedChanges.count == 1)
+
+        let checkpointPath = try client.editorSaveRecoveryCheckpoint(editorId: importedDocx.snapshot.editorId)
+        #expect(FileManager.default.fileExists(atPath: checkpointPath))
+
+        try client.closeEditorSession(editorId: id)
+        try client.closeEditorSession(editorId: importedDocx.snapshot.editorId)
+        try client.closeEditorSession(editorId: importedOdt.snapshot.editorId)
+        try? FileManager.default.removeItem(atPath: docxPath)
+        try? FileManager.default.removeItem(atPath: odtPath)
+    }
 }

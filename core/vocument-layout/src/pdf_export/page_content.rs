@@ -9,7 +9,9 @@ use std::fmt::Write as FmtWrite;
 use crate::tree::{LayoutBox, LayoutBoxKind, LayoutLine, LayoutPage};
 use vocument_flow::styles::ColorRgba;
 
-use super::font_embedding::{EmbeddedFontMetrics, encode_win_ansi_literal};
+use super::font_embedding::{
+    EmbeddedFontMetrics, encode_utf16be_hex, encode_win_ansi_literal, has_non_win_ansi,
+};
 use super::structure::{StructureRoles, StructureTree};
 
 /// Name under which the embedded font is registered in every page's resource dictionary.
@@ -233,7 +235,16 @@ impl PageRenderer<'_> {
         let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
         let _ = writeln!(stream, "{character_spacing:.3} Tc");
         let _ = writeln!(stream, "1 0 {shear:.2} 1 {x:.2} {baseline:.2} Tm");
-        let _ = writeln!(stream, "({}) Tj", encode_win_ansi_literal(&run.text));
+        if has_non_win_ansi(&run.text) {
+            let _ = writeln!(
+                stream,
+                "/Span << /ActualText {} >> BDC\n({}) Tj\nEMC",
+                encode_utf16be_hex(&run.text),
+                encode_win_ansi_literal(&run.text)
+            );
+        } else {
+            let _ = writeln!(stream, "({}) Tj", encode_win_ansi_literal(&run.text));
+        }
         if run.font_style.bold {
             stream.push_str("0 Tr\n");
         }

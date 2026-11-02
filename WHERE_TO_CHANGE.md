@@ -83,7 +83,7 @@ Read [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-l
 - Deterministic cross-platform layout engine: `core/vocument-layout/` (text shaping, Knuth-Plass line breaking, pagination)
 - Tagged PDF/A-2b / PDF/UA-1 export: `core/vocument-layout/src/pdf_export.rs` and `src/pdf_export/` (fonts and output intent, structure tree, page content, XMP); how it is validated: [`docs/features/PDFA_EXPORT.md`](docs/features/PDFA_EXPORT.md)
 - `.pdoc` format container & migrations: `formats/pdoc/`
-- Office adapters & corpus bake-off: `engines/office/`
+- Office adapters (`.docx` & `.odt` import/export, security preflight, `ConversionReport`, and 180-document corpus bake-off): `engines/office/`, UniFFI bridge in `platform/vocument-ffi/src/office_dto.rs`, documentation in [`docs/features/OFFICE_INTEROP.md`](docs/features/OFFICE_INTEROP.md) and [`docs/benchmarks/M4_5_OFFICE_BAKEOFF.md`](docs/benchmarks/M4_5_OFFICE_BAKEOFF.md)
 - Native text input: macOS `NSTextInputClient` in `apps/macos/`, Android Compose text in `apps/android/`
 
 ---
