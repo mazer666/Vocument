@@ -50,8 +50,17 @@ fi
 # 5. Check with veraPDF if available
 if command -v verapdf >/dev/null 2>&1; then
     echo "==> Running independent veraPDF validation..."
-    verapdf --flavour 2b "$PDF_INPUT"
-    verapdf --flavour ua1 "$PDF_INPUT"
+    # veraPDF exits 0 even for non-compliant files, so the report itself is the verdict.
+    for flavour in 2b ua1; do
+        report="$(verapdf --flavour "$flavour" "$PDF_INPUT")"
+        if grep -q 'isCompliant="true"' <<<"$report"; then
+            echo "    veraPDF $flavour: COMPLIANT"
+        else
+            echo "ERROR: veraPDF $flavour rejected $PDF_INPUT:"
+            grep -E '<rule |errorMessage' <<<"$report" | head -20
+            exit 1
+        fi
+    done
     echo "==> Independent veraPDF ISO conformance check completed."
 else
     echo "NOT RUN: veraPDF CLI is not installed on this system."

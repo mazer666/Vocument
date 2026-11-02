@@ -1,0 +1,10 @@
+Lato Regular (lato_regular.ttf)
+
+Copyright (c) 2010-2013 by tyPoland Lukasz Dziedzic (http://www.typoland.com/)
+with Reserved Font Name "Lato". Licensed under the SIL Open Font License,
+Version 1.1 (http://scripts.sil.org/OFL). The licence text is in
+LICENSES/OFL-1.1.txt.
+
+The font program is embedded unmodified into the PDF/A-2b and PDF/UA-1 export
+(core/vocument-layout/src/pdf_export/font_embedding.rs). It is not subset, not
+renamed and not sold on its own, which keeps the Reserved Font Name valid.

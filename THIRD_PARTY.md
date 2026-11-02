@@ -264,6 +264,17 @@ The same holds for the fonts of the Droid family: they are under the Apache-2.0,
 
 MuPDF builds **182** font files into the PDF engine: 160 of the Noto family, 15 of the URW family, 4 of the SIL Charis family, 1 of the Source Han family and 2 of the Droid family. 180 of them are under the SIL Open Font License 1.1, the two of the Droid family under the Apache-2.0. The OFL requires that the licence travels with the fonts and that the fonts are not sold on their own — the text travels with the product in `LICENSES/THIRD-PARTY-NOTICES.txt`.
 
+### 6.2a The assets of the PDF export
+
+The PDF/A-2b and PDF/UA-1 export (`core/vocument-layout`) embeds two files that are kept in `core/vocument-layout/assets/`, because ISO 19005-2 demands every font to be embedded and the output intent to carry an ICC profile:
+
+| Asset | Licence | Origin |
+|---|---|---|
+| `lato_regular.ttf` (Lato Regular 1.105) | OFL-1.1, Reserved Font Name "Lato" | tyPoland Lukasz Dziedzic; the copyright is in `assets/LATO-NOTICE.txt` and in the notice file of the product. The program is embedded **unmodified** (no subset, no rename). |
+| `srgb.icc` (Artifex sRGB ICC profile) | AGPL-3.0-or-later | `resources/icc/rgb.icc` of the MuPDF 1.28.5 source, which the product builds anyway. |
+
+Both files are compiled into the binary with `include_bytes!`; no dependency was added.
+
 ### 6.3 The OCR
 
 The OCR is **not** taken from a prebuilt archive: Tesseract and Leptonica are cross-built from the source by `scripts/prepare-android-tesseract.sh`. The language models (`deu.traineddata`, `eng.traineddata`) come from the `tessdata_fast` repository and are under the Apache-2.0; their licence travels with them in `apps/android/app/src/main/assets/tessdata/LICENSE`. The provenance is proved by the checksum: the files in the repository are byte-identical with the files of `tessdata_fast`.

@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.2  
-**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], and M4.3 [Native Platform Editing Canvas & Input] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export in progress). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], and M4.3 [Native Platform Editing Canvas & Input] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export in progress: veraPDF-green, PAC and tracked-change marks open). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -827,11 +827,13 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Sub-16ms typing and reflow latency budget (< 16ms, measured and verified in Rust, Swift, and Kotlin).
   - [x] Full undo/redo transaction stack, atomic fsync saving, and conflict preservation.
 
-- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation:**
-  - Tracked Changes: Inline insertions, deletions, format changes with author attribution.
-  - Margin Comments: Character-range anchored threads with replies and resolution.
-  - PDF/A & PDF/UA Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`), semantic tags, and alt-text.
-  - PAC (PDF Accessibility Checker) and veraPDF verification.
+- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation** *(Status: **IN PROGRESS** — export is veraPDF-green; PAC run and tracked-change marks in the PDF are open; see [PDF/A export](docs/features/PDFA_EXPORT.md))*:
+  - [x] Tracked Changes: inline insertions, deletions, format changes with author attribution (`core/vocument-layout/src/editor_review.rs`, `tests/editor_tests.rs`).
+  - [x] Margin Comments: character-range anchored threads with replies and resolution; exported as tagged PDF text annotations with appearance streams.
+  - [x] PDF/A-2b & PDF/UA-1 Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`, `/ParentTree`), table/list/callout structure, embedded font, sRGB output intent, XMP identification.
+  - [x] veraPDF verification: `--flavour 2b` and `--flavour ua1` both **compliant** (veraPDF 1.30.3, `tests/pdf_export_conformance_tests.rs`, `scripts/verify-pdfa-compliance.sh`).
+  - [ ] PAC (PDF Accessibility Checker) verification — Windows-only tool, **not run**; `certified_by_external_tooling` stays `false` until it is.
+  - [ ] Visual marks for tracked changes in the exported PDF (underline for insertions, strikethrough for deletions) and image `/Figure` alt text.
 
 - **M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters:**
   - High-fidelity bake-off against 200 real-world legal and technical DOCX/ODT documents.

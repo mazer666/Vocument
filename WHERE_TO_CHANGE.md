@@ -81,6 +81,7 @@ Read [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-l
 
 - Document tree & schema: `core/vocument-flow/`
 - Deterministic cross-platform layout engine: `core/vocument-layout/` (text shaping, Knuth-Plass line breaking, pagination)
+- Tagged PDF/A-2b / PDF/UA-1 export: `core/vocument-layout/src/pdf_export.rs` and `src/pdf_export/` (fonts and output intent, structure tree, page content, XMP); how it is validated: [`docs/features/PDFA_EXPORT.md`](docs/features/PDFA_EXPORT.md)
 - `.pdoc` format container & migrations: `formats/pdoc/`
 - Office adapters & corpus bake-off: `engines/office/`
 - Native text input: macOS `NSTextInputClient` in `apps/macos/`, Android Compose text in `apps/android/`

@@ -76,6 +76,13 @@ for text in "${FONT_TEXTS[@]}"; do
     fi
 done
 
+# The font that the PDF export embeds comes from this repository, not from MuPDF.
+LATO_NOTICE="$REPOSITORY_ROOT/core/vocument-layout/assets/LATO-NOTICE.txt"
+if [[ ! -s "$LATO_NOTICE" ]]; then
+    echo "ERROR: the notice of the embedded font $LATO_NOTICE is missing." >&2
+    missing=$((missing + 1))
+fi
+
 if [[ "$missing" -ne 0 ]]; then
     echo "ERROR: $missing licence text(s) are missing — the notice would be incomplete." >&2
     exit 1
@@ -105,6 +112,13 @@ mkdir -p "$(dirname "$OUTPUT")"
         cat "$LICENCE_DIRECTORY/$text"
         echo
     done
+
+    echo "======================================================================"
+    echo "The licence of the fonts: Lato (embedded by the PDF export)"
+    echo "======================================================================"
+    echo
+    cat "$LATO_NOTICE"
+    echo
 
     for text in "${FONT_TEXTS[@]}"; do
         if [[ -s "$MUPDF_SOURCE/$text" ]]; then

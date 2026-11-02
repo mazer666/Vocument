@@ -2,9 +2,10 @@ use std::env;
 use std::fs;
 use vocument_flow::metadata::DocumentMetadata;
 use vocument_flow::model::{
-    Block, FlowDocument, HeadingBlock, ParagraphBlock, Section, SectionGeometry, TableBlock,
-    TableCell, TableRow,
+    Block, CalloutBlock, CalloutType, FlowDocument, HeadingBlock, ListBlock, ListItem, ListKind,
+    ParagraphBlock, Section, SectionGeometry, TableBlock, TableCell, TableRow,
 };
+use vocument_flow::review::FlowComment;
 use vocument_flow::styles::TextSpan;
 use vocument_layout::font::FontRegistry;
 use vocument_layout::pdf_export::{PdfExportOptions, export_flow_document_to_pdf};
@@ -47,10 +48,62 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             vec![TextSpan::plain("Urteil vom 12. Januar 2026")],
         ))],
     );
+    let header_cell1 = TableCell::new(
+        "hc1",
+        vec![Block::Paragraph(ParagraphBlock::new(
+            "hcp1",
+            vec![TextSpan::bold("Dokument")],
+        ))],
+    );
+    let header_cell2 = TableCell::new(
+        "hc2",
+        vec![Block::Paragraph(ParagraphBlock::new(
+            "hcp2",
+            vec![TextSpan::bold("Bezeichnung")],
+        ))],
+    );
+    let header_row = TableRow::header(vec![header_cell1, header_cell2]);
     let row = TableRow::new(vec![cell1, cell2]);
-    blocks.push(Block::Table(TableBlock::new("t1", vec![row])));
+    blocks.push(Block::Table(TableBlock::new("t1", vec![header_row, row])));
+
+    blocks.push(Block::List(ListBlock::new(
+        "l1",
+        ListKind::Unordered,
+        vec![
+            ListItem::new(
+                "li1",
+                vec![TextSpan::plain("Erster Prüfpunkt (Zuständigkeit)")],
+            ),
+            ListItem::new(
+                "li2",
+                vec![TextSpan::plain("Zweiter Prüfpunkt – Fristen & Form")],
+            ),
+        ],
+    )));
+
+    blocks.push(Block::Callout(CalloutBlock {
+        id: "co1".to_string(),
+        callout_type: CalloutType::LegalNotice,
+        title: Some("Hinweis".to_string()),
+        blocks: vec![Block::Paragraph(ParagraphBlock::new(
+            "cop1",
+            vec![TextSpan::plain(
+                "Dieser Text steht in einem hervorgehobenen Kasten.",
+            )],
+        ))],
+        extra: Default::default(),
+    }));
 
     doc.sections = vec![Section::new("s1", SectionGeometry::a4_portrait(), blocks)];
+    doc.review.comments.push(FlowComment::new(
+        "comm_demo",
+        "Dr. Müller",
+        "unix:1700000000",
+        "Bitte Zuständigkeit prüfen.",
+        Some("p1".to_string()),
+        Some((0, 20)),
+        Some("Der Beschwerdeführer".to_string()),
+    ));
 
     let registry = FontRegistry::new();
     let options = PdfExportOptions::default();

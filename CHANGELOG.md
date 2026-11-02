@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **M4.4 PDF/A-2b and PDF/UA-1 export validated by veraPDF.** The exporter embeds
+  Lato Regular with `/Widths` read from the font program, writes an sRGB output
+  intent with ICC profile, the `pdfuaid` XMP extension schema, a trailer `/ID`, a
+  real logical structure tree (tables as `Table/TR/TH/TD`, lists as `L/LI/LBody`,
+  callouts as `Sect`, one `/P` per paragraph, `/ParentTree`), artifact marking for
+  decoration, headers and footers, and tagged comment annotations with appearance
+  streams. veraPDF 1.30.3 reports the export **compliant** for `2b` and `ua1`.
+  PAC was **not** run. See `docs/features/PDFA_EXPORT.md`.
+
+### Fixed
+- **PDF export positioned text without page margins and with paragraph-local
+  y coordinates**, and dropped all text inside callouts. Text is now placed from
+  the layout box that every placement layer shifts, and containers are walked.
+- **Comment annotations all landed at the same spot** and were matched by an id
+  prefix; they now sit next to the anchored line and are matched by block id.
+- **XMP metadata was not XML-escaped**, so a title with `&` or `<` produced an
+  invalid packet.
+- `scripts/verify-pdfa-compliance.sh` ignored the verdict of veraPDF (it exits 0
+  for non-compliant files); it now fails on a rejected file.
+
 ### Fixed
 - **The licence configuration depended on the version of cargo-deny.** The
   gate of the distribution reported *"cargo-deny does not accept the licence

@@ -10,6 +10,18 @@ use vocument_flow::styles::TextSpan;
 use vocument_layout::font::FontRegistry;
 use vocument_layout::pdf_export::{PdfExportOptions, export_flow_document_to_pdf};
 
+/// Concatenates every string shown with `Tj` in the PDF. The bundled font program is embedded as
+/// binary data, so whole-file substring checks would match font bytes instead of page text.
+fn shown_text(pdf_bytes: &[u8]) -> String {
+    let content = String::from_utf8_lossy(pdf_bytes);
+    content
+        .lines()
+        .filter_map(|line| line.strip_suffix(") Tj"))
+        .filter_map(|line| line.strip_prefix('('))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[test]
 fn test_pdf_export_tagged_pdfa_pdfua_structure() {
     let mut doc = FlowDocument::new(DocumentMetadata::new("doc_pdfa", "Commercial Agreement"));
@@ -121,11 +133,11 @@ fn test_pdf_export_clean_vs_tracked_changes() {
         ..Default::default()
     };
     let pdf_tracked = export_flow_document_to_pdf(&doc, &font_registry, &options_tracked);
-    let str_tracked = String::from_utf8_lossy(&pdf_tracked);
-    assert!(str_tracked.contains("three"));
-    assert!(str_tracked.contains("years"));
-    assert!(str_tracked.contains("one"));
-    assert!(str_tracked.contains("year"));
+    let text_tracked = shown_text(&pdf_tracked);
+    assert!(text_tracked.contains("three"));
+    assert!(text_tracked.contains("years"));
+    assert!(text_tracked.contains("one"));
+    assert!(text_tracked.contains("year"));
 
     // Export clean (omits deleted text)
     let options_clean = PdfExportOptions {
@@ -133,8 +145,8 @@ fn test_pdf_export_clean_vs_tracked_changes() {
         ..Default::default()
     };
     let pdf_clean = export_flow_document_to_pdf(&doc, &font_registry, &options_clean);
-    let str_clean = String::from_utf8_lossy(&pdf_clean);
-    assert!(str_clean.contains("three"));
-    assert!(str_clean.contains("years"));
-    assert!(!str_clean.contains("one"));
+    let text_clean = shown_text(&pdf_clean);
+    assert!(text_clean.contains("three"));
+    assert!(text_clean.contains("years"));
+    assert!(!text_clean.contains("one"));
 }
