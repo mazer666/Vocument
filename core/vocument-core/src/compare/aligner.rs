@@ -109,10 +109,16 @@ pub fn align_pages(pages_text_a: &[String], pages_text_b: &[String]) -> Vec<Page
     alignments
 }
 
-/// Computes Jaccard similarity between word token sets of two pages (0.0 .. 1.0).
+/// Computes Jaccard similarity between word token sets of two pages (0.0 .. 1.0),
+/// filtering trivial numeric tokens (like page numbers) to avoid boilerplate false positives.
 fn compute_page_similarity(text_a: &str, text_b: &str) -> f32 {
-    let words_a: HashSet<&str> = text_a.split_whitespace().collect();
-    let words_b: HashSet<&str> = text_b.split_whitespace().collect();
+    let filter_token = |w: &&str| -> bool {
+        let trimmed = w.trim_matches(|c: char| !c.is_alphanumeric() && c != '§');
+        !trimmed.is_empty() && !trimmed.chars().all(|c| c.is_ascii_digit())
+    };
+
+    let words_a: HashSet<&str> = text_a.split_whitespace().filter(filter_token).collect();
+    let words_b: HashSet<&str> = text_b.split_whitespace().filter(filter_token).collect();
 
     if words_a.is_empty() && words_b.is_empty() {
         return 1.0;

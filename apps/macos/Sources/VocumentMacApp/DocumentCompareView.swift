@@ -34,7 +34,15 @@ struct DocumentCompareView: View {
     // MARK: - Toolbar View
     private var compareToolbar: some View {
         HStack(spacing: 16) {
-            if let report = coordinator.compareReport {
+            if coordinator.isComparing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Vergleich läuft…")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            } else if let report = coordinator.compareReport {
                 HStack(spacing: 12) {
                     Label("\(report.summary.totalChanges) Änderungen", systemImage: "arrow.triangle.swap")
                         .font(.headline)
@@ -180,20 +188,12 @@ struct DocumentCompareView: View {
                 isDocumentA: true,
                 onPreviousPage: {
                     if coordinator.comparePageA > 0 {
-                        coordinator.comparePageA -= 1
-                        if coordinator.compareSyncScroll && coordinator.comparePageB > 0 {
-                            coordinator.comparePageB -= 1
-                        }
-                        coordinator.renderComparisonViewports()
+                        coordinator.setComparePageAWithSync(coordinator.comparePageA - 1)
                     }
                 },
                 onNextPage: {
                     if let maxPages = coordinator.activeSession?.pdfSummary.pageCount, coordinator.comparePageA + 1 < maxPages {
-                        coordinator.comparePageA += 1
-                        if coordinator.compareSyncScroll, let maxB = coordinator.compareSecondSession?.pdfSummary.pageCount, coordinator.comparePageB + 1 < maxB {
-                            coordinator.comparePageB += 1
-                        }
-                        coordinator.renderComparisonViewports()
+                        coordinator.setComparePageAWithSync(coordinator.comparePageA + 1)
                     }
                 }
             )
@@ -209,14 +209,12 @@ struct DocumentCompareView: View {
                 isDocumentA: false,
                 onPreviousPage: {
                     if coordinator.comparePageB > 0 {
-                        coordinator.comparePageB -= 1
-                        coordinator.renderComparisonViewports()
+                        coordinator.setComparePageBWithSync(coordinator.comparePageB - 1)
                     }
                 },
                 onNextPage: {
                     if let maxPages = coordinator.compareSecondSession?.pdfSummary.pageCount, coordinator.comparePageB + 1 < maxPages {
-                        coordinator.comparePageB += 1
-                        coordinator.renderComparisonViewports()
+                        coordinator.setComparePageBWithSync(coordinator.comparePageB + 1)
                     }
                 }
             )

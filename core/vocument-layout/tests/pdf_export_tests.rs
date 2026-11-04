@@ -56,7 +56,8 @@ fn test_pdf_export_tagged_pdfa_pdfua_structure() {
     let font_registry = FontRegistry::new();
     let options = PdfExportOptions::default();
 
-    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &options);
+    let pdf_bytes =
+        export_flow_document_to_pdf(&doc, &font_registry, &options).expect("export pdf");
 
     // 1. Basic PDF validity
     assert!(pdf_bytes.starts_with(b"%PDF-1.7\n"));
@@ -132,7 +133,8 @@ fn test_pdf_export_clean_vs_tracked_changes() {
         include_tracked_changes: true,
         ..Default::default()
     };
-    let pdf_tracked = export_flow_document_to_pdf(&doc, &font_registry, &options_tracked);
+    let pdf_tracked = export_flow_document_to_pdf(&doc, &font_registry, &options_tracked)
+        .expect("export tracked");
     let text_tracked = shown_text(&pdf_tracked);
     assert!(text_tracked.contains("three"));
     assert!(text_tracked.contains("years"));
@@ -150,7 +152,8 @@ fn test_pdf_export_clean_vs_tracked_changes() {
         include_tracked_changes: false,
         ..Default::default()
     };
-    let pdf_clean = export_flow_document_to_pdf(&doc, &font_registry, &options_clean);
+    let pdf_clean =
+        export_flow_document_to_pdf(&doc, &font_registry, &options_clean).expect("export clean");
     let text_clean = shown_text(&pdf_clean);
     assert!(text_clean.contains("three"));
     assert!(text_clean.contains("years"));
@@ -173,7 +176,8 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
     doc.sections.push(section);
 
     let font_registry = FontRegistry::new();
-    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &PdfExportOptions::default());
+    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &PdfExportOptions::default())
+        .expect("export unicode");
     let pdf_str = String::from_utf8_lossy(&pdf_bytes);
     assert!(
         pdf_str.contains("/ActualText <FEFF"),
@@ -203,6 +207,30 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
             );
         }
     }
+
+    if std::path::Path::new("/opt/homebrew/bin/verapdf").exists() {
+        let tmp_pdf = std::env::temp_dir().join("vocument_unicode_verapdf_test.pdf");
+        std::fs::write(&tmp_pdf, &pdf_bytes).expect("write temp pdf");
+        let rep_2b = std::process::Command::new("/opt/homebrew/bin/verapdf")
+            .args(["--flavour", "2b", tmp_pdf.to_str().unwrap_or("")])
+            .output()
+            .expect("verapdf 2b");
+        let rep_ua1 = std::process::Command::new("/opt/homebrew/bin/verapdf")
+            .args(["--flavour", "ua1", tmp_pdf.to_str().unwrap_or("")])
+            .output()
+            .expect("verapdf ua1");
+        let _ = std::fs::remove_file(&tmp_pdf);
+        let out_2b = String::from_utf8_lossy(&rep_2b.stdout);
+        let out_ua1 = String::from_utf8_lossy(&rep_ua1.stdout);
+        assert!(
+            out_2b.contains("isCompliant=\"true\""),
+            "veraPDF 2b rejected fallback font: {out_2b}"
+        );
+        assert!(
+            out_ua1.contains("isCompliant=\"true\""),
+            "veraPDF ua1 rejected fallback font: {out_ua1}"
+        );
+    }
 }
 
 #[test]
@@ -230,18 +258,30 @@ fn test_pdf_export_embedded_image_and_figure_structure_tagging() {
     doc.sections.push(section);
 
     let font_registry = FontRegistry::new();
-    let options = PdfExportOptions::default();
 
-    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &options);
+    // 1. Missing asset with default options MUST fail with explicit MissingAsset error (no silent lossy fallback)
+    let err_res = export_flow_document_to_pdf(&doc, &font_registry, &PdfExportOptions::default());
+    assert!(
+        matches!(err_res, Err(vocument_layout::pdf_export::PdfExportError::MissingAsset(ref s)) if s == "assets/notary_seal.png"),
+        "Missing image asset without confirmed lossy fallback must fail explicitly"
+    );
+
+    // 2. Confirmed lossy fallback allows placeholder export
+    let options_lossy = PdfExportOptions {
+        allow_lossy_image_fallbacks: true,
+        ..Default::default()
+    };
+    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &options_lossy)
+        .expect("export with confirmed lossy placeholder");
     let pdf_str = String::from_utf8_lossy(&pdf_bytes);
 
-    // 1. Verify image XObject exists with FlateDecode or DCTDecode
+    // 3. Verify image XObject exists with FlateDecode or DCTDecode
     assert!(
         pdf_str.contains("/Type /XObject") && pdf_str.contains("/Subtype /Image"),
         "PDF must embed raster image XObject"
     );
 
-    // 2. Verify marked content /Figure and Do operator
+    // 4. Verify marked content /Figure and Do operator
     assert!(
         pdf_str.contains("/Figure << /MCID"),
         "Content stream must tag image with /Figure marked content"
@@ -251,7 +291,7 @@ fn test_pdf_export_embedded_image_and_figure_structure_tagging() {
         "Content stream must draw image via /Im1 Do"
     );
 
-    // 3. Verify structure tree contains /S /Figure with /Alt
+    // 5. Verify structure tree contains /S /Figure with /Alt
     assert!(
         pdf_str.contains("/S /Figure"),
         "Structure tree must declare /S /Figure"

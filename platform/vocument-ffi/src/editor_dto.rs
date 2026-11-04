@@ -782,12 +782,16 @@ pub fn document_core_editor_export_pdf(
             pdfua_conformance: true,
             language: "de-DE".to_string(),
             certified_by_external_tooling: false,
+            allow_lossy_image_fallbacks: false,
         };
         let pdf = vocument_layout::pdf_export::export_flow_document_to_pdf(
             &s.state.document,
             &s.state.font_registry,
             &options,
-        );
+        )
+        .map_err(|err| DocumentCoreError::EditorFailure {
+            details: err.to_string(),
+        })?;
         Ok(pdf)
     })
 }

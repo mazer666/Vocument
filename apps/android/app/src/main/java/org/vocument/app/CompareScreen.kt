@@ -1,5 +1,7 @@
 package org.vocument.app
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,14 +13,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import uniffi.vocument_ffi.*
 
 /**
@@ -30,7 +39,10 @@ import uniffi.vocument_ffi.*
 fun CompareScreen(
     report: FfiComparisonReport,
     onBack: () -> Unit,
-    onExportReport: (format: String) -> Unit = {}
+    onExportReport: (format: String) -> Unit = {},
+    coreBridge: DocumentCoreBridge? = null,
+    sessionIdA: String? = null,
+    sessionIdB: String? = null
 ) {
     var selectedChangeId by remember { mutableStateOf(report.changes.firstOrNull()?.id) }
     var syncScroll by remember { mutableStateOf(true) }
@@ -108,7 +120,10 @@ fun CompareScreen(
                     syncScroll = syncScroll,
                     onToggleSync = { syncScroll = !syncScroll },
                     showVisualOverlay = showVisualOverlay,
-                    onToggleVisual = { showVisualOverlay = !showVisualOverlay }
+                    onToggleVisual = { showVisualOverlay = !showVisualOverlay },
+                    coreBridge = coreBridge,
+                    sessionIdA = sessionIdA,
+                    sessionIdB = sessionIdB
                 )
                 2 -> ReportPreviewView(
                     markdownReport = report.markdownReport,
@@ -316,8 +331,116 @@ fun DualViewportView(
     syncScroll: Boolean,
     onToggleSync: () -> Unit,
     showVisualOverlay: Boolean,
-    onToggleVisual: () -> Unit
+    onToggleVisual: () -> Unit,
+    coreBridge: DocumentCoreBridge? = null,
+    sessionIdA: String? = null,
+    sessionIdB: String? = null
 ) {
+    var pageIndexA by remember { mutableStateOf(0u) }
+    var pageIndexB by remember { mutableStateOf(0u) }
+    var zoomScale by remember { mutableStateOf(1000u) }
+    var bitmapA by remember { mutableStateOf<ImageBitmap?>(null) }
+    var bitmapB by remember { mutableStateOf<ImageBitmap?>(null) }
+    var visualDiffResult by remember { mutableStateOf<FfiPageDiffResult?>(null) }
+
+    // Respond to change item selection: jump to aligned pages
+    val selectedItem = remember(selectedChangeId) {
+        report.changes.firstOrNull { it.id == selectedChangeId }
+    }
+    LaunchedEffect(selectedChangeId) {
+        if (selectedItem != null) {
+            if (selectedItem.pageA != null && selectedItem.pageB != null) {
+                pageIndexA = selectedItem.pageA!!
+                pageIndexB = selectedItem.pageB!!
+            } else if (selectedItem.pageA != null) {
+                pageIndexA = selectedItem.pageA!!
+                if (syncScroll) {
+                    val mapped = report.pageAlignments.firstOrNull { it.pageA == pageIndexA }?.pageB
+                    if (mapped != null) pageIndexB = mapped
+                }
+            } else if (selectedItem.pageB != null) {
+                pageIndexB = selectedItem.pageB!!
+                if (syncScroll) {
+                    val mapped = report.pageAlignments.firstOrNull { it.pageB == pageIndexB }?.pageA
+                    if (mapped != null) pageIndexA = mapped
+                }
+            }
+        }
+    }
+
+    // Asynchronously render pages into Bitmaps via MuPDF
+    LaunchedEffect(pageIndexA, pageIndexB, zoomScale, sessionIdA, sessionIdB, coreBridge) {
+        if (coreBridge != null && sessionIdA != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val geomA = coreBridge.pageGeometry(sessionIdA, pageIndexA)
+                    val reqA = FfiTileRenderRequest(
+                        pageIndex = pageIndexA,
+                        scaleMilli = zoomScale,
+                        tileXPx = 0u,
+                        tileYPx = 0u,
+                        tileWidthPx = maxOf(1u, geomA.widthMilliPt / 1000u),
+                        tileHeightPx = maxOf(1u, geomA.heightMilliPt / 1000u)
+                    )
+                    val resA = coreBridge.renderViewportWithPrefetch(sessionIdA, reqA)
+                    val pixels = coreBridge.decodeRgba8ToArgbPixels(resA.visibleTile)
+                    Bitmap.createBitmap(
+                        pixels,
+                        resA.visibleTile.widthPx.toInt(),
+                        resA.visibleTile.heightPx.toInt(),
+                        Bitmap.Config.ARGB_8888
+                    ).asImageBitmap()
+                }.onSuccess { bmp ->
+                    bitmapA = bmp
+                }
+            }
+        }
+
+        if (coreBridge != null && sessionIdB != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val geomB = coreBridge.pageGeometry(sessionIdB, pageIndexB)
+                    val reqB = FfiTileRenderRequest(
+                        pageIndex = pageIndexB,
+                        scaleMilli = zoomScale,
+                        tileXPx = 0u,
+                        tileYPx = 0u,
+                        tileWidthPx = maxOf(1u, geomB.widthMilliPt / 1000u),
+                        tileHeightPx = maxOf(1u, geomB.heightMilliPt / 1000u)
+                    )
+                    val resB = coreBridge.renderViewportWithPrefetch(sessionIdB, reqB)
+                    val pixels = coreBridge.decodeRgba8ToArgbPixels(resB.visibleTile)
+                    Bitmap.createBitmap(
+                        pixels,
+                        resB.visibleTile.widthPx.toInt(),
+                        resB.visibleTile.heightPx.toInt(),
+                        Bitmap.Config.ARGB_8888
+                    ).asImageBitmap()
+                }.onSuccess { bmp ->
+                    bitmapB = bmp
+                }
+            }
+        }
+
+        if (coreBridge != null && sessionIdA != null && sessionIdB != null && showVisualOverlay) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val opts = FfiComparisonOptions(
+                        granularity = FfiDiffGranularity.WORD,
+                        ignoreWhitespace = true,
+                        ignoreCase = false,
+                        visualPixelThreshold = 16u,
+                        visualClusterDistancePt = 10.0f,
+                        alignClauses = true
+                    )
+                    coreBridge.comparePagesVisual(sessionIdA, pageIndexA, sessionIdB, pageIndexB, opts)
+                }.onSuccess { diff ->
+                    visualDiffResult = diff
+                }
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -336,11 +459,15 @@ fun DualViewportView(
                     Text("Visueller Diff", fontSize = 12.sp)
                 }
             }
-            Text(
-                text = "${report.pageCountA} S. ↔ ${report.pageCountB} S.",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { if (zoomScale > 500u) zoomScale -= 250u }) {
+                    Text("−", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                Text("${zoomScale / 10u}%", fontSize = 12.sp)
+                TextButton(onClick = { if (zoomScale < 3000u) zoomScale += 250u }) {
+                    Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         Row(
@@ -348,7 +475,7 @@ fun DualViewportView(
                 .fillMaxSize()
                 .padding(horizontal = 8.dp)
         ) {
-            // Pane A
+            // Pane A (Original)
             Card(
                 modifier = Modifier
                     .weight(1f)
@@ -356,29 +483,94 @@ fun DualViewportView(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        text = report.docATitle,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = report.docATitle,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = {
+                                    if (pageIndexA > 0u) {
+                                        val targetA = pageIndexA - 1u
+                                        pageIndexA = targetA
+                                        if (syncScroll) {
+                                            val mapped = report.pageAlignments.firstOrNull { it.pageA == targetA }?.pageB
+                                            if (mapped != null) pageIndexB = mapped
+                                        }
+                                    }
+                                },
+                                enabled = pageIndexA > 0u
+                            ) { Text("◀") }
+                            Text("${pageIndexA + 1u}/${maxOf(1u, report.pageCountA)}", fontSize = 11.sp)
+                            TextButton(
+                                onClick = {
+                                    if (pageIndexA + 1u < report.pageCountA) {
+                                        val targetA = pageIndexA + 1u
+                                        pageIndexA = targetA
+                                        if (syncScroll) {
+                                            val mapped = report.pageAlignments.firstOrNull { it.pageA == targetA }?.pageB
+                                            if (mapped != null) pageIndexB = mapped
+                                        }
+                                    }
+                                },
+                                enabled = pageIndexA + 1u < report.pageCountA
+                            ) { Text("▶") }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.White)
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Dokument A (Original)\n${report.pageCountA} Seiten", color = Color.DarkGray)
+                        if (bitmapA != null) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawImage(bitmapA!!)
+                                for (change in report.changes) {
+                                    if (change.pageA == pageIndexA && change.rectA != null) {
+                                        val r = change.rectA!!
+                                        val x = r.x0MilliPt.toFloat() / 1000f
+                                        val y = r.y0MilliPt.toFloat() / 1000f
+                                        val w = (r.x1MilliPt - r.x0MilliPt).toFloat() / 1000f
+                                        val h = (r.y1MilliPt - r.y0MilliPt).toFloat() / 1000f
+                                        val col = when (change.operation) {
+                                            FfiDiffOperation.Delete -> Color(0x60C62828)
+                                            FfiDiffOperation.Replace -> Color(0x60EF6C00)
+                                            is FfiDiffOperation.Move -> Color(0x601565C0)
+                                            else -> Color(0x604CAF50)
+                                        }
+                                        drawRect(color = col, topLeft = Offset(x, y), size = Size(w, h))
+                                    }
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "${report.docATitle}\nSeite ${pageIndexA + 1u} von ${report.pageCountA}",
+                                    color = Color.DarkGray,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Pane B
+            // Pane B (Modified)
             Card(
                 modifier = Modifier
                     .weight(1f)
@@ -386,22 +578,96 @@ fun DualViewportView(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        text = report.docBTitle,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = report.docBTitle,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = {
+                                    if (pageIndexB > 0u) {
+                                        val targetB = pageIndexB - 1u
+                                        pageIndexB = targetB
+                                        if (syncScroll) {
+                                            val mapped = report.pageAlignments.firstOrNull { it.pageB == targetB }?.pageA
+                                            if (mapped != null) pageIndexA = mapped
+                                        }
+                                    }
+                                },
+                                enabled = pageIndexB > 0u
+                            ) { Text("◀") }
+                            Text("${pageIndexB + 1u}/${maxOf(1u, report.pageCountB)}", fontSize = 11.sp)
+                            TextButton(
+                                onClick = {
+                                    if (pageIndexB + 1u < report.pageCountB) {
+                                        val targetB = pageIndexB + 1u
+                                        pageIndexB = targetB
+                                        if (syncScroll) {
+                                            val mapped = report.pageAlignments.firstOrNull { it.pageB == targetB }?.pageA
+                                            if (mapped != null) pageIndexA = mapped
+                                        }
+                                    }
+                                },
+                                enabled = pageIndexB + 1u < report.pageCountB
+                            ) { Text("▶") }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.White)
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Dokument B (Modifiziert)\n${report.pageCountB} Seiten", color = Color.DarkGray)
+                        if (bitmapB != null) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawImage(bitmapB!!)
+                                if (showVisualOverlay && visualDiffResult != null) {
+                                    for (box in visualDiffResult!!.differenceBoundingBoxes) {
+                                        val x = box.x0MilliPt.toFloat() / 1000f
+                                        val y = box.y0MilliPt.toFloat() / 1000f
+                                        val w = (box.x1MilliPt - box.x0MilliPt).toFloat() / 1000f
+                                        val h = (box.y1MilliPt - box.y0MilliPt).toFloat() / 1000f
+                                        drawRect(color = Color(0x50FF0000), topLeft = Offset(x, y), size = Size(w, h))
+                                    }
+                                }
+                                for (change in report.changes) {
+                                    if (change.pageB == pageIndexB && change.rectB != null) {
+                                        val r = change.rectB!!
+                                        val x = r.x0MilliPt.toFloat() / 1000f
+                                        val y = r.y0MilliPt.toFloat() / 1000f
+                                        val w = (r.x1MilliPt - r.x0MilliPt).toFloat() / 1000f
+                                        val h = (r.y1MilliPt - r.y0MilliPt).toFloat() / 1000f
+                                        val col = when (change.operation) {
+                                            FfiDiffOperation.Insert -> Color(0x602E7D32)
+                                            FfiDiffOperation.Replace -> Color(0x60EF6C00)
+                                            is FfiDiffOperation.Move -> Color(0x601565C0)
+                                            else -> Color(0x604CAF50)
+                                        }
+                                        drawRect(color = col, topLeft = Offset(x, y), size = Size(w, h))
+                                    }
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "${report.docBTitle}\nSeite ${pageIndexB + 1u} von ${report.pageCountB}",
+                                    color = Color.DarkGray,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }

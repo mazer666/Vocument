@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let registry = FontRegistry::new();
     let options = PdfExportOptions::default();
-    let pdf_bytes = export_flow_document_to_pdf(&doc, &registry, &options);
+    let pdf_bytes = export_flow_document_to_pdf(&doc, &registry, &options)?;
     fs::write(&out_path, pdf_bytes)?;
     println!("Exported test PDF to: {}", out_path);
     Ok(())

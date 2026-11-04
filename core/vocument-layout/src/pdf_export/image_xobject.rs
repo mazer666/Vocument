@@ -5,6 +5,29 @@
 use miniz_oxide::deflate::compress_to_vec_zlib;
 use miniz_oxide::inflate::decompress_to_vec_zlib;
 
+/// Maximum allowable pixel dimension for embedded raster images (resource limit: 16k x 16k).
+pub const MAX_IMAGE_DIMENSION_PX: u32 = 16_384;
+
+/// Maximum payload size in bytes for an embedded image (50 MB).
+pub const MAX_IMAGE_PAYLOAD_BYTES: usize = 50 * 1024 * 1024;
+
+/// Errors occurring during image decoding, validation, or PDF XObject preparation.
+#[derive(Debug, thiserror::Error, PartialEq, Eq, Clone)]
+pub enum ImagePreparationError {
+    #[error("unsupported image format (only JPEG and PNG raster images are supported)")]
+    UnsupportedFormat,
+    #[error(
+        "image exceeds maximum allowed dimensions: {width}x{height} (limit: {MAX_IMAGE_DIMENSION_PX}x{MAX_IMAGE_DIMENSION_PX})"
+    )]
+    DimensionsExceeded { width: u32, height: u32 },
+    #[error(
+        "image payload exceeds size limit ({size_bytes} bytes, limit: {MAX_IMAGE_PAYLOAD_BYTES} bytes)"
+    )]
+    PayloadTooLarge { size_bytes: usize },
+    #[error("corrupt or malformed image data: {reason}")]
+    CorruptData { reason: String },
+}
+
 /// Prepared raster image XObject ready to be written to a PDF stream.
 #[derive(Debug, Clone)]
 pub struct PdfImageObject {
@@ -16,16 +39,22 @@ pub struct PdfImageObject {
     pub smask_bytes: Option<Vec<u8>>,
 }
 
-/// Prepares raw image bytes (JPEG, PNG, or other raster) into a PDF-compliant XObject.
-pub fn prepare_image(bytes: &[u8]) -> Option<PdfImageObject> {
+/// Prepares raw image bytes (JPEG, PNG) into a PDF-compliant XObject with strict resource limits.
+pub fn prepare_image(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
+    if bytes.len() > MAX_IMAGE_PAYLOAD_BYTES {
+        return Err(ImagePreparationError::PayloadTooLarge {
+            size_bytes: bytes.len(),
+        });
+    }
+
     if bytes.starts_with(&[0xFF, 0xD8]) {
         return prepare_jpeg(bytes);
     }
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return prepare_png(bytes);
     }
-    // For unknown or raw images, return None to trigger placeholder fallback
-    None
+
+    Err(ImagePreparationError::UnsupportedFormat)
 }
 
 /// Fallback 8x8 neutral gray raster placeholder image when asset is missing or invalid.
@@ -50,9 +79,17 @@ pub fn placeholder_image() -> PdfImageObject {
     }
 }
 
-fn prepare_jpeg(bytes: &[u8]) -> Option<PdfImageObject> {
-    let (width, height, is_gray) = parse_jpeg_dimensions(bytes)?;
-    Some(PdfImageObject {
+fn prepare_jpeg(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
+    let (width, height, is_gray) =
+        parse_jpeg_dimensions(bytes).ok_or_else(|| ImagePreparationError::CorruptData {
+            reason: "unable to parse JPEG Start-of-Frame dimensions".to_string(),
+        })?;
+
+    if width > MAX_IMAGE_DIMENSION_PX || height > MAX_IMAGE_DIMENSION_PX {
+        return Err(ImagePreparationError::DimensionsExceeded { width, height });
+    }
+
+    Ok(PdfImageObject {
         width,
         height,
         color_space: if is_gray { "/DeviceGray" } else { "/DeviceRGB" },
@@ -88,25 +125,47 @@ fn parse_jpeg_dimensions(bytes: &[u8]) -> Option<(u32, u32, bool)> {
     None
 }
 
-fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
+fn prepare_png(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
     if bytes.len() < 33 {
-        return None;
+        return Err(ImagePreparationError::CorruptData {
+            reason: "PNG stream truncated before IHDR header".to_string(),
+        });
     }
     // Parse IHDR
-    let width = u32::from_be_bytes(bytes[16..20].try_into().ok()?);
-    let height = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
+    let width = u32::from_be_bytes(bytes[16..20].try_into().map_err(|_| {
+        ImagePreparationError::CorruptData {
+            reason: "failed to read PNG width".to_string(),
+        }
+    })?);
+    let height = u32::from_be_bytes(bytes[20..24].try_into().map_err(|_| {
+        ImagePreparationError::CorruptData {
+            reason: "failed to read PNG height".to_string(),
+        }
+    })?);
     let bit_depth = bytes[24];
     let color_type = bytes[25];
 
-    if width == 0 || height == 0 || bit_depth != 8 {
-        return None;
+    if width == 0 || height == 0 {
+        return Err(ImagePreparationError::CorruptData {
+            reason: "PNG dimensions must be non-zero".to_string(),
+        });
+    }
+    if width > MAX_IMAGE_DIMENSION_PX || height > MAX_IMAGE_DIMENSION_PX {
+        return Err(ImagePreparationError::DimensionsExceeded { width, height });
+    }
+    if bit_depth != 8 {
+        return Err(ImagePreparationError::UnsupportedFormat);
     }
 
     // Collect all IDAT chunks
     let mut idat_data = Vec::new();
     let mut offset = 8;
     while offset + 8 <= bytes.len() {
-        let chunk_len = u32::from_be_bytes(bytes[offset..offset + 4].try_into().ok()?) as usize;
+        let chunk_len = u32::from_be_bytes(bytes[offset..offset + 4].try_into().map_err(|_| {
+            ImagePreparationError::CorruptData {
+                reason: "failed to read PNG chunk length".to_string(),
+            }
+        })?) as usize;
         let chunk_type = &bytes[offset + 4..offset + 8];
         if chunk_type == b"IDAT" && offset + 8 + chunk_len <= bytes.len() {
             idat_data.extend_from_slice(&bytes[offset + 8..offset + 8 + chunk_len]);
@@ -115,17 +174,25 @@ fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
     }
 
     if idat_data.is_empty() {
-        return None;
+        return Err(ImagePreparationError::CorruptData {
+            reason: "PNG contains no IDAT data chunks".to_string(),
+        });
     }
 
-    let decompressed = decompress_to_vec_zlib(&idat_data).ok()?;
+    let decompressed =
+        decompress_to_vec_zlib(&idat_data).map_err(|e| ImagePreparationError::CorruptData {
+            reason: format!("zlib inflate failed on PNG IDAT: {e:?}"),
+        })?;
 
     match color_type {
         // Grayscale 8-bit
         0 => {
-            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 1)?;
+            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 1)
+                .ok_or_else(|| ImagePreparationError::CorruptData {
+                    reason: "PNG row filter reconstruction failed".to_string(),
+                })?;
             let compressed = compress_to_vec_zlib(&uncompressed, 6);
-            Some(PdfImageObject {
+            Ok(PdfImageObject {
                 width,
                 height,
                 color_space: "/DeviceGray",
@@ -136,9 +203,12 @@ fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
         }
         // Truecolor (RGB) 8-bit
         2 => {
-            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 3)?;
+            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 3)
+                .ok_or_else(|| ImagePreparationError::CorruptData {
+                    reason: "PNG row filter reconstruction failed".to_string(),
+                })?;
             let compressed = compress_to_vec_zlib(&uncompressed, 6);
-            Some(PdfImageObject {
+            Ok(PdfImageObject {
                 width,
                 height,
                 color_space: "/DeviceRGB",
@@ -149,7 +219,10 @@ fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
         }
         // Truecolor with alpha (RGBA) 8-bit
         6 => {
-            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 4)?;
+            let uncompressed = unfilter_png(&decompressed, width as usize, height as usize, 4)
+                .ok_or_else(|| ImagePreparationError::CorruptData {
+                    reason: "PNG row filter reconstruction failed".to_string(),
+                })?;
             let pixel_count = (width * height) as usize;
             let mut rgb = Vec::with_capacity(pixel_count * 3);
             let mut alpha = Vec::with_capacity(pixel_count);
@@ -159,7 +232,7 @@ fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
             }
             let compressed_rgb = compress_to_vec_zlib(&rgb, 6);
             let compressed_alpha = compress_to_vec_zlib(&alpha, 6);
-            Some(PdfImageObject {
+            Ok(PdfImageObject {
                 width,
                 height,
                 color_space: "/DeviceRGB",
@@ -168,7 +241,7 @@ fn prepare_png(bytes: &[u8]) -> Option<PdfImageObject> {
                 smask_bytes: Some(compressed_alpha),
             })
         }
-        _ => None,
+        _ => Err(ImagePreparationError::UnsupportedFormat),
     }
 }
 

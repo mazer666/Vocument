@@ -32,7 +32,9 @@ pub use paragraph::{
     PositionedParagraph, TypesettingContext, layout_heading, layout_list, layout_paragraph,
     resolve_paragraph_style, shape_spans,
 };
-pub use pdf_export::{PdfExportOptions, export_flow_document_to_pdf, export_layout_to_pdf};
+pub use pdf_export::{
+    PdfExportError, PdfExportOptions, export_flow_document_to_pdf, export_layout_to_pdf,
+};
 pub use shaper::{Direction, ShapedGlyph, ShapedRun, shape_span};
 pub use table::{
     PositionedTable, PositionedTableCell, PositionedTableRow, TableSlice, layout_table, slice_table,

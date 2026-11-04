@@ -133,6 +133,8 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     // MARK: - M3.7 Document Comparison Properties
     @Published var compareSecondSession: FfiDocumentSessionSnapshot?
     @Published var compareReport: FfiComparisonReport?
+    @Published var isComparing: Bool = false
+    @Published var isRenderingComparisonViewports: Bool = false
     @Published var comparePageA: UInt32 = 0
     @Published var comparePageB: UInt32 = 0
     @Published var compareRenderedImageA: CGImage?

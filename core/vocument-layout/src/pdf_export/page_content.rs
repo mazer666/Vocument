@@ -10,9 +10,11 @@ use crate::tree::{LayoutBox, LayoutBoxKind, LayoutLine, LayoutPage};
 use vocument_flow::styles::ColorRgba;
 
 use super::font_embedding::{
-    EmbeddedFontMetrics, encode_utf16be_hex, encode_win_ansi_literal, has_non_win_ansi,
+    EmbeddedFontMetrics, char_to_win_ansi_code, encode_single_byte_to_literal, encode_utf16be_hex,
+    encode_win_ansi_literal, has_non_win_ansi,
 };
 use super::structure::{StructureRoles, StructureTree};
+use super::unicode_fallback::{FALLBACK_FONT_RESOURCE_NAME, UnicodeFallbackRegistry};
 
 /// Name under which the embedded font is registered in every page's resource dictionary.
 pub(super) const FONT_RESOURCE_NAME: &str = "F1";
@@ -61,6 +63,7 @@ struct PageRenderer<'a> {
     roles: &'a StructureRoles,
     tree: &'a mut StructureTree,
     metrics: &'a EmbeddedFontMetrics,
+    fallback_registry: &'a mut UnicodeFallbackRegistry,
     rendered: RenderedPage,
 }
 
@@ -71,6 +74,7 @@ pub(super) fn render_page(
     roles: &StructureRoles,
     tree: &mut StructureTree,
     metrics: &EmbeddedFontMetrics,
+    fallback_registry: &mut UnicodeFallbackRegistry,
 ) -> RenderedPage {
     let mut renderer = PageRenderer {
         page_index,
@@ -78,6 +82,7 @@ pub(super) fn render_page(
         roles,
         tree,
         metrics,
+        fallback_registry,
         rendered: RenderedPage::default(),
     };
     renderer.render_boxes(&page.header_boxes, 0.0, 0.0, false);
@@ -310,31 +315,71 @@ impl PageRenderer<'_> {
             0.0
         };
 
-        let stream = &mut self.rendered.content_stream;
         let components = color_components(run.color);
-        let _ = writeln!(stream, "{components} rg");
-        if run.font_style.bold {
-            let _ = writeln!(
-                stream,
-                "{components} RG\n{:.3} w\n2 Tr",
-                font_size * SYNTHETIC_BOLD_STROKE_FRACTION
-            );
+        {
+            let stream = &mut self.rendered.content_stream;
+            let _ = writeln!(stream, "{components} rg");
+            if run.font_style.bold {
+                let _ = writeln!(
+                    stream,
+                    "{components} RG\n{:.3} w\n2 Tr",
+                    font_size * SYNTHETIC_BOLD_STROKE_FRACTION
+                );
+            }
+            let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
+            let _ = writeln!(stream, "{character_spacing:.3} Tc");
+            let _ = writeln!(stream, "1 0 {shear:.2} 1 {x:.2} {baseline:.2} Tm");
+            if has_non_win_ansi(&run.text) {
+                let _ = writeln!(
+                    stream,
+                    "/Span << /ActualText {} >> BDC",
+                    encode_utf16be_hex(&run.text)
+                );
+            } else {
+                let _ = writeln!(stream, "({}) Tj", encode_win_ansi_literal(&run.text));
+            }
         }
-        let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
-        let _ = writeln!(stream, "{character_spacing:.3} Tc");
-        let _ = writeln!(stream, "1 0 {shear:.2} 1 {x:.2} {baseline:.2} Tm");
         if has_non_win_ansi(&run.text) {
-            let _ = writeln!(
-                stream,
-                "/Span << /ActualText {} >> BDC\n({}) Tj\nEMC",
-                encode_utf16be_hex(&run.text),
-                encode_win_ansi_literal(&run.text)
-            );
-        } else {
-            let _ = writeln!(stream, "({}) Tj", encode_win_ansi_literal(&run.text));
+            self.render_segmented_text(&run.text, font_size);
+            self.rendered.content_stream.push_str("EMC\n");
         }
         if run.font_style.bold {
-            stream.push_str("0 Tr\n");
+            self.rendered.content_stream.push_str("0 Tr\n");
+        }
+    }
+
+    fn render_segmented_text(&mut self, text: &str, font_size: f32) {
+        let stream = &mut self.rendered.content_stream;
+        let mut in_fallback = false;
+        let mut cur_win_ansi = String::new();
+
+        for ch in text.chars() {
+            if let Some(code) = char_to_win_ansi_code(ch) {
+                if in_fallback {
+                    let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
+                    in_fallback = false;
+                }
+                encode_single_byte_to_literal(code, &mut cur_win_ansi);
+            } else {
+                if !cur_win_ansi.is_empty() {
+                    let _ = writeln!(stream, "({cur_win_ansi}) Tj");
+                    cur_win_ansi.clear();
+                }
+                if !in_fallback {
+                    let _ = writeln!(stream, "/{FALLBACK_FONT_RESOURCE_NAME} {font_size:.2} Tf");
+                    in_fallback = true;
+                }
+                if let Some(fb_code) = self.fallback_registry.register_char(ch) {
+                    let _ = writeln!(stream, "<{:02X}> Tj", fb_code);
+                }
+            }
+        }
+
+        if !cur_win_ansi.is_empty() {
+            let _ = writeln!(stream, "({cur_win_ansi}) Tj");
+        }
+        if in_fallback {
+            let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
         }
     }
 }

@@ -134,3 +134,58 @@ func verifyMacPlatformSanitizeDocument() throws {
     try client.closeSession(sessionId: session.sessionId)
 }
 
+@Test
+func verifyMacPlatformDocumentComparisonAndDiffing() throws {
+    let client = DocumentCoreClient()
+
+    let sampleURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("tests/corpus/m0_1_sample_two_pages.pdf")
+
+    let sessionA = try client.openScopedDocument(at: sampleURL)
+    let sessionB = try client.openScopedDocument(at: sampleURL)
+
+    let options = FfiComparisonOptions(
+        granularity: .word,
+        ignoreWhitespace: true,
+        ignoreCase: false,
+        visualPixelThreshold: 16,
+        visualClusterDistancePt: 10.0,
+        alignClauses: true
+    )
+
+    let report = try client.compareDocuments(
+        sessionIdA: sessionA.sessionId,
+        sessionIdB: sessionB.sessionId,
+        options: options
+    )
+
+    #expect(report.pageCountA == 2)
+    #expect(report.pageCountB == 2)
+    #expect(report.summary.totalChanges == 0)
+    #expect(report.summary.identicalPagesCount == 2)
+    #expect(report.summary.similarityRatio >= 0.99)
+    #expect(report.pageAlignments.count == 2)
+    #expect(report.pageAlignments[0].pageA == 0)
+    #expect(report.pageAlignments[0].pageB == 0)
+
+    let textReport = client.compareTextStreams(
+        titleA: "Version 1",
+        textA: "§ 1 Die Vertragslaufzeit beträgt 12 Monate.",
+        titleB: "Version 2",
+        textB: "§ 1 Die Vertragslaufzeit beträgt 24 Monate.",
+        options: options
+    )
+    #expect(textReport.summary.totalChanges == 1)
+    #expect(textReport.summary.replacementsCount == 1)
+    #expect(!textReport.markdownReport.isEmpty)
+    #expect(!textReport.htmlReport.isEmpty)
+
+    try client.closeSession(sessionId: sessionA.sessionId)
+    try client.closeSession(sessionId: sessionB.sessionId)
+}
+

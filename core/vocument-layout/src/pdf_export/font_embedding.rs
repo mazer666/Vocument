@@ -282,7 +282,7 @@ pub(super) fn encode_win_ansi_literal(text: &str) -> String {
     literal
 }
 
-fn encode_single_byte_to_literal(code: u8, literal: &mut String) {
+pub(super) fn encode_single_byte_to_literal(code: u8, literal: &mut String) {
     match code {
         b'(' | b')' | b'\\' => {
             literal.push('\\');

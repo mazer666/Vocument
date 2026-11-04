@@ -122,7 +122,123 @@ fn detect_clause_header(line: &str) -> Option<String> {
     None
 }
 
-/// Computes the diff between two token streams using dynamic-programming LCS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RawOp {
+    Equal(usize, usize),
+    Delete(usize),
+    Insert(usize),
+}
+
+/// Linear-space LCS divide-and-conquer (Hirschberg's algorithm) bounding memory to O(N).
+fn hirschberg_diff(
+    tokens_a: &[DiffToken],
+    tokens_b: &[DiffToken],
+    offset_a: usize,
+    offset_b: usize,
+    ops: &mut Vec<RawOp>,
+) {
+    let m = tokens_a.len();
+    let n = tokens_b.len();
+
+    if m == 0 {
+        for j in 0..n {
+            ops.push(RawOp::Insert(offset_b + j));
+        }
+        return;
+    }
+    if n == 0 {
+        for i in 0..m {
+            ops.push(RawOp::Delete(offset_a + i));
+        }
+        return;
+    }
+
+    if m == 1 {
+        let target = &tokens_a[0].normalized;
+        if let Some(pos) = tokens_b.iter().position(|tb| &tb.normalized == target) {
+            for j in 0..pos {
+                ops.push(RawOp::Insert(offset_b + j));
+            }
+            ops.push(RawOp::Equal(offset_a, offset_b + pos));
+            for j in (pos + 1)..n {
+                ops.push(RawOp::Insert(offset_b + j));
+            }
+        } else {
+            ops.push(RawOp::Delete(offset_a));
+            for j in 0..n {
+                ops.push(RawOp::Insert(offset_b + j));
+            }
+        }
+        return;
+    }
+
+    let mid = m / 2;
+
+    // Forward LCS row for tokens_a[0..mid] against tokens_b[0..n]
+    let mut prev = vec![0u32; n + 1];
+    let mut curr = vec![0u32; n + 1];
+
+    for tok_a in tokens_a.iter().take(mid) {
+        let norm_a = &tok_a.normalized;
+        for j in 0..n {
+            if norm_a == &tokens_b[j].normalized {
+                curr[j + 1] = prev[j] + 1;
+            } else {
+                curr[j + 1] = prev[j + 1].max(curr[j]);
+            }
+        }
+        std::mem::swap(&mut prev, &mut curr);
+        curr.fill(0);
+    }
+    let l1 = prev;
+
+    // Backward LCS row for tokens_a[mid..m] against tokens_b[0..n]
+    let mut prev = vec![0u32; n + 1];
+    let mut curr = vec![0u32; n + 1];
+
+    for tok_a in tokens_a[mid..m].iter().rev() {
+        let norm_a = &tok_a.normalized;
+        for j in 0..n {
+            if norm_a == &tokens_b[n - 1 - j].normalized {
+                curr[j + 1] = prev[j] + 1;
+            } else {
+                curr[j + 1] = prev[j + 1].max(curr[j]);
+            }
+        }
+        std::mem::swap(&mut prev, &mut curr);
+        curr.fill(0);
+    }
+    let l2 = prev;
+
+    // Find best split k in 0..=n
+    let mut best_score = 0;
+    let mut best_k = 0;
+    for k in 0..=n {
+        let score = l1[k] + l2[n - k];
+        if score > best_score || (score == best_score && k > best_k) {
+            best_score = score;
+            best_k = k;
+        }
+    }
+
+    // Recurse
+    hirschberg_diff(
+        &tokens_a[..mid],
+        &tokens_b[..best_k],
+        offset_a,
+        offset_b,
+        ops,
+    );
+    hirschberg_diff(
+        &tokens_a[mid..],
+        &tokens_b[best_k..],
+        offset_a + mid,
+        offset_b + best_k,
+        ops,
+    );
+}
+
+/// Computes the diff between two token streams using linear-space Hirschberg dynamic programming.
 #[allow(clippy::needless_range_loop)]
 pub fn diff_tokens(
     tokens_a: &[DiffToken],
@@ -177,45 +293,45 @@ pub fn diff_tokens(
         }];
     }
 
-    // Compute LCS matrix (optimized memory: two rows if very large, full table for standard page limits)
-    let mut dp = vec![vec![0u32; n + 1]; m + 1];
-    for i in 0..m {
-        for j in 0..n {
-            if tokens_a[i].normalized == tokens_b[j].normalized {
-                dp[i + 1][j + 1] = dp[i][j] + 1;
-            } else {
-                dp[i + 1][j + 1] = dp[i + 1][j].max(dp[i][j + 1]);
-            }
-        }
+    // 1. Strip identical common prefix
+    let mut prefix_len = 0;
+    while prefix_len < m
+        && prefix_len < n
+        && tokens_a[prefix_len].normalized == tokens_b[prefix_len].normalized
+    {
+        prefix_len += 1;
     }
 
-    // Backtrack to build raw edit operations
-    #[allow(dead_code)]
-    #[derive(Debug)]
-    enum RawOp {
-        Equal(usize, usize),
-        Delete(usize),
-        Insert(usize),
+    // 2. Strip identical common suffix
+    let mut suffix_len = 0;
+    while suffix_len < (m - prefix_len)
+        && suffix_len < (n - prefix_len)
+        && tokens_a[m - 1 - suffix_len].normalized == tokens_b[n - 1 - suffix_len].normalized
+    {
+        suffix_len += 1;
     }
 
     let mut raw_ops = Vec::new();
-    let mut i = m;
-    let mut j = n;
 
-    while i > 0 || j > 0 {
-        if i > 0 && j > 0 && tokens_a[i - 1].normalized == tokens_b[j - 1].normalized {
-            raw_ops.push(RawOp::Equal(i - 1, j - 1));
-            i -= 1;
-            j -= 1;
-        } else if j > 0 && (i == 0 || dp[i][j - 1] >= dp[i - 1][j]) {
-            raw_ops.push(RawOp::Insert(j - 1));
-            j -= 1;
-        } else if i > 0 && (j == 0 || dp[i][j - 1] < dp[i - 1][j]) {
-            raw_ops.push(RawOp::Delete(i - 1));
-            i -= 1;
-        }
+    // Add common prefix
+    for i in 0..prefix_len {
+        raw_ops.push(RawOp::Equal(i, i));
     }
-    raw_ops.reverse();
+
+    // Diff middle region using linear-space Hirschberg
+    let mid_a = &tokens_a[prefix_len..(m - suffix_len)];
+    let mid_b = &tokens_b[prefix_len..(n - suffix_len)];
+
+    if !mid_a.is_empty() || !mid_b.is_empty() {
+        hirschberg_diff(mid_a, mid_b, prefix_len, prefix_len, &mut raw_ops);
+    }
+
+    // Add common suffix
+    for k in 0..suffix_len {
+        let idx_a = m - suffix_len + k;
+        let idx_b = n - suffix_len + k;
+        raw_ops.push(RawOp::Equal(idx_a, idx_b));
+    }
 
     // Group adjacent Inserts and Deletes into contiguous change chunks
     let mut chunks: Vec<ChangeItem> = Vec::new();
@@ -443,6 +559,33 @@ mod tests {
         assert!(
             move_count >= 1,
             "Expected moved passage to be recognized as Move"
+        );
+    }
+
+    #[test]
+    fn test_linear_space_diff_large_corpus() {
+        let base_words: Vec<String> = (0..5000).map(|i| format!("term_{i}")).collect();
+        let mut modified = base_words.clone();
+        modified.insert(1000, "inserted_clause".to_string());
+        modified[2501] = "replaced_clause".to_string();
+        modified.remove(4001);
+
+        let text_a = base_words.join(" ");
+        let text_b = modified.join(" ");
+
+        let options = ComparisonOptions::default();
+        let tok_a = tokenize(&text_a, Some(0), &options);
+        let tok_b = tokenize(&text_b, Some(0), &options);
+
+        let start = std::time::Instant::now();
+        let diffs = diff_tokens(&tok_a, &tok_b, &options);
+        let elapsed = start.elapsed();
+
+        assert!(!diffs.is_empty());
+        assert!(
+            elapsed.as_millis() < 1000,
+            "5k tokens must diff within 1s, took {:?}",
+            elapsed
         );
     }
 }

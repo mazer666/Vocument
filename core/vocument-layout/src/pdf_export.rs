@@ -12,7 +12,11 @@ mod font_embedding;
 mod image_xobject;
 mod page_content;
 mod structure;
+mod unicode_fallback;
 mod xmp;
+
+pub use image_xobject::{ImagePreparationError, MAX_IMAGE_DIMENSION_PX, MAX_IMAGE_PAYLOAD_BYTES};
+pub use unicode_fallback::{FALLBACK_FONT_RESOURCE_NAME, UnicodeFallbackRegistry};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as FmtWrite;
@@ -28,12 +32,27 @@ use crate::tree::LayoutDocument;
 use font_embedding::{EmbeddedFontMetrics, EmbeddedFontObjectIds, encode_pdf_text_string};
 use page_content::{FONT_RESOURCE_NAME, RenderedPage, render_page};
 use structure::{StructureChild, StructureRoles, StructureTree};
+use unicode_fallback::FallbackFontObjectIds;
 
 /// Side length of the square comment marker annotation in points.
 const COMMENT_MARKER_SIZE_PT: f32 = 20.0;
 
 /// Distance of the comment marker from the right page edge in points.
 const COMMENT_MARKER_RIGHT_INSET_PT: f32 = 30.0;
+
+/// Errors occurring during Tagged PDF, PDF/A-2b, and PDF/UA-1 export.
+#[derive(Debug, thiserror::Error, PartialEq, Eq, Clone)]
+pub enum PdfExportError {
+    #[error("referenced image asset '{0}' was not found in export assets catalog")]
+    MissingAsset(String),
+    #[error("failed to process image asset '{asset_ref}': {error}")]
+    InvalidImage {
+        asset_ref: String,
+        error: image_xobject::ImagePreparationError,
+    },
+    #[error("layout or export processing error: {0}")]
+    Processing(String),
+}
 
 /// Configuration options for PDF/A and PDF/UA export.
 #[derive(Debug, Clone)]
@@ -53,6 +72,9 @@ pub struct PdfExportOptions {
     pub certified_by_external_tooling: bool,
     /// In-memory asset catalog for embedded raster images keyed by asset reference path (`M4.4`).
     pub assets: BTreeMap<String, Vec<u8>>,
+    /// When false (default), missing or corrupt images return an explicit error.
+    /// When true, allows placeholder images as lossy fallback if explicitly confirmed.
+    pub allow_lossy_image_fallbacks: bool,
 }
 
 impl Default for PdfExportOptions {
@@ -65,6 +87,7 @@ impl Default for PdfExportOptions {
             language: "de-DE".to_string(),
             certified_by_external_tooling: false,
             assets: BTreeMap::new(),
+            allow_lossy_image_fallbacks: false,
         }
     }
 }
@@ -88,7 +111,7 @@ pub fn export_flow_document_to_pdf(
     doc: &FlowDocument,
     font_registry: &FontRegistry,
     options: &PdfExportOptions,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, PdfExportError> {
     let clean_doc;
     let effective_doc = if !options.include_tracked_changes {
         clean_doc = sanitize_clean_flow_document(doc);
@@ -106,7 +129,7 @@ pub fn export_layout_to_pdf(
     layout: &LayoutDocument,
     doc: &FlowDocument,
     options: &PdfExportOptions,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, PdfExportError> {
     let mut pdf = PdfWriter::new();
     let metrics = EmbeddedFontMetrics::load();
 
@@ -135,15 +158,37 @@ pub fn export_layout_to_pdf(
     // Render every page first: that builds the structure tree the page dictionaries refer to.
     let roles = StructureRoles::from_document(doc);
     let mut tree = StructureTree::new();
+    let mut fallback_registry = UnicodeFallbackRegistry::new();
     let rendered_pages: Vec<RenderedPage> = layout
         .pages
         .iter()
         .enumerate()
-        .map(|(page_index, page)| render_page(page, page_index, &roles, &mut tree, &metrics))
+        .map(|(page_index, page)| {
+            render_page(
+                page,
+                page_index,
+                &roles,
+                &mut tree,
+                &metrics,
+                &mut fallback_registry,
+            )
+        })
         .collect();
     for (page_index, rendered) in rendered_pages.iter().enumerate() {
         pdf.write_stream_object(content_ids[page_index], rendered.content_stream.as_bytes());
     }
+
+    let fallback_font_id = if !fallback_registry.is_empty() {
+        let fb_ids = FallbackFontObjectIds {
+            font: pdf.alloc_id(),
+            char_procs: pdf.alloc_id(),
+            to_unicode: pdf.alloc_id(),
+        };
+        pdf.write_fallback_type3_font(&fb_ids, &fallback_registry);
+        Some(fb_ids.font)
+    } else {
+        None
+    };
 
     // Comment annotations. Each annotation is tagged through its own /Annot structure element and
     // reachable from the parent tree through its /StructParent key.
@@ -206,11 +251,30 @@ pub fn export_layout_to_pdf(
             let img_id = match image_object_ids.get(&placement.asset_ref) {
                 Some(existing_id) => *existing_id,
                 None => {
-                    let image_obj = options
-                        .assets
-                        .get(&placement.asset_ref)
-                        .and_then(|bytes| image_xobject::prepare_image(bytes))
-                        .unwrap_or_else(image_xobject::placeholder_image);
+                    let image_obj = match options.assets.get(&placement.asset_ref) {
+                        Some(bytes) => match image_xobject::prepare_image(bytes) {
+                            Ok(obj) => obj,
+                            Err(err) => {
+                                if options.allow_lossy_image_fallbacks {
+                                    image_xobject::placeholder_image()
+                                } else {
+                                    return Err(PdfExportError::InvalidImage {
+                                        asset_ref: placement.asset_ref.clone(),
+                                        error: err,
+                                    });
+                                }
+                            }
+                        },
+                        None => {
+                            if options.allow_lossy_image_fallbacks {
+                                image_xobject::placeholder_image()
+                            } else {
+                                return Err(PdfExportError::MissingAsset(
+                                    placement.asset_ref.clone(),
+                                ));
+                            }
+                        }
+                    };
                     let allocated_id = pdf.alloc_id();
                     let smask_id = if let Some(ref smask_bytes) = image_obj.smask_bytes {
                         let sid = pdf.alloc_id();
@@ -239,6 +303,7 @@ pub fn export_layout_to_pdf(
             pages_id,
             content_ids[page_index],
             font_ids.font,
+            fallback_font_id,
             &image_mappings_per_page[page_index],
             &annotation_ids_per_page[page_index],
             (page.size.width, page.size.height),
@@ -269,7 +334,7 @@ pub fn export_layout_to_pdf(
         &options.language,
     );
 
-    pdf.finish(catalog_id)
+    Ok(pdf.finish(catalog_id))
 }
 
 fn sanitize_clean_flow_document(doc: &FlowDocument) -> FlowDocument {
@@ -398,6 +463,7 @@ impl PdfWriter {
         parent_id: usize,
         content_id: usize,
         font_id: usize,
+        fallback_font_id: Option<usize>,
         image_mappings: &[(String, usize)],
         annot_ids: &[usize],
         (width, height): (f32, f32),
@@ -428,17 +494,24 @@ impl PdfWriter {
         } else {
             String::new()
         };
+        let font_dict_entry = if let Some(fb_id) = fallback_font_id {
+            format!(
+                "/{} {} 0 R /{} {} 0 R",
+                FONT_RESOURCE_NAME, font_id, FALLBACK_FONT_RESOURCE_NAME, fb_id
+            )
+        } else {
+            format!("/{} {} 0 R", FONT_RESOURCE_NAME, font_id)
+        };
         let _ = writeln!(
             self.buffer,
-            "<< /Type /Page /Parent {} 0 R /MediaBox [ 0 0 {:.2} {:.2} ] /Contents {} 0 R {}{}/Tabs /S /Resources << /Font << /{} {} 0 R >>{} >> >>",
+            "<< /Type /Page /Parent {} 0 R /MediaBox [ 0 0 {:.2} {:.2} ] /Contents {} 0 R {}{}/Tabs /S /Resources << /Font << {} >>{} >> >>",
             parent_id,
             width,
             height,
             content_id,
             annots_entry,
             structure_parents,
-            FONT_RESOURCE_NAME,
-            font_id,
+            font_dict_entry,
             xobjects_entry
         );
         self.end_obj();

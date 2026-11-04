@@ -95,6 +95,7 @@ fn export_rich_document() -> Vec<u8> {
         &FontRegistry::new(),
         &PdfExportOptions::default(),
     )
+    .expect("export rich document")
 }
 
 /// Runs veraPDF for one flavour and returns `None` when the validator is not installed.
