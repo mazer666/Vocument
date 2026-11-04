@@ -54,7 +54,7 @@ extension MacDocumentSessionCoordinator {
         let sessionIdB = sessionB.sessionId
         let client = coreClient
 
-        Task.detached(priority: .userInitiated) { [weak self] in
+        Task { [weak self] in
             let options = FfiComparisonOptions(
                 granularity: .word,
                 ignoreWhitespace: true,
@@ -65,26 +65,24 @@ extension MacDocumentSessionCoordinator {
             )
 
             do {
-                let report = try client.compareDocuments(
-                    sessionIdA: sessionIdA,
-                    sessionIdB: sessionIdB,
-                    options: options
-                )
+                let report = try await Task.detached(priority: .userInitiated) { () throws -> FfiComparisonReport in
+                    try client.compareDocuments(
+                        sessionIdA: sessionIdA,
+                        sessionIdB: sessionIdB,
+                        options: options
+                    )
+                }.value
 
-                await MainActor.run {
-                    guard let self = self else { return }
-                    self.compareReport = report
-                    self.selectedChangeId = report.changes.first?.id
-                    self.isComparing = false
-                    self.errorMessage = nil
-                    self.renderComparisonViewports()
-                }
+                guard let self = self else { return }
+                self.compareReport = report
+                self.selectedChangeId = report.changes.first?.id
+                self.isComparing = false
+                self.errorMessage = nil
+                self.renderComparisonViewports()
             } catch {
-                await MainActor.run {
-                    guard let self = self else { return }
-                    self.isComparing = false
-                    self.errorMessage = "Vergleichsfehler: \(error.localizedDescription)"
-                }
+                guard let self = self else { return }
+                self.isComparing = false
+                self.errorMessage = "Vergleichsfehler: \(error.localizedDescription)"
             }
         }
     }
@@ -102,65 +100,67 @@ extension MacDocumentSessionCoordinator {
         let sessionIdB = sessionB.sessionId
         let client = coreClient
 
-        Task.detached(priority: .userInitiated) { [weak self] in
-            var imageA: CGImage? = nil
-            var imageB: CGImage? = nil
-            var visualDiff: FfiPageDiffResult? = nil
+        Task { [weak self] in
+            let (imageA, imageB, visualDiff) = await Task.detached(priority: .userInitiated) { () -> (CGImage?, CGImage?, FfiPageDiffResult?) in
+                var imgA: CGImage? = nil
+                var imgB: CGImage? = nil
+                var vDiff: FfiPageDiffResult? = nil
 
-            // Render page A
-            if let geomA = try? client.pageGeometry(sessionId: sessionIdA, pageIndex: pageA) {
-                let reqA = FfiTileRenderRequest(
-                    pageIndex: pageA,
-                    scaleMilli: 1000,
-                    tileXPx: 0,
-                    tileYPx: 0,
-                    tileWidthPx: UInt32(max(1, geomA.widthMilliPt / 1000)),
-                    tileHeightPx: UInt32(max(1, geomA.heightMilliPt / 1000))
-                )
-                if let resA = try? client.renderViewportWithPrefetch(sessionId: sessionIdA, request: reqA) {
-                    imageA = DocumentCoreClient.makeCGImage(from: resA.visibleTile)
+                // Render page A
+                if let geomA = try? client.pageGeometry(sessionId: sessionIdA, pageIndex: pageA) {
+                    let reqA = FfiTileRenderRequest(
+                        pageIndex: pageA,
+                        scaleMilli: 1000,
+                        tileXPx: 0,
+                        tileYPx: 0,
+                        tileWidthPx: UInt32(max(1, geomA.widthMilliPt / 1000)),
+                        tileHeightPx: UInt32(max(1, geomA.heightMilliPt / 1000))
+                    )
+                    if let resA = try? client.renderViewportWithPrefetch(sessionId: sessionIdA, request: reqA) {
+                        imgA = DocumentCoreClient.makeCGImage(from: resA.visibleTile)
+                    }
                 }
-            }
 
-            // Render page B
-            if let geomB = try? client.pageGeometry(sessionId: sessionIdB, pageIndex: pageB) {
-                let reqB = FfiTileRenderRequest(
-                    pageIndex: pageB,
-                    scaleMilli: 1000,
-                    tileXPx: 0,
-                    tileYPx: 0,
-                    tileWidthPx: UInt32(max(1, geomB.widthMilliPt / 1000)),
-                    tileHeightPx: UInt32(max(1, geomB.heightMilliPt / 1000))
-                )
-                if let resB = try? client.renderViewportWithPrefetch(sessionId: sessionIdB, request: reqB) {
-                    imageB = DocumentCoreClient.makeCGImage(from: resB.visibleTile)
+                // Render page B
+                if let geomB = try? client.pageGeometry(sessionId: sessionIdB, pageIndex: pageB) {
+                    let reqB = FfiTileRenderRequest(
+                        pageIndex: pageB,
+                        scaleMilli: 1000,
+                        tileXPx: 0,
+                        tileYPx: 0,
+                        tileWidthPx: UInt32(max(1, geomB.widthMilliPt / 1000)),
+                        tileHeightPx: UInt32(max(1, geomB.heightMilliPt / 1000))
+                    )
+                    if let resB = try? client.renderViewportWithPrefetch(sessionId: sessionIdB, request: reqB) {
+                        imgB = DocumentCoreClient.makeCGImage(from: resB.visibleTile)
+                    }
                 }
-            }
 
-            // Calculate visual diff for current pair
-            let options = FfiComparisonOptions(
-                granularity: .word,
-                ignoreWhitespace: true,
-                ignoreCase: false,
-                visualPixelThreshold: 16,
-                visualClusterDistancePt: 10.0,
-                alignClauses: true
-            )
-            visualDiff = try? client.comparePagesVisual(
-                sessionIdA: sessionIdA,
-                pageA: pageA,
-                sessionIdB: sessionIdB,
-                pageB: pageB,
-                options: options
-            )
+                // Calculate visual diff for current pair
+                let options = FfiComparisonOptions(
+                    granularity: .word,
+                    ignoreWhitespace: true,
+                    ignoreCase: false,
+                    visualPixelThreshold: 16,
+                    visualClusterDistancePt: 10.0,
+                    alignClauses: true
+                )
+                vDiff = try? client.comparePagesVisual(
+                    sessionIdA: sessionIdA,
+                    pageA: pageA,
+                    sessionIdB: sessionIdB,
+                    pageB: pageB,
+                    options: options
+                )
 
-            await MainActor.run {
-                guard let self = self else { return }
-                self.compareRenderedImageA = imageA
-                self.compareRenderedImageB = imageB
-                self.compareVisualDiff = visualDiff
-                self.isRenderingComparisonViewports = false
-            }
+                return (imgA, imgB, vDiff)
+            }.value
+
+            guard let self = self else { return }
+            self.compareRenderedImageA = imageA
+            self.compareRenderedImageB = imageB
+            self.compareVisualDiff = visualDiff
+            self.isRenderingComparisonViewports = false
         }
     }
 
