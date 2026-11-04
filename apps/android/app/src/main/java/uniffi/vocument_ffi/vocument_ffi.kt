@@ -1019,6 +1019,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1065,6 +1073,14 @@ fun uniffi_vocument_ffi_checksum_func_document_core_close_editor_session(
 fun uniffi_vocument_ffi_checksum_func_document_core_close_scan_session(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_close_session(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_compare_documents(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_compare_flow_editor_sessions(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_compare_pages_visual(
+): Short
+fun uniffi_vocument_ffi_checksum_func_document_core_compare_text_streams(
 ): Short
 fun uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory(
 ): Short
@@ -1419,6 +1435,14 @@ fun uniffi_vocument_ffi_fn_func_document_core_close_scan_session(`sessionId`: Ru
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_close_session(`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_vocument_ffi_fn_func_document_core_compare_documents(`sessionIdA`: RustBuffer.ByValue,`sessionIdB`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_compare_flow_editor_sessions(`editorIdA`: RustBuffer.ByValue,`editorIdB`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_compare_pages_visual(`sessionIdA`: RustBuffer.ByValue,`pageA`: Int,`sessionIdB`: RustBuffer.ByValue,`pageB`: Int,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_vocument_ffi_fn_func_document_core_compare_text_streams(`titleA`: RustBuffer.ByValue,`textA`: RustBuffer.ByValue,`titleB`: RustBuffer.ByValue,`textB`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_vocument_ffi_fn_func_document_core_configure_data_directory(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_vocument_ffi_fn_func_document_core_configure_tessdata_path(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1867,6 +1891,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_compare_documents() != 991.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_compare_flow_editor_sessions() != 51593.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_compare_pages_visual() != 7913.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_vocument_ffi_checksum_func_document_core_compare_text_streams() != 8552.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory() != 38924.toShort()) {
@@ -2979,6 +3015,69 @@ public object FfiConverterTypeFfiCapturedScanPage: FfiConverterRustBuffer<FfiCap
 
 
 /**
+ * Individual change detected between documents (`COMPARE-001`).
+ */
+data class FfiChangeItem (
+    var `id`: kotlin.String, 
+    var `operation`: FfiDiffOperation, 
+    var `pageA`: kotlin.UInt?, 
+    var `pageB`: kotlin.UInt?, 
+    var `textA`: kotlin.String?, 
+    var `textB`: kotlin.String?, 
+    var `rectA`: FfiPdfRectMilliPt?, 
+    var `rectB`: FfiPdfRectMilliPt?, 
+    var `clauseHint`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiChangeItem: FfiConverterRustBuffer<FfiChangeItem> {
+    override fun read(buf: ByteBuffer): FfiChangeItem {
+        return FfiChangeItem(
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiDiffOperation.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiChangeItem) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterTypeFfiDiffOperation.allocationSize(value.`operation`) +
+            FfiConverterOptionalUInt.allocationSize(value.`pageA`) +
+            FfiConverterOptionalUInt.allocationSize(value.`pageB`) +
+            FfiConverterOptionalString.allocationSize(value.`textA`) +
+            FfiConverterOptionalString.allocationSize(value.`textB`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`rectA`) +
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.allocationSize(value.`rectB`) +
+            FfiConverterOptionalString.allocationSize(value.`clauseHint`)
+    )
+
+    override fun write(value: FfiChangeItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterTypeFfiDiffOperation.write(value.`operation`, buf)
+            FfiConverterOptionalUInt.write(value.`pageA`, buf)
+            FfiConverterOptionalUInt.write(value.`pageB`, buf)
+            FfiConverterOptionalString.write(value.`textA`, buf)
+            FfiConverterOptionalString.write(value.`textB`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`rectA`, buf)
+            FfiConverterOptionalTypeFfiPdfRectMilliPt.write(value.`rectB`, buf)
+            FfiConverterOptionalString.write(value.`clauseHint`, buf)
+    }
+}
+
+
+
+/**
  * Quantitative metrics evaluating scan cleanup quality crossing UniFFI boundary (`SCAN-004`).
  */
 data class FfiCleanupQualityMetrics (
@@ -3116,6 +3215,195 @@ public object FfiConverterTypeFfiCommentAnnotation: FfiConverterRustBuffer<FfiCo
             FfiConverterUByte.write(value.`colorB`, buf)
             FfiConverterString.write(value.`contents`, buf)
             FfiConverterOptionalString.write(value.`author`, buf)
+    }
+}
+
+
+
+/**
+ * Comparison configuration options (`COMPARE-001`–`003`).
+ */
+data class FfiComparisonOptions (
+    var `granularity`: FfiDiffGranularity, 
+    var `ignoreWhitespace`: kotlin.Boolean, 
+    var `ignoreCase`: kotlin.Boolean, 
+    var `visualPixelThreshold`: kotlin.UByte, 
+    var `visualClusterDistancePt`: kotlin.Float, 
+    var `alignClauses`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiComparisonOptions: FfiConverterRustBuffer<FfiComparisonOptions> {
+    override fun read(buf: ByteBuffer): FfiComparisonOptions {
+        return FfiComparisonOptions(
+            FfiConverterTypeFfiDiffGranularity.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiComparisonOptions) = (
+            FfiConverterTypeFfiDiffGranularity.allocationSize(value.`granularity`) +
+            FfiConverterBoolean.allocationSize(value.`ignoreWhitespace`) +
+            FfiConverterBoolean.allocationSize(value.`ignoreCase`) +
+            FfiConverterUByte.allocationSize(value.`visualPixelThreshold`) +
+            FfiConverterFloat.allocationSize(value.`visualClusterDistancePt`) +
+            FfiConverterBoolean.allocationSize(value.`alignClauses`)
+    )
+
+    override fun write(value: FfiComparisonOptions, buf: ByteBuffer) {
+            FfiConverterTypeFfiDiffGranularity.write(value.`granularity`, buf)
+            FfiConverterBoolean.write(value.`ignoreWhitespace`, buf)
+            FfiConverterBoolean.write(value.`ignoreCase`, buf)
+            FfiConverterUByte.write(value.`visualPixelThreshold`, buf)
+            FfiConverterFloat.write(value.`visualClusterDistancePt`, buf)
+            FfiConverterBoolean.write(value.`alignClauses`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive comparison report returned to native UI (`COMPARE-004`).
+ */
+data class FfiComparisonReport (
+    var `docATitle`: kotlin.String, 
+    var `docBTitle`: kotlin.String, 
+    var `pageCountA`: kotlin.UInt, 
+    var `pageCountB`: kotlin.UInt, 
+    var `summary`: FfiComparisonSummary, 
+    var `pageAlignments`: List<FfiPageAlignment>, 
+    var `pageDiffs`: List<FfiPageDiffResult>, 
+    var `changes`: List<FfiChangeItem>, 
+    var `jsonReport`: kotlin.String, 
+    var `markdownReport`: kotlin.String, 
+    var `htmlReport`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiComparisonReport: FfiConverterRustBuffer<FfiComparisonReport> {
+    override fun read(buf: ByteBuffer): FfiComparisonReport {
+        return FfiComparisonReport(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeFfiComparisonSummary.read(buf),
+            FfiConverterSequenceTypeFfiPageAlignment.read(buf),
+            FfiConverterSequenceTypeFfiPageDiffResult.read(buf),
+            FfiConverterSequenceTypeFfiChangeItem.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiComparisonReport) = (
+            FfiConverterString.allocationSize(value.`docATitle`) +
+            FfiConverterString.allocationSize(value.`docBTitle`) +
+            FfiConverterUInt.allocationSize(value.`pageCountA`) +
+            FfiConverterUInt.allocationSize(value.`pageCountB`) +
+            FfiConverterTypeFfiComparisonSummary.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeFfiPageAlignment.allocationSize(value.`pageAlignments`) +
+            FfiConverterSequenceTypeFfiPageDiffResult.allocationSize(value.`pageDiffs`) +
+            FfiConverterSequenceTypeFfiChangeItem.allocationSize(value.`changes`) +
+            FfiConverterString.allocationSize(value.`jsonReport`) +
+            FfiConverterString.allocationSize(value.`markdownReport`) +
+            FfiConverterString.allocationSize(value.`htmlReport`)
+    )
+
+    override fun write(value: FfiComparisonReport, buf: ByteBuffer) {
+            FfiConverterString.write(value.`docATitle`, buf)
+            FfiConverterString.write(value.`docBTitle`, buf)
+            FfiConverterUInt.write(value.`pageCountA`, buf)
+            FfiConverterUInt.write(value.`pageCountB`, buf)
+            FfiConverterTypeFfiComparisonSummary.write(value.`summary`, buf)
+            FfiConverterSequenceTypeFfiPageAlignment.write(value.`pageAlignments`, buf)
+            FfiConverterSequenceTypeFfiPageDiffResult.write(value.`pageDiffs`, buf)
+            FfiConverterSequenceTypeFfiChangeItem.write(value.`changes`, buf)
+            FfiConverterString.write(value.`jsonReport`, buf)
+            FfiConverterString.write(value.`markdownReport`, buf)
+            FfiConverterString.write(value.`htmlReport`, buf)
+    }
+}
+
+
+
+/**
+ * Summary metrics of comparison session (`COMPARE-004`).
+ */
+data class FfiComparisonSummary (
+    var `totalChanges`: kotlin.UInt, 
+    var `insertionsCount`: kotlin.UInt, 
+    var `deletionsCount`: kotlin.UInt, 
+    var `replacementsCount`: kotlin.UInt, 
+    var `movesCount`: kotlin.UInt, 
+    var `similarityRatio`: kotlin.Float, 
+    var `identicalPagesCount`: kotlin.UInt, 
+    var `modifiedPagesCount`: kotlin.UInt, 
+    var `insertedPagesCount`: kotlin.UInt, 
+    var `deletedPagesCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiComparisonSummary: FfiConverterRustBuffer<FfiComparisonSummary> {
+    override fun read(buf: ByteBuffer): FfiComparisonSummary {
+        return FfiComparisonSummary(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiComparisonSummary) = (
+            FfiConverterUInt.allocationSize(value.`totalChanges`) +
+            FfiConverterUInt.allocationSize(value.`insertionsCount`) +
+            FfiConverterUInt.allocationSize(value.`deletionsCount`) +
+            FfiConverterUInt.allocationSize(value.`replacementsCount`) +
+            FfiConverterUInt.allocationSize(value.`movesCount`) +
+            FfiConverterFloat.allocationSize(value.`similarityRatio`) +
+            FfiConverterUInt.allocationSize(value.`identicalPagesCount`) +
+            FfiConverterUInt.allocationSize(value.`modifiedPagesCount`) +
+            FfiConverterUInt.allocationSize(value.`insertedPagesCount`) +
+            FfiConverterUInt.allocationSize(value.`deletedPagesCount`)
+    )
+
+    override fun write(value: FfiComparisonSummary, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`totalChanges`, buf)
+            FfiConverterUInt.write(value.`insertionsCount`, buf)
+            FfiConverterUInt.write(value.`deletionsCount`, buf)
+            FfiConverterUInt.write(value.`replacementsCount`, buf)
+            FfiConverterUInt.write(value.`movesCount`, buf)
+            FfiConverterFloat.write(value.`similarityRatio`, buf)
+            FfiConverterUInt.write(value.`identicalPagesCount`, buf)
+            FfiConverterUInt.write(value.`modifiedPagesCount`, buf)
+            FfiConverterUInt.write(value.`insertedPagesCount`, buf)
+            FfiConverterUInt.write(value.`deletedPagesCount`, buf)
     }
 }
 
@@ -4623,6 +4911,45 @@ public object FfiConverterTypeFfiOptimizationOptions: FfiConverterRustBuffer<Ffi
 
 
 /**
+ * Global sequence page alignment (`COMPARE-003`).
+ */
+data class FfiPageAlignment (
+    var `pageA`: kotlin.UInt?, 
+    var `pageB`: kotlin.UInt?, 
+    var `similarityScore`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageAlignment: FfiConverterRustBuffer<FfiPageAlignment> {
+    override fun read(buf: ByteBuffer): FfiPageAlignment {
+        return FfiPageAlignment(
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageAlignment) = (
+            FfiConverterOptionalUInt.allocationSize(value.`pageA`) +
+            FfiConverterOptionalUInt.allocationSize(value.`pageB`) +
+            FfiConverterFloat.allocationSize(value.`similarityScore`)
+    )
+
+    override fun write(value: FfiPageAlignment, buf: ByteBuffer) {
+            FfiConverterOptionalUInt.write(value.`pageA`, buf)
+            FfiConverterOptionalUInt.write(value.`pageB`, buf)
+            FfiConverterFloat.write(value.`similarityScore`, buf)
+    }
+}
+
+
+
+/**
  * Partial or complete update of page boundary boxes (`CROP-002`).
  */
 data class FfiPageBoxUpdate (
@@ -4703,6 +5030,49 @@ public object FfiConverterTypeFfiPageDescriptor: FfiConverterRustBuffer<FfiPageD
             FfiConverterUInt.write(value.`pageIndex`, buf)
             FfiConverterUInt.write(value.`physicalPageNumber`, buf)
             FfiConverterString.write(value.`logicalLabel`, buf)
+    }
+}
+
+
+
+/**
+ * Visual pixel difference result for a single page pair (`COMPARE-002`).
+ */
+data class FfiPageDiffResult (
+    var `pageA`: kotlin.UInt, 
+    var `pageB`: kotlin.UInt, 
+    var `pixelDifferencePercentage`: kotlin.Float, 
+    var `differenceBoundingBoxes`: List<FfiPdfRectMilliPt>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPageDiffResult: FfiConverterRustBuffer<FfiPageDiffResult> {
+    override fun read(buf: ByteBuffer): FfiPageDiffResult {
+        return FfiPageDiffResult(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPageDiffResult) = (
+            FfiConverterUInt.allocationSize(value.`pageA`) +
+            FfiConverterUInt.allocationSize(value.`pageB`) +
+            FfiConverterFloat.allocationSize(value.`pixelDifferencePercentage`) +
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.allocationSize(value.`differenceBoundingBoxes`)
+    )
+
+    override fun write(value: FfiPageDiffResult, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageA`, buf)
+            FfiConverterUInt.write(value.`pageB`, buf)
+            FfiConverterFloat.write(value.`pixelDifferencePercentage`, buf)
+            FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.`differenceBoundingBoxes`, buf)
     }
 }
 
@@ -7600,6 +7970,153 @@ public object FfiConverterTypeFfiConversionSeverity: FfiConverterRustBuffer<FfiC
 
 
 /**
+ * Text diff granularity across tokens (`COMPARE-001`).
+ */
+
+enum class FfiDiffGranularity {
+    
+    WORD,
+    CHARACTER,
+    LINE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDiffGranularity: FfiConverterRustBuffer<FfiDiffGranularity> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiDiffGranularity.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiDiffGranularity) = 4UL
+
+    override fun write(value: FfiDiffGranularity, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Operation classification for diff items (`COMPARE-001`).
+ */
+sealed class FfiDiffOperation {
+    
+    object Insert : FfiDiffOperation()
+    
+    
+    object Delete : FfiDiffOperation()
+    
+    
+    object Replace : FfiDiffOperation()
+    
+    
+    data class Move(
+        val `fromIndex`: kotlin.UInt, 
+        val `toIndex`: kotlin.UInt) : FfiDiffOperation() {
+        companion object
+    }
+    
+    object Unchanged : FfiDiffOperation()
+    
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDiffOperation : FfiConverterRustBuffer<FfiDiffOperation>{
+    override fun read(buf: ByteBuffer): FfiDiffOperation {
+        return when(buf.getInt()) {
+            1 -> FfiDiffOperation.Insert
+            2 -> FfiDiffOperation.Delete
+            3 -> FfiDiffOperation.Replace
+            4 -> FfiDiffOperation.Move(
+                FfiConverterUInt.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            5 -> FfiDiffOperation.Unchanged
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiDiffOperation) = when(value) {
+        is FfiDiffOperation.Insert -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiDiffOperation.Delete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiDiffOperation.Replace -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiDiffOperation.Move -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`fromIndex`)
+                + FfiConverterUInt.allocationSize(value.`toIndex`)
+            )
+        }
+        is FfiDiffOperation.Unchanged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: FfiDiffOperation, buf: ByteBuffer) {
+        when(value) {
+            is FfiDiffOperation.Insert -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiDiffOperation.Delete -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiDiffOperation.Replace -> {
+                buf.putInt(3)
+                Unit
+            }
+            is FfiDiffOperation.Move -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`fromIndex`, buf)
+                FfiConverterUInt.write(value.`toIndex`, buf)
+                Unit
+            }
+            is FfiDiffOperation.Unchanged -> {
+                buf.putInt(5)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
  * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
  */
 
@@ -8838,6 +9355,34 @@ public object FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiChangeItem: FfiConverterRustBuffer<List<FfiChangeItem>> {
+    override fun read(buf: ByteBuffer): List<FfiChangeItem> {
+        val len = buf.getInt()
+        return List<FfiChangeItem>(len) {
+            FfiConverterTypeFfiChangeItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiChangeItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiChangeItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiChangeItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiChangeItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuffer<List<FfiCommentAnnotation>> {
     override fun read(buf: ByteBuffer): List<FfiCommentAnnotation> {
         val len = buf.getInt()
@@ -9258,6 +9803,34 @@ public object FfiConverterSequenceTypeFfiOcrWord: FfiConverterRustBuffer<List<Ff
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiPageAlignment: FfiConverterRustBuffer<List<FfiPageAlignment>> {
+    override fun read(buf: ByteBuffer): List<FfiPageAlignment> {
+        val len = buf.getInt()
+        return List<FfiPageAlignment>(len) {
+            FfiConverterTypeFfiPageAlignment.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPageAlignment>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPageAlignment.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPageAlignment>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPageAlignment.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer<List<FfiPageDescriptor>> {
     override fun read(buf: ByteBuffer): List<FfiPageDescriptor> {
         val len = buf.getInt()
@@ -9276,6 +9849,34 @@ public object FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiPageDescriptor.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiPageDiffResult: FfiConverterRustBuffer<List<FfiPageDiffResult>> {
+    override fun read(buf: ByteBuffer): List<FfiPageDiffResult> {
+        val len = buf.getInt()
+        return List<FfiPageDiffResult>(len) {
+            FfiConverterTypeFfiPageDiffResult.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiPageDiffResult>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiPageDiffResult.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiPageDiffResult>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiPageDiffResult.write(it, buf)
         }
     }
 }
@@ -9852,6 +10453,57 @@ public object FfiConverterSequenceSequenceUInt: FfiConverterRustBuffer<List<List
         FfiConverterString.lower(`sessionId`),_status)
 }
     
+    
+
+        /**
+         * Compares two active document sessions structurally and visually (`COMPARE-001`–`004`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCompareDocuments`(`sessionIdA`: kotlin.String, `sessionIdB`: kotlin.String, `options`: FfiComparisonOptions): FfiComparisonReport {
+            return FfiConverterTypeFfiComparisonReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_compare_documents(
+        FfiConverterString.lower(`sessionIdA`),FfiConverterString.lower(`sessionIdB`),FfiConverterTypeFfiComparisonOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compares two active FlowEditor sessions (`COMPARE-001`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreCompareFlowEditorSessions`(`editorIdA`: kotlin.String, `editorIdB`: kotlin.String, `options`: FfiComparisonOptions): FfiComparisonReport {
+            return FfiConverterTypeFfiComparisonReport.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_compare_flow_editor_sessions(
+        FfiConverterString.lower(`editorIdA`),FfiConverterString.lower(`editorIdB`),FfiConverterTypeFfiComparisonOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compares two specific pages visually across sessions (`COMPARE-002`).
+         */
+    @Throws(DocumentCoreException::class) fun `documentCoreComparePagesVisual`(`sessionIdA`: kotlin.String, `pageA`: kotlin.UInt, `sessionIdB`: kotlin.String, `pageB`: kotlin.UInt, `options`: FfiComparisonOptions): FfiPageDiffResult {
+            return FfiConverterTypeFfiPageDiffResult.lift(
+    uniffiRustCallWithError(DocumentCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_compare_pages_visual(
+        FfiConverterString.lower(`sessionIdA`),FfiConverterUInt.lower(`pageA`),FfiConverterString.lower(`sessionIdB`),FfiConverterUInt.lower(`pageB`),FfiConverterTypeFfiComparisonOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compares two plain text streams directly (`COMPARE-001`).
+         */ fun `documentCoreCompareTextStreams`(`titleA`: kotlin.String, `textA`: kotlin.String, `titleB`: kotlin.String, `textB`: kotlin.String, `options`: FfiComparisonOptions): FfiComparisonReport {
+            return FfiConverterTypeFfiComparisonReport.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_vocument_ffi_fn_func_document_core_compare_text_streams(
+        FfiConverterString.lower(`titleA`),FfiConverterString.lower(`textA`),FfiConverterString.lower(`titleB`),FfiConverterString.lower(`textB`),FfiConverterTypeFfiComparisonOptions.lower(`options`),_status)
+}
+    )
+    }
     
 
         /**

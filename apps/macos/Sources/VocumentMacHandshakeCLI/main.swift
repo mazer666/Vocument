@@ -725,5 +725,20 @@ struct VocumentMacHandshakeCLI {
 
         try client.closeSession(sessionId: m33Session.sessionId)
         print("✓ Swift (macOS M3.3) → PageGeometry → PageBoxes(5 ISO boxes) → DisplayCrop(/CropBox) → HardCrop(q...W n...Q) → DetectDeskewAngle(\(detectedAngle)°) → DeskewMatrix(cm) → AutoCropMargins → Undo/Redo verified")
+
+        // M3.7 verification: Document Comparison & Diffing Track (COMPARE-001–004)
+        let textA = "§ 1 Geltungsbereich\nDieser Vertrag regelt die Bedingungen der Zusammenarbeit.\n§ 2 Vergütung\nDas Honorar beträgt 10.000 EUR netto."
+        let textB = "§ 1 Geltungsbereich\nDieser Vertrag regelt die verbindlichen Bedingungen der Zusammenarbeit.\n§ 2 Vergütung\nDas Honorar beträgt 12.000 EUR netto.\n§ 3 Vertraulichkeit\nDie Parteien verpflichten sich zur Geheimhaltung."
+        let compReport = client.compareTextStreams(titleA: "Vertrag v1", textA: textA, titleB: "Vertrag v2", textB: textB)
+        guard compReport.summary.totalChanges >= 2 else {
+            fatalError("Expected at least 2 changes, got \(compReport.summary.totalChanges)")
+        }
+        guard compReport.summary.insertionsCount >= 1 else {
+            fatalError("Expected insertions >= 1, got \(compReport.summary.insertionsCount)")
+        }
+        guard !compReport.markdownReport.isEmpty && !compReport.htmlReport.isEmpty && !compReport.jsonReport.isEmpty else {
+            fatalError("Expected non-empty markdown, HTML, and JSON reports")
+        }
+        print("✓ Swift (macOS M3.7) → CompareEngine → TokenDiff(LCS) → LegalClauses(§ 1-3) → MultiFormatReports(MD/HTML/JSON) → TotalChanges(\(compReport.summary.totalChanges)) verified")
     }
 }

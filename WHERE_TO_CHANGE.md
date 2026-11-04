@@ -75,6 +75,22 @@ Every page mutation must pass through `TransactionManager` and must preserve doc
 
 ---
 
+## I want to work on M3.7 Document Comparison & Diffing
+
+Read [`docs/features/DOCUMENT_COMPARISON.md`](docs/features/DOCUMENT_COMPARISON.md) and [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).
+
+- Comparison models & options: `core/vocument-core/src/compare/model.rs`
+- Structural text diffing & legal clause alignment: `core/vocument-core/src/compare/text_diff.rs`
+- Visual page differ & spatial delta clustering: `core/vocument-core/src/compare/visual_diff.rs`
+- Sequence page alignment (Needleman-Wunsch): `core/vocument-core/src/compare/aligner.rs`
+- Report generators (JSON, Markdown, offline HTML): `core/vocument-core/src/compare/report.rs`
+- Session registry integration: `core/vocument-core/src/session_compare.rs`
+- UniFFI DTOs & bridge functions: `platform/vocument-ffi/src/compare_dto.rs`
+- macOS dual-pane compare UI: `apps/macos/Sources/VocumentMacApp/DocumentCompareView.swift` & `MacDocumentSessionCoordinator+Compare.swift`
+- Android Jetpack Compose compare screen: `apps/android/app/src/main/java/org/vocument/app/CompareScreen.kt` & `DocumentCoreBridgeCompare.kt`
+
+---
+
 ## I want to work on M4 FlowDocument authoring, layout, or `.pdoc` format
 
 Read [ADR-0020](docs/adr/ADR-0020-flowdocument-architecture-deterministic-rust-layout-and-pdoc.md) and [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`](docs/project/M3-M7-DEVELOPMENT-PLAN.md).

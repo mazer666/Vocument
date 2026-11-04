@@ -122,6 +122,8 @@ struct CalmReaderSessionView: View {
                     PageWorkbenchView(coordinator: coordinator)
                 case .authoring:
                     PdocAuthoringCanvasView(coordinator: coordinator)
+                case .compare:
+                    DocumentCompareView(coordinator: coordinator)
                 }
             } else {
                 Text("No document open. Choose 'Neuer Schriftsatz', 'Open .pdoc…', or 'Open PDF…'.")

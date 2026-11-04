@@ -21,6 +21,8 @@ pub(super) struct StructureStep {
     pub(super) key: String,
     /// Optional `/A` table attribute entries such as `/Scope /Column`.
     pub(super) table_attributes: Option<String>,
+    /// Optional alternative text for `/Figure` elements (`PDF/UA-1` 7.3).
+    pub(super) alt_text: Option<String>,
 }
 
 impl StructureStep {
@@ -29,6 +31,7 @@ impl StructureStep {
             structure_type,
             key,
             table_attributes: None,
+            alt_text: None,
         }
     }
 }
@@ -89,7 +92,17 @@ impl StructureRoles {
                     self.record_block(nested, &path);
                 }
             }
-            Block::Image(_) | Block::ThematicBreak(_) => {}
+            Block::Image(image) => {
+                let mut step = StructureStep::new("Figure", format!("Figure:{}", image.id));
+                let alt = if image.alt_text.trim().is_empty() {
+                    "Abbildung".to_string()
+                } else {
+                    image.alt_text.clone()
+                };
+                step.alt_text = Some(alt);
+                self.record_leaf(&image.id, parent_path, step);
+            }
+            Block::ThematicBreak(_) => {}
         }
     }
 
@@ -200,6 +213,7 @@ pub(super) enum StructureChild {
 pub(super) struct StructureNode {
     pub(super) structure_type: &'static str,
     pub(super) table_attributes: Option<String>,
+    pub(super) alt_text: Option<String>,
     pub(super) parent: Option<usize>,
     pub(super) children: Vec<StructureChild>,
 }
@@ -219,6 +233,7 @@ impl StructureTree {
             nodes: vec![StructureNode {
                 structure_type: "Document",
                 table_attributes: None,
+                alt_text: None,
                 parent: None,
                 children: Vec::new(),
             }],
@@ -251,6 +266,7 @@ impl StructureTree {
         self.nodes.push(StructureNode {
             structure_type: "Annot",
             table_attributes: None,
+            alt_text: None,
             parent: Some(Self::ROOT_INDEX),
             children: vec![StructureChild::Annotation {
                 annotation_object_id,
@@ -274,6 +290,7 @@ impl StructureTree {
                     self.nodes.push(StructureNode {
                         structure_type: step.structure_type,
                         table_attributes: step.table_attributes.clone(),
+                        alt_text: step.alt_text.clone(),
                         parent: Some(current),
                         children: Vec::new(),
                     });

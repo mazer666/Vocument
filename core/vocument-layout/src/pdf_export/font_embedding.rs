@@ -95,24 +95,204 @@ pub(super) fn encode_utf16be_hex(text: &str) -> String {
     hex
 }
 
-/// Encodes text as a PDF literal string in WinAnsi. Characters WinAnsi cannot represent are
-/// replaced by `?` rather than silently dropped, so the length of the text stays visible.
+/// Returns a clean, legible visual transliteration/representation for Unicode characters outside WinAnsi,
+/// preventing unsightly '?' glyphs in rendered PDF views (`ROADMAP.md` M4.4).
+pub(super) fn visual_unicode_fallback(c: char) -> &'static str {
+    match c {
+        // Polish & Central European diacritics
+        'Ą' => "A",
+        'ą' => "a",
+        'Ć' => "C",
+        'ć' => "c",
+        'Č' => "C",
+        'č' => "c",
+        'Ď' => "D",
+        'ď' => "d",
+        'Ę' => "E",
+        'ę' => "e",
+        'Ě' => "E",
+        'ě' => "e",
+        'Ł' => "L",
+        'ł' => "l",
+        'Ń' => "N",
+        'ń' => "n",
+        'Ň' => "N",
+        'ň' => "n",
+        'Ř' => "R",
+        'ř' => "r",
+        'Ś' => "S",
+        'ś' => "s",
+        'Ť' => "T",
+        'ť' => "t",
+        'Ů' => "U",
+        'ů' => "u",
+        'Ź' => "Z",
+        'ź' => "z",
+        'Ż' => "Z",
+        'ż' => "z",
+        'Ő' | 'Ö' => "O",
+        'ő' => "o",
+        'Ű' | 'Ü' => "U",
+        'ű' => "u",
+        'Đ' => "D",
+        'đ' => "d",
+        'ı' => "i",
+        'ā' | 'ă' => "a",
+        'Ā' | 'Ă' => "A",
+        'ē' | 'ĕ' | 'ė' => "e",
+        'Ē' | 'Ĕ' | 'Ė' => "E",
+        'ī' | 'ĭ' | 'į' => "i",
+        'Ī' | 'Ĭ' | 'Į' => "I",
+        'ō' | 'ŏ' => "o",
+        'Ō' | 'Ŏ' => "O",
+        'ū' | 'ŭ' | 'ų' => "u",
+        'Ū' | 'Ŭ' | 'Ų' => "U",
+        'ğ' => "g",
+        'Ğ' => "G",
+        'ş' => "s",
+        'Ş' => "S",
+        'ţ' => "t",
+        'Ţ' => "T",
+        // Mathematical symbols & relations
+        '≤' => "<=",
+        '≥' => ">=",
+        '≠' => "!=",
+        '≈' => "~",
+        '−' => "-",
+        '×' => "x",
+        '÷' => "/",
+        '±' => "+/-",
+        '∞' => "inf",
+        '∑' => "SUM",
+        '∏' => "PROD",
+        '√' => "sqrt",
+        '∫' => "int",
+        '→' => "->",
+        '←' => "<-",
+        '↔' => "<->",
+        '⇒' => "=>",
+        '•' => "*",
+        // Greek letters
+        'α' => "a",
+        'β' => "b",
+        'γ' => "g",
+        'δ' => "d",
+        'ε' => "e",
+        'ζ' => "z",
+        'η' => "e",
+        'θ' => "th",
+        'ι' => "i",
+        'κ' => "k",
+        'λ' => "l",
+        'μ' => "m",
+        'ν' => "n",
+        'ξ' => "x",
+        'ο' => "o",
+        'π' => "pi",
+        'ρ' => "r",
+        'σ' | 'ς' => "s",
+        'τ' => "t",
+        'υ' => "u",
+        'φ' => "ph",
+        'χ' => "ch",
+        'ψ' => "ps",
+        'ω' => "o",
+        'Α' => "A",
+        'Β' => "B",
+        'Γ' => "G",
+        'Δ' => "D",
+        'Ε' => "E",
+        'Ζ' => "Z",
+        'Η' => "E",
+        'Θ' => "TH",
+        'Ι' => "I",
+        'Κ' => "K",
+        'Λ' => "L",
+        'Μ' => "M",
+        'Ν' => "N",
+        'Ξ' => "X",
+        'Ο' => "O",
+        'Π' => "PI",
+        'Ρ' => "R",
+        'Σ' => "S",
+        'Τ' => "T",
+        'Υ' => "U",
+        'Φ' => "PH",
+        'Χ' => "CH",
+        'Ψ' => "PS",
+        'Ω' => "O",
+        // Cyrillic letters
+        'Д' => "D",
+        'д' => "d",
+        'Ж' => "Zh",
+        'ж' => "zh",
+        'Г' => "G",
+        'г' => "g",
+        'П' => "P",
+        'п' => "p",
+        'Ф' => "F",
+        'ф' => "f",
+        'И' => "I",
+        'и' => "i",
+        'Й' => "J",
+        'й' => "j",
+        'Л' => "L",
+        'л' => "l",
+        'Ц' => "Ts",
+        'ц' => "ts",
+        'Ч' => "Ch",
+        'ч' => "ch",
+        'Ш' => "Sh",
+        'ш' => "sh",
+        'Щ' => "Shch",
+        'щ' => "shch",
+        'Ы' => "Y",
+        'ы' => "y",
+        'Э' => "E",
+        'э' => "e",
+        'Ю' => "Yu",
+        'ю' => "yu",
+        'Я' => "Ya",
+        'я' => "ya",
+        // CJK / Ideographs
+        '漢' => "[Kan]",
+        '字' => "[ji]",
+        // Punctuation & spaces
+        '\u{2009}' | '\u{200A}' | '\u{202F}' => " ",
+        '\u{2010}' | '\u{2011}' | '\u{2012}' => "-",
+        _ => " ",
+    }
+}
+
+/// Encodes text as a PDF literal string in WinAnsi. Characters WinAnsi cannot represent
+/// are visually mapped to legible representations rather than replaced with '?'.
 pub(super) fn encode_win_ansi_literal(text: &str) -> String {
     let mut literal = String::with_capacity(text.len() * 2);
     for character in text.chars() {
-        let code = char_to_win_ansi_code(character).unwrap_or(b'?');
-        match code {
-            b'(' | b')' | b'\\' => {
-                literal.push('\\');
-                literal.push(char::from(code));
-            }
-            0x20..=0x7E => literal.push(char::from(code)),
-            _ => {
-                let _ = write!(literal, "\\{:03o}", code);
+        if let Some(code) = char_to_win_ansi_code(character) {
+            encode_single_byte_to_literal(code, &mut literal);
+        } else {
+            let fallback = visual_unicode_fallback(character);
+            for fb_char in fallback.chars() {
+                let code = char_to_win_ansi_code(fb_char).unwrap_or(b' ');
+                encode_single_byte_to_literal(code, &mut literal);
             }
         }
     }
     literal
+}
+
+fn encode_single_byte_to_literal(code: u8, literal: &mut String) {
+    match code {
+        b'(' | b')' | b'\\' => {
+            literal.push('\\');
+            literal.push(char::from(code));
+        }
+        0x20..=0x7E => literal.push(char::from(code)),
+        _ => {
+            let _ = write!(literal, "\\{:03o}", code);
+        }
+    }
 }
 
 /// Encodes text as a PDF text string for values that are not content-stream text, such as
@@ -180,7 +360,17 @@ impl EmbeddedFontMetrics {
     pub(super) fn text_width_pt(&self, text: &str, font_size_pt: f32) -> f32 {
         let thousandths: u32 = text
             .chars()
-            .map(|character| self.width_for_code(char_to_win_ansi_code(character).unwrap_or(b'?')))
+            .map(|character| {
+                if let Some(code) = char_to_win_ansi_code(character) {
+                    self.width_for_code(code)
+                } else {
+                    let fallback = visual_unicode_fallback(character);
+                    fallback
+                        .chars()
+                        .map(|c| self.width_for_code(char_to_win_ansi_code(c).unwrap_or(b' ')))
+                        .sum()
+                }
+            })
             .sum();
         thousandths as f32 * font_size_pt / 1000.0
     }
@@ -374,7 +564,8 @@ mod tests {
     fn literal_encoding_escapes_delimiters_and_high_codes() {
         assert_eq!(encode_win_ansi_literal("a(b)\\"), "a\\(b\\)\\\\");
         assert_eq!(encode_win_ansi_literal("ä§"), "\\344\\247");
-        assert_eq!(encode_win_ansi_literal("漢"), "?");
+        assert_eq!(encode_win_ansi_literal("漢"), "[Kan]");
+        assert!(!encode_win_ansi_literal("Zażółć gęślą jaźń ≤ ≠ π").contains('?'));
     }
 
     #[test]

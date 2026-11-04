@@ -83,6 +83,19 @@ impl DocumentActor {
         Ok(guard.current_pdf_bytes().to_vec())
     }
 
+    /// Executes a closure with read access to the underlying `PdfEngineDocument` under actor lock.
+    pub fn with_engine_document<R, E, F>(&self, f: F) -> Result<R, E>
+    where
+        F: FnOnce(&dyn PdfEngineDocument) -> Result<R, E>,
+        E: From<RenderPipelineError>,
+    {
+        let guard = self
+            .engine_document
+            .lock()
+            .map_err(|_| RenderPipelineError::ActorPoisoned)?;
+        f(guard.as_ref())
+    }
+
     /// Queries the geometry of `page_index` (`0`-based) under serialized actor access.
     pub fn page_geometry(&self, page_index: u32) -> Result<PdfPageGeometry, RenderPipelineError> {
         let guard = self

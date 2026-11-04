@@ -138,6 +138,12 @@ fn test_pdf_export_clean_vs_tracked_changes() {
     assert!(text_tracked.contains("years"));
     assert!(text_tracked.contains("one"));
     assert!(text_tracked.contains("year"));
+    let pdf_tracked_str = String::from_utf8_lossy(&pdf_tracked);
+    // Visual underline stroke for insertion and strikethrough stroke for deletion
+    assert!(
+        pdf_tracked_str.contains("m\n") && pdf_tracked_str.contains("l\nS"),
+        "Tracked changes must render visual strikethrough / underline rules"
+    );
 
     // Export clean (omits deleted text)
     let options_clean = PdfExportOptions {
@@ -173,6 +179,11 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
         pdf_str.contains("/ActualText <FEFF"),
         "Non-WinAnsi runs must carry UTF-16BE /ActualText so zero Unicode scalars are lost"
     );
+    let text = shown_text(&pdf_bytes);
+    assert!(
+        !text.contains('?'),
+        "Rendered text stream must not substitute unsupported characters with '?', got: {text}"
+    );
 
     if std::path::Path::new("/opt/homebrew/bin/mutool").exists() {
         let tmp_pdf = std::env::temp_dir().join("vocument_unicode_actualtext_test.pdf");
@@ -192,4 +203,61 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
             );
         }
     }
+}
+
+#[test]
+fn test_pdf_export_embedded_image_and_figure_structure_tagging() {
+    use vocument_flow::model::ImageBlock;
+
+    let mut doc = FlowDocument::new(DocumentMetadata::new("doc_img", "Image Export Test"));
+    let img_block = ImageBlock {
+        id: "img_notary_seal".to_string(),
+        asset_ref: "assets/notary_seal.png".to_string(),
+        alt_text: "Notary Public Seal and Stamp".to_string(),
+        caption: Some("Figure 1: Official Seal".to_string()),
+        intrinsic_width_pt: 100.0,
+        intrinsic_height_pt: 50.0,
+        display_width_pt: Some(100.0),
+        display_height_pt: Some(50.0),
+        extra: Default::default(),
+    };
+
+    let section = Section::new(
+        "sec_img",
+        SectionGeometry::a4_portrait(),
+        vec![Block::Image(img_block)],
+    );
+    doc.sections.push(section);
+
+    let font_registry = FontRegistry::new();
+    let options = PdfExportOptions::default();
+
+    let pdf_bytes = export_flow_document_to_pdf(&doc, &font_registry, &options);
+    let pdf_str = String::from_utf8_lossy(&pdf_bytes);
+
+    // 1. Verify image XObject exists with FlateDecode or DCTDecode
+    assert!(
+        pdf_str.contains("/Type /XObject") && pdf_str.contains("/Subtype /Image"),
+        "PDF must embed raster image XObject"
+    );
+
+    // 2. Verify marked content /Figure and Do operator
+    assert!(
+        pdf_str.contains("/Figure << /MCID"),
+        "Content stream must tag image with /Figure marked content"
+    );
+    assert!(
+        pdf_str.contains("/Im1 Do"),
+        "Content stream must draw image via /Im1 Do"
+    );
+
+    // 3. Verify structure tree contains /S /Figure with /Alt
+    assert!(
+        pdf_str.contains("/S /Figure"),
+        "Structure tree must declare /S /Figure"
+    );
+    assert!(
+        pdf_str.contains("/Alt (Notary Public Seal and Stamp)") || pdf_str.contains("/Alt <FEFF"),
+        "Figure structure element must include alt-text per PDF/UA-1 7.3"
+    );
 }

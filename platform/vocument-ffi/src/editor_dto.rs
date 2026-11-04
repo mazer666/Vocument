@@ -775,6 +775,7 @@ pub fn document_core_editor_export_pdf(
 ) -> Result<Vec<u8>, DocumentCoreError> {
     with_session(&editor_id, |s| {
         let options = vocument_layout::pdf_export::PdfExportOptions {
+            assets: std::collections::BTreeMap::new(),
             include_comments,
             include_tracked_changes,
             pdfa_conformance: true,

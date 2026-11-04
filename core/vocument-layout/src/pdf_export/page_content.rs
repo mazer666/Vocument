@@ -37,6 +37,13 @@ pub(super) struct LineAnchor {
     pub(super) pdf_top_y: f32,
 }
 
+/// Where an image sits on a page and which resource identifier names it.
+#[derive(Debug, Clone)]
+pub(super) struct PageImagePlacement {
+    pub(super) resource_name: String,
+    pub(super) asset_ref: String,
+}
+
 /// Result of rendering one page.
 #[derive(Debug, Default)]
 pub(super) struct RenderedPage {
@@ -44,6 +51,8 @@ pub(super) struct RenderedPage {
     pub(super) line_anchors: Vec<LineAnchor>,
     /// Structure element that owns each marked-content identifier, indexed by MCID.
     pub(super) mcid_owners: Vec<usize>,
+    /// Placed raster image XObjects on this page.
+    pub(super) images: Vec<PageImagePlacement>,
 }
 
 struct PageRenderer<'a> {
@@ -118,9 +127,17 @@ impl PageRenderer<'_> {
                 LayoutBoxKind::Container { children } => {
                     self.render_boxes(children, x, y, tagged);
                 }
-                // Images need an asset resolver the layout tree does not carry; they are not
-                // exported yet (documented limitation in docs/features/PDFA_EXPORT.md).
-                LayoutBoxKind::Image { .. } => {}
+                LayoutBoxKind::Image { asset_ref } => {
+                    self.render_image(
+                        &layout_box.id,
+                        asset_ref,
+                        x,
+                        y,
+                        layout_box.bounds.width,
+                        layout_box.bounds.height,
+                        tagged,
+                    );
+                }
             }
         }
     }
@@ -202,7 +219,78 @@ impl PageRenderer<'_> {
             }
             self.render_text_run(run, x + (run.bounds.x - line_start_x), baseline);
         }
-        self.rendered.content_stream.push_str("ET\nEMC\n");
+        self.rendered.content_stream.push_str("ET\n");
+
+        // Render visual tracked changes and text decorations (underline, strikethrough)
+        for run in &line.runs {
+            if run.text.is_empty() {
+                continue;
+            }
+            let run_x = x + (run.bounds.x - line_start_x);
+            let run_w = run.bounds.width;
+            let font_size = run.font_size_pt;
+            let stroke_width = (font_size * 0.06).max(0.75);
+            let color = color_components(run.color);
+
+            if run.font_style.underline {
+                let underline_y = baseline - font_size * 0.12;
+                let _ = writeln!(
+                    self.rendered.content_stream,
+                    "/Artifact BMC\nq\n{color} RG\n{stroke_width:.2} w\n{run_x:.2} {underline_y:.2} m {:.2} {underline_y:.2} l\nS\nQ\nEMC",
+                    run_x + run_w
+                );
+            }
+            if run.font_style.strikethrough {
+                let strikethrough_y = baseline + font_size * 0.28;
+                let _ = writeln!(
+                    self.rendered.content_stream,
+                    "/Artifact BMC\nq\n{color} RG\n{stroke_width:.2} w\n{run_x:.2} {strikethrough_y:.2} m {:.2} {strikethrough_y:.2} l\nS\nQ\nEMC",
+                    run_x + run_w
+                );
+            }
+        }
+
+        self.rendered.content_stream.push_str("EMC\n");
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_image(
+        &mut self,
+        box_id: &str,
+        asset_ref: &str,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        tagged: bool,
+    ) {
+        let image_index = self.rendered.images.len() + 1;
+        let resource_name = format!("Im{image_index}");
+        self.rendered.images.push(PageImagePlacement {
+            resource_name: resource_name.clone(),
+            asset_ref: asset_ref.to_string(),
+        });
+
+        let y_bottom = self.page_height - (y + height);
+
+        if tagged {
+            let path = self.roles.path_for_box_id(box_id);
+            let mcid = u32::try_from(self.rendered.mcid_owners.len()).unwrap_or(u32::MAX);
+            let owner = self.tree.add_marked_content(&path, self.page_index, mcid);
+            self.rendered.mcid_owners.push(owner);
+            let structure_type = self.tree.nodes[owner].structure_type;
+            let _ = writeln!(
+                self.rendered.content_stream,
+                "/{structure_type} << /MCID {mcid} >> BDC\nq\n{:.2} 0 0 {:.2} {:.2} {:.2} cm\n/{} Do\nQ\nEMC",
+                width, height, x, y_bottom, resource_name
+            );
+        } else {
+            let _ = writeln!(
+                self.rendered.content_stream,
+                "/Artifact BMC\nq\n{:.2} 0 0 {:.2} {:.2} {:.2} cm\n/{} Do\nQ\nEMC",
+                width, height, x, y_bottom, resource_name
+            );
+        }
     }
 
     fn render_text_run(&mut self, run: &crate::tree::PositionedRun, x: f32, baseline: f32) {

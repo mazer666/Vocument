@@ -12,6 +12,7 @@ enum MacAppViewMode: String, CaseIterable, Identifiable {
     case review = "Review"
     case workbench = "Page Workbench"
     case authoring = "Authoring"
+    case compare = "Compare"
 
     var id: String { rawValue }
 }
@@ -128,6 +129,19 @@ final class MacDocumentSessionCoordinator: ObservableObject {
     @Published var isWorkbenchProcessing: Bool = false
     @Published var workbenchProcessingStatus: String?
     var pendingWorkbenchAction: WorkbenchAction?
+
+    // MARK: - M3.7 Document Comparison Properties
+    @Published var compareSecondSession: FfiDocumentSessionSnapshot?
+    @Published var compareReport: FfiComparisonReport?
+    @Published var comparePageA: UInt32 = 0
+    @Published var comparePageB: UInt32 = 0
+    @Published var compareRenderedImageA: CGImage?
+    @Published var compareRenderedImageB: CGImage?
+    @Published var compareVisualDiff: FfiPageDiffResult?
+    @Published var compareSyncScroll: Bool = true
+    @Published var compareShowVisualDiffOverlay: Bool = true
+    @Published var compareFilterOperation: FfiDiffOperation?
+    @Published var selectedChangeId: String?
 
     func openHelp() {
         showHelpSheet = true

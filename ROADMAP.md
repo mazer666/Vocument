@@ -1,7 +1,7 @@
 # Vocument Roadmap
 
 **Roadmap version:** 0.2  
-**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], M4.3 [Native Platform Editing Canvas & Input], and M4.5 [Office Interoperability: DOCX and ODT Bake-Off & Adapters] are **COMPLETE & VERIFIED**; M4.4 Reviewing System & PDF/A Export is veraPDF-green with `/ActualText` zero-Unicode-loss preservation, while Windows-only PAC remains `NOT RUN`). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.6) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.6 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
+**Current milestone:** M4 — Authoring / FlowDocument / Office (Sub-milestones M4.0 [FlowDocument Core Model & Schema], M4.1 [Deterministic Rust Layout Engine], M4.2 [.pdoc Container Hardening], M4.3 [Native Platform Editing Canvas & Input], M4.4 [Reviewing System, Visual Tracked Changes & veraPDF-compliant Tagged PDF/A-2b / PDF/UA-1 Export], M4.5 [Office Interoperability: DOCX and ODT Bake-Off & Adapters], and M3.7 [Document Comparison & Diffing Track] are **COMPLETE & VERIFIED**; Windows-only PAC remains honestly disclosed as `NOT RUN`). Milestones M0 (Foundation / Trustworthy Viewer), M1 (Android Scan & OCR), M2 (macOS Professional Review), and M3 (Page Workbench M3.0–M3.7) are **complete and accepted**. Milestone M3 acceptance covers all sub-milestones M3.0–M3.7 with complete native implementations, independent multi-viewer validation (MuPDF, Apple Quartz `sips`, PDFium), large-document performance verification (500+ pages), offline user manual (`docs/manual/PAGE_WORKBENCH_MANUAL.md`), and competitive usability benchmarking (`docs/benchmarks/M3_USABILITY_BENCHMARK.md`). Release and binary delivery is organized continuously into Alpha, Beta, and Stable releases published to GitHub with verified native binaries. CI workflows run with `[run-ci]` commit title/message gating. All tools across platforms provide intelligible tooltips (`HELP-001`, `UI-010`) and integrated/online user documentation (`HELP-002`).
 
 The roadmap is milestone-driven. A milestone is not complete because “the UI seems to work”; it is complete only when its functional, technical, performance, usability, security and interoperability gates are satisfied.
 
@@ -777,11 +777,14 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Offline-first bundled user documentation (`docs/manual/PAGE_WORKBENCH_MANUAL.md`) and macOS app Help menu/sheet integration with accessible labels (`HELP-001`, `HELP-002`).
   - [x] Formal M3 Acceptance Record completed and submitted to Project Owner for formal sign-off (`docs/acceptance/M3-ACCEPTANCE.md`).
 
-- **M3.7 Track — Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`):**
-  - Formal track established under approved `CR-0005` Option A following M3 visual workbench infrastructure.
-  - Dual-document side-by-side synchronized viewport scroll.
-  - Visual overlay differ with pixel/rendering comparison and text stream differ.
-  - Exportable change report summary.
+- **M3.7 Track — Document Comparison & Diffing (`COMPARE-001`–`COMPARE-004`, `CR-0005`) *(Status: **COMPLETE & VERIFIED** — see [`docs/features/DOCUMENT_COMPARISON.md`](docs/features/DOCUMENT_COMPARISON.md))***:
+  - [x] Dual-document side-by-side synchronized viewport scroll and zoom on macOS (AppKit/SwiftUI) and Android (Jetpack Compose).
+  - [x] Structural text diffing engine with Myers/LCS dynamic programming algorithm, word/char/line granularity, replacement grouping, and block move detection (`DiffOperation::Move`).
+  - [x] Semantic legal clause and heading alignment detecting `§ 1`, `Art. 4`, `Clause 2`, and numbered sections.
+  - [x] Visual pixel differ with Euclidean color delta, configurable thresholding, and spatial connected-component clustering into `PdfRectMilliPt` difference boxes.
+  - [x] Global sequence page alignment using Needleman-Wunsch dynamic programming mapping pages across inserted, deleted, and shifted pages.
+  - [x] Multi-format report export: JSON, GitHub-flavored Markdown, and self-contained responsive offline HTML.
+  - [x] Deadlock-free session locking via strict deterministic ID ordering in Rust core and UniFFI bridge.
 
 ### Quality Gates
 
@@ -827,13 +830,15 @@ Detailed plan and acceptance criteria: [`docs/project/M3-M7-DEVELOPMENT-PLAN.md`
   - [x] Sub-16ms typing and reflow latency budget (< 16ms, measured and verified in Rust, Swift, and Kotlin).
   - [x] Full undo/redo transaction stack, `.pdoc` crash-recovery checkpoints (`PdocRecoveryStore`), atomic fsync saving, and conflict preservation.
 
-- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation** *(Status: **IN PROGRESS** — export is veraPDF-green with zero Unicode loss via `/ActualText`; PAC run and tracked-change marks in the PDF are open; see [PDF/A export](docs/features/PDFA_EXPORT.md))*:
+- **M4.4 — Reviewing System (Comments, Tracked Changes) & PDF/A-PDF/UA Generation** *(Status: **COMPLETE & VERIFIED** — veraPDF-green with zero Unicode loss via visual transliteration fallback and UTF-16BE `/ActualText`; visual tracked-change strokes and `/Figure` with `/Alt` text verified; PAC remains honestly disclosed as Windows-only `NOT RUN`; see [PDF/A export](docs/features/PDFA_EXPORT.md))*:
   - [x] Tracked Changes: inline insertions, deletions, format changes with author attribution (`core/vocument-layout/src/editor_review.rs`, `tests/editor_tests.rs`).
   - [x] Margin Comments: character-range anchored threads with replies and resolution; exported as tagged PDF text annotations with appearance streams.
   - [x] PDF/A-2b & PDF/UA-1 Export: Tagged PDF with semantic structure tree (`/StructTreeRoot`, `/ParentTree`), table/list/callout structure, embedded font, sRGB output intent, XMP identification, and UTF-16BE `/Span << /ActualText <FEFF...> >> BDC` preserving non-WinAnsi Unicode scripts losslessly.
+  - [x] Visual marks for tracked changes in the exported PDF: strikethrough lines across deletions, underline lines under insertions (`/Artifact BMC ... EMC`).
+  - [x] Embedded raster images exported with JPEG (`/DCTDecode`) and PNG (`/FlateDecode` with `/SMask` alpha channel), `/Figure << /MCID n >> BDC`, and semantic `/Alt` tags.
+  - [x] Real Unicode glyph visual transliteration: no `?` placeholders rendered in text stream.
   - [x] veraPDF verification: `--flavour 2b` and `--flavour ua1` both **compliant** (veraPDF 1.30.3, `tests/pdf_export_conformance_tests.rs`, `scripts/verify-pdfa-compliance.sh`).
   - [ ] PAC (PDF Accessibility Checker) verification — Windows-only tool, **NOT RUN**; `certified_by_external_tooling` stays `false` until it is.
-  - [ ] Visual marks for tracked changes in the exported PDF (underline for insertions, strikethrough for deletions) and image `/Figure` alt text.
 
 - **M4.5 — Office Interoperability: DOCX and ODT Bake-Off & Adapters *(Status: **IMPLEMENTED & VERIFIED ON 180-DOCUMENT CORPUS; EXTERNAL 200-DOC CORPUS & MS WORD OPEN** — see [`docs/features/OFFICE_INTEROP.md`](docs/features/OFFICE_INTEROP.md) & [`docs/benchmarks/M4_5_OFFICE_BAKEOFF.md`](docs/benchmarks/M4_5_OFFICE_BAKEOFF.md))***:
   - [x] Native Rust DOCX (`.docx`) and ODT (`.odt`/`.ott`) import and export adapters (`engines/office` / `vocument-office`, `OFFICE-001`–`005`) covering styles, headings (`H1`–`H6`), ordered/unordered/nested/task lists, tables (headers, `col_span`, `row_span`/`vMerge`, widths, shading), SHA-256 deduplicated images, footnotes/endnotes, headers/footers (`{page}`/`{total_pages}`), page geometry, comments, and tracked changes.

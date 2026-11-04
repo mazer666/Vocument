@@ -6,6 +6,7 @@
 pub mod annotations;
 pub mod annotations_store;
 pub mod build_info;
+pub mod compare;
 pub mod config;
 pub mod document_inspection;
 pub mod file_broker;
@@ -25,6 +26,7 @@ pub mod rendered_page;
 pub mod save;
 pub mod search_index;
 pub mod session;
+pub mod session_compare;
 pub mod session_mutations;
 pub mod session_optimize;
 pub mod session_stamps;

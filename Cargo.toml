@@ -29,6 +29,7 @@ sha2 = "0.10"
 cc = "1.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 ttf-parser = "0.25"
+miniz_oxide = "0.8"
 # The declarations of the C library of the system. They are used where the
 # kernel reports something that the standard library of Rust does not offer —
 # the peak memory of the process, for example. The crate is already in the

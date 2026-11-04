@@ -12,6 +12,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 ttf-parser.workspace = true
+miniz_oxide.workspace = true
 
 [lints]
 workspace = true

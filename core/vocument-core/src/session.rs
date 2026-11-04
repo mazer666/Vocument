@@ -48,6 +48,8 @@ pub enum SessionError {
     Save(#[from] crate::save::SaveError),
     #[error(transparent)]
     Recovery(#[from] crate::recovery::RecoveryError),
+    #[error(transparent)]
+    Compare(#[from] crate::compare::CompareError),
     #[error("unknown session ID '{session_id}'")]
     SessionNotFound { session_id: String },
     #[error(
@@ -714,7 +716,7 @@ impl SessionRegistry {
         Ok(guard.len())
     }
 
-    fn session_actor_and_meta(
+    pub(crate) fn session_actor_and_meta(
         &self,
         session_id: &str,
     ) -> Result<(Arc<DocumentActor>, DocumentId, u64), SessionError> {

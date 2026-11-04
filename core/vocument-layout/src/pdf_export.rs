@@ -9,11 +9,12 @@
 //! see `scripts/verify-pdfa-compliance.sh` and `PdfExportOptions::certified_by_external_tooling`.
 
 mod font_embedding;
+mod image_xobject;
 mod page_content;
 mod structure;
 mod xmp;
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
 
@@ -50,6 +51,8 @@ pub struct PdfExportOptions {
     /// Declares whether this export has been independently certified by external tooling (veraPDF / PAC).
     /// Defaults to false (experimental draft profile; official certification pending).
     pub certified_by_external_tooling: bool,
+    /// In-memory asset catalog for embedded raster images keyed by asset reference path (`M4.4`).
+    pub assets: BTreeMap<String, Vec<u8>>,
 }
 
 impl Default for PdfExportOptions {
@@ -61,7 +64,22 @@ impl Default for PdfExportOptions {
             pdfua_conformance: true,
             language: "de-DE".to_string(),
             certified_by_external_tooling: false,
+            assets: BTreeMap::new(),
         }
+    }
+}
+
+impl PdfExportOptions {
+    /// Adds a single image asset by reference path and raw byte contents.
+    pub fn with_asset(mut self, asset_ref: impl Into<String>, bytes: Vec<u8>) -> Self {
+        self.assets.insert(asset_ref.into(), bytes);
+        self
+    }
+
+    /// Sets the asset catalog from a pre-populated map.
+    pub fn with_assets(mut self, assets: BTreeMap<String, Vec<u8>>) -> Self {
+        self.assets = assets;
+        self
     }
 }
 
@@ -179,12 +197,49 @@ pub fn export_layout_to_pdf(
         }
     }
 
+    // Prepare and write all raster image XObjects referenced on pages.
+    let mut image_object_ids: HashMap<String, usize> = HashMap::new();
+    let mut image_mappings_per_page: Vec<Vec<(String, usize)>> =
+        vec![Vec::new(); layout.pages.len()];
+    for (page_index, rendered) in rendered_pages.iter().enumerate() {
+        for placement in &rendered.images {
+            let img_id = match image_object_ids.get(&placement.asset_ref) {
+                Some(existing_id) => *existing_id,
+                None => {
+                    let image_obj = options
+                        .assets
+                        .get(&placement.asset_ref)
+                        .and_then(|bytes| image_xobject::prepare_image(bytes))
+                        .unwrap_or_else(image_xobject::placeholder_image);
+                    let allocated_id = pdf.alloc_id();
+                    let smask_id = if let Some(ref smask_bytes) = image_obj.smask_bytes {
+                        let sid = pdf.alloc_id();
+                        pdf.write_smask_xobject(
+                            sid,
+                            image_obj.width,
+                            image_obj.height,
+                            smask_bytes,
+                        );
+                        Some(sid)
+                    } else {
+                        None
+                    };
+                    pdf.write_image_xobject(allocated_id, &image_obj, smask_id);
+                    image_object_ids.insert(placement.asset_ref.clone(), allocated_id);
+                    allocated_id
+                }
+            };
+            image_mappings_per_page[page_index].push((placement.resource_name.clone(), img_id));
+        }
+    }
+
     for (page_index, page) in layout.pages.iter().enumerate() {
         pdf.write_page_object(
             page_ids[page_index],
             pages_id,
             content_ids[page_index],
             font_ids.font,
+            &image_mappings_per_page[page_index],
             &annotation_ids_per_page[page_index],
             (page.size.width, page.size.height),
             (!rendered_pages[page_index].mcid_owners.is_empty()).then_some(page_index),
@@ -343,6 +398,7 @@ impl PdfWriter {
         parent_id: usize,
         content_id: usize,
         font_id: usize,
+        image_mappings: &[(String, usize)],
         annot_ids: &[usize],
         (width, height): (f32, f32),
         parent_tree_key: Option<usize>,
@@ -362,9 +418,19 @@ impl PdfWriter {
         let structure_parents = parent_tree_key
             .map(|key| format!("/StructParents {key} "))
             .unwrap_or_default();
+        let xobjects_entry = if !image_mappings.is_empty() {
+            let mut x_str = String::from(" /XObject << ");
+            for (res_name, img_id) in image_mappings {
+                let _ = write!(x_str, "/{res_name} {img_id} 0 R ");
+            }
+            x_str.push_str(">> /ProcSet [ /PDF /Text /ImageC ]");
+            x_str
+        } else {
+            String::new()
+        };
         let _ = writeln!(
             self.buffer,
-            "<< /Type /Page /Parent {} 0 R /MediaBox [ 0 0 {:.2} {:.2} ] /Contents {} 0 R {}{}/Tabs /S /Resources << /Font << /{} {} 0 R >> >> >>",
+            "<< /Type /Page /Parent {} 0 R /MediaBox [ 0 0 {:.2} {:.2} ] /Contents {} 0 R {}{}/Tabs /S /Resources << /Font << /{} {} 0 R >>{} >> >>",
             parent_id,
             width,
             height,
@@ -372,8 +438,48 @@ impl PdfWriter {
             annots_entry,
             structure_parents,
             FONT_RESOURCE_NAME,
-            font_id
+            font_id,
+            xobjects_entry
         );
+        self.end_obj();
+    }
+
+    fn write_image_xobject(
+        &mut self,
+        id: usize,
+        image: &image_xobject::PdfImageObject,
+        smask_id: Option<usize>,
+    ) {
+        self.begin_obj(id);
+        let smask_entry = smask_id
+            .map(|sid| format!(" /SMask {sid} 0 R"))
+            .unwrap_or_default();
+        let _ = write!(
+            self.buffer,
+            "<< /Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace {} /BitsPerComponent 8 /Filter {}{} /Length {} >>\nstream\n",
+            image.width,
+            image.height,
+            image.color_space,
+            image.filter,
+            smask_entry,
+            image.stream_bytes.len()
+        );
+        self.buffer.extend_from_slice(&image.stream_bytes);
+        self.buffer.extend_from_slice(b"\nendstream\n");
+        self.end_obj();
+    }
+
+    fn write_smask_xobject(&mut self, id: usize, width: u32, height: u32, smask_bytes: &[u8]) {
+        self.begin_obj(id);
+        let _ = write!(
+            self.buffer,
+            "<< /Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length {} >>\nstream\n",
+            width,
+            height,
+            smask_bytes.len()
+        );
+        self.buffer.extend_from_slice(smask_bytes);
+        self.buffer.extend_from_slice(b"\nendstream\n");
         self.end_obj();
     }
 
@@ -500,11 +606,16 @@ impl PdfWriter {
                 .as_ref()
                 .map(|attributes| format!(" /A {attributes}"))
                 .unwrap_or_default();
+            let alt = node
+                .alt_text
+                .as_ref()
+                .map(|alt| format!(" /Alt {}", encode_pdf_text_string(alt)))
+                .unwrap_or_default();
             self.begin_obj(element_ids[index]);
             let _ = writeln!(
                 self.buffer,
-                "<< /Type /StructElem /S /{} /P {} 0 R /K [ {}]{} >>",
-                node.structure_type, parent_id, children, attributes
+                "<< /Type /StructElem /S /{} /P {} 0 R /K [ {}]{}{} >>",
+                node.structure_type, parent_id, children, attributes, alt
             );
             self.end_obj();
         }

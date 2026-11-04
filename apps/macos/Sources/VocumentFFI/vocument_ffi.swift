@@ -1352,6 +1352,135 @@ public func FfiConverterTypeFfiCapturedScanPage_lower(_ value: FfiCapturedScanPa
 
 
 /**
+ * Individual change detected between documents (`COMPARE-001`).
+ */
+public struct FfiChangeItem {
+    public var id: String
+    public var operation: FfiDiffOperation
+    public var pageA: UInt32?
+    public var pageB: UInt32?
+    public var textA: String?
+    public var textB: String?
+    public var rectA: FfiPdfRectMilliPt?
+    public var rectB: FfiPdfRectMilliPt?
+    public var clauseHint: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, operation: FfiDiffOperation, pageA: UInt32?, pageB: UInt32?, textA: String?, textB: String?, rectA: FfiPdfRectMilliPt?, rectB: FfiPdfRectMilliPt?, clauseHint: String?) {
+        self.id = id
+        self.operation = operation
+        self.pageA = pageA
+        self.pageB = pageB
+        self.textA = textA
+        self.textB = textB
+        self.rectA = rectA
+        self.rectB = rectB
+        self.clauseHint = clauseHint
+    }
+}
+
+#if compiler(>=6)
+extension FfiChangeItem: Sendable {}
+#endif
+
+
+extension FfiChangeItem: Equatable, Hashable {
+    public static func ==(lhs: FfiChangeItem, rhs: FfiChangeItem) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.operation != rhs.operation {
+            return false
+        }
+        if lhs.pageA != rhs.pageA {
+            return false
+        }
+        if lhs.pageB != rhs.pageB {
+            return false
+        }
+        if lhs.textA != rhs.textA {
+            return false
+        }
+        if lhs.textB != rhs.textB {
+            return false
+        }
+        if lhs.rectA != rhs.rectA {
+            return false
+        }
+        if lhs.rectB != rhs.rectB {
+            return false
+        }
+        if lhs.clauseHint != rhs.clauseHint {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(operation)
+        hasher.combine(pageA)
+        hasher.combine(pageB)
+        hasher.combine(textA)
+        hasher.combine(textB)
+        hasher.combine(rectA)
+        hasher.combine(rectB)
+        hasher.combine(clauseHint)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiChangeItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiChangeItem {
+        return
+            try FfiChangeItem(
+                id: FfiConverterString.read(from: &buf), 
+                operation: FfiConverterTypeFfiDiffOperation.read(from: &buf), 
+                pageA: FfiConverterOptionUInt32.read(from: &buf), 
+                pageB: FfiConverterOptionUInt32.read(from: &buf), 
+                textA: FfiConverterOptionString.read(from: &buf), 
+                textB: FfiConverterOptionString.read(from: &buf), 
+                rectA: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                rectB: FfiConverterOptionTypeFfiPdfRectMilliPt.read(from: &buf), 
+                clauseHint: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiChangeItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterTypeFfiDiffOperation.write(value.operation, into: &buf)
+        FfiConverterOptionUInt32.write(value.pageA, into: &buf)
+        FfiConverterOptionUInt32.write(value.pageB, into: &buf)
+        FfiConverterOptionString.write(value.textA, into: &buf)
+        FfiConverterOptionString.write(value.textB, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.rectA, into: &buf)
+        FfiConverterOptionTypeFfiPdfRectMilliPt.write(value.rectB, into: &buf)
+        FfiConverterOptionString.write(value.clauseHint, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiChangeItem_lift(_ buf: RustBuffer) throws -> FfiChangeItem {
+    return try FfiConverterTypeFfiChangeItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiChangeItem_lower(_ value: FfiChangeItem) -> RustBuffer {
+    return FfiConverterTypeFfiChangeItem.lower(value)
+}
+
+
+/**
  * Quantitative metrics evaluating scan cleanup quality crossing UniFFI boundary (`SCAN-004`).
  */
 public struct FfiCleanupQualityMetrics {
@@ -1640,6 +1769,393 @@ public func FfiConverterTypeFfiCommentAnnotation_lift(_ buf: RustBuffer) throws 
 #endif
 public func FfiConverterTypeFfiCommentAnnotation_lower(_ value: FfiCommentAnnotation) -> RustBuffer {
     return FfiConverterTypeFfiCommentAnnotation.lower(value)
+}
+
+
+/**
+ * Comparison configuration options (`COMPARE-001`–`003`).
+ */
+public struct FfiComparisonOptions {
+    public var granularity: FfiDiffGranularity
+    public var ignoreWhitespace: Bool
+    public var ignoreCase: Bool
+    public var visualPixelThreshold: UInt8
+    public var visualClusterDistancePt: Float
+    public var alignClauses: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(granularity: FfiDiffGranularity, ignoreWhitespace: Bool, ignoreCase: Bool, visualPixelThreshold: UInt8, visualClusterDistancePt: Float, alignClauses: Bool) {
+        self.granularity = granularity
+        self.ignoreWhitespace = ignoreWhitespace
+        self.ignoreCase = ignoreCase
+        self.visualPixelThreshold = visualPixelThreshold
+        self.visualClusterDistancePt = visualClusterDistancePt
+        self.alignClauses = alignClauses
+    }
+}
+
+#if compiler(>=6)
+extension FfiComparisonOptions: Sendable {}
+#endif
+
+
+extension FfiComparisonOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiComparisonOptions, rhs: FfiComparisonOptions) -> Bool {
+        if lhs.granularity != rhs.granularity {
+            return false
+        }
+        if lhs.ignoreWhitespace != rhs.ignoreWhitespace {
+            return false
+        }
+        if lhs.ignoreCase != rhs.ignoreCase {
+            return false
+        }
+        if lhs.visualPixelThreshold != rhs.visualPixelThreshold {
+            return false
+        }
+        if lhs.visualClusterDistancePt != rhs.visualClusterDistancePt {
+            return false
+        }
+        if lhs.alignClauses != rhs.alignClauses {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(granularity)
+        hasher.combine(ignoreWhitespace)
+        hasher.combine(ignoreCase)
+        hasher.combine(visualPixelThreshold)
+        hasher.combine(visualClusterDistancePt)
+        hasher.combine(alignClauses)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiComparisonOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiComparisonOptions {
+        return
+            try FfiComparisonOptions(
+                granularity: FfiConverterTypeFfiDiffGranularity.read(from: &buf), 
+                ignoreWhitespace: FfiConverterBool.read(from: &buf), 
+                ignoreCase: FfiConverterBool.read(from: &buf), 
+                visualPixelThreshold: FfiConverterUInt8.read(from: &buf), 
+                visualClusterDistancePt: FfiConverterFloat.read(from: &buf), 
+                alignClauses: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiComparisonOptions, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiDiffGranularity.write(value.granularity, into: &buf)
+        FfiConverterBool.write(value.ignoreWhitespace, into: &buf)
+        FfiConverterBool.write(value.ignoreCase, into: &buf)
+        FfiConverterUInt8.write(value.visualPixelThreshold, into: &buf)
+        FfiConverterFloat.write(value.visualClusterDistancePt, into: &buf)
+        FfiConverterBool.write(value.alignClauses, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonOptions_lift(_ buf: RustBuffer) throws -> FfiComparisonOptions {
+    return try FfiConverterTypeFfiComparisonOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonOptions_lower(_ value: FfiComparisonOptions) -> RustBuffer {
+    return FfiConverterTypeFfiComparisonOptions.lower(value)
+}
+
+
+/**
+ * Comprehensive comparison report returned to native UI (`COMPARE-004`).
+ */
+public struct FfiComparisonReport {
+    public var docATitle: String
+    public var docBTitle: String
+    public var pageCountA: UInt32
+    public var pageCountB: UInt32
+    public var summary: FfiComparisonSummary
+    public var pageAlignments: [FfiPageAlignment]
+    public var pageDiffs: [FfiPageDiffResult]
+    public var changes: [FfiChangeItem]
+    public var jsonReport: String
+    public var markdownReport: String
+    public var htmlReport: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(docATitle: String, docBTitle: String, pageCountA: UInt32, pageCountB: UInt32, summary: FfiComparisonSummary, pageAlignments: [FfiPageAlignment], pageDiffs: [FfiPageDiffResult], changes: [FfiChangeItem], jsonReport: String, markdownReport: String, htmlReport: String) {
+        self.docATitle = docATitle
+        self.docBTitle = docBTitle
+        self.pageCountA = pageCountA
+        self.pageCountB = pageCountB
+        self.summary = summary
+        self.pageAlignments = pageAlignments
+        self.pageDiffs = pageDiffs
+        self.changes = changes
+        self.jsonReport = jsonReport
+        self.markdownReport = markdownReport
+        self.htmlReport = htmlReport
+    }
+}
+
+#if compiler(>=6)
+extension FfiComparisonReport: Sendable {}
+#endif
+
+
+extension FfiComparisonReport: Equatable, Hashable {
+    public static func ==(lhs: FfiComparisonReport, rhs: FfiComparisonReport) -> Bool {
+        if lhs.docATitle != rhs.docATitle {
+            return false
+        }
+        if lhs.docBTitle != rhs.docBTitle {
+            return false
+        }
+        if lhs.pageCountA != rhs.pageCountA {
+            return false
+        }
+        if lhs.pageCountB != rhs.pageCountB {
+            return false
+        }
+        if lhs.summary != rhs.summary {
+            return false
+        }
+        if lhs.pageAlignments != rhs.pageAlignments {
+            return false
+        }
+        if lhs.pageDiffs != rhs.pageDiffs {
+            return false
+        }
+        if lhs.changes != rhs.changes {
+            return false
+        }
+        if lhs.jsonReport != rhs.jsonReport {
+            return false
+        }
+        if lhs.markdownReport != rhs.markdownReport {
+            return false
+        }
+        if lhs.htmlReport != rhs.htmlReport {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(docATitle)
+        hasher.combine(docBTitle)
+        hasher.combine(pageCountA)
+        hasher.combine(pageCountB)
+        hasher.combine(summary)
+        hasher.combine(pageAlignments)
+        hasher.combine(pageDiffs)
+        hasher.combine(changes)
+        hasher.combine(jsonReport)
+        hasher.combine(markdownReport)
+        hasher.combine(htmlReport)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiComparisonReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiComparisonReport {
+        return
+            try FfiComparisonReport(
+                docATitle: FfiConverterString.read(from: &buf), 
+                docBTitle: FfiConverterString.read(from: &buf), 
+                pageCountA: FfiConverterUInt32.read(from: &buf), 
+                pageCountB: FfiConverterUInt32.read(from: &buf), 
+                summary: FfiConverterTypeFfiComparisonSummary.read(from: &buf), 
+                pageAlignments: FfiConverterSequenceTypeFfiPageAlignment.read(from: &buf), 
+                pageDiffs: FfiConverterSequenceTypeFfiPageDiffResult.read(from: &buf), 
+                changes: FfiConverterSequenceTypeFfiChangeItem.read(from: &buf), 
+                jsonReport: FfiConverterString.read(from: &buf), 
+                markdownReport: FfiConverterString.read(from: &buf), 
+                htmlReport: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiComparisonReport, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.docATitle, into: &buf)
+        FfiConverterString.write(value.docBTitle, into: &buf)
+        FfiConverterUInt32.write(value.pageCountA, into: &buf)
+        FfiConverterUInt32.write(value.pageCountB, into: &buf)
+        FfiConverterTypeFfiComparisonSummary.write(value.summary, into: &buf)
+        FfiConverterSequenceTypeFfiPageAlignment.write(value.pageAlignments, into: &buf)
+        FfiConverterSequenceTypeFfiPageDiffResult.write(value.pageDiffs, into: &buf)
+        FfiConverterSequenceTypeFfiChangeItem.write(value.changes, into: &buf)
+        FfiConverterString.write(value.jsonReport, into: &buf)
+        FfiConverterString.write(value.markdownReport, into: &buf)
+        FfiConverterString.write(value.htmlReport, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonReport_lift(_ buf: RustBuffer) throws -> FfiComparisonReport {
+    return try FfiConverterTypeFfiComparisonReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonReport_lower(_ value: FfiComparisonReport) -> RustBuffer {
+    return FfiConverterTypeFfiComparisonReport.lower(value)
+}
+
+
+/**
+ * Summary metrics of comparison session (`COMPARE-004`).
+ */
+public struct FfiComparisonSummary {
+    public var totalChanges: UInt32
+    public var insertionsCount: UInt32
+    public var deletionsCount: UInt32
+    public var replacementsCount: UInt32
+    public var movesCount: UInt32
+    public var similarityRatio: Float
+    public var identicalPagesCount: UInt32
+    public var modifiedPagesCount: UInt32
+    public var insertedPagesCount: UInt32
+    public var deletedPagesCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(totalChanges: UInt32, insertionsCount: UInt32, deletionsCount: UInt32, replacementsCount: UInt32, movesCount: UInt32, similarityRatio: Float, identicalPagesCount: UInt32, modifiedPagesCount: UInt32, insertedPagesCount: UInt32, deletedPagesCount: UInt32) {
+        self.totalChanges = totalChanges
+        self.insertionsCount = insertionsCount
+        self.deletionsCount = deletionsCount
+        self.replacementsCount = replacementsCount
+        self.movesCount = movesCount
+        self.similarityRatio = similarityRatio
+        self.identicalPagesCount = identicalPagesCount
+        self.modifiedPagesCount = modifiedPagesCount
+        self.insertedPagesCount = insertedPagesCount
+        self.deletedPagesCount = deletedPagesCount
+    }
+}
+
+#if compiler(>=6)
+extension FfiComparisonSummary: Sendable {}
+#endif
+
+
+extension FfiComparisonSummary: Equatable, Hashable {
+    public static func ==(lhs: FfiComparisonSummary, rhs: FfiComparisonSummary) -> Bool {
+        if lhs.totalChanges != rhs.totalChanges {
+            return false
+        }
+        if lhs.insertionsCount != rhs.insertionsCount {
+            return false
+        }
+        if lhs.deletionsCount != rhs.deletionsCount {
+            return false
+        }
+        if lhs.replacementsCount != rhs.replacementsCount {
+            return false
+        }
+        if lhs.movesCount != rhs.movesCount {
+            return false
+        }
+        if lhs.similarityRatio != rhs.similarityRatio {
+            return false
+        }
+        if lhs.identicalPagesCount != rhs.identicalPagesCount {
+            return false
+        }
+        if lhs.modifiedPagesCount != rhs.modifiedPagesCount {
+            return false
+        }
+        if lhs.insertedPagesCount != rhs.insertedPagesCount {
+            return false
+        }
+        if lhs.deletedPagesCount != rhs.deletedPagesCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(totalChanges)
+        hasher.combine(insertionsCount)
+        hasher.combine(deletionsCount)
+        hasher.combine(replacementsCount)
+        hasher.combine(movesCount)
+        hasher.combine(similarityRatio)
+        hasher.combine(identicalPagesCount)
+        hasher.combine(modifiedPagesCount)
+        hasher.combine(insertedPagesCount)
+        hasher.combine(deletedPagesCount)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiComparisonSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiComparisonSummary {
+        return
+            try FfiComparisonSummary(
+                totalChanges: FfiConverterUInt32.read(from: &buf), 
+                insertionsCount: FfiConverterUInt32.read(from: &buf), 
+                deletionsCount: FfiConverterUInt32.read(from: &buf), 
+                replacementsCount: FfiConverterUInt32.read(from: &buf), 
+                movesCount: FfiConverterUInt32.read(from: &buf), 
+                similarityRatio: FfiConverterFloat.read(from: &buf), 
+                identicalPagesCount: FfiConverterUInt32.read(from: &buf), 
+                modifiedPagesCount: FfiConverterUInt32.read(from: &buf), 
+                insertedPagesCount: FfiConverterUInt32.read(from: &buf), 
+                deletedPagesCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiComparisonSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.totalChanges, into: &buf)
+        FfiConverterUInt32.write(value.insertionsCount, into: &buf)
+        FfiConverterUInt32.write(value.deletionsCount, into: &buf)
+        FfiConverterUInt32.write(value.replacementsCount, into: &buf)
+        FfiConverterUInt32.write(value.movesCount, into: &buf)
+        FfiConverterFloat.write(value.similarityRatio, into: &buf)
+        FfiConverterUInt32.write(value.identicalPagesCount, into: &buf)
+        FfiConverterUInt32.write(value.modifiedPagesCount, into: &buf)
+        FfiConverterUInt32.write(value.insertedPagesCount, into: &buf)
+        FfiConverterUInt32.write(value.deletedPagesCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonSummary_lift(_ buf: RustBuffer) throws -> FfiComparisonSummary {
+    return try FfiConverterTypeFfiComparisonSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiComparisonSummary_lower(_ value: FfiComparisonSummary) -> RustBuffer {
+    return FfiConverterTypeFfiComparisonSummary.lower(value)
 }
 
 
@@ -4730,6 +5246,87 @@ public func FfiConverterTypeFfiOptimizationOptions_lower(_ value: FfiOptimizatio
 
 
 /**
+ * Global sequence page alignment (`COMPARE-003`).
+ */
+public struct FfiPageAlignment {
+    public var pageA: UInt32?
+    public var pageB: UInt32?
+    public var similarityScore: Float
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageA: UInt32?, pageB: UInt32?, similarityScore: Float) {
+        self.pageA = pageA
+        self.pageB = pageB
+        self.similarityScore = similarityScore
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageAlignment: Sendable {}
+#endif
+
+
+extension FfiPageAlignment: Equatable, Hashable {
+    public static func ==(lhs: FfiPageAlignment, rhs: FfiPageAlignment) -> Bool {
+        if lhs.pageA != rhs.pageA {
+            return false
+        }
+        if lhs.pageB != rhs.pageB {
+            return false
+        }
+        if lhs.similarityScore != rhs.similarityScore {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageA)
+        hasher.combine(pageB)
+        hasher.combine(similarityScore)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageAlignment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageAlignment {
+        return
+            try FfiPageAlignment(
+                pageA: FfiConverterOptionUInt32.read(from: &buf), 
+                pageB: FfiConverterOptionUInt32.read(from: &buf), 
+                similarityScore: FfiConverterFloat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageAlignment, into buf: inout [UInt8]) {
+        FfiConverterOptionUInt32.write(value.pageA, into: &buf)
+        FfiConverterOptionUInt32.write(value.pageB, into: &buf)
+        FfiConverterFloat.write(value.similarityScore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageAlignment_lift(_ buf: RustBuffer) throws -> FfiPageAlignment {
+    return try FfiConverterTypeFfiPageAlignment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageAlignment_lower(_ value: FfiPageAlignment) -> RustBuffer {
+    return FfiConverterTypeFfiPageAlignment.lower(value)
+}
+
+
+/**
  * Partial or complete update of page boundary boxes (`CROP-002`).
  */
 public struct FfiPageBoxUpdate {
@@ -4904,6 +5501,95 @@ public func FfiConverterTypeFfiPageDescriptor_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeFfiPageDescriptor_lower(_ value: FfiPageDescriptor) -> RustBuffer {
     return FfiConverterTypeFfiPageDescriptor.lower(value)
+}
+
+
+/**
+ * Visual pixel difference result for a single page pair (`COMPARE-002`).
+ */
+public struct FfiPageDiffResult {
+    public var pageA: UInt32
+    public var pageB: UInt32
+    public var pixelDifferencePercentage: Float
+    public var differenceBoundingBoxes: [FfiPdfRectMilliPt]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pageA: UInt32, pageB: UInt32, pixelDifferencePercentage: Float, differenceBoundingBoxes: [FfiPdfRectMilliPt]) {
+        self.pageA = pageA
+        self.pageB = pageB
+        self.pixelDifferencePercentage = pixelDifferencePercentage
+        self.differenceBoundingBoxes = differenceBoundingBoxes
+    }
+}
+
+#if compiler(>=6)
+extension FfiPageDiffResult: Sendable {}
+#endif
+
+
+extension FfiPageDiffResult: Equatable, Hashable {
+    public static func ==(lhs: FfiPageDiffResult, rhs: FfiPageDiffResult) -> Bool {
+        if lhs.pageA != rhs.pageA {
+            return false
+        }
+        if lhs.pageB != rhs.pageB {
+            return false
+        }
+        if lhs.pixelDifferencePercentage != rhs.pixelDifferencePercentage {
+            return false
+        }
+        if lhs.differenceBoundingBoxes != rhs.differenceBoundingBoxes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageA)
+        hasher.combine(pageB)
+        hasher.combine(pixelDifferencePercentage)
+        hasher.combine(differenceBoundingBoxes)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiPageDiffResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPageDiffResult {
+        return
+            try FfiPageDiffResult(
+                pageA: FfiConverterUInt32.read(from: &buf), 
+                pageB: FfiConverterUInt32.read(from: &buf), 
+                pixelDifferencePercentage: FfiConverterFloat.read(from: &buf), 
+                differenceBoundingBoxes: FfiConverterSequenceTypeFfiPdfRectMilliPt.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiPageDiffResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageA, into: &buf)
+        FfiConverterUInt32.write(value.pageB, into: &buf)
+        FfiConverterFloat.write(value.pixelDifferencePercentage, into: &buf)
+        FfiConverterSequenceTypeFfiPdfRectMilliPt.write(value.differenceBoundingBoxes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageDiffResult_lift(_ buf: RustBuffer) throws -> FfiPageDiffResult {
+    return try FfiConverterTypeFfiPageDiffResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiPageDiffResult_lower(_ value: FfiPageDiffResult) -> RustBuffer {
+    return FfiConverterTypeFfiPageDiffResult.lower(value)
 }
 
 
@@ -10230,6 +10916,184 @@ extension FfiConversionSeverity: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Text diff granularity across tokens (`COMPARE-001`).
+ */
+
+public enum FfiDiffGranularity {
+    
+    case word
+    case character
+    case line
+}
+
+
+#if compiler(>=6)
+extension FfiDiffGranularity: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDiffGranularity: FfiConverterRustBuffer {
+    typealias SwiftType = FfiDiffGranularity
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDiffGranularity {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .word
+        
+        case 2: return .character
+        
+        case 3: return .line
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiDiffGranularity, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .word:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .character:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .line:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDiffGranularity_lift(_ buf: RustBuffer) throws -> FfiDiffGranularity {
+    return try FfiConverterTypeFfiDiffGranularity.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDiffGranularity_lower(_ value: FfiDiffGranularity) -> RustBuffer {
+    return FfiConverterTypeFfiDiffGranularity.lower(value)
+}
+
+
+extension FfiDiffGranularity: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Operation classification for diff items (`COMPARE-001`).
+ */
+
+public enum FfiDiffOperation {
+    
+    case insert
+    case delete
+    case replace
+    case move(fromIndex: UInt32, toIndex: UInt32
+    )
+    case unchanged
+}
+
+
+#if compiler(>=6)
+extension FfiDiffOperation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiDiffOperation: FfiConverterRustBuffer {
+    typealias SwiftType = FfiDiffOperation
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiDiffOperation {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .insert
+        
+        case 2: return .delete
+        
+        case 3: return .replace
+        
+        case 4: return .move(fromIndex: try FfiConverterUInt32.read(from: &buf), toIndex: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 5: return .unchanged
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiDiffOperation, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .insert:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .delete:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .replace:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .move(fromIndex,toIndex):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(fromIndex, into: &buf)
+            FfiConverterUInt32.write(toIndex, into: &buf)
+            
+        
+        case .unchanged:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDiffOperation_lift(_ buf: RustBuffer) throws -> FfiDiffOperation {
+    return try FfiConverterTypeFfiDiffOperation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiDiffOperation_lower(_ value: FfiDiffOperation) -> RustBuffer {
+    return FfiConverterTypeFfiDiffOperation.lower(value)
+}
+
+
+extension FfiDiffOperation: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Origin mechanism through which a file was opened (`ARCHITECTURE.md` §15).
  */
 
@@ -11740,6 +12604,31 @@ fileprivate struct FfiConverterSequenceTypeFfiCapturedScanPage: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiChangeItem: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiChangeItem]
+
+    public static func write(_ value: [FfiChangeItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiChangeItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiChangeItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiChangeItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiChangeItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiCommentAnnotation: FfiConverterRustBuffer {
     typealias SwiftType = [FfiCommentAnnotation]
 
@@ -12115,6 +13004,31 @@ fileprivate struct FfiConverterSequenceTypeFfiOcrWord: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFfiPageAlignment: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPageAlignment]
+
+    public static func write(_ value: [FfiPageAlignment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPageAlignment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPageAlignment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPageAlignment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPageAlignment.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBuffer {
     typealias SwiftType = [FfiPageDescriptor]
 
@@ -12132,6 +13046,31 @@ fileprivate struct FfiConverterSequenceTypeFfiPageDescriptor: FfiConverterRustBu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFfiPageDescriptor.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiPageDiffResult: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiPageDiffResult]
+
+    public static func write(_ value: [FfiPageDiffResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiPageDiffResult.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiPageDiffResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiPageDiffResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiPageDiffResult.read(from: &buf))
         }
         return seq
     }
@@ -12649,6 +13588,58 @@ public func documentCoreCloseSession(sessionId: String)throws   {try rustCallWit
         FfiConverterString.lower(sessionId),$0
     )
 }
+}
+/**
+ * Compares two active document sessions structurally and visually (`COMPARE-001`–`004`).
+ */
+public func documentCoreCompareDocuments(sessionIdA: String, sessionIdB: String, options: FfiComparisonOptions)throws  -> FfiComparisonReport  {
+    return try  FfiConverterTypeFfiComparisonReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_compare_documents(
+        FfiConverterString.lower(sessionIdA),
+        FfiConverterString.lower(sessionIdB),
+        FfiConverterTypeFfiComparisonOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Compares two active FlowEditor sessions (`COMPARE-001`).
+ */
+public func documentCoreCompareFlowEditorSessions(editorIdA: String, editorIdB: String, options: FfiComparisonOptions)throws  -> FfiComparisonReport  {
+    return try  FfiConverterTypeFfiComparisonReport_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_compare_flow_editor_sessions(
+        FfiConverterString.lower(editorIdA),
+        FfiConverterString.lower(editorIdB),
+        FfiConverterTypeFfiComparisonOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Compares two specific pages visually across sessions (`COMPARE-002`).
+ */
+public func documentCoreComparePagesVisual(sessionIdA: String, pageA: UInt32, sessionIdB: String, pageB: UInt32, options: FfiComparisonOptions)throws  -> FfiPageDiffResult  {
+    return try  FfiConverterTypeFfiPageDiffResult_lift(try rustCallWithError(FfiConverterTypeDocumentCoreError_lift) {
+    uniffi_vocument_ffi_fn_func_document_core_compare_pages_visual(
+        FfiConverterString.lower(sessionIdA),
+        FfiConverterUInt32.lower(pageA),
+        FfiConverterString.lower(sessionIdB),
+        FfiConverterUInt32.lower(pageB),
+        FfiConverterTypeFfiComparisonOptions_lower(options),$0
+    )
+})
+}
+/**
+ * Compares two plain text streams directly (`COMPARE-001`).
+ */
+public func documentCoreCompareTextStreams(titleA: String, textA: String, titleB: String, textB: String, options: FfiComparisonOptions) -> FfiComparisonReport  {
+    return try!  FfiConverterTypeFfiComparisonReport_lift(try! rustCall() {
+    uniffi_vocument_ffi_fn_func_document_core_compare_text_streams(
+        FfiConverterString.lower(titleA),
+        FfiConverterString.lower(textA),
+        FfiConverterString.lower(titleB),
+        FfiConverterString.lower(textB),
+        FfiConverterTypeFfiComparisonOptions_lower(options),$0
+    )
+})
 }
 /**
  * Hands Vocument the directory in which it keeps the data of the user
@@ -14272,6 +15263,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_close_session() != 43273) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_compare_documents() != 991) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_compare_flow_editor_sessions() != 51593) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_compare_pages_visual() != 7913) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_vocument_ffi_checksum_func_document_core_compare_text_streams() != 8552) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_vocument_ffi_checksum_func_document_core_configure_data_directory() != 38924) {
