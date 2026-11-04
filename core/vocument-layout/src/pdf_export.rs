@@ -15,8 +15,13 @@ mod structure;
 mod unicode_fallback;
 mod xmp;
 
-pub use image_xobject::{ImagePreparationError, MAX_IMAGE_DIMENSION_PX, MAX_IMAGE_PAYLOAD_BYTES};
-pub use unicode_fallback::{FALLBACK_FONT_RESOURCE_NAME, UnicodeFallbackRegistry};
+pub use image_xobject::{
+    ImagePreparationError, MAX_IMAGE_DIMENSION_PX, MAX_IMAGE_PAYLOAD_BYTES, prepare_image,
+};
+pub use unicode_fallback::{
+    FALLBACK_ARABIC_FONT_RESOURCE_NAME, FALLBACK_FONT_RESOURCE_NAME,
+    FALLBACK_UNICODE_FONT_RESOURCE_NAME, UnicodeFallbackRegistry,
+};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as FmtWrite;
@@ -178,16 +183,26 @@ pub fn export_layout_to_pdf(
         pdf.write_stream_object(content_ids[page_index], rendered.content_stream.as_bytes());
     }
 
-    let fallback_font_id = if !fallback_registry.is_empty() {
-        let fb_ids = FallbackFontObjectIds {
-            font: pdf.alloc_id(),
-            char_procs: pdf.alloc_id(),
-            to_unicode: pdf.alloc_id(),
-        };
-        pdf.write_fallback_type3_font(&fb_ids, &fallback_registry);
-        Some(fb_ids.font)
+    let (fallback_unicode_font_id, fallback_arabic_font_id) = if !fallback_registry.is_empty() {
+        let mut fb_ids = FallbackFontObjectIds::default();
+        if fallback_registry.has_unicode_fallback() {
+            fb_ids.unicode_font = Some(pdf.alloc_id());
+            fb_ids.unicode_descendant = Some(pdf.alloc_id());
+            fb_ids.unicode_descriptor = Some(pdf.alloc_id());
+            fb_ids.unicode_file = Some(pdf.alloc_id());
+            fb_ids.unicode_to_unicode = Some(pdf.alloc_id());
+        }
+        if fallback_registry.has_arabic_fallback() {
+            fb_ids.arabic_font = Some(pdf.alloc_id());
+            fb_ids.arabic_descendant = Some(pdf.alloc_id());
+            fb_ids.arabic_descriptor = Some(pdf.alloc_id());
+            fb_ids.arabic_file = Some(pdf.alloc_id());
+            fb_ids.arabic_to_unicode = Some(pdf.alloc_id());
+        }
+        pdf.write_fallback_fonts(&fb_ids, &fallback_registry);
+        (fb_ids.unicode_font, fb_ids.arabic_font)
     } else {
-        None
+        (None, None)
     };
 
     // Comment annotations. Each annotation is tagged through its own /Annot structure element and
@@ -303,7 +318,8 @@ pub fn export_layout_to_pdf(
             pages_id,
             content_ids[page_index],
             font_ids.font,
-            fallback_font_id,
+            fallback_unicode_font_id,
+            fallback_arabic_font_id,
             &image_mappings_per_page[page_index],
             &annotation_ids_per_page[page_index],
             (page.size.width, page.size.height),
@@ -463,7 +479,8 @@ impl PdfWriter {
         parent_id: usize,
         content_id: usize,
         font_id: usize,
-        fallback_font_id: Option<usize>,
+        fallback_unicode_font_id: Option<usize>,
+        fallback_arabic_font_id: Option<usize>,
         image_mappings: &[(String, usize)],
         annot_ids: &[usize],
         (width, height): (f32, f32),
@@ -494,14 +511,21 @@ impl PdfWriter {
         } else {
             String::new()
         };
-        let font_dict_entry = if let Some(fb_id) = fallback_font_id {
-            format!(
-                "/{} {} 0 R /{} {} 0 R",
-                FONT_RESOURCE_NAME, font_id, FALLBACK_FONT_RESOURCE_NAME, fb_id
-            )
-        } else {
-            format!("/{} {} 0 R", FONT_RESOURCE_NAME, font_id)
-        };
+        let mut font_dict_entry = format!("/{} {} 0 R", FONT_RESOURCE_NAME, font_id);
+        if let Some(fb_id) = fallback_unicode_font_id {
+            let _ = write!(
+                font_dict_entry,
+                " /{} {} 0 R",
+                FALLBACK_UNICODE_FONT_RESOURCE_NAME, fb_id
+            );
+        }
+        if let Some(ar_id) = fallback_arabic_font_id {
+            let _ = write!(
+                font_dict_entry,
+                " /{} {} 0 R",
+                FALLBACK_ARABIC_FONT_RESOURCE_NAME, ar_id
+            );
+        }
         let _ = writeln!(
             self.buffer,
             "<< /Type /Page /Parent {} 0 R /MediaBox [ 0 0 {:.2} {:.2} ] /Contents {} 0 R {}{}/Tabs /S /Resources << /Font << {} >>{} >> >>",

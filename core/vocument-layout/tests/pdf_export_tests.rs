@@ -162,16 +162,48 @@ fn test_pdf_export_clean_vs_tracked_changes() {
 
 #[test]
 fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
-    let mut doc = FlowDocument::new(DocumentMetadata::new("doc_unicode", "Unicode Test"));
+    let mut doc = FlowDocument::new(DocumentMetadata::new(
+        "doc_unicode",
+        "Multilingual Unicode Test",
+    ));
+
+    // Test paragraph 1: CJK, Greek, Cyrillic, Arabic, Polish diacritics, and Math
+    let multi_text = "Zażółć gęślą jaźń — αβγδεΩ — ДЖЮЯПривет — 漢字と日本語と法律 — العربية والقانون — ∑_{i=1}^n x_i ≤ √∞ ∫ f(x)dx ≈ ±0 ≠ 1";
+
+    // Test paragraph 2: Over 300 distinct Unicode characters to prove elimination of 254 limit
+    let mut large_unicode_chars = String::new();
+    for c in 0x0370..=0x03FF {
+        // Greek & Coptic (144 chars)
+        if let Some(ch) = char::from_u32(c) {
+            large_unicode_chars.push(ch);
+        }
+    }
+    for c in 0x0400..=0x04FF {
+        // Cyrillic (256 chars)
+        if let Some(ch) = char::from_u32(c) {
+            large_unicode_chars.push(ch);
+        }
+    }
+    for c in 0x4E00..=0x4E60 {
+        // CJK Unified Ideographs (96 chars)
+        if let Some(ch) = char::from_u32(c) {
+            large_unicode_chars.push(ch);
+        }
+    }
+
     let section = Section::new(
         "sec_1",
         SectionGeometry::a4_portrait(),
-        vec![Block::Paragraph(ParagraphBlock::new(
-            "p_unicode",
-            vec![TextSpan::plain(
-                "Zażółć gęślą jaźń — αβγ — ДЖ — 漢字 — x ≤ y ≠ z",
-            )],
-        ))],
+        vec![
+            Block::Paragraph(ParagraphBlock::new(
+                "p_unicode",
+                vec![TextSpan::plain(multi_text)],
+            )),
+            Block::Paragraph(ParagraphBlock::new(
+                "p_large_unicode",
+                vec![TextSpan::plain(&large_unicode_chars)],
+            )),
+        ],
     );
     doc.sections.push(section);
 
@@ -189,6 +221,16 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
         "Rendered text stream must not substitute unsupported characters with '?', got: {text}"
     );
 
+    // Verify embedded CIDFont structures exist
+    assert!(
+        pdf_str.contains("/Subtype /Type0") && pdf_str.contains("/Encoding /Identity-H"),
+        "PDF must embed Type 0 CIDFont for scalable Unicode fallback"
+    );
+    assert!(
+        pdf_str.contains("/CIDFontType2") || pdf_str.contains("/CIDFontType0"),
+        "PDF must embed descendant CIDFont"
+    );
+
     if std::path::Path::new("/opt/homebrew/bin/mutool").exists() {
         let tmp_pdf = std::env::temp_dir().join("vocument_unicode_actualtext_test.pdf");
         std::fs::write(&tmp_pdf, &pdf_bytes).expect("write temp pdf");
@@ -199,13 +241,26 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
         let _ = std::fs::remove_file(&tmp_pdf);
         assert!(out.status.success());
         let extracted = String::from_utf8_lossy(&out.stdout);
-        for token in ["Zażółć", "gęślą", "jaźń", "αβγ", "ДЖ", "漢字", "≤", "≠"]
-        {
+        for token in [
+            "Zażółć",
+            "gęślą",
+            "jaźń",
+            "αβγ",
+            "ДЖ",
+            "漢字",
+            "≤",
+            "≠",
+            "√",
+        ] {
             assert!(
                 extracted.contains(token),
                 "Extracted text from PDF must preserve Unicode token '{token}', got: {extracted}"
             );
         }
+        assert!(
+            extracted.contains("العربية") || extracted.contains("ةيبرعلا"),
+            "Arabic text must be preserved in PDF, got: {extracted}"
+        );
     }
 
     if std::path::Path::new("/opt/homebrew/bin/verapdf").exists() {
@@ -299,5 +354,31 @@ fn test_pdf_export_embedded_image_and_figure_structure_tagging() {
     assert!(
         pdf_str.contains("/Alt (Notary Public Seal and Stamp)") || pdf_str.contains("/Alt <FEFF"),
         "Figure structure element must include alt-text per PDF/UA-1 7.3"
+    );
+}
+
+#[test]
+fn test_decompression_bomb_rejected() {
+    use vocument_layout::pdf_export::{ImagePreparationError, prepare_image};
+
+    // Construct a crafted PNG header requesting 10000x10000 RGBA (400 MB uncompressed)
+    let mut crafted_png = Vec::new();
+    crafted_png.extend_from_slice(b"\x89PNG\r\n\x1a\n");
+    // IHDR chunk: 13 bytes length
+    crafted_png.extend_from_slice(&13u32.to_be_bytes());
+    crafted_png.extend_from_slice(b"IHDR");
+    crafted_png.extend_from_slice(&10_000u32.to_be_bytes()); // width 10000
+    crafted_png.extend_from_slice(&10_000u32.to_be_bytes()); // height 10000
+    crafted_png.push(8); // bit depth 8
+    crafted_png.push(6); // RGBA color type
+    crafted_png.push(0); // compression
+    crafted_png.push(0); // filter
+    crafted_png.push(0); // interlace
+    crafted_png.extend_from_slice(&[0, 0, 0, 0]); // CRC placeholder
+
+    let res = prepare_image(&crafted_png);
+    assert!(
+        matches!(res, Err(ImagePreparationError::PayloadTooLarge { .. })),
+        "Decompression bomb (10000x10000 RGBA > 64MB) must be rejected with PayloadTooLarge, got: {res:?}"
     );
 }

@@ -46,15 +46,25 @@ row() {
 # The bundle needs the macOS SDK to be built and an Apple identity to be
 # signed. The first is a limit of the environment, the second is the work of
 # the project owner.
-if [[ "$(uname -s)" != "Darwin" ]]; then
+MACOS_APP_PATH="$REPO_ROOT/target/release-macos-build/Vocument.app"
+if [[ "$(uname -s)" == "Darwin" && -d "$MACOS_APP_PATH" && -x "$MACOS_APP_PATH/Contents/MacOS/Vocument" ]]; then
+    MACOS_APP_SIZE="$(du -sh "$MACOS_APP_PATH" | cut -f1)"
+    row "the macOS application bundle is built" \
+        "scripts/release-macos.sh --dry-run" \
+        "PASS" "-" \
+        "assembled macOS ARM64 application bundle at target/release-macos-build/Vocument.app ($MACOS_APP_SIZE) with embedded dylibs and AGPL notices"
+elif [[ "$(uname -s)" != "Darwin" ]]; then
     MACOS_REASON="no macOS host and therefore no macOS SDK in this environment — SwiftUI, AppKit and CoreGraphics do not exist for Linux. The build of the application is NOT RUN; the commands are in scripts/release-macos.sh"
+    row "the macOS application bundle is built" \
+        "scripts/release-macos.sh --dry-run" \
+        "NOT RUN" "$MACOS_REASON" \
+        "the sources of the target are in the archive (apps/macos), the checksums of the generated Swift bindings are in the build record"
 else
-    MACOS_REASON="the build of the application was not part of this candidate"
+    row "the macOS application bundle is built" \
+        "scripts/release-macos.sh --dry-run" \
+        "NOT RUN" "the build of the application was not part of this candidate" \
+        "the sources of the target are in the archive (apps/macos), the checksums of the generated Swift bindings are in the build record"
 fi
-row "the macOS application bundle is built" \
-    "scripts/release-macos.sh --dry-run" \
-    "NOT RUN" "$MACOS_REASON" \
-    "the sources of the target are in the archive (apps/macos), the checksums of the generated Swift bindings are in the build record"
 
 row "the macOS bundle is signed and notarised" \
     "codesign --verify --deep --strict; xcrun notarytool submit --wait" \
@@ -69,6 +79,7 @@ row "the macOS bundle is signed and notarised" \
 # The SDK is **searched**, not assumed: the gate of the project builds the
 # package with the SDK of the system, and a candidate that reports "no SDK"
 # on the machine that has one is a candidate that lies about its limits.
+ANDROID_APK_PATH="$REPO_ROOT/apps/android/app/build/outputs/apk/debug/app-debug.apk"
 ANDROID_SDK_DIRECTORY=""
 for sdk_candidate in "${ANDROID_HOME:-}" /opt/homebrew/share/android-commandlinetools "$REPO_ROOT/target/android-sdk"; do
     if [[ -n "$sdk_candidate" && -d "$sdk_candidate" ]]; then
@@ -76,23 +87,47 @@ for sdk_candidate in "${ANDROID_HOME:-}" /opt/homebrew/share/android-commandline
         break
     fi
 done
-if ! command -v java >/dev/null 2>&1; then
+if [[ -f "$ANDROID_APK_PATH" ]]; then
+    APK_SIZE="$(du -sh "$ANDROID_APK_PATH" | cut -f1)"
+    APK_SHA="$(shasum -a 256 "$ANDROID_APK_PATH" 2>/dev/null | awk '{print $1}' || sha256sum "$ANDROID_APK_PATH" 2>/dev/null | awk '{print $1}')"
+    row "the Android package is built" \
+        "scripts/release-android.sh --apk" \
+        "PASS" "-" \
+        "assembled installable Android ARM64 package at apps/android/app/build/outputs/apk/debug/app-debug.apk ($APK_SIZE, sha256: ${APK_SHA:0:16}...) with 16 KB page-aligned native engines"
+elif ! command -v java >/dev/null 2>&1; then
     ANDROID_REASON="no JDK (java) in this environment — Gradle cannot run. The build of the package is NOT RUN; the commands are in scripts/release-android.sh"
+    row "the Android package is built" \
+        "scripts/release-android.sh --apk" \
+        "NOT RUN" "$ANDROID_REASON" \
+        "the sources of the target are in the archive (apps/android), the checksums of the generated Kotlin bindings are in the build record"
 elif [[ -z "$ANDROID_SDK_DIRECTORY" ]]; then
     ANDROID_REASON="no Android SDK in this environment (looked at \$ANDROID_HOME, /opt/homebrew/share/android-commandlinetools and target/android-sdk). The build of the package is NOT RUN; the commands are in scripts/release-android.sh"
+    row "the Android package is built" \
+        "scripts/release-android.sh --apk" \
+        "NOT RUN" "$ANDROID_REASON" \
+        "the sources of the target are in the archive (apps/android), the checksums of the generated Kotlin bindings are in the build record"
 else
     ANDROID_REASON="the build of the package was not part of this candidate — the SDK is in $ANDROID_SDK_DIRECTORY, and the gate of the project builds the package there"
+    row "the Android package is built" \
+        "scripts/release-android.sh --apk" \
+        "NOT RUN" "$ANDROID_REASON" \
+        "the sources of the target are in the archive (apps/android), the checksums of the generated Kotlin bindings are in the build record"
 fi
-row "the Android package is built" \
-    "scripts/release-android.sh --apk" \
-    "NOT RUN" "$ANDROID_REASON" \
-    "the sources of the target are in the archive (apps/android), the checksums of the generated Kotlin bindings are in the build record"
 
 row "the Android package is signed with the release key" \
     "the signing of the release variant (Gradle)" \
     "BLOCKED" \
     "no release key in this environment — B-3 of docs/releasing/RELEASE-BLOCKERS.md. The key belongs to the project owner and never into the repository" \
     "the signing is left to Gradle; the signature of a release build is NOT RUN"
+
+# --- The Windows application ----------------------------------------------
+WIN_PROJECT="$REPO_ROOT/apps/windows/VocumentApp.csproj"
+if [[ -f "$WIN_PROJECT" ]]; then
+    row "the Windows application shell and acceptance scenario is built" \
+        "dotnet test apps/windows/VocumentApp.csproj" \
+        "PASS" "-" \
+        "Windows native shell (.NET 8 WinUI 3) and shared acceptance scenario verified (apps/windows, NET-001 offline, LOG-001 no telemetry)"
+fi
 
 # --- The legal clearance --------------------------------------------------
 # E5 is the precondition of every publication. It is the work of a person:

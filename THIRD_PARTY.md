@@ -272,6 +272,8 @@ The PDF/A-2b and PDF/UA-1 export (`core/vocument-layout`) embeds two files that 
 | Asset | Licence | Origin |
 |---|---|---|
 | `lato_regular.ttf` (Lato Regular 1.105) | OFL-1.1, Reserved Font Name "Lato" | tyPoland Lukasz Dziedzic; the copyright is in `assets/LATO-NOTICE.txt` and in the notice file of the product. The program is embedded **unmodified** (no subset, no rename). |
+| `droid_sans_fallback.ttf` (Droid Sans Fallback) | Apache-2.0 | Android Open Source Project; the copyright is in `assets/DROID-NOTICE.txt`. Embedded as multi-script OpenType/Unicode fallback for CJK, Greek, Cyrillic and Math. |
+| `noto_naskh_arabic.otf` (Noto Naskh Arabic) | OFL-1.1, Reserved Font Name "Noto" | Google Inc.; the copyright is in `assets/NOTO-ARABIC-NOTICE.txt`. Embedded as Arabic OpenType fallback font. |
 | `srgb.icc` (Artifex sRGB ICC profile) | AGPL-3.0-or-later | `resources/icc/rgb.icc` of the MuPDF 1.28.5 source, which the product builds anyway. |
 
 Both files are compiled into the binary with `include_bytes!`; no dependency was added.

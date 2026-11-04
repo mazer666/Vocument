@@ -16,6 +16,7 @@ pub mod journal;
 pub mod navigation;
 pub mod page_geometry;
 pub mod pdf_engine;
+pub mod platform;
 pub mod recovery;
 pub mod recovery_actions;
 pub mod redaction;

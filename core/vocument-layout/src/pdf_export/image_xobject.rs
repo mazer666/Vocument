@@ -3,13 +3,16 @@
 //! Handles JPEG (via `/DCTDecode`) and PNG / raster image data (via deflated RGB streams).
 
 use miniz_oxide::deflate::compress_to_vec_zlib;
-use miniz_oxide::inflate::decompress_to_vec_zlib;
 
 /// Maximum allowable pixel dimension for embedded raster images (resource limit: 16k x 16k).
 pub const MAX_IMAGE_DIMENSION_PX: u32 = 16_384;
 
 /// Maximum payload size in bytes for an embedded image (50 MB).
 pub const MAX_IMAGE_PAYLOAD_BYTES: usize = 50 * 1024 * 1024;
+
+/// Maximum allowable memory footprint for decompressed raster bitmap data (64 MB).
+/// Protects against decompression bombs and excessive memory consumption.
+pub const MAX_DECOMPRESSED_IMAGE_BYTES: usize = 64 * 1024 * 1024;
 
 /// Errors occurring during image decoding, validation, or PDF XObject preparation.
 #[derive(Debug, thiserror::Error, PartialEq, Eq, Clone)]
@@ -89,6 +92,15 @@ fn prepare_jpeg(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
         return Err(ImagePreparationError::DimensionsExceeded { width, height });
     }
 
+    let estimated_decompressed = (width as usize)
+        .saturating_mul(height as usize)
+        .saturating_mul(if is_gray { 1 } else { 3 });
+    if estimated_decompressed > MAX_DECOMPRESSED_IMAGE_BYTES {
+        return Err(ImagePreparationError::PayloadTooLarge {
+            size_bytes: estimated_decompressed,
+        });
+    }
+
     Ok(PdfImageObject {
         width,
         height,
@@ -157,6 +169,21 @@ fn prepare_png(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
         return Err(ImagePreparationError::UnsupportedFormat);
     }
 
+    let channels: usize = match color_type {
+        0 => 1,
+        2 => 3,
+        6 => 4,
+        _ => return Err(ImagePreparationError::UnsupportedFormat),
+    };
+
+    let expected_scanline = (width as usize).saturating_mul(channels).saturating_add(1);
+    let expected_decompressed = expected_scanline.saturating_mul(height as usize);
+    if expected_decompressed > MAX_DECOMPRESSED_IMAGE_BYTES {
+        return Err(ImagePreparationError::PayloadTooLarge {
+            size_bytes: expected_decompressed,
+        });
+    }
+
     // Collect all IDAT chunks
     let mut idat_data = Vec::new();
     let mut offset = 8;
@@ -179,10 +206,15 @@ fn prepare_png(bytes: &[u8]) -> Result<PdfImageObject, ImagePreparationError> {
         });
     }
 
-    let decompressed =
-        decompress_to_vec_zlib(&idat_data).map_err(|e| ImagePreparationError::CorruptData {
-            reason: format!("zlib inflate failed on PNG IDAT: {e:?}"),
-        })?;
+    let decompressed = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
+        &idat_data,
+        MAX_DECOMPRESSED_IMAGE_BYTES,
+    )
+    .map_err(|e| ImagePreparationError::CorruptData {
+        reason: format!(
+            "zlib inflate failed on PNG IDAT (limit {MAX_DECOMPRESSED_IMAGE_BYTES} bytes): {e:?}"
+        ),
+    })?;
 
     match color_type {
         // Grayscale 8-bit

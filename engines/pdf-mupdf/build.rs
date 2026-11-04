@@ -23,6 +23,13 @@ fn android_mupdf_prefix() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("target/mupdf-android"))
 }
 
+/// Directory that contains the Windows MuPDF installation.
+fn windows_mupdf_prefix() -> PathBuf {
+    std::env::var("MUPDF_WINDOWS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("target/mupdf-windows"))
+}
+
 /// Emits the link directives for a MuPDF installation.
 fn link_mupdf(prefix: &Path, library_name: &str) {
     let lib_dir = prefix.join("lib");
@@ -84,10 +91,13 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/mupdf_serialize.h");
     println!("cargo:rerun-if-env-changed=MUPDF_DIR");
     println!("cargo:rerun-if-env-changed=MUPDF_ANDROID_DIR");
+    println!("cargo:rerun-if-env-changed=MUPDF_WINDOWS_DIR");
 
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let prefix = if target_os == "android" {
         android_mupdf_prefix()
+    } else if target_os == "windows" {
+        windows_mupdf_prefix()
     } else {
         mupdf_prefix()
     };

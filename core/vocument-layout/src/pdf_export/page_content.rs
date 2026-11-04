@@ -14,7 +14,10 @@ use super::font_embedding::{
     encode_win_ansi_literal, has_non_win_ansi,
 };
 use super::structure::{StructureRoles, StructureTree};
-use super::unicode_fallback::{FALLBACK_FONT_RESOURCE_NAME, UnicodeFallbackRegistry};
+use super::unicode_fallback::{
+    FALLBACK_ARABIC_FONT_RESOURCE_NAME, FALLBACK_UNICODE_FONT_RESOURCE_NAME, FallbackScript,
+    UnicodeFallbackRegistry,
+};
 
 /// Name under which the embedded font is registered in every page's resource dictionary.
 pub(super) const FONT_RESOURCE_NAME: &str = "F1";
@@ -350,27 +353,42 @@ impl PageRenderer<'_> {
 
     fn render_segmented_text(&mut self, text: &str, font_size: f32) {
         let stream = &mut self.rendered.content_stream;
-        let mut in_fallback = false;
+        let mut cur_font = 0u8; // 0: Base F1, 1: Unicode F2, 2: Arabic F3
         let mut cur_win_ansi = String::new();
 
         for ch in text.chars() {
             if let Some(code) = char_to_win_ansi_code(ch) {
-                if in_fallback {
+                if cur_font != 0 {
                     let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
-                    in_fallback = false;
+                    cur_font = 0;
                 }
                 encode_single_byte_to_literal(code, &mut cur_win_ansi);
-            } else {
+            } else if let Some(fb) = self.fallback_registry.register_char(ch) {
                 if !cur_win_ansi.is_empty() {
                     let _ = writeln!(stream, "({cur_win_ansi}) Tj");
                     cur_win_ansi.clear();
                 }
-                if !in_fallback {
-                    let _ = writeln!(stream, "/{FALLBACK_FONT_RESOURCE_NAME} {font_size:.2} Tf");
-                    in_fallback = true;
-                }
-                if let Some(fb_code) = self.fallback_registry.register_char(ch) {
-                    let _ = writeln!(stream, "<{:02X}> Tj", fb_code);
+                match fb.script {
+                    FallbackScript::Unicode => {
+                        if cur_font != 1 {
+                            let _ = writeln!(
+                                stream,
+                                "/{FALLBACK_UNICODE_FONT_RESOURCE_NAME} {font_size:.2} Tf"
+                            );
+                            cur_font = 1;
+                        }
+                        let _ = writeln!(stream, "<{:04X}> Tj", fb.gid);
+                    }
+                    FallbackScript::Arabic => {
+                        if cur_font != 2 {
+                            let _ = writeln!(
+                                stream,
+                                "/{FALLBACK_ARABIC_FONT_RESOURCE_NAME} {font_size:.2} Tf"
+                            );
+                            cur_font = 2;
+                        }
+                        let _ = writeln!(stream, "<{:04X}> Tj", fb.gid);
+                    }
                 }
             }
         }
@@ -378,7 +396,7 @@ impl PageRenderer<'_> {
         if !cur_win_ansi.is_empty() {
             let _ = writeln!(stream, "({cur_win_ansi}) Tj");
         }
-        if in_fallback {
+        if cur_font != 0 {
             let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");
         }
     }

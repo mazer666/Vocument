@@ -49,3 +49,10 @@ __pycache__/
 
 # Android / Kotlin build cache
 .kotlin/
+
+# Windows / .NET / C#
+**/bin/
+**/obj/
+*.user
+*.suo
+.kotlin/
