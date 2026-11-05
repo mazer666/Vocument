@@ -7,6 +7,7 @@ fn main() {
     println!("cargo:rerun-if-changed=include/tesseract/export.h");
     println!("cargo:rerun-if-env-changed=TESSERACT_DIR");
     println!("cargo:rerun-if-env-changed=TESSERACT_ANDROID_LIB_DIR");
+    println!("cargo:rerun-if-env-changed=TESSERACT_WINDOWS_DIR");
 
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
     let include_dir = manifest_dir.join("include");
@@ -30,6 +31,22 @@ fn main() {
         );
         println!("cargo:rustc-link-lib=dylib=tesseract");
         println!("cargo:rustc-link-lib=dylib=leptonica");
+    } else if target_os == "windows" {
+        let tesseract_prefix = std::env::var("TESSERACT_WINDOWS_DIR")
+            .or_else(|_| std::env::var("TESSERACT_DIR"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("target/mupdf-windows"));
+
+        let lib_dir = tesseract_prefix.join("lib");
+
+        cc::Build::new()
+            .file("csrc/tesseract_bridge.c")
+            .include(&include_dir)
+            .warnings(true)
+            .compile("vocument_tesseract_bridge");
+
+        println!("cargo:rustc-link-search=native={}", lib_dir.display());
+        println!("cargo:rustc-link-lib=dylib=tesseract");
     } else {
         let tesseract_prefix = std::env::var("TESSERACT_DIR")
             .map(PathBuf::from)

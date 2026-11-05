@@ -66,6 +66,7 @@ jobs:
         shell: pwsh
         run: |
           $env:MUPDF_WINDOWS_DIR = "${{ github.workspace }}\target\mupdf-windows"
+          $env:TESSERACT_WINDOWS_DIR = "${{ github.workspace }}\target\mupdf-windows"
           cargo build -p vocument-ffi
 
       - name: Run Windows Native Acceptance Tests

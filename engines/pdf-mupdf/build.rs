@@ -33,9 +33,12 @@ fn windows_mupdf_prefix() -> PathBuf {
 /// Emits the link directives for a MuPDF installation.
 fn link_mupdf(prefix: &Path, library_name: &str) {
     let lib_dir = prefix.join("lib");
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib={library_name}");
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
+    if target_os != "windows" {
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
+    }
 }
 
 /// Reads the MuPDF version of the installation that is being linked.

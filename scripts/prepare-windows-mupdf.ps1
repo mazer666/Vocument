@@ -95,12 +95,18 @@ if (Test-Path $SolutionPath) {
     if ($BuiltLibs) {
         foreach ($lib in $BuiltLibs) {
             Copy-Item -Force $lib.FullName $LibDir
+            if ($lib.Name -match "^lib(.+)\.lib$") {
+                Copy-Item -Force $lib.FullName (Join-Path $LibDir "$($Matches[1]).lib")
+            }
         }
     }
     $BuiltDlls = Get-ChildItem -Path (Join-Path $SourceDir "platform/win32") -Filter "*.dll" -Recurse -ErrorAction SilentlyContinue
     if ($BuiltDlls) {
         foreach ($dll in $BuiltDlls) {
             Copy-Item -Force $dll.FullName $BinDir
+            if ($dll.Name -match "^lib(.+)\.dll$") {
+                Copy-Item -Force $dll.FullName (Join-Path $BinDir "$($Matches[1]).dll")
+            }
         }
     }
 }
