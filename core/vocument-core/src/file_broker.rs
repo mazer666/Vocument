@@ -147,6 +147,10 @@ impl ScopedLocalFileBroker {
         if bytes.len() < 2 || !bytes[0].is_ascii_alphabetic() {
             return true;
         }
+        // Windows drive letter paths such as C:\path, C:/path, or bare C: are local paths, not URI schemes.
+        if bytes[1] == b':' && (bytes.len() == 2 || bytes[2] == b'\\' || bytes[2] == b'/') {
+            return true;
+        }
         let mut index = 1;
         while index < bytes.len() {
             let byte = bytes[index];
@@ -327,5 +331,41 @@ impl FileBroker for ScopedLocalFileBroker {
             let _ = std::fs::remove_file(&staged.staging_path);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_local_token_windows_and_schemes() {
+        assert!(ScopedLocalFileBroker::is_local_token(
+            "C:\\Users\\test\\doc.pdf"
+        ));
+        assert!(ScopedLocalFileBroker::is_local_token(
+            "D:\\a\\Vocument\\target\\test.pdf"
+        ));
+        assert!(ScopedLocalFileBroker::is_local_token(
+            "c:/documents/file.pdf"
+        ));
+        assert!(ScopedLocalFileBroker::is_local_token(
+            "/usr/local/bin/test.pdf"
+        ));
+        assert!(ScopedLocalFileBroker::is_local_token("file:///tmp/doc.pdf"));
+        assert!(ScopedLocalFileBroker::is_local_token(
+            "relative/path/doc.pdf"
+        ));
+
+        // Platform provider URIs are not local tokens
+        assert!(!ScopedLocalFileBroker::is_local_token(
+            "content://com.android.providers.media.documents/document/123"
+        ));
+        assert!(!ScopedLocalFileBroker::is_local_token(
+            "https://example.com/doc.pdf"
+        ));
+        assert!(!ScopedLocalFileBroker::is_local_token(
+            "custom-scheme://item/1"
+        ));
     }
 }
