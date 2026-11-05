@@ -36,7 +36,9 @@ fn link_mupdf(prefix: &Path, library_name: &str) {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib={library_name}");
-    if target_os != "windows" {
+    if target_os == "windows" {
+        println!("cargo:rustc-link-lib=advapi32");
+    } else {
         println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
     }
 }

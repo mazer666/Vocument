@@ -204,7 +204,11 @@ static void extract_signature_field_data(
                     char buffer[64];
                     struct tm tm_value;
                     time_t seconds = (time_t)signed_at;
+#if defined(_WIN32) || defined(_MSC_VER)
+                    if (gmtime_s(&tm_value, &seconds) == 0) {
+#else
                     if (gmtime_r(&seconds, &tm_value)) {
+#endif
                         strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tm_value);
                         copy_c_string(dst->signed_at, sizeof(dst->signed_at), buffer);
                     }
