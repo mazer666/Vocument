@@ -22,6 +22,7 @@ vocument-flow = { path = "../../core/vocument-flow" }
 vocument-layout = { path = "../../core/vocument-layout" }
 vocument-pdoc = { path = "../../formats/pdoc" }
 vocument-office = { path = "../../engines/office" }
+serde_json.workspace = true
 uniffi.workspace = true
 thiserror.workspace = true
 

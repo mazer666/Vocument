@@ -379,3 +379,22 @@ impl PdfWriter {
         self.end_obj();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arabic_font_glyph_coverage() {
+        let face = ttf_parser::Face::parse(NOTO_NASKH_ARABIC_BYTES, 0).expect("parse noto");
+        let nominal = face.glyph_index('ب');
+        let isolated = face.glyph_index('\u{FE8F}');
+        let final_form = face.glyph_index('\u{FE90}');
+        let initial = face.glyph_index('\u{FE91}');
+        let medial = face.glyph_index('\u{FE92}');
+        println!(
+            "Nominal: {nominal:?}, Iso: {isolated:?}, Fin: {final_form:?}, Init: {initial:?}, Med: {medial:?}"
+        );
+        assert!(nominal.is_some() || isolated.is_some());
+    }
+}

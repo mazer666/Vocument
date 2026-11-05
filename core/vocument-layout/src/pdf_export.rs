@@ -8,6 +8,7 @@
 //! Conformance is claimed only after an external validator (veraPDF) has accepted the output;
 //! see `scripts/verify-pdfa-compliance.sh` and `PdfExportOptions::certified_by_external_tooling`.
 
+mod arabic_shaping;
 mod font_embedding;
 mod image_xobject;
 mod page_content;

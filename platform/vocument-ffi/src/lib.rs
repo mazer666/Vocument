@@ -5,6 +5,7 @@
 
 pub mod annotation_dto;
 pub mod build_info_dto;
+pub mod c_api;
 pub mod compare_dto;
 pub mod editor_dto;
 pub mod inspection_dto;

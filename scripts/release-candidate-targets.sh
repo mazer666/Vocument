@@ -122,11 +122,36 @@ row "the Android package is signed with the release key" \
 
 # --- The Windows application ----------------------------------------------
 WIN_PROJECT="$REPO_ROOT/apps/windows/VocumentApp.csproj"
-if [[ -f "$WIN_PROJECT" ]]; then
-    row "the Windows application shell and acceptance scenario is built" \
+IS_WINDOWS=false
+if [[ "${OS:-}" == "Windows_NT" || "$(uname -s)" == *"MINGW"* || "$(uname -s)" == *"CYGWIN"* || "$(uname -s)" == *"MSYS"* ]]; then
+    IS_WINDOWS=true
+fi
+
+if [[ "$IS_WINDOWS" == "true" ]]; then
+    if command -v dotnet >/dev/null 2>&1 && [[ -f "$WIN_PROJECT" ]]; then
+        if dotnet test "$WIN_PROJECT" --nologo -v q >/dev/null 2>&1; then
+            row "the Windows application is built and verified" \
+                "dotnet test apps/windows/VocumentApp.csproj" \
+                "PASS" "-" \
+                "Windows native WinUI 3 application and shared acceptance scenario verified (apps/windows, NET-001 offline, LOG-001 no telemetry)"
+        else
+            row "the Windows application is built and verified" \
+                "dotnet test apps/windows/VocumentApp.csproj" \
+                "FAIL" "dotnet test failed for apps/windows/VocumentApp.csproj" \
+                "the sources of the target are in the archive (apps/windows)"
+        fi
+    else
+        row "the Windows application is built and verified" \
+            "dotnet test apps/windows/VocumentApp.csproj" \
+            "NOT RUN" "no .NET SDK found on this Windows environment" \
+            "the sources of the target are in the archive (apps/windows)"
+    fi
+else
+    WIN_REASON="no Windows host and therefore no Windows SDK / WinUI 3 desktop runtime in this environment — DirectWrite and Windows App SDK do not exist for $(uname -s). The execution of the Windows application is NOT RUN; the sources are in apps/windows"
+    row "the Windows application is built and verified" \
         "dotnet test apps/windows/VocumentApp.csproj" \
-        "PASS" "-" \
-        "Windows native shell (.NET 8 WinUI 3) and shared acceptance scenario verified (apps/windows, NET-001 offline, LOG-001 no telemetry)"
+        "NOT RUN" "$WIN_REASON" \
+        "the sources of the target are in the archive (apps/windows)"
 fi
 
 # --- The legal clearance --------------------------------------------------

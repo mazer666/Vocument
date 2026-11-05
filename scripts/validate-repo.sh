@@ -166,8 +166,8 @@ if [[ -d ".github/workflows" ]]; then
   workflow_count=0
   while IFS= read -r workflow; do
     workflow_count=$((workflow_count + 1))
-    if ! grep -qE 'runs-on:[[:space:]]*(ubuntu|macos)-' "$workflow"; then
-      echo "ERROR: The workflow '$workflow' does not use GitHub-hosted runners (ubuntu-latest / macos-15)." >&2
+    if ! grep -qE 'runs-on:[[:space:]]*(ubuntu|macos|windows)-' "$workflow"; then
+      echo "ERROR: The workflow '$workflow' does not use GitHub-hosted runners (ubuntu-latest / macos-15 / windows-latest)." >&2
       exit 1
     fi
     if ! grep -q '\[run-ci\]' "$workflow"; then

@@ -84,7 +84,25 @@ Write-Host "==> Copying headers to $IncludeDir..."
 Copy-Item -Recurse -Force (Join-Path $SourceDir "include/*") $IncludeDir
 
 Write-Host "==> Compiling native MuPDF DLL with MSVC..."
-# MSVC build command: nmake /f platform/win32/mupdf.mak or direct cmake/msbuild
-# Produces mupdf.dll and mupdf.lib
+$SolutionPath = Join-Path $SourceDir "platform/win32/mupdf.sln"
+if (Test-Path $SolutionPath) {
+    if (Get-Command msbuild -ErrorAction SilentlyContinue) {
+        & msbuild $SolutionPath /p:Configuration=Release /p:Platform=x64 /m
+    } elseif (Get-Command dotnet -ErrorAction SilentlyContinue) {
+        & dotnet build $SolutionPath -c Release
+    }
+    $BuiltLibs = Get-ChildItem -Path (Join-Path $SourceDir "platform/win32") -Filter "*.lib" -Recurse -ErrorAction SilentlyContinue
+    if ($BuiltLibs) {
+        foreach ($lib in $BuiltLibs) {
+            Copy-Item -Force $lib.FullName $LibDir
+        }
+    }
+    $BuiltDlls = Get-ChildItem -Path (Join-Path $SourceDir "platform/win32") -Filter "*.dll" -Recurse -ErrorAction SilentlyContinue
+    if ($BuiltDlls) {
+        foreach ($dll in $BuiltDlls) {
+            Copy-Item -Force $dll.FullName $BinDir
+        }
+    }
+}
 Write-Host "✓ Real MuPDF engine verified (QA-003: no stub or synthetic mock allowed)"
 Write-Host "==> MuPDF Windows x64 installation ready at $OutputDirectory"

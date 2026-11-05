@@ -156,22 +156,15 @@ pub fn compare_documents(
     for align in &page_alignments {
         match (align.page_a, align.page_b) {
             (Some(pa), Some(pb)) => {
-                if align.similarity_score > 0.999 {
+                // Perform visual page comparison on all aligned pairs to detect layout,
+                // image, signature, and graphical differences without blind text-only bypasses.
+                let diff_res = compare_pages_visual(doc_a, pa, doc_b, pb, options)?;
+                if diff_res.changed_pixel_count == 0 {
                     identical_pages += 1;
-                    page_diffs.push(PageDiffResult {
-                        page_a: pa,
-                        page_b: pb,
-                        pixel_difference_percentage: 0.0,
-                        changed_pixel_count: 0,
-                        total_pixel_count: 1,
-                        difference_bounding_boxes: Vec::new(),
-                        diff_mask_png: None,
-                    });
                 } else {
                     modified_pages += 1;
-                    let diff_res = compare_pages_visual(doc_a, pa, doc_b, pb, options)?;
-                    page_diffs.push(diff_res);
                 }
+                page_diffs.push(diff_res);
             }
             (None, Some(_)) => {
                 inserted_pages += 1;

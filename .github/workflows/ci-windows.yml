@@ -1,0 +1,75 @@
+# The gate of the project on a GitHub-hosted Windows runner (CR-0003, PLATFORM-002).
+#
+# What this job proves:
+#   * the build and test of the native Windows 11 application shell (apps/windows);
+#   * the real P/Invoke native binding against Rust core (vocument-ffi);
+#   * the execution of the shared acceptance scenario on Windows:
+#     Open -> search -> select -> highlight -> rotate -> undo -> redo -> save -> recover -> reopen;
+#   * enforcement of QA-003: no stubs, placeholders, or dummy return values.
+#
+# The job publishes nothing, signs nothing and uploads nothing: it only reads
+# the repository and writes into the workspace of the runner.
+name: CI (Windows native)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-native:
+    name: Windows — WinUI 3 shell, native FFI and acceptance scenario
+    runs-on: windows-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-ci]')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+       (contains(github.event.pull_request.title, '[run-ci]') || contains(github.event.pull_request.body, '[run-ci]')))
+    timeout-minutes: 90
+    env:
+      MUPDF_WINDOWS_DIR: ${{ github.workspace }}\target\mupdf-windows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK 8.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustc --version
+          cargo --version
+
+      - name: Setup MSBuild and Visual Studio toolchain
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Prepare MuPDF Windows x64
+        shell: pwsh
+        run: |
+          ./scripts/prepare-windows-mupdf.ps1 -OutputDirectory "${{ github.workspace }}\target\mupdf-windows"
+
+      - name: Build Vocument FFI library
+        shell: pwsh
+        run: |
+          $env:MUPDF_WINDOWS_DIR = "${{ github.workspace }}\target\mupdf-windows"
+          cargo build -p vocument-ffi
+
+      - name: Run Windows Native Acceptance Tests
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
+          dotnet test apps/windows/VocumentApp.csproj --logger "console;verbosity=detailed"

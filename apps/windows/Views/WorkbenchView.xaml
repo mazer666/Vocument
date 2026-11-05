@@ -1,0 +1,42 @@
+<UserControl
+    x:Class="Vocument.Windows.Views.WorkbenchView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="#F8F9FA">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Workbench Action Ribbon -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="12,8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="RotateSelectedLeftButton" Content="Rotate 90° ↶" Click="OnRotateSelectedLeftClicked"/>
+                <Button x:Name="RotateSelectedRightButton" Content="Rotate 90° ↷" Click="OnRotateSelectedRightClicked"/>
+                <AppBarSeparator/>
+                <Button x:Name="CropPageButton" Content="Hard Crop..." Click="OnCropClicked"/>
+                <Button x:Name="SanitizeDocButton" Content="Sanitize (Remove Scripts/Metadata)" Click="OnSanitizeClicked"/>
+                <AppBarSeparator/>
+                <Button x:Name="DeletePagesButton" Content="Delete Page(s)" Click="OnDeleteClicked"/>
+                <Button x:Name="DuplicatePagesButton" Content="Duplicate Page(s)" Click="OnDuplicateClicked"/>
+                <AppBarSeparator/>
+                <Button x:Name="ExportPagesButton" Content="Export Selected..." Click="OnExportClicked"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Grid of Thumbnail Tiles -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="16">
+            <ItemsControl x:Name="PageThumbnailsGrid">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="6" ItemWidth="160" ItemHeight="220"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

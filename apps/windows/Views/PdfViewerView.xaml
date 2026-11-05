@@ -1,0 +1,64 @@
+<UserControl
+    x:Class="Vocument.Windows.Views.PdfViewerView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="#F5F5F7">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Viewer Toolbar -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="12,8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="OpenFileButton" Content="Open PDF..." Click="OnOpenFileClicked"/>
+                <Button x:Name="SaveButton" Content="Save" Click="OnSaveClicked"/>
+                <AppBarSeparator/>
+                <Button x:Name="ZoomOutButton" Content="-" Click="OnZoomOutClicked"/>
+                <TextBlock x:Name="ZoomText" Text="100%" VerticalAlignment="Center" Width="50" TextAlignment="Center"/>
+                <Button x:Name="ZoomInButton" Content="+" Click="OnZoomInClicked"/>
+                <AppBarSeparator/>
+                <Button x:Name="HighlightButton" Content="Highlight Selection" Click="OnHighlightClicked"/>
+                <Button x:Name="RotateLeftButton" Content="Rotate ↶" Click="OnRotateLeftClicked"/>
+                <Button x:Name="RotateRightButton" Content="Rotate ↷" Click="OnRotateRightClicked"/>
+                <AppBarSeparator/>
+                <TextBox x:Name="SearchBox" PlaceholderText="Search document (SQLite FTS5)..." Width="220" KeyDown="OnSearchKeyDown"/>
+                <Button x:Name="SearchButton" Content="Find" Click="OnSearchClicked"/>
+                <TextBlock x:Name="SearchResultsSummary" Text="" VerticalAlignment="Center" Foreground="#666666"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Viewport Canvas Area -->
+        <ScrollViewer Grid.Row="1" x:Name="DocumentScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24" Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="2">
+                <Image x:Name="PageViewportImage" Stretch="None"/>
+            </Border>
+        </ScrollViewer>
+
+        <!-- Status & Pagination Bar -->
+        <Border Grid.Row="2" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="PrevPageButton" Content="◀" Click="OnPrevPageClicked"/>
+                    <TextBlock x:Name="PageIndicatorText" Text="Page 1 of 1" VerticalAlignment="Center"/>
+                    <Button x:Name="NextPageButton" Content="▶" Click="OnNextPageClicked"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" x:Name="DocumentStatusText" Text="Ready (Offline default)" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#555555"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="UndoButton" Content="Undo" Click="OnUndoClicked"/>
+                    <Button x:Name="RedoButton" Content="Redo" Click="OnRedoClicked"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

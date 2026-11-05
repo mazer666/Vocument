@@ -356,7 +356,15 @@ impl PageRenderer<'_> {
         let mut cur_font = 0u8; // 0: Base F1, 1: Unicode F2, 2: Arabic F3
         let mut cur_win_ansi = String::new();
 
-        for ch in text.chars() {
+        let contains_arabic = text.chars().any(UnicodeFallbackRegistry::is_arabic_char);
+        let chars_to_render: Vec<char> = if contains_arabic {
+            let shaped = super::arabic_shaping::shape_arabic_text(text);
+            super::arabic_shaping::reorder_rtl_for_pdf(&shaped)
+        } else {
+            text.chars().collect()
+        };
+
+        for ch in chars_to_render {
             if let Some(code) = char_to_win_ansi_code(ch) {
                 if cur_font != 0 {
                     let _ = writeln!(stream, "/{FONT_RESOURCE_NAME} {font_size:.2} Tf");

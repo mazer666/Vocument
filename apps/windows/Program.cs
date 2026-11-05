@@ -7,6 +7,15 @@ public static class Program
 {
     public static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--ui")
+        {
+            Console.WriteLine("==> Initializing Vocument Windows 11 Desktop Shell (WinUI 3)...");
+            using var app = new App();
+            var window = app.LaunchMainWindow();
+            Console.WriteLine("✓ Vocument Windows 11 Shell launched successfully.");
+            return 0;
+        }
+
         Console.WriteLine("==> Executing Vocument Windows Handshake & Acceptance Scenario...");
         try
         {
