@@ -75,7 +75,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
-          dotnet test apps/windows/VocumentApp.csproj --logger "console;verbosity=detailed"
+          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 --logger "console;verbosity=detailed"
 
       - name: Publish the WinUI 3 application
         shell: pwsh
@@ -109,7 +109,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
-          dotnet test apps/windows/VocumentApp.csproj --filter "FullyQualifiedName~WindowsGuiEndToEndTests" --logger "console;verbosity=detailed"
+          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 --filter "FullyQualifiedName~WindowsGuiEndToEndTests" --logger "console;verbosity=detailed"
           if ($LASTEXITCODE -ne 0) {
             Write-Error "The GUI end-to-end gate failed."
             exit 1
