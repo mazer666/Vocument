@@ -39,21 +39,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <!--
-      The WinUI 3 XAML compiler needs the XAML files as explicit items. The default
-      item globs of the SDK are switched off, otherwise every file would be
-      included twice and the build would fail with duplicate items.
-    -->
-    <EnableDefaultPageItems Condition="'$(OS)' == 'Windows_NT'">false</EnableDefaultPageItems>
-    <EnableDefaultApplicationDefinition Condition="'$(OS)' == 'Windows_NT'">false</EnableDefaultApplicationDefinition>
   </PropertyGroup>
-
-  <!-- The XAML of the shell: the application definition and the pages of the views. -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
-    <ApplicationDefinition Include="App.xaml" />
-    <Page Include="MainWindow.xaml" />
-    <Page Include="Views\*.xaml" />
-  </ItemGroup>
   <!-- Windows App SDK: WinUI 3 XAML compiler, projections and the unpackaged bootstrap. -->
   <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />

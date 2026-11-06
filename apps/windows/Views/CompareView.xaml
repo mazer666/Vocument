@@ -50,7 +50,7 @@
                 </Border>
             </ScrollViewer>
 
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#E5E7EB"/>
+            <Border Grid.Column="1" Background="#E5E7EB" Width="4" HorizontalAlignment="Center"/>
 
             <ScrollViewer Grid.Column="2" x:Name="DocBScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <Border Margin="16" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="2">

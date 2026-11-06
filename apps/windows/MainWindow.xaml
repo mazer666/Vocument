@@ -44,6 +44,6 @@
         </Border>
 
         <!-- Active View Host Container -->
-        <Grid Grid.Row="1" x:Name="MainContentHost"/>
+        <ContentControl Grid.Row="1" x:Name="MainContentHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Grid>
 </Window>

@@ -75,13 +75,13 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
-          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 --logger "console;verbosity=detailed"
+          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 -v normal --logger "console;verbosity=detailed"
 
       - name: Publish the WinUI 3 application
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
-          dotnet publish apps/windows/VocumentApp.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -o "${{ github.workspace }}\target\windows-distribution\VocumentWindows"
+          dotnet publish apps/windows/VocumentApp.csproj -c Release -r win-x64 -p:Platform=x64 -v normal --self-contained false -o "${{ github.workspace }}\target\windows-distribution\VocumentWindows"
 
       - name: Assemble the internal Windows x64 distribution
         shell: pwsh
@@ -109,7 +109,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
-          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 --filter "FullyQualifiedName~WindowsGuiEndToEndTests" --logger "console;verbosity=detailed"
+          dotnet test apps/windows/VocumentApp.csproj -p:Platform=x64 -v normal --filter "FullyQualifiedName~WindowsGuiEndToEndTests" --logger "console;verbosity=detailed"
           if ($LASTEXITCODE -ne 0) {
             Write-Error "The GUI end-to-end gate failed."
             exit 1
