@@ -1,8 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    WinUI 3 / Windows App SDK shell (CR-0003, PLATFORM-002, PLATFORM-003).
+
+    The Windows build is a real WinUI 3 desktop application: the Windows App SDK
+    packages, the XAML compiler and the Windows SDK targets are only available on
+    Windows, so every Windows-only artefact is conditioned on $(OS) == 'Windows_NT'.
+    On other hosts the project keeps building as a plain .NET 8 library/console so
+    that the native acceptance scenario (Tests/) stays runnable in CI.
+  -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <OutputType Condition="'$(OS)' == 'Windows_NT'">WinExe</OutputType>
+    <OutputType Condition="'$(OS)' != 'Windows_NT'">Exe</OutputType>
+
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net8.0</TargetFramework>
+    <TargetPlatformMinVersion Condition="'$(OS)' == 'Windows_NT'">10.0.17763.0</TargetPlatformMinVersion>
+
+    <UseWinUI Condition="'$(OS)' == 'Windows_NT'">true</UseWinUI>
+    <WindowsPackageType Condition="'$(OS)' == 'Windows_NT'">None</WindowsPackageType>
+    <Platforms Condition="'$(OS)' == 'Windows_NT'">x64</Platforms>
+    <RuntimeIdentifiers Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifiers>
+
+    <!-- Unpackaged desktop application: no MSIX, no signing step in the build. -->
+    <EnableMsixTooling Condition="'$(OS)' == 'Windows_NT'">false</EnableMsixTooling>
+    <WindowsAppSDKSelfContained Condition="'$(OS)' == 'Windows_NT'">false</WindowsAppSDKSelfContained>
+    <SelfContained Condition="'$(OS)' == 'Windows_NT'">false</SelfContained>
+    <Platform Condition="'$(OS)' == 'Windows_NT' and ('$(Platform)' == '' or '$(Platform)' == 'AnyCPU')">x64</Platform>
+
+    <!-- WINUI_DESKTOP selects the WinUI 3 bootstrap in Program.cs. -->
+    <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINUI_DESKTOP</DefineConstants>
+
     <RollForward>Major</RollForward>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -13,6 +41,12 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
+  <!-- Windows App SDK: WinUI 3 XAML compiler, projections and the unpackaged bootstrap. -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
@@ -20,6 +54,22 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <!--
+    The WinUI 3 types (Microsoft.UI.Xaml.*, Windows.Storage.Pickers.*) only exist in the
+    Windows App SDK projection, so the shell sources are excluded from non-Windows
+    builds. The native bridge, the platform layer, the comparison engines and the
+    acceptance tests stay platform independent.
+  -->
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Compile Remove="App.xaml.cs" />
+    <Compile Remove="MainWindow.xaml.cs" />
+    <Compile Remove="Platform/WindowsDocumentPicker.cs" />
+    <Compile Remove="Views/PdfViewerView.xaml.cs" />
+    <Compile Remove="Views/WorkbenchView.xaml.cs" />
+    <Compile Remove="Views/EditorView.xaml.cs" />
+    <Compile Remove="Views/CompareView.xaml.cs" />
   </ItemGroup>
 
 </Project>

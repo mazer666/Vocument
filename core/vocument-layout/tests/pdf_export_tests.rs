@@ -235,6 +235,8 @@ fn test_pdf_export_preserves_arbitrary_unicode_via_actualtext() {
         let tmp_pdf = std::env::temp_dir().join("vocument_unicode_actualtext_test.pdf");
         std::fs::write(&tmp_pdf, &pdf_bytes).expect("write temp pdf");
         let out = std::process::Command::new("/opt/homebrew/bin/mutool")
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
             .args(["draw", "-F", "txt", tmp_pdf.to_str().unwrap_or("")])
             .output()
             .expect("mutool draw -F txt");

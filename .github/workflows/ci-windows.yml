@@ -5,10 +5,12 @@
 #   * the real P/Invoke native binding against Rust core (vocument-ffi);
 #   * the execution of the shared acceptance scenario on Windows:
 #     Open -> search -> select -> highlight -> rotate -> undo -> redo -> save -> recover -> reopen;
+#   * the GUI end-to-end gate of the WinUI 3 shell (WindowsGuiEndToEndTests);
+#   * the publication of the unpackaged WinUI 3 application and its internal artifact;
 #   * enforcement of QA-003: no stubs, placeholders, or dummy return values.
 #
-# The job publishes nothing, signs nothing and uploads nothing: it only reads
-# the repository and writes into the workspace of the runner.
+# The job publishes nothing to a release and signs nothing: the internal artifact is
+# uploaded as a workflow artifact for reviewers of the Windows track.
 name: CI (Windows native)
 
 on:
@@ -74,3 +76,42 @@ jobs:
         run: |
           $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
           dotnet test apps/windows/VocumentApp.csproj --logger "console;verbosity=detailed"
+
+      - name: Publish the WinUI 3 application
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
+          dotnet publish apps/windows/VocumentApp.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained false -o "${{ github.workspace }}\target\windows-distribution\VocumentWindows"
+
+      - name: Assemble the internal Windows x64 distribution
+        shell: pwsh
+        run: |
+          $distribution = "${{ github.workspace }}\target\windows-distribution"
+          $application = Join-Path $distribution "VocumentWindows"
+
+          # The native core library and the MuPDF runtime belong next to the application.
+          Copy-Item -Path "${{ github.workspace }}\target\debug\vocument_ffi.dll" -Destination $application -Force
+          Get-ChildItem -Path "${{ github.workspace }}\target\mupdf-windows\bin" -Filter *.dll -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $application -Force
+
+          $archive = Join-Path $distribution "Vocument-Windows-x64-internal.zip"
+          Compress-Archive -Path (Join-Path $application "*") -DestinationPath $archive -Force
+          Get-Item $archive | Select-Object Name, Length
+
+      - name: Upload the internal Windows x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vocument-windows-x64-internal
+          path: target/windows-distribution/Vocument-Windows-x64-internal.zip
+          if-no-files-found: error
+
+      - name: GUI end-to-end gate (WinUI 3 shell)
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\target\debug;${{ github.workspace }}\target\mupdf-windows\bin;$env:PATH"
+          dotnet test apps/windows/VocumentApp.csproj --filter "FullyQualifiedName~WindowsGuiEndToEndTests" --logger "console;verbosity=detailed"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "The GUI end-to-end gate failed."
+            exit 1
+          }
+          echo "WINUI_GATE=PASS"

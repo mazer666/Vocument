@@ -22,29 +22,28 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Document A (Original):" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="DocAPathText" Text="None" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="Document A (original):" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DocAPathText" Text="None" VerticalAlignment="Center" Foreground="#4B5563" TextTrimming="CharacterEllipsis"/>
                     <Button x:Name="SelectDocAButton" Content="Choose..." Click="OnSelectDocAClicked"/>
                 </StackPanel>
-                <Button Grid.Column="1" x:Name="RunCompareButton" Content="Execute Comparison" Click="OnRunCompareClicked"/>
+                <Button Grid.Column="1" x:Name="RunCompareButton" Content="Execute comparison" Click="OnRunCompareClicked"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <TextBlock Text="Document B (Modified):" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="DocBPathText" Text="None" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="Document B (modified):" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DocBPathText" Text="None" VerticalAlignment="Center" Foreground="#4B5563" TextTrimming="CharacterEllipsis"/>
                     <Button x:Name="SelectDocBButton" Content="Choose..." Click="OnSelectDocBClicked"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Side-by-Side Dual Viewports -->
+        <!-- Side-by-side Dual Viewports -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="4"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Doc A Viewport -->
             <ScrollViewer Grid.Column="0" x:Name="DocAScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <Border Margin="16" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="2">
                     <Image x:Name="DocAImage" Stretch="None"/>
@@ -53,21 +52,19 @@
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#E5E7EB"/>
 
-            <!-- Doc B Viewport (with Diff Overlays) -->
             <ScrollViewer Grid.Column="2" x:Name="DocBScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <Border Margin="16" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="2">
                     <Image x:Name="DocBImage" Stretch="None"/>
                 </Border>
             </ScrollViewer>
 
-            <!-- Change Navigation Sidebar -->
             <Border Grid.Column="3" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1,0,0,0" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Detected Differences" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Grid.Row="0" Text="Detected differences" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ListView Grid.Row="1" x:Name="DifferencesListView"/>
                 </Grid>
             </Border>
@@ -76,8 +73,15 @@
         <!-- Compare Status & Export Bar -->
         <Border Grid.Row="2" Background="#FAFAFA" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,6">
             <Grid>
-                <TextBlock x:Name="CompareStatusSummary" Text="Ready to compare" VerticalAlignment="Center"/>
-                <Button HorizontalAlignment="Right" Content="Export Comparison Report (PDF)..." Click="OnExportReportClicked"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" x:Name="CompareStatusSummary" Text="Ready to compare" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ExportReportButton" Content="Export report..." Click="OnExportReportClicked"/>
+                    <Button x:Name="ExportDocumentBButton" Content="Export B (PDF)..." Click="OnExportDocumentBClicked"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

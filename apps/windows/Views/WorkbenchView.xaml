@@ -10,33 +10,47 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Workbench Action Ribbon -->
         <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="12,8">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="RotateSelectedLeftButton" Content="Rotate 90° ↶" Click="OnRotateSelectedLeftClicked"/>
-                <Button x:Name="RotateSelectedRightButton" Content="Rotate 90° ↷" Click="OnRotateSelectedRightClicked"/>
+                <Button x:Name="OpenDocumentButton" Content="Open document..." Click="OnOpenDocumentClicked"/>
+                <Button x:Name="RefreshThumbnailsButton" Content="Refresh thumbnails" Click="OnRefreshThumbnailsClicked"/>
                 <AppBarSeparator/>
-                <Button x:Name="CropPageButton" Content="Hard Crop..." Click="OnCropClicked"/>
-                <Button x:Name="SanitizeDocButton" Content="Sanitize (Remove Scripts/Metadata)" Click="OnSanitizeClicked"/>
+                <Button x:Name="RotateSelectedLeftButton" Content="Rotate left" Click="OnRotateSelectedLeftClicked"/>
+                <Button x:Name="RotateSelectedRightButton" Content="Rotate right" Click="OnRotateSelectedRightClicked"/>
                 <AppBarSeparator/>
-                <Button x:Name="DeletePagesButton" Content="Delete Page(s)" Click="OnDeleteClicked"/>
-                <Button x:Name="DuplicatePagesButton" Content="Duplicate Page(s)" Click="OnDuplicateClicked"/>
+                <Button x:Name="MovePagesButton" Content="Move pages" Click="OnMovePagesClicked"/>
+                <Button x:Name="ExtractPagesButton" Content="Extract pages" Click="OnExtractPagesClicked"/>
+                <Button x:Name="DeletePagesButton" Content="Delete pages" Click="OnDeletePagesClicked"/>
+                <Button x:Name="StampPagesButton" Content="Stamp pages" Click="OnStampClicked"/>
                 <AppBarSeparator/>
-                <Button x:Name="ExportPagesButton" Content="Export Selected..." Click="OnExportClicked"/>
+                <Button x:Name="UndoButton" Content="Undo" Click="OnUndoClicked"/>
+                <Button x:Name="RedoButton" Content="Redo" Click="OnRedoClicked"/>
             </StackPanel>
         </Border>
 
         <!-- Grid of Thumbnail Tiles -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="16">
-            <ItemsControl x:Name="PageThumbnailsGrid">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="6" ItemWidth="160" ItemHeight="220"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-        </ScrollViewer>
+        <ListView Grid.Row="1" x:Name="PageThumbnailsList" SelectionMode="Multiple" SelectionChanged="OnPageSelectionChanged" Padding="16" Margin="16">
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="6" ItemWidth="160" ItemHeight="220"/>
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Width="150">
+                        <Image Source="{Binding Thumbnail}" Stretch="None" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#374151"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <Border Grid.Row="2" Background="#FAFAFA" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,6">
+            <TextBlock x:Name="WorkbenchStatusText" Text="No document open" VerticalAlignment="Center"/>
+        </Border>
     </Grid>
 </UserControl>

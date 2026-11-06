@@ -10,12 +10,16 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Formatting Ribbon -->
         <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="12,6">
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <ComboBox x:Name="StyleComboBox" SelectedIndex="0" Width="140">
+                <Button x:Name="OpenDocumentButton" Content="Open document..." Click="OnOpenDocumentClicked"/>
+                <Button x:Name="SaveDocumentButton" Content="Save PDF" Click="OnSaveDocumentClicked"/>
+                <AppBarSeparator/>
+                <ComboBox x:Name="StyleComboBox" SelectedIndex="0" Width="140" SelectionChanged="OnStyleSelectionChanged">
                     <ComboBoxItem Content="Body Text"/>
                     <ComboBoxItem Content="Heading 1"/>
                     <ComboBoxItem Content="Heading 2"/>
@@ -23,23 +27,28 @@
                     <ComboBoxItem Content="Code Block"/>
                 </ComboBox>
                 <AppBarSeparator/>
-                <Button x:Name="BoldButton" Content="B" FontWeight="Bold"/>
-                <Button x:Name="ItalicButton" Content="I" FontStyle="Italic"/>
-                <Button x:Name="UnderlineButton" Content="U"/>
+                <Button x:Name="BoldButton" Content="B" FontWeight="Bold" Click="OnBoldClicked"/>
+                <Button x:Name="ItalicButton" Content="I" FontStyle="Italic" Click="OnItalicClicked"/>
+                <Button x:Name="UnderlineButton" Content="U" Click="OnUnderlineClicked"/>
                 <AppBarSeparator/>
-                <Button x:Name="InsertTableButton" Content="Table"/>
-                <Button x:Name="InsertImageButton" Content="Figure"/>
-                <Button x:Name="TrackChangesButton" Content="Track Changes"/>
+                <Button x:Name="InsertTableButton" Content="Table" Click="OnInsertTableClicked"/>
+                <Button x:Name="InsertFigureButton" Content="Figure" Click="OnInsertFigureClicked"/>
+                <ToggleSwitch x:Name="TrackChangesSwitch" Header="Track changes" OffContent="Off" OnContent="On" Toggled="OnTrackChangesToggled"/>
                 <AppBarSeparator/>
-                <Button x:Name="ExportPdfButton" Content="Export PDF/A-2b &amp; UA-1..."/>
+                <Button x:Name="ExportTextButton" Content="Export text..." Click="OnExportTextClicked"/>
+                <Button x:Name="ExportPdfButton" Content="Export PDF/A-2b &amp; UA-1..." Click="OnExportPdfClicked"/>
             </StackPanel>
         </Border>
 
         <!-- Flow Document Canvas -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="32">
-            <Border Width="816" MinHeight="1056" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="2" Padding="48">
-                <RichEditBox x:Name="FlowDocumentEditorBox" BorderThickness="0" Background="Transparent"/>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Border Width="816" MinHeight="1056" Margin="32" Background="#FFFFFF" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="2" Padding="48">
+                <RichEditBox x:Name="FlowDocumentEditorBox" BorderThickness="0" Background="Transparent" TextChanged="OnEditorTextChanged"/>
             </Border>
         </ScrollViewer>
+
+        <Border Grid.Row="2" Background="#FAFAFA" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="12,6">
+            <TextBlock x:Name="EditorStatusText" Text="No document open" VerticalAlignment="Center"/>
+        </Border>
     </Grid>
 </UserControl>

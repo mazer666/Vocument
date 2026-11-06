@@ -488,6 +488,8 @@ fn test_mutool_cli_interoperability_if_available() {
     if let Some(cmd) = mutool_path {
         let sample = sample_pdf_path();
         let out = Command::new(cmd)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
             .args(["info", &sample.to_string_lossy()])
             .output()
             .expect("run mutool info");

@@ -65,15 +65,51 @@ internal static class NativeMethods
 {
     private const string LibName = "vocument_ffi";
 
+    private static IntPtr _loadedHandle;
+
     static NativeMethods()
     {
         NativeLibrary.SetDllImportResolver(typeof(NativeMethods).Assembly, ResolveNativeLibrary);
+    }
+
+    /// <summary>
+    /// Reports whether the linked core build exports the given C ABI entry point. The
+    /// shell uses this to tell apart "the core cannot do this" from "the Windows
+    /// client does not implement this entry point yet".
+    /// </summary>
+    internal static bool TryGetExport(string entryPointName)
+    {
+        var handle = _loadedHandle;
+        if (handle == IntPtr.Zero)
+        {
+            handle = LoadNativeLibrary();
+        }
+
+        return handle != IntPtr.Zero && NativeLibrary.TryGetExport(handle, entryPointName, out _);
     }
 
     private static IntPtr ResolveNativeLibrary(string libraryName, System.Reflection.Assembly assembly, DllImportSearchPath? searchPath)
     {
         if (libraryName != LibName) return IntPtr.Zero;
 
+        var handle = LoadNativeLibrary();
+        if (handle != IntPtr.Zero)
+        {
+            _loadedHandle = handle;
+            return handle;
+        }
+
+        if (NativeLibrary.TryLoad(libraryName, assembly, searchPath, out var defaultHandle))
+        {
+            _loadedHandle = defaultHandle;
+            return defaultHandle;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private static IntPtr LoadNativeLibrary()
+    {
         string extension;
         string prefix = "";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -119,13 +155,9 @@ internal static class NativeMethods
         {
             if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
             {
+                _loadedHandle = handle;
                 return handle;
             }
-        }
-
-        if (NativeLibrary.TryLoad(fileName, assembly, searchPath, out var defaultHandle))
-        {
-            return defaultHandle;
         }
 
         return IntPtr.Zero;
@@ -174,7 +206,7 @@ internal static class NativeMethods
     public static extern void VocumentFreeString(IntPtr str);
 }
 
-public sealed class DocumentCoreClient : IDisposable
+public sealed partial class DocumentCoreClient : IDisposable
 {
     private readonly IWindowsFileBroker _fileBroker;
     private readonly IWindowsSettingsStore _settingsStore;

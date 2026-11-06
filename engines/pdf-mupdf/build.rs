@@ -5,9 +5,19 @@ use std::path::{Path, PathBuf};
 /// The value is resolved per target so that a host build and an Android build can
 /// use different MuPDF installations. `MUPDF_DIR` overrides the default.
 fn mupdf_prefix() -> PathBuf {
-    std::env::var("MUPDF_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/opt/homebrew/opt/mupdf"))
+    if let Ok(dir) = std::env::var("MUPDF_DIR") {
+        return PathBuf::from(dir);
+    }
+    let repo_root = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default())
+        .join("../../target/mupdf-host");
+    if repo_root.is_dir() {
+        return repo_root;
+    }
+    let local_target = PathBuf::from("target/mupdf-host");
+    if local_target.is_dir() {
+        return local_target;
+    }
+    PathBuf::from("/opt/homebrew/opt/mupdf")
 }
 
 /// Directory that contains the Android MuPDF installation.

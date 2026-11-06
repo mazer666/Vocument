@@ -84,7 +84,12 @@ fn test_searchable_pdf_synthesis_and_mupdf_roundtrip() {
             std::env::temp_dir().join(format!("vocument_m1_4_test_{}.pdf", std::process::id()));
         fs::write(&temp_pdf, &pdf_bytes).expect("Failed to write temp PDF for mutool");
 
-        let info_out = Command::new(&cmd).arg("info").arg(&temp_pdf).output();
+        let info_out = Command::new(&cmd)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
+            .arg("info")
+            .arg(&temp_pdf)
+            .output();
         if let Ok(out) = info_out {
             assert!(
                 out.status.success(),
@@ -100,6 +105,8 @@ fn test_searchable_pdf_synthesis_and_mupdf_roundtrip() {
         }
 
         let draw_out = Command::new(&cmd)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
             .args(["draw", "-F", "png", "-o", "/dev/null"])
             .arg(&temp_pdf)
             .output();

@@ -107,6 +107,8 @@ fn test_m2_sanitized_pdf_interoperability() {
 
     if let Some(cmd) = mutool_cmd {
         let out = Command::new(cmd)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
             .args(["info", &temp_pdf.to_string_lossy()])
             .output()
             .expect("run mutool info");
@@ -116,6 +118,8 @@ fn test_m2_sanitized_pdf_interoperability() {
         );
 
         let draw_out = Command::new(cmd)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
             .args([
                 "draw",
                 "-F",
