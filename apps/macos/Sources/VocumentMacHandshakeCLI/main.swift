@@ -529,7 +529,7 @@ struct VocumentMacHandshakeCLI {
         // the viewers that exist there, and says which ones it could not run.
         #if canImport(Darwin)
         guard interopReport.coregraphicsSipsVerified && interopReport.chromePdfiumVerified else {
-            fatalError("M0.7 Interop Gate failed: foreign viewer verification failed.")
+            fatalError("M0.7 Interop Gate failed: foreign viewer verification failed. sips=\(interopReport.coregraphicsSipsVerified), chrome=\(interopReport.chromePdfiumVerified), summary=\(interopReport.summary)")
         }
         #else
         guard interopReport.mupdfReopenVerified && interopReport.mutoolVerified else {

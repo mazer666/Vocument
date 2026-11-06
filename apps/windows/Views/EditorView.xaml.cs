@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Documents;
 using Vocument.Windows.Native;
@@ -125,8 +126,8 @@ public sealed partial class EditorView : Microsoft.UI.Xaml.Controls.UserControl
         }
 
         var selection = document.Selection;
-        var start = selection.Start;
-        var length = Math.Max(0, selection.End - start);
+        var start = selection.StartPosition;
+        var length = Math.Max(0, selection.EndPosition - start);
         var level = StyleComboBox.SelectedIndex switch
         {
             1 => 1,
@@ -160,9 +161,9 @@ public sealed partial class EditorView : Microsoft.UI.Xaml.Controls.UserControl
         EditorStatusText.Text = "Figure placeholder inserted (alt text required for PDF/UA)";
     }
 
-    private void OnTrackChangesToggled(object sender, Microsoft.UI.Xaml.Controls.ToggledEventArgs e)
+    private void OnTrackChangesToggled(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        _trackChanges = e.IsOn;
+        _trackChanges = sender is Microsoft.UI.Xaml.Controls.ToggleSwitch toggle && toggle.IsOn;
         EditorStatusText.Text = _trackChanges
             ? $"Track changes is on ({_trackedChanges.Count} recorded change(s))"
             : "Track changes is off";
@@ -224,8 +225,8 @@ public sealed partial class EditorView : Microsoft.UI.Xaml.Controls.UserControl
         }
 
         var selection = document.Selection;
-        var start = selection.Start;
-        var length = Math.Max(0, selection.End - start);
+        var start = selection.StartPosition;
+        var length = Math.Max(0, selection.EndPosition - start);
         document.ApplyInlineStyle(start, length, style);
         EditorStatusText.Text = $"Style applied to {length} character(s)";
     }
@@ -243,28 +244,52 @@ public sealed record ParagraphStyle(int HeadingLevel = 0, bool IsCodeBlock = fal
 /// </summary>
 public static class RichTextDocumentExtensions
 {
-    public static void ApplyInlineStyle(this RichTextDocument document, int start, int length, InlineStyle style)
+    public static string GetText(this Microsoft.UI.Text.ITextDocument document)
     {
-        if (length <= 0)
-        {
-            return;
-        }
-
-        if (style.Bold) document.SetBold(start, length, true);
-        if (style.Italic) document.SetItalic(start, length, true);
-        if (style.Underline) document.SetUnderline(start, length, true);
+        document.GetText(Microsoft.UI.Text.TextGetOptions.None, out string text);
+        return text ?? string.Empty;
     }
 
-    public static void SetParagraphStyle(this RichTextDocument document, int start, int length, ParagraphStyle style)
+    public static void SetText(this Microsoft.UI.Text.ITextDocument document, string text)
+    {
+        document.SetText(Microsoft.UI.Text.TextSetOptions.None, text ?? string.Empty);
+    }
+
+    public static void InsertTextAtCaret(this Microsoft.UI.Text.ITextDocument document, string text)
+    {
+        document.Selection?.SetText(Microsoft.UI.Text.TextSetOptions.None, text ?? string.Empty);
+    }
+
+    public static void ApplyInlineStyle(this Microsoft.UI.Text.ITextDocument document, int start, int length, InlineStyle style)
     {
         if (length <= 0)
         {
             return;
         }
 
+        var range = document.GetRange(start, start + length);
+        if (style.Bold) range.CharacterFormat.Bold = Microsoft.UI.Text.FormatEffect.On;
+        if (style.Italic) range.CharacterFormat.Italic = Microsoft.UI.Text.FormatEffect.On;
+        if (style.Underline) range.CharacterFormat.Underline = Microsoft.UI.Text.UnderlineType.Single;
+    }
+
+    public static void SetParagraphStyle(this Microsoft.UI.Text.ITextDocument document, int start, int length, ParagraphStyle style)
+    {
+        if (length <= 0)
+        {
+            return;
+        }
+
+        var range = document.GetRange(start, start + length);
         if (style.HeadingLevel > 0)
         {
-            document.SetParagraphStyle(start, length, new RichTextBlockFormat { HeadingLevel = style.HeadingLevel });
+            range.ParagraphFormat.Style = style.HeadingLevel switch
+            {
+                1 => Microsoft.UI.Text.ParagraphStyle.Heading1,
+                2 => Microsoft.UI.Text.ParagraphStyle.Heading2,
+                3 => Microsoft.UI.Text.ParagraphStyle.Heading3,
+                _ => Microsoft.UI.Text.ParagraphStyle.Normal
+            };
         }
     }
 }

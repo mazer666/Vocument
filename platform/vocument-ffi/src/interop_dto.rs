@@ -332,26 +332,48 @@ pub fn document_core_run_interop_gate_suite() -> Result<FfiInteropReport, Docume
     }
 
     // Step 15: Test Google Chrome PDFium (headless)
+    //
+    // Chrome must not touch the profile of the developer: a shared profile is
+    // locked by the running browser instance and the headless run then fails
+    // with a profile error (and crashes on macOS/Linux CI hosts). The gate
+    // therefore renders with an isolated profile directory that is removed
+    // together with the temporary directory afterwards.
+    //
+    // `--headless=new` is the current headless implementation of Chrome. Older
+    // builds do not know the flag and are served by the legacy `--headless`.
     let mut chrome_pdfium_verified = false;
     let chrome_out = temp_dir.join("chrome_screenshot.png");
-    if let Some(chrome_bin) = resolve_chromium_binary()
-        && let Ok(output) = Command::new(&chrome_bin)
-            .args([
-                "--headless",
-                "--disable-gpu",
-                "--no-sandbox",
-                &format!("--screenshot={}", chrome_out.to_string_lossy()),
-                &test_pdf_str,
-            ])
-            .output()
-        && output.status.success()
-        && chrome_out.exists()
-        && chrome_out
-            .metadata()
-            .map(|meta| meta.len() > 0)
-            .unwrap_or(false)
-    {
-        chrome_pdfium_verified = true;
+    let user_data_dir = temp_dir.join("chrome_profile");
+    let _ = fs::create_dir_all(&user_data_dir);
+    let user_data_dir_arg = format!("--user-data-dir={}", user_data_dir.to_string_lossy());
+    let screenshot_arg = format!("--screenshot={}", chrome_out.to_string_lossy());
+    if let Some(chrome_bin) = resolve_chromium_binary() {
+        for headless_mode in ["--headless=new", "--headless"] {
+            let Ok(output) = Command::new(&chrome_bin)
+                .args([
+                    headless_mode,
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    user_data_dir_arg.as_str(),
+                    screenshot_arg.as_str(),
+                    test_pdf_str.as_str(),
+                ])
+                .output()
+            else {
+                continue;
+            };
+
+            if output.status.success()
+                && chrome_out.exists()
+                && chrome_out
+                    .metadata()
+                    .map(|meta| meta.len() > 0)
+                    .unwrap_or(false)
+            {
+                chrome_pdfium_verified = true;
+                break;
+            }
+        }
     }
 
     // Step 16: Check availability of foreign viewers without simulation

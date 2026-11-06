@@ -28,8 +28,13 @@
     <SelfContained Condition="'$(OS)' == 'Windows_NT'">false</SelfContained>
     <Platform Condition="'$(OS)' == 'Windows_NT' and ('$(Platform)' == '' or '$(Platform)' == 'AnyCPU')">x64</Platform>
 
-    <!-- WINUI_DESKTOP selects the WinUI 3 bootstrap in Program.cs. -->
-    <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINUI_DESKTOP</DefineConstants>
+    <!--
+      WINUI_DESKTOP selects the WinUI 3 bootstrap in Program.cs.
+      DISABLE_XAML_GENERATED_MAIN suppresses the Program.Main of the
+      XAML-generated App.g.i.cs, so that it does not collide with our own
+      Program.Main (CS0101 duplicate definition / CS0111 multiple entry points).
+    -->
+    <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINUI_DESKTOP;DISABLE_XAML_GENERATED_MAIN</DefineConstants>
 
     <RollForward>Major</RollForward>
     <Nullable>enable</Nullable>
